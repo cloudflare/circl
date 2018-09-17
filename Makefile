@@ -6,10 +6,10 @@ GOPATH_DIR   = $(GOPATH_LOCAL)/src/github.com/cloudflare/circl
 VENDOR_DIR   = build/go_vendor
 COVER_DIR    = $(GOPATH_LOCAL)/coverage
 ETC_DIR      = $(PRJ_DIR)/etc
-OPTS         ?=
+OPTS         ?= -count=1
 NOASMi       ?=
 GO           ?= go
-BENCH_OPTS   ?= -bench=./... -run="NonExistent"
+BENCH_OPTS   ?= -count=1 -bench=.
 V            ?= 0
 
 ifeq ($(NOASM),1)
@@ -33,6 +33,10 @@ prep-%:
 test: clean $(addprefix prep-,$(TARGETS))
 	GOPATH=$(GOPATH_LOCAL) $(GO) vet ./...
 	GOPATH=$(GOPATH_LOCAL) $(GO) test $(OPTS) ./...
+
+bench: clean $(addprefix prep-,$(TARGETS))
+	GOPATH=$(GOPATH_LOCAL) $(GO) vet ./...
+	GOPATH=$(GOPATH_LOCAL) $(GO) test $(BENCH_OPTS) ./...
 
 cover: clean $(addprefix prep-,$(TARGETS))
 	mkdir -p $(COVER_DIR)
