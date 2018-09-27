@@ -9,9 +9,10 @@ ETC_DIR      = $(PRJ_DIR)/etc
 OPTS         ?= -v
 NOASMi       ?=
 GO           ?= go
-# -run="NonExistent" as we want to avoid running tests when running benchmarks
-BENCH_OPTS   ?= -v -bench=. -run="NonExistent"
+# -run="^_" as we want to avoid running tests by 'bench' and there never be a test starting with _
+BENCH_OPTS   ?= -v -bench=. -run="^_"
 V            ?= 0
+GOCACHE      ?= off
 
 ifeq ($(NOASM),1)
 	OPTS+=$(OPTS_TAGS)
@@ -33,10 +34,10 @@ prep-%:
 
 test: clean $(addprefix prep-,$(TARGETS))
 	GOPATH=$(GOPATH_LOCAL) $(GO) vet ./...
-	GOCACHE=off GOPATH=$(GOPATH_LOCAL) $(GO) test $(OPTS) ./...
+	GOCACHE=$(GOCACHE) GOPATH=$(GOPATH_LOCAL) $(GO) test $(OPTS) ./...
 
 bench: clean $(addprefix prep-,$(TARGETS))
-	GOCACHE=off GOPATH=$(GOPATH_LOCAL) $(GO) test $(BENCH_OPTS) ./...
+	GOCACHE=$(GOCACHE) GOPATH=$(GOPATH_LOCAL) $(GO) test $(BENCH_OPTS) ./...
 
 cover: clean $(addprefix prep-,$(TARGETS))
 	mkdir -p $(COVER_DIR)
