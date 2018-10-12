@@ -63,5 +63,8 @@ vendor: fmtcheck clean
 		--exclude=README.md     \
 		--exclude=Makefile      \
 		--exclude=build
-	find $(VENDOR_DIR) -type f -print0 -name "*.go" | xargs -0 sed -i 's/github\.com/github_com/g'
-	find $(VENDOR_DIR) -type f -print0 -name "*.go" | xargs -0 sed -i 's/github·com/github_com/g'
+	# This swaps all imports with github.com to github_com, so that standard library doesn't
+	# try to access external libraries.
+	find $(VENDOR_DIR) -type f -iname "*.go" -print0  | xargs -0 sed -i 's/github\.com/github_com/g'
+	# Similar as above, but specific to assembly files. When referencing variable from assembly code
+	find $(VENDOR_DIR) -type f -iname "*.s" -print0 | xargs -0 sed -i 's/github·com/vendor∕github_com/g'
