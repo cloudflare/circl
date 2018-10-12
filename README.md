@@ -16,4 +16,4 @@ Cloudflare Interoperable, Reusable Cryptographic Library written in Go
 * ``test``: performs testing of the binary
 * ``bench``: runs benchmarks
 * ``cover``: produces coverage
-* ``go_vendor``: produces sources that can be directly coppied to go/vendor directory
+* ``vendor``: produces sources that can be directly coppied to go/vendor directory
