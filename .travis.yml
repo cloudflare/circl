@@ -1,6 +1,11 @@
 sudo: required
 language: go
 
+go:
+   - 1.10.x
+   - 1.11.x
+   - master
+
 script:
   - NOASM=0 make test
   - NOASM=1 make test
