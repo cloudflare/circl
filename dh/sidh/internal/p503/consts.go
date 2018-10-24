@@ -2,6 +2,7 @@ package p503
 
 import (
 	. "github.com/cloudflare/circl/dh/sidh/internal/isogeny"
+	cpu "github.com/cloudflare/circl/utils"
 )
 
 const (
@@ -21,6 +22,17 @@ const (
 	P503_Bytelen = 63
 	// Number of limbs for a field element
 	NumWords = 8
+)
+
+// CPU Capabilities. Those flags are referred by assembly code. According to
+// https://github.com/golang/go/issues/28230, variables referred from the
+// assembly must be in the same package.
+// We declare them variables not constants in order to facilitate testing.
+var (
+	// Signals support for MULX which is in BMI2
+	HasBMI2 = cpu.X86.HasBMI2
+	// Signals support for ADX and BMI2
+	HasADXandBMI2 = cpu.X86.HasBMI2 && cpu.X86.HasADX
 )
 
 // The x-coordinate of PA

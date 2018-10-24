@@ -4,9 +4,6 @@ package p751
 
 import (
 	. "github.com/cloudflare/circl/dh/sidh/internal/isogeny"
-	// This is imported only because arith_amd64.s needs
-	// some symbols from cpuid.go
-	_ "github.com/cloudflare/circl/utils"
 )
 
 // If choice = 0, leave x,y unchanged. If choice = 1, set x,y = y,x.

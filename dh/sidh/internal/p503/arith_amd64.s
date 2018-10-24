@@ -697,9 +697,9 @@ TEXT ·fp503Mul(SB), NOSPLIT, $104-24
 	MOVQ    y+16(FP), REG_P2
 
 	// Check wether to use optimized implementation
-	CMPB    github·com∕cloudflare∕circl∕utils·HasADXandBMI2(SB), $1
+	CMPB    ·HasADXandBMI2(SB), $1
 	JE      mul_with_mulx_adcx_adox
-	CMPB    github·com∕cloudflare∕circl∕utils·HasBMI2(SB), $1
+	CMPB    ·HasBMI2(SB), $1
 	JE      mul_with_mulx
 
 	// Generic x86 implementation (below) uses variant of Karatsuba method.
@@ -1194,9 +1194,9 @@ TEXT ·fp503MontgomeryReduce(SB), $0-16
 	MOVQ    x+8(FP), REG_P1
 
 	// Check wether to use optimized implementation
-	CMPB    github·com∕cloudflare∕circl∕utils·HasADXandBMI2(SB), $1
+	CMPB    ·HasADXandBMI2(SB), $1
 	JE      redc_with_mulx_adcx_adox
-	CMPB    github·com∕cloudflare∕circl∕utils·HasBMI2(SB), $1
+	CMPB    ·HasBMI2(SB), $1
 	JE      redc_with_mulx
 
 	MOVQ    (REG_P1), R11

@@ -22,22 +22,27 @@ const (
 	kUse_MULXandADxX = 1 << 2
 )
 
+func resetCpuFeatures() {
+	HasBMI2 = cpu.X86.HasBMI2
+	HasADXandBMI2 = cpu.X86.HasBMI2 && cpu.X86.HasADX
+}
+
 // Utility function used for testing REDC implementations. Tests caller provided
 // redcFunc against redc()
 func testRedc(t *testing.T, f1, f2 OptimFlag) {
 	doRedcTest := func(aRR FpElementX2) bool {
-		defer cpu.RecognizeCpu()
+		defer resetCpuFeatures()
 		var resRedcF1, resRedcF2 FpElement
 		var aRRcpy = aRR
 
 		// Compute redc with first implementation
-		cpu.HasBMI2 = (kUse_MULX & f1) == kUse_MULX
-		cpu.HasADXandBMI2 = (kUse_MULXandADxX & f1) == kUse_MULXandADxX
+		HasBMI2 = (kUse_MULX & f1) == kUse_MULX
+		HasADXandBMI2 = (kUse_MULXandADxX & f1) == kUse_MULXandADxX
 		fp751MontgomeryReduce(&resRedcF1, &aRR)
 
 		// Compute redc with second implementation
-		cpu.HasBMI2 = (kUse_MULX & f2) == kUse_MULX
-		cpu.HasADXandBMI2 = (kUse_MULXandADxX & f2) == kUse_MULXandADxX
+		HasBMI2 = (kUse_MULX & f2) == kUse_MULX
+		HasADXandBMI2 = (kUse_MULXandADxX & f2) == kUse_MULXandADxX
 		fp751MontgomeryReduce(&resRedcF2, &aRRcpy)
 
 		// Compare results
@@ -51,8 +56,8 @@ func testRedc(t *testing.T, f1, f2 OptimFlag) {
 
 // Ensures correctness of Montgomery reduction implementation which uses MULX
 func TestRedcWithMULX(t *testing.T) {
-	defer cpu.RecognizeCpu()
-	if !cpu.HasBMI2 {
+	defer resetCpuFeatures()
+	if !HasBMI2 {
 		t.Skip("MULX not supported by the platform")
 	}
 	testRedc(t, kUse_MULX, kUse_MUL)
@@ -61,8 +66,8 @@ func TestRedcWithMULX(t *testing.T) {
 // Ensures correctness of Montgomery reduction implementation which uses MULX
 // and ADCX/ADOX.
 func TestRedcWithMULXADxX(t *testing.T) {
-	defer cpu.RecognizeCpu()
-	if !cpu.HasADXandBMI2 {
+	defer resetCpuFeatures()
+	if !HasADXandBMI2 {
 		t.Skip("MULX, ADCX and ADOX not supported by the platform")
 	}
 	testRedc(t, kUse_MULXandADxX, kUse_MUL)
@@ -71,8 +76,8 @@ func TestRedcWithMULXADxX(t *testing.T) {
 // Ensures correctness of Montgomery reduction implementation which uses MULX
 // and ADCX/ADOX.
 func TestRedcWithMULXADxXAgainstMULX(t *testing.T) {
-	defer cpu.RecognizeCpu()
-	if !cpu.HasADXandBMI2 {
+	defer resetCpuFeatures()
+	if !HasADXandBMI2 {
 		t.Skip("MULX, ADCX and ADOX not supported by the platform")
 	}
 	testRedc(t, kUse_MULXandADxX, kUse_MULX)

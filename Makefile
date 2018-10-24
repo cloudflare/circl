@@ -13,6 +13,7 @@ GO           ?= go
 BENCH_OPTS   ?= -v -bench=. -run="^_"
 V            ?= 0
 GOCACHE      ?= off
+GOARCH       ?=
 
 ifeq ($(NOASM),1)
 	OPTS+=$(OPTS_TAGS)
@@ -38,8 +39,8 @@ prep-%:
 
 test: clean $(addprefix prep-,$(TARGETS))
 	cd $(GOPATH_LOCAL); GOPATH=$(GOPATH_LOCAL) $(GO) vet ./...
-	cd $(GOPATH_LOCAL); GOCACHE=$(GOCACHE) GOPATH=$(GOPATH_LOCAL) $(GO) test \
-		$(OPTS) ./...
+	cd $(GOPATH_LOCAL); GOARCH=$(GOARCH) GOCACHE=$(GOCACHE) GOPATH=$(GOPATH_LOCAL) \
+		$(GO) test $(OPTS) ./...
 
 bench: clean $(addprefix prep-,$(TARGETS))
 	cd $(GOPATH_LOCAL); GOCACHE=$(GOCACHE) GOPATH=$(GOPATH_LOCAL) $(GO) test \
@@ -66,5 +67,3 @@ vendor: fmtcheck clean
 	# This swaps all imports with github.com to github_com, so that standard library doesn't
 	# try to access external libraries.
 	find $(VENDOR_DIR) -type f -iname "*.go" -print0  | xargs -0 sed -i 's/github\.com/github_com/g'
-	# Similar as above, but specific to assembly files. When referencing variable from assembly code
-	find $(VENDOR_DIR) -type f -iname "*.s" -print0 | xargs -0 sed -i 's/github·com/vendor∕github_com/g'
