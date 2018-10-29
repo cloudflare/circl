@@ -20,7 +20,9 @@ func newAffinePoint(X, Y *big.Int) *affinePoint {
 }
 
 func (ap *affinePoint) ToJacobian() *jacobianPoint {
-	return &jacobianPoint{ap.x, ap.y, *newFp384(1)}
+	z := fp384{big.Word(1)}
+	montEncode(&z, &z)
+	return &jacobianPoint{ap.x, ap.y, z}
 }
 
 func (ap *affinePoint) ToInt() (*big.Int, *big.Int) {

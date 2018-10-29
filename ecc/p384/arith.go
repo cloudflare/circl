@@ -10,18 +10,6 @@ var hasBMI2 = cpu.X86.HasBMI2
 
 type fp384 [6]big.Word
 
-func newFp384(x uint64) (out *fp384) {
-	if x >= 0 {
-		out = &fp384{big.Word(x)}
-	} else {
-		out = &fp384{big.Word(-x)}
-		fp384Neg(out, out)
-	}
-
-	montEncode(out, out)
-	return out
-}
-
 func (e *fp384) Set(f *fp384) {
 	e[0] = f[0]
 	e[1] = f[1]
