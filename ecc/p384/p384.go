@@ -4,6 +4,7 @@ package p384
 import (
 	"crypto/elliptic"
 	"math/big"
+	"sync"
 )
 
 var (
@@ -27,18 +28,9 @@ var (
 
 	// baseMultiples has [2^i] * G at position i.
 	baseMultiples [384]affinePoint
+
+	initonce sync.Once
 )
-
-func init() {
-	params := elliptic.P384().Params()
-	baseMultiples[0] = *newAffinePoint(params.Gx, params.Gy)
-
-	c := &Curve{}
-	for i := 1; i < len(baseMultiples); i++ {
-		pt := c.double(baseMultiples[i-1].ToJacobian()).ToAffine()
-		baseMultiples[i] = *pt
-	}
-}
 
 type Curve struct{}
 
@@ -250,4 +242,19 @@ func (c *Curve) CombinedMult(bigX, bigY *big.Int, baseScalar, scalar []byte) (x,
 	}
 
 	return sum.ToAffine().ToInt()
+}
+
+func initP384() {
+	params := elliptic.P384().Params()
+	baseMultiples[0] = *newAffinePoint(params.Gx, params.Gy)
+
+	c := &Curve{}
+	for i := 1; i < len(baseMultiples); i++ {
+		pt := c.double(baseMultiples[i-1].ToJacobian()).ToAffine()
+		baseMultiples[i] = *pt
+	}
+}
+
+func init() {
+	initonce.Do(initP384)
 }
