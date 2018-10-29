@@ -7,7 +7,7 @@ VENDOR_DIR   = build/vendor
 COVER_DIR    = $(GOPATH_LOCAL)/coverage
 ETC_DIR      = $(PRJ_DIR)/etc
 OPTS         ?= -v
-NOASMi       ?=
+NOASM        ?=
 GO           ?= go
 # -run="^_" as we want to avoid running tests by 'bench' and there never be a test starting with _
 BENCH_OPTS   ?= -v -bench=. -run="^_"
@@ -26,6 +26,7 @@ endif
 TARGETS= \
 	hash/	\
 	dh/	\
+	ecc/	\
 	etc/ 	\
 	kem/	\
 	utils

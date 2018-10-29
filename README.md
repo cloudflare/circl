@@ -5,6 +5,8 @@ Cloudflare Interoperable, Reusable Cryptographic Library written in Go
 ## Implemented primitives
 * dh/
     - SIDH
+* ecc/
+    - P-384 (note that this implementation is not constant-time)
 * hash/
     - SHA3/
         * cSHAKE, SHAKE
@@ -16,4 +18,4 @@ Cloudflare Interoperable, Reusable Cryptographic Library written in Go
 * ``test``: performs testing of the binary
 * ``bench``: runs benchmarks
 * ``cover``: produces coverage
-* ``vendor``: produces sources that can be directly coppied to go/vendor directory
+* ``vendor``: produces sources that can be directly copied to a ``go/vendor`` directory
