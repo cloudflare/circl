@@ -3,7 +3,7 @@
 #include "textflag.h"
 
 // Compute c = -a mod p
-TEXT ·gfpNeg(SB), NOSPLIT, $0-16
+TEXT ·fp384Neg(SB), NOSPLIT, $0-16
 	MOVD	c+0(FP), R0
 	MOVD	a+8(FP), R1
 
@@ -46,7 +46,7 @@ TEXT ·gfpNeg(SB), NOSPLIT, $0-16
 	RET
 
 // Compute c = a+b mod p
-TEXT ·gfpAdd(SB), NOSPLIT, $0-24
+TEXT ·fp384Add(SB), NOSPLIT, $0-24
 	MOVD	c+ 0(FP), R0
 	MOVD	a+ 8(FP), R1
 	MOVD	b+16(FP), R2
@@ -96,7 +96,7 @@ TEXT ·gfpAdd(SB), NOSPLIT, $0-24
 	RET
 
 // Compute c = a-b mod p
-TEXT ·gfpSub(SB), NOSPLIT, $0-24
+TEXT ·fp384Sub(SB), NOSPLIT, $0-24
 	MOVD	c+ 0(FP), R0
 	MOVD	a+ 8(FP), R1
 	MOVD	b+16(FP), R2
@@ -336,7 +336,7 @@ TEXT ·gfpSub(SB), NOSPLIT, $0-24
 	SBC	ZR, Z11
 
 // Compute c = a*b*R^-1 mod p
-TEXT ·gfpMul(SB), NOSPLIT, $200-24
+TEXT ·fp384Mul(SB), NOSPLIT, $200-24
 	MOVD	c+ 0(FP), R0
 	MOVD	a+ 8(FP), R1
 	MOVD	b+16(FP), R2

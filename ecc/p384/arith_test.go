@@ -9,8 +9,8 @@ import (
 )
 
 func TestNegZero(t *testing.T) {
-	zero, x := &gfP{}, &gfP{}
-	gfpNeg(x, zero)
+	zero, x := &fp384{}, &fp384{}
+	fp384Neg(x, zero)
 
 	if *x != *zero {
 		t.Errorf("-%v should be %v, not %v", zero, zero, x)
@@ -23,12 +23,12 @@ func TestNeg(t *testing.T) {
 
 	for i := 0; i < 20000; i++ {
 		x, _ := rand.Int(rand.Reader, P)
-		X, Z, Zc := &gfP{}, &gfP{}, &gfP{}
+		X, Z, Zc := &fp384{}, &fp384{}, &fp384{}
 		copy(X[:], x.Bits())
 
 		x.Neg(x).Mod(x, P)
 		copy(Zc[:], x.Bits())
-		gfpNeg(Z, X)
+		fp384Neg(Z, X)
 
 		if x.Cmp(Z.Int()) != 0 {
 			t.Errorf("-%v should be %v, not %v", X, Zc, Z)
@@ -43,13 +43,13 @@ func TestAdd(t *testing.T) {
 	for i := 0; i < 10000; i++ {
 		x, _ := rand.Int(rand.Reader, P)
 		y, _ := rand.Int(rand.Reader, P)
-		X, Y, Z, Zc := &gfP{}, &gfP{}, &gfP{}, &gfP{}
+		X, Y, Z, Zc := &fp384{}, &fp384{}, &fp384{}, &fp384{}
 		copy(X[:], x.Bits())
 		copy(Y[:], y.Bits())
 
 		x.Add(x, y).Mod(x, P)
 		copy(Zc[:], x.Bits())
-		gfpAdd(Z, X, Y)
+		fp384Add(Z, X, Y)
 
 		if x.Cmp(Z.Int()) != 0 {
 			t.Errorf("%v + %v should be %v, not %v", X, Y, Zc, Z)
@@ -64,13 +64,13 @@ func TestSub(t *testing.T) {
 	for i := 0; i < 10000; i++ {
 		x, _ := rand.Int(rand.Reader, P)
 		y, _ := rand.Int(rand.Reader, P)
-		X, Y, Z, Zc := &gfP{}, &gfP{}, &gfP{}, &gfP{}
+		X, Y, Z, Zc := &fp384{}, &fp384{}, &fp384{}, &fp384{}
 		copy(X[:], x.Bits())
 		copy(Y[:], y.Bits())
 
 		x.Sub(x, y).Mod(x, P)
 		copy(Zc[:], x.Bits())
-		gfpSub(Z, X, Y)
+		fp384Sub(Z, X, Y)
 
 		if x.Cmp(Z.Int()) != 0 {
 			t.Errorf("%v - %v should be %v, not %v", X, Y, Zc, Z)
@@ -82,11 +82,11 @@ func TestSub(t *testing.T) {
 func TestMulZero(t *testing.T) {
 	P := elliptic.P384().Params().P
 	x, _ := rand.Int(rand.Reader, P)
-	X := &gfP{}
+	X := &fp384{}
 	copy(X[:], x.Bits())
 
-	zero := &gfP{}
-	gfpMul(X, X, zero)
+	zero := &fp384{}
+	fp384Mul(X, X, zero)
 
 	if *X != *zero {
 		t.Errorf("%v * %v should be %v, not %v", zero, zero, zero, X)
@@ -102,13 +102,13 @@ func TestMul(t *testing.T) {
 	for i := 0; i < 10000; i++ {
 		x, _ := rand.Int(rand.Reader, P)
 		y, _ := rand.Int(rand.Reader, P)
-		X, Y, Z, Zc := &gfP{}, &gfP{}, &gfP{}, &gfP{}
+		X, Y, Z, Zc := &fp384{}, &fp384{}, &fp384{}, &fp384{}
 		copy(X[:], x.Bits())
 		copy(Y[:], y.Bits())
 
 		x.Mul(x, y).Mul(x, Rinv).Mod(x, P)
 		copy(Zc[:], x.Bits())
-		gfpMul(Z, X, Y)
+		fp384Mul(Z, X, Y)
 
 		if x.Cmp(Z.Int()) != 0 {
 			t.Errorf("%v * %v should be %v, not %v", X, Y, Zc, Z)
@@ -122,7 +122,7 @@ func TestInvert(t *testing.T) {
 
 	for i := 0; i < 1000; i++ {
 		x, _ := rand.Int(rand.Reader, P)
-		X, Z, Zc := &gfP{}, &gfP{}, &gfP{}
+		X, Z, Zc := &fp384{}, &fp384{}, &fp384{}
 		copy(X[:], x.Bits())
 
 		x.ModInverse(x, P)
@@ -143,12 +143,12 @@ func BenchmarkMul(b *testing.B) {
 	params := c.Params()
 	x, _ := rand.Int(rand.Reader, params.P)
 	y, _ := rand.Int(rand.Reader, params.P)
-	X, Y, Z := &gfP{}, &gfP{}, &gfP{}
+	X, Y, Z := &fp384{}, &fp384{}, &fp384{}
 	copy(X[:], x.Bits())
 	copy(Y[:], y.Bits())
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		gfpMul(Z, X, Y)
+		fp384Mul(Z, X, Y)
 	}
 }

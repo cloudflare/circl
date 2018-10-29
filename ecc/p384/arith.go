@@ -8,21 +8,21 @@ import (
 
 var hasBMI2 = cpu.X86.HasBMI2
 
-type gfP [6]big.Word
+type fp384 [6]big.Word
 
-func newGFp(x int64) (out *gfP) {
+func newFp384(x uint64) (out *fp384) {
 	if x >= 0 {
-		out = &gfP{big.Word(x)}
+		out = &fp384{big.Word(x)}
 	} else {
-		out = &gfP{big.Word(-x)}
-		gfpNeg(out, out)
+		out = &fp384{big.Word(-x)}
+		fp384Neg(out, out)
 	}
 
 	montEncode(out, out)
 	return out
 }
 
-func (e *gfP) Set(f *gfP) {
+func (e *fp384) Set(f *fp384) {
 	e[0] = f[0]
 	e[1] = f[1]
 	e[2] = f[2]
@@ -31,45 +31,45 @@ func (e *gfP) Set(f *gfP) {
 	e[5] = f[5]
 }
 
-func (e *gfP) Int() *big.Int {
+func (e *fp384) Int() *big.Int {
 	return new(big.Int).SetBits(e[:])
 }
 
-func (e *gfP) String() string {
+func (e *fp384) String() string {
 	return fmt.Sprintf("%16.16x%16.16x%16.16x%16.16x%16.16x%16.16x", e[5], e[4], e[3], e[2], e[1], e[0])
 }
 
-func (e *gfP) Invert(f *gfP) {
+func (e *fp384) Invert(f *fp384) {
 	bits := [6]uint64{0xfffffffd, 0xffffffff00000000, 0xfffffffffffffffe, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff}
 
-	sum, power := &gfP{}, &gfP{}
+	sum, power := &fp384{}, &fp384{}
 	sum.Set(&rN1)
 	power.Set(f)
 
 	for word := 0; word < 6; word++ {
 		for bit := uint(0); bit < 64; bit++ {
 			if (bits[word]>>bit)&1 == 1 {
-				gfpMul(sum, sum, power)
+				fp384Mul(sum, sum, power)
 			}
-			gfpMul(power, power, power)
+			fp384Mul(power, power, power)
 		}
 	}
 
-	gfpMul(sum, sum, &r3)
+	fp384Mul(sum, sum, &r3)
 	e.Set(sum)
 }
 
-func montEncode(c, a *gfP) { gfpMul(c, a, &r2) }
-func montDecode(c, a *gfP) { gfpMul(c, a, &gfP{1}) }
+func montEncode(c, a *fp384) { fp384Mul(c, a, &r2) }
+func montDecode(c, a *fp384) { fp384Mul(c, a, &fp384{1}) }
 
 // go:noescape
-func gfpNeg(c, a *gfP)
+func fp384Neg(c, a *fp384)
 
 //go:noescape
-func gfpAdd(c, a, b *gfP)
+func fp384Add(c, a, b *fp384)
 
 //go:noescape
-func gfpSub(c, a, b *gfP)
+func fp384Sub(c, a, b *fp384)
 
 //go:noescape
-func gfpMul(c, a, b *gfP)
+func fp384Mul(c, a, b *fp384)

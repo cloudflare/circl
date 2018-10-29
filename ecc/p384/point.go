@@ -5,11 +5,11 @@ import (
 )
 
 type affinePoint struct {
-	x, y gfP
+	x, y fp384
 }
 
 func newAffinePoint(X, Y *big.Int) *affinePoint {
-	x, y := &gfP{}, &gfP{}
+	x, y := &fp384{}, &fp384{}
 	copy(x[:], X.Bits())
 	copy(y[:], Y.Bits())
 
@@ -20,11 +20,11 @@ func newAffinePoint(X, Y *big.Int) *affinePoint {
 }
 
 func (ap *affinePoint) ToJacobian() *jacobianPoint {
-	return &jacobianPoint{ap.x, ap.y, *newGFp(1)}
+	return &jacobianPoint{ap.x, ap.y, *newFp384(1)}
 }
 
 func (ap *affinePoint) ToInt() (*big.Int, *big.Int) {
-	x, y := &gfP{}, &gfP{}
+	x, y := &fp384{}, &fp384{}
 	*x, *y = ap.x, ap.y
 
 	montDecode(x, x)
@@ -34,12 +34,12 @@ func (ap *affinePoint) ToInt() (*big.Int, *big.Int) {
 }
 
 func (ap *affinePoint) IsZero() bool {
-	zero := gfP{}
+	zero := fp384{}
 	return ap.x == zero && ap.y == zero
 }
 
 type jacobianPoint struct {
-	x, y, z gfP
+	x, y, z fp384
 }
 
 func (jp *jacobianPoint) ToAffine() *affinePoint {
@@ -47,24 +47,24 @@ func (jp *jacobianPoint) ToAffine() *affinePoint {
 		return &affinePoint{}
 	}
 
-	z := &gfP{}
+	z := &fp384{}
 	*z = jp.z
 	z.Invert(z)
 
-	x, y := &gfP{}, &gfP{}
+	x, y := &fp384{}, &fp384{}
 	*x, *y = jp.x, jp.y
 
-	gfpMul(x, x, z)
-	gfpMul(x, x, z)
-	gfpMul(y, y, z)
-	gfpMul(y, y, z)
-	gfpMul(y, y, z)
+	fp384Mul(x, x, z)
+	fp384Mul(x, x, z)
+	fp384Mul(y, y, z)
+	fp384Mul(y, y, z)
+	fp384Mul(y, y, z)
 
 	return &affinePoint{*x, *y}
 }
 
 func (jp *jacobianPoint) IsZero() bool {
-	zero := gfP{}
+	zero := fp384{}
 	return jp.z == zero
 }
 

@@ -18,7 +18,7 @@
 	MOVQ 32+r, a4 \
 	MOVQ 40+r, a5
 
-#define gfpCarry(a0,a1,a2,a3,a4,a5,a6, b0,b1,b2,b3,b4,b5,b6) \
+#define fp384Carry(a0,a1,a2,a3,a4,a5,a6, b0,b1,b2,b3,b4,b5,b6) \
 	\ // b = a-p
 	MOVQ a0, b0 \
 	MOVQ a1, b1 \
@@ -285,7 +285,7 @@
 	storeBlock(R8,R9,R10,R11,R12,R13, 40+stack) \
 	MOVQ R14, 88+stack
 
-#define gfpReduce(stack) \
+#define fp384Reduce(stack) \
 	\ // m = (T * P') mod R, store m in R8:R9:R10:R11:R12:R13
 	MOVQ ·pp+0(SB), AX \
 	MULQ 0+stack \
@@ -400,7 +400,7 @@
 	ADCQ 88+stack, DX \
 	ADCQ $0, DI \
 	\
-	gfpCarry(R14,R15,AX,BX,CX,DX,DI, R8,R9,R10,R11,R12,R13,SI)
+	fp384Carry(R14,R15,AX,BX,CX,DX,DI, R8,R9,R10,R11,R12,R13,SI)
 
 #define mulBMI2(a0,a1,a2,a3,a4,a5, rb, stack) \
 	MOVQ a0, DX \
@@ -543,7 +543,7 @@
 	\
 	MOVQ R13, 40+stack
 
-#define gfpReduceBMI2(stack) \
+#define fp384ReduceBMI2(stack) \
 	\ // m = (T * P') mod R, store m in R8:R9:R10:R11:R12:R13
 	MOVQ ·pp+0(SB), DX \
 	MULXQ 0+stack, R8, R9 \
@@ -621,9 +621,9 @@
 	ADCQ 88+stack, R11 \
 	ADCQ $0, AX \
 	\
-	gfpCarry(R14,R15,R8,R9,R10,R11,AX, R12,R13,BX,CX,DX,DI,SI)
+	fp384Carry(R14,R15,R8,R9,R10,R11,AX, R12,R13,BX,CX,DX,DI,SI)
 
-TEXT ·gfpNeg(SB), NOSPLIT, $0-16
+TEXT ·fp384Neg(SB), NOSPLIT, $0-16
 	MOVQ ·p+0(SB), R8
 	MOVQ ·p+8(SB), R9
 	MOVQ ·p+16(SB), R10
@@ -640,13 +640,13 @@ TEXT ·gfpNeg(SB), NOSPLIT, $0-16
 	SBBQ 40(DI), R13
 
 	MOVQ $0, R14
-	gfpCarry(R8,R9,R10,R11,R12,R13,R14, R15,AX,BX,CX,DX,DI,SI)
+	fp384Carry(R8,R9,R10,R11,R12,R13,R14, R15,AX,BX,CX,DX,DI,SI)
 
 	MOVQ c+0(FP), DI
 	storeBlock(R8,R9,R10,R11,R12,R13, 0(DI))
 	RET
 
-TEXT ·gfpAdd(SB), NOSPLIT, $0-24
+TEXT ·fp384Add(SB), NOSPLIT, $0-24
 	MOVQ a+8(FP), DI
 	MOVQ b+16(FP), SI
 
@@ -661,13 +661,13 @@ TEXT ·gfpAdd(SB), NOSPLIT, $0-24
 	ADCQ 40(SI), R13
 	ADCQ $0, R14
 
-	gfpCarry(R8,R9,R10,R11,R12,R13,R14, R15,AX,BX,CX,DX,DI,SI)
+	fp384Carry(R8,R9,R10,R11,R12,R13,R14, R15,AX,BX,CX,DX,DI,SI)
 
 	MOVQ c+0(FP), DI
 	storeBlock(R8,R9,R10,R11,R12,R13, 0(DI))
 	RET
 
-TEXT ·gfpSub(SB), NOSPLIT, $0-24
+TEXT ·fp384Sub(SB), NOSPLIT, $0-24
 	MOVQ ·p+0(SB), R8
 	MOVQ ·p+8(SB), R9
 	MOVQ ·p+16(SB), R10
@@ -693,13 +693,13 @@ TEXT ·gfpSub(SB), NOSPLIT, $0-24
 	ADCQ 40(DI), R13
 	ADCQ $0, R14
 
-	gfpCarry(R8,R9,R10,R11,R12,R13,R14, R15,AX,BX,CX,DX,DI,SI)
+	fp384Carry(R8,R9,R10,R11,R12,R13,R14, R15,AX,BX,CX,DX,DI,SI)
 
 	MOVQ c+0(FP), DI
 	storeBlock(R8,R9,R10,R11,R12,R13, 0(DI))
 	RET
 
-TEXT ·gfpMul(SB), NOSPLIT, $240-24
+TEXT ·fp384Mul(SB), NOSPLIT, $240-24
 	MOVQ a+8(FP), DI
 	MOVQ b+16(FP), SI
 
@@ -712,7 +712,7 @@ TEXT ·gfpMul(SB), NOSPLIT, $240-24
 	storeBlock(R14,R15,R8,R9,R10,R11, 48(SP))
 
 	// Reduce T.
-	gfpReduceBMI2(0(SP))
+	fp384ReduceBMI2(0(SP))
 
 	MOVQ c+0(FP), DI
 	storeBlock(R14,R15,R8,R9,R10,R11, 0(DI))
@@ -723,7 +723,7 @@ nobmi2Mul:
 	mul(0(DI),8(DI),16(DI),24(DI),32(DI),40(DI), 0(SI), 0(SP))
 
 	// Reduce T.
-	gfpReduce(0(SP))
+	fp384Reduce(0(SP))
 
 	MOVQ c+0(FP), DI
 	storeBlock(R14,R15,AX,BX,CX,DX, 0(DI))
