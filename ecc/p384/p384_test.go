@@ -35,6 +35,25 @@ func TestIsOnCurveFalse(t *testing.T) {
 	}
 }
 
+func TestAffineAdd(t *testing.T) {
+	params := elliptic.P384().Params()
+
+	for i := 0; i < 100; i++ {
+		K1, _ := rand.Int(rand.Reader, params.N)
+		K2, _ := rand.Int(rand.Reader, params.N)
+		X1, Y1 := params.ScalarBaseMult(K1.Bytes())
+		X2, Y2 := params.ScalarBaseMult(K2.Bytes())
+		X3, Y3 := params.Add(X1, Y1, X2, Y2)
+
+		c := &Curve{}
+		candX, candY := c.Add(X1, Y1, X2, Y2)
+
+		if X3.Cmp(candX) != 0 || Y3.Cmp(candY) != 0 {
+			t.Fatal("points not the same!")
+		}
+	}
+}
+
 func TestJacobianAdd(t *testing.T) {
 	params := elliptic.P384().Params()
 
@@ -68,6 +87,25 @@ func TestJacobianAddSame(t *testing.T) {
 		in1, in2 := newAffinePoint(X1, Y1), newAffinePoint(X1, Y1)
 		pt := c.add(in1.ToJacobian(), in2)
 		candX, candY := pt.ToAffine().ToInt()
+
+		if X3.Cmp(candX) != 0 || Y3.Cmp(candY) != 0 {
+			t.Fatal("points not the same!")
+		}
+	}
+}
+
+func TestAffineDouble(t *testing.T) {
+	params := elliptic.P384().Params()
+
+	for i := 0; i < 100; i++ {
+		K, _ := rand.Int(rand.Reader, params.N)
+		X1, Y1 := params.ScalarBaseMult(K.Bytes())
+		X3, Y3 := params.Double(X1, Y1)
+		X3, Y3 = params.Double(X3, Y3)
+
+		c := &Curve{}
+		candX, candY := c.Double(X1, Y1)
+		candX, candY = c.Double(candX, candY)
 
 		if X3.Cmp(candX) != 0 || Y3.Cmp(candY) != 0 {
 			t.Fatal("points not the same!")
