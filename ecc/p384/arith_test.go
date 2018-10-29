@@ -6,6 +6,8 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"math/big"
+
+	cpu "github.com/cloudflare/circl/utils"
 )
 
 func TestNegZero(t *testing.T) {
@@ -94,7 +96,7 @@ func TestMulZero(t *testing.T) {
 	}
 }
 
-func TestMul(t *testing.T) {
+func testMul(t *testing.T) {
 	P := elliptic.P384().Params().P
 	Rinv := big.NewInt(1)
 	Rinv.Lsh(Rinv, 384).Mod(Rinv, P).ModInverse(Rinv, P)
@@ -114,6 +116,20 @@ func TestMul(t *testing.T) {
 			t.Errorf("%v * %v should be %v, not %v", X, Y, Zc, Z)
 			t.Fatal("not equal")
 		}
+	}
+}
+
+func TestMul(t *testing.T) {
+	defer func() {
+		hasBMI2 = cpu.X86.HasBMI2
+	}()
+
+	testMul(t)
+
+	// Test implementation without BMI2
+	if hasBMI2 {
+		hasBMI2 = false
+		testMul(t)
 	}
 }
 
