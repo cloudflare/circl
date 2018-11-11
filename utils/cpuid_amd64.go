@@ -24,6 +24,6 @@ func init() {
 	}
 
 	_, ebx, _, _ := cpuid(7, 0)
-	X86.HasBMI2 = bitn(ebx, 19)
-	X86.HasADX = bitn(ebx, 7)
+	X86.HasBMI2 = bitn(ebx, 8)
+	X86.HasADX = bitn(ebx, 19)
 }
