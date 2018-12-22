@@ -9,86 +9,42 @@ import (
 	dh "github.com/cloudflare/circl/ecdhx"
 )
 
-func TestX25519Base(t *testing.T) {
-	const times = 128
-	var got, want dh.Key255
-	base := dh.GetBase255()
-	for j := 0; j < times; j++ {
-		input := dh.RandomKey255()
-		x, y := input, input
-		for i := 0; i < times; i++ {
-			want, got = x.Shared(base), y.KeyGen()
-			x, y = want, got
-		}
+func baseTest(t *testing.T, x, base dh.XKey) {
+	const times = 1 << 10
+	y := x
+	for i := 0; i < times; i++ {
+		want, got := x.Shared(base), y.KeyGen()
+		x, y = want, got
 		if got != want {
-			t.Errorf("[incorrect result]\ninput: %v\ngot:   %v\nwant:  %v\n", input, got, want)
+			t.Errorf("[incorrect result]\ninput: %v\ngot:   %v\nwant:  %v\n", x, got, want)
 		}
 	}
 }
 
-func TestX448Base(t *testing.T) {
-	const times = 128
-	var got, want dh.Key448
-	base := dh.GetBase448()
-	for j := 0; j < times; j++ {
-		input := dh.RandomKey448()
-		x, y := input, input
-		for i := 0; i < times; i++ {
-			want, got = x.Shared(base), y.KeyGen()
-			x, y = want, got
-		}
-		if got != want {
-			t.Errorf("[incorrect result]\ninput: %v\ngot:   %v\nwant:  %v\n", input, got, want)
-		}
-	}
+func TestBase(t *testing.T) {
+	t.Run("X25519", func(t *testing.T) { baseTest(t, dh.RandomKey255(), dh.GetBase255()) })
+	t.Run("X448", func(t *testing.T) { baseTest(t, dh.RandomKey448(), dh.GetBase448()) })
 }
 
-func BenchmarkX25519(b *testing.B) {
-	key := dh.RandomKey255()
-	in := dh.RandomKey255()
-	b.SetBytes(dh.SizeKey255)
-	b.Run("Random", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			dh.RandomKey255()
-		}
-	})
+func ecdhx(b *testing.B, x, y dh.XKey) {
+	b.SetBytes(int64(x.Size()))
 	b.Run("KeyGen", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			out := in.KeyGen()
-			in = out
+			x = x.KeyGen()
 		}
 	})
 	b.Run("Shared", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			out := key.Shared(in)
-			in = key
-			key = out
+			z := x.Shared(y)
+			y = x
+			x = z
 		}
 	})
 }
 
-func BenchmarkX448(b *testing.B) {
-	key := dh.RandomKey448()
-	in := dh.RandomKey448()
-	b.SetBytes(dh.SizeKey448)
-	b.Run("Random", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			dh.RandomKey448()
-		}
-	})
-	b.Run("KeyGen", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			out := in.KeyGen()
-			in = out
-		}
-	})
-	b.Run("Shared", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			out := key.Shared(in)
-			in = key
-			key = out
-		}
-	})
+func BenchmarkECDHX(b *testing.B) {
+	b.Run("X25519", func(b *testing.B) { ecdhx(b, dh.RandomKey255(), dh.RandomKey255()) })
+	b.Run("X448", func(b *testing.B) { ecdhx(b, dh.RandomKey448(), dh.RandomKey448()) })
 }
 
 func Example_x25519() {
