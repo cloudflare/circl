@@ -19,9 +19,15 @@ To run a batch of tests run the following commands
 
 ````
  $ cd circl
- $ GOCACHE=off go test -v -short -cover ./...
+ $ GOCACHE=off go test -v -cover ./...
 ````
-There is a couple of long tests that can be executed by removing the flag `-short`.
+
+There are some long tests that can be executed by adding the flag `-long`.
+
+````
+ $ cd circl
+ $ GOCACHE=off go test -v -cover -long
+````
 
 ### Benchmark
 

@@ -4,6 +4,7 @@ package ecdhx_test
 
 import (
 	"encoding/json"
+	"flag"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -12,32 +13,33 @@ import (
 	dh "github.com/cloudflare/circl/ecdhx"
 )
 
-type vector255 struct {
-	Input, Output, Scalar dh.Key255
+var long bool
+
+func TestMain(m *testing.M) {
+	flag.BoolVar(&long, "long", false, "runs longer tests")
+	flag.Parse()
+	os.Exit(m.Run())
 }
 
-type vector448 struct {
-	Input, Output, Scalar dh.Key448
-}
-
-func stringToSlice(s string, len int) []byte {
-	z := make([]byte, len)
-	for j := 0; j < len; j++ {
+func stringToKey(s string, l int) dh.XKey {
+	z := make([]byte, l)
+	for j := 0; j < l; j++ {
 		a, _ := strconv.ParseUint(s[2*j:2*j+2], 16, 8)
 		z[j] = byte(a)
 	}
-	return z
+	return dh.XKeyFromSlice(z)
 }
 
-func readKatVectors(t *testing.T) (v0 []vector255, v1 []vector448) {
-	nameFile := "testdata/rfc7748_kat_test.json"
+type katVector struct{ Input, Output, Scalar dh.XKey }
+
+func readKatVectors(t *testing.T, nameFile string) (r []katVector) {
 	jsonFile, err := os.Open(nameFile)
 	if err != nil {
 		t.Fatalf("File %v can not be opened. Error: %v", nameFile, err)
 	}
 	defer jsonFile.Close()
-
 	input, _ := ioutil.ReadAll(jsonFile)
+
 	var vectorsRaw struct {
 		X25519, X448 []struct {
 			Input  string `json:"input"`
@@ -45,127 +47,100 @@ func readKatVectors(t *testing.T) (v0 []vector255, v1 []vector448) {
 			Scalar string `json:"scalar"`
 		}
 	}
-
 	err = json.Unmarshal(input, &vectorsRaw)
 	if err != nil {
 		t.Fatalf("File %v can not be loaded. Error: %v", nameFile, err)
 	}
-	v0 = make([]vector255, len(vectorsRaw.X25519))
-	for i, v := range vectorsRaw.X25519 {
-		copy(v0[i].Input[:], stringToSlice(v.Input, dh.SizeKey255))
-		copy(v0[i].Output[:], stringToSlice(v.Output, dh.SizeKey255))
-		copy(v0[i].Scalar[:], stringToSlice(v.Scalar, dh.SizeKey255))
+	l := dh.SizeKey255
+	for _, v := range vectorsRaw.X25519 {
+		r = append(r, katVector{
+			Input:  stringToKey(v.Input, l),
+			Output: stringToKey(v.Output, l),
+			Scalar: stringToKey(v.Scalar, l),
+		})
 	}
-	v1 = make([]vector448, len(vectorsRaw.X448))
-	for i, v := range vectorsRaw.X448 {
-		copy(v1[i].Input[:], stringToSlice(v.Input, dh.SizeKey448))
-		copy(v1[i].Output[:], stringToSlice(v.Output, dh.SizeKey448))
-		copy(v1[i].Scalar[:], stringToSlice(v.Scalar, dh.SizeKey448))
+	l = dh.SizeKey448
+	for _, v := range vectorsRaw.X448 {
+		r = append(r, katVector{
+			Input:  stringToKey(v.Input, l),
+			Output: stringToKey(v.Output, l),
+			Scalar: stringToKey(v.Scalar, l),
+		})
 	}
-	return v0, v1
+	return r
 }
 
 func TestRFC7748Kat(t *testing.T) {
-	v0, v1 := readKatVectors(t)
-	t.Run("X25519", func(t *testing.T) {
-		for _, v := range v0 {
-			got := v.Scalar.Shared(v.Input)
-			want := v.Output
-			if got != want {
-				t.Errorf("Failed\ngot: %v\nwant:%v\n", got, want)
-			}
+	V := readKatVectors(t, "testdata/rfc7748_kat_test.json")
+	for _, v := range V {
+		got, want := v.Scalar.Shared(v.Input), v.Output
+		if got != want {
+			t.Errorf("Failed\ngot: %v\nwant:%v\n", got, want)
 		}
-	})
-	t.Run("X448", func(t *testing.T) {
-		for _, v := range v1 {
-			got := v.Scalar.Shared(v.Input)
-			want := v.Output
-			if got != want {
-				t.Errorf("Failed\ngot: %v\nwant:%v\n", got, want)
-			}
-		}
-	})
+	}
 }
 
-func readTimeVectors(t *testing.T) (map[uint32]dh.Key255, map[uint32]dh.Key448) {
-	nameFile := "testdata/rfc7748_times_test.json"
+type timesVector struct {
+	T uint32
+	W dh.XKey
+}
+
+func readTimeVectors(t *testing.T, nameFile string) (r []timesVector) {
 	jsonFile, err := os.Open(nameFile)
 	if err != nil {
 		t.Fatalf("File %v can not be opened. Error: %v", nameFile, err)
 	}
 	defer jsonFile.Close()
-
 	input, _ := ioutil.ReadAll(jsonFile)
+
 	var vectorsRaw struct {
 		X25519, X448 []struct {
 			Times uint32 `json:"times"`
 			Key   string `json:"key"`
 		}
 	}
-
 	err = json.Unmarshal(input, &vectorsRaw)
 	if err != nil {
 		t.Fatalf("File %v can not be loaded. Error: %v", nameFile, err)
 	}
-	v0 := make(map[uint32]dh.Key255)
 	for _, v := range vectorsRaw.X25519 {
-		var key dh.Key255
-		copy(key[:], stringToSlice(v.Key, dh.SizeKey255))
-		v0[v.Times] = key
+		r = append(r, timesVector{
+			T: v.Times,
+			W: stringToKey(v.Key, dh.SizeKey255),
+		})
 	}
-	v1 := make(map[uint32]dh.Key448)
 	for _, v := range vectorsRaw.X448 {
-		var key dh.Key448
-		copy(key[:], stringToSlice(v.Key, dh.SizeKey448))
-		v1[v.Times] = key
+		r = append(r, timesVector{
+			T: v.Times,
+			W: stringToKey(v.Key, dh.SizeKey448),
+		})
 	}
-	return v0, v1
+	return r
 }
 
 func TestRFC7748Times(t *testing.T) {
-	v0, v1 := readTimeVectors(t)
-	t.Run("X25519", func(t *testing.T) {
-		for times, want := range v0 {
-			u := dh.GetBase255()
-			k := dh.GetBase255()
-			switch {
-			case testing.Short() && times == uint32(1000000):
-				t.Log("Skipped one long test")
-				continue
-			case times == uint32(1000000):
-				t.Log("This is a long test")
-			}
-			for i := uint32(0); i < times; i++ {
-				r := k.Shared(u)
-				u = k
-				k = r
-			}
-			got := k
-			if got != want {
-				t.Errorf("[incorrect result]\ngot:  %v\nwant: %v\n", got, want)
-			}
+	var u dh.XKey
+	V := readTimeVectors(t, "testdata/rfc7748_times_test.json")
+	for _, v := range V {
+		if !long && v.T == uint32(1000000) {
+			t.Log("Skipped one long test, add -long flag to run longer tests")
+			continue
 		}
-	})
-	t.Run("X448", func(t *testing.T) {
-		for times, want := range v1 {
-			u := dh.GetBase448()
-			k := dh.GetBase448()
-			switch {
-			case testing.Short() && times == uint32(1000000):
-				t.Log("Skipped one long test")
-				continue
-			case times == uint32(1000000):
-				t.Log("This is a long test")
-			}
-			for i := uint32(0); i < times; i++ {
-				r := k.Shared(u)
-				u = k
-				k = r
-			}
-			got := k
-			if got != want {
-				t.Errorf("[incorrect result]\ngot:  %v\nwant: %v\n", got, want)
-			}
+		switch v.W.Size() {
+		case dh.SizeKey255:
+			u = dh.GetBase255()
+		case dh.SizeKey448:
+			u = dh.GetBase448()
 		}
-	})
+		k := u
+		for i := uint32(0); i < v.T; i++ {
+			r := k.Shared(u)
+			u = k
+			k = r
+		}
+		got, want := k, v.W
+		if got != want {
+			t.Errorf("[incorrect result]\ngot:  %v\nwant: %v\n", got, want)
+		}
+	}
 }

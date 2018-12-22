@@ -13,9 +13,9 @@ import (
 
 type WycheproofTestVector struct {
 	TcId    int
-	Public  dh.Key255
-	Private dh.Key255
-	Shared  dh.Key255
+	Public  dh.XKey
+	Private dh.XKey
+	Shared  dh.XKey
 }
 
 func readVectors(t *testing.T) []WycheproofTestVector {
@@ -46,9 +46,9 @@ func readVectors(t *testing.T) []WycheproofTestVector {
 	vectors := make([]WycheproofTestVector, len(vectorsRaw))
 	for i, v := range vectorsRaw {
 		vectors[i].TcId = v.TcId
-		copy(vectors[i].Public[:], stringToSlice(v.Public, dh.SizeKey255))
-		copy(vectors[i].Private[:], stringToSlice(v.Private, dh.SizeKey255))
-		copy(vectors[i].Shared[:], stringToSlice(v.Shared, dh.SizeKey255))
+		vectors[i].Public = stringToKey(v.Public, dh.SizeKey255)
+		vectors[i].Private = stringToKey(v.Private, dh.SizeKey255)
+		vectors[i].Shared = stringToKey(v.Shared, dh.SizeKey255)
 	}
 	return vectors
 }

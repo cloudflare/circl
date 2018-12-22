@@ -73,12 +73,12 @@ func genPoints(d *data) {
 	}
 }
 
-func genTable(d *data, nameTemplate string) {
+func genTable(d *data, nameTemplate, outFileName string) {
 	t, err := template.ParseFiles(nameTemplate)
 	if err != nil {
 		panic("Cannot open file")
 	}
-	nameFile := fmt.Sprintf("table%d.go", d.Field)
+	nameFile := fmt.Sprintf(outFileName, d.Field)
 	file, err := os.Create(nameFile)
 	if err != nil {
 		panic("Cannot open file")
@@ -95,13 +95,13 @@ func genTable(d *data, nameTemplate string) {
 	}
 }
 
-func genMontArith(d *data, nameTemplate string) {
+func genMontArith(d *data, nameTemplate, outFileName string) {
 	t, err := template.ParseFiles(nameTemplate)
 	if err != nil {
 		panic("Cannot open file")
 	}
 
-	nameFile := fmt.Sprintf("mont%d_amd64.s", d.Field)
+	nameFile := fmt.Sprintf(outFileName, d.Field)
 	file, err := os.Create(nameFile)
 	if err != nil {
 		panic("Cannot open file")
@@ -151,7 +151,7 @@ func main() {
 		},
 	}
 	for _, f := range fields {
-		genMontArith(&f, "templates/mont_amd64.txt")
-		genTable(&f, "templates/tables.txt")
+		genMontArith(&f, "templates/mont_amd64.txt", "mont%d_amd64.s")
+		genTable(&f, "templates/tables.txt", "table%d.go")
 	}
 }
