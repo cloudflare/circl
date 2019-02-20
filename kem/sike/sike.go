@@ -205,7 +205,7 @@ func Decapsulate(prv *PrivateKey, pub *PublicKey, ctext []byte) ([]byte, error) 
 		// S is chosen at random when generating a key and unknown to other party. It
 		// may seem weird, but it's correct. It is important that S is unpredictable
 		// to other party. Without this check, it is possible to recover a secret, by
-		// providing series of invalid ciphertexts. It is also important that in case
+		// providing series of invalid ciphertexts.
 		//
 		// See more details in "On the security of supersingular isogeny cryptosystems"
 		// (S. Galbraith, et al., 2016, ePrint #859).
