@@ -266,10 +266,10 @@ func (c *CurveOperations) Fp2ToBytes(output []byte, fp2 *Fp2Element) {
 	// convert to bytes in little endian form
 	for i := 0; i < c.Params.Bytelen; i++ {
 		// set i = j*8 + k
-		fp2 := i / 8
+		tmp := i / 8
 		k := uint64(i % 8)
-		output[i] = byte(a.A[fp2] >> (8 * k))
-		output[i+c.Params.Bytelen] = byte(a.B[fp2] >> (8 * k))
+		output[i] = byte(a.A[tmp] >> (8 * k))
+		output[i+c.Params.Bytelen] = byte(a.B[tmp] >> (8 * k))
 	}
 }
 
