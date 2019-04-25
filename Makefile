@@ -12,7 +12,6 @@ GO           ?= go
 # -run="^_" as we want to avoid running tests by 'bench' and there never be a test starting with _
 BENCH_OPTS   ?= -v -bench=. -run="^_"
 V            ?= 0
-GOCACHE      ?= off
 GOARCH       ?=
 
 ifeq ($(NOASM),1)
@@ -40,11 +39,11 @@ prep-%:
 
 test: clean $(addprefix prep-,$(TARGETS))
 	cd $(GOPATH_LOCAL); GOPATH=$(GOPATH_LOCAL) $(GO) vet ./...
-	cd $(GOPATH_LOCAL); GOARCH=$(GOARCH) GOCACHE=$(GOCACHE) GOPATH=$(GOPATH_LOCAL) \
+	cd $(GOPATH_LOCAL); GOARCH=$(GOARCH) GOPATH=$(GOPATH_LOCAL) \
 		$(GO) test $(OPTS) ./...
 
 bench: clean $(addprefix prep-,$(TARGETS))
-	cd $(GOPATH_LOCAL); GOCACHE=$(GOCACHE) GOPATH=$(GOPATH_LOCAL) $(GO) test \
+	cd $(GOPATH_LOCAL); GOPATH=$(GOPATH_LOCAL) $(GO) test \
 		$(BENCH_OPTS) ./...
 
 cover: clean $(addprefix prep-,$(TARGETS))

@@ -2,7 +2,7 @@
 
 #include "textflag.h"
 
-TEXT ·cpuid(SB), NOSPLIT, $0-4
+TEXT ·cpuid(SB), NOSPLIT, $0-24
     MOVL eaxArg+0(FP), AX
     MOVL ecxArg+4(FP), CX
     CPUID
