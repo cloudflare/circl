@@ -692,8 +692,8 @@ TEXT ·fp503SubReduced(SB), NOSPLIT, $0-24
 	RET
 
 TEXT ·fp503Mul(SB), NOSPLIT, $104-24
-	MOVQ    z+ 0(FP), CX
-	MOVQ    x+ 8(FP), REG_P1
+	MOVQ    z+0(FP), CX
+	MOVQ    x+8(FP), REG_P1
 	MOVQ    y+16(FP), REG_P2
 
 	// Check wether to use optimized implementation
