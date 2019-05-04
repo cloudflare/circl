@@ -7,32 +7,28 @@ import (
 type affinePoint struct{ x, y fp384 }
 
 func newAffinePoint(X, Y *big.Int) *affinePoint {
-	x := fp384Set(X)
-	y := fp384Set(Y)
-
-	montEncode(x, x)
-	montEncode(y, y)
-
-	return &affinePoint{*x, *y}
+	var P affinePoint
+	montEncode(&P.x, fp384Set(X))
+	montEncode(&P.y, fp384Set(Y))
+	return &P
 }
 
-func (ap *affinePoint) ToJacobian() *jacobianPoint {
-	z := fp384{1}
-	montEncode(&z, &z)
-	return &jacobianPoint{ap.x, ap.y, z}
+func (ap *affinePoint) toJacobian() *jacobianPoint {
+	var P jacobianPoint
+	P.x = ap.x
+	P.y = ap.y
+	montEncode(&P.z, &fp384{1})
+	return &P
 }
 
-func (ap *affinePoint) ToInt() (*big.Int, *big.Int) {
+func (ap *affinePoint) toInt() (*big.Int, *big.Int) {
 	x, y := &fp384{}, &fp384{}
-	// *x, *y = ap.x, ap.y
-
 	montDecode(x, &ap.x)
 	montDecode(y, &ap.y)
-
 	return x.BigInt(), y.BigInt()
 }
 
-func (ap *affinePoint) IsZero() bool {
+func (ap *affinePoint) isZero() bool {
 	zero := fp384{}
 	return ap.x == zero && ap.y == zero
 }
@@ -41,32 +37,17 @@ type jacobianPoint struct {
 	x, y, z fp384
 }
 
-func (jp *jacobianPoint) ToAffine() *affinePoint {
-	if jp.IsZero() {
-		return &affinePoint{}
-	}
-
-	z := &fp384{}
-	*z = jp.z
-	fp384Inv(z, z)
-
-	x, y := &fp384{}, &fp384{}
-	*x, *y = jp.x, jp.y
-
-	fp384Mul(x, x, z)
-	fp384Mul(x, x, z)
-	fp384Mul(y, y, z)
-	fp384Mul(y, y, z)
-	fp384Mul(y, y, z)
-
-	return &affinePoint{*x, *y}
+func (jp *jacobianPoint) toAffine() *affinePoint {
+	var P affinePoint
+	z, z2 := &fp384{}, &fp384{}
+	fp384Inv(z, &jp.z)
+	fp384Sqr(z2, z)
+	fp384Mul(&P.x, &jp.x, z2)
+	fp384Mul(&P.y, &jp.y, z)
+	fp384Mul(&P.y, &P.y, z2)
+	return &P
 }
 
-func (jp *jacobianPoint) IsZero() bool {
-	zero := fp384{}
-	return jp.z == zero
-}
+func (jp *jacobianPoint) isZero() bool { return jp.z == fp384{} }
 
-func (jp *jacobianPoint) Dup() *jacobianPoint {
-	return &jacobianPoint{jp.x, jp.y, jp.z}
-}
+func (jp *jacobianPoint) dup() *jacobianPoint { return &jacobianPoint{jp.x, jp.y, jp.z} }

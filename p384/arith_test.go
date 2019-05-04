@@ -10,13 +10,22 @@ import (
 )
 
 func TestDevel(t *testing.T) {
-	bigX := big.NewInt(1)
-	bigX.Lsh(bigX, 400)
+	var x, y, z fp384
 
-	t.Logf("X: %v\n", bigX.Text(16))
-	x := fp384Set(bigX)
+	// utils.NonCryptoRand(x[:])
+	utils.NonCryptoRand(y[:])
+	utils.NonCryptoRand(z[:])
+
 	t.Logf("x: %v\n", x)
-	t.Logf("X: %v\n", bigX.Text(16))
+	fp384Inv(&y, &x)
+	// t.Logf("x: %v\n", x)
+	// fp384Inv2(&z, &x)
+
+	t.Logf("x: %v\n", x)
+	t.Logf("y: %v\n", y)
+	// t.Logf("z: %v\n", z)
+	// t.Logf("c: %v\n", y == z)
+
 }
 
 func TestFpNegZero(t *testing.T) {

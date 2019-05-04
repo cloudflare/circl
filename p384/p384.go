@@ -2,7 +2,7 @@
 package p384
 
 import (
-	"crypto/elliptic"
+	ecc "crypto/elliptic"
 	"math/big"
 	"sync"
 )
@@ -22,12 +22,13 @@ var (
 	initonce sync.Once
 )
 
+// Curve represents a short-form Weierstrass curve with a=-3.
 type Curve struct{}
 
-func (c *Curve) Params() *elliptic.CurveParams {
-	return elliptic.P384().Params()
-}
+// Params returns the parameters for the curve.
+func (c *Curve) Params() *ecc.CurveParams { return ecc.P384().Params() }
 
+// IsOnCurve reports whether the given (x,y) lies on the curve.
 func (c *Curve) IsOnCurve(X, Y *big.Int) bool {
 	x := fp384Set(X)
 	y := fp384Set(Y)
@@ -49,11 +50,22 @@ func (c *Curve) IsOnCurve(X, Y *big.Int) bool {
 	return *y2 == *x3
 }
 
+// Add returns the sum of (x1,y1) and (x2,y2)
+func (c *Curve) Add(x1, y1, x2, y2 *big.Int) (x, y *big.Int) {
+	return c.add(newAffinePoint(x1, y1).toJacobian(),
+		newAffinePoint(x2, y2)).toAffine().toInt()
+}
+
+// Double returns 2*(x,y)
+func (c *Curve) Double(x1, y1 *big.Int) (x, y *big.Int) {
+	return c.double(newAffinePoint(x1, y1).toJacobian()).toAffine().toInt()
+}
+
 func (c *Curve) add(a *jacobianPoint, b *affinePoint) *jacobianPoint {
-	if a.IsZero() {
-		return b.ToJacobian()
-	} else if b.IsZero() {
-		return a.Dup()
+	if a.isZero() {
+		return b.toJacobian()
+	} else if b.isZero() {
+		return a.dup()
 	}
 
 	z1z1, u2 := &fp384{}, &fp384{}
@@ -98,59 +110,46 @@ func (c *Curve) add(a *jacobianPoint, b *affinePoint) *jacobianPoint {
 	return &jacobianPoint{*x3, *y3, *z3}
 }
 
-func (c *Curve) double(a *jacobianPoint) *jacobianPoint {
+func (c *Curve) double(P *jacobianPoint) *jacobianPoint {
+	var Q jacobianPoint
 	delta, gamma, alpha, alpha2 := &fp384{}, &fp384{}, &fp384{}, &fp384{}
-	fp384Mul(delta, &a.z, &a.z)
-	fp384Mul(gamma, &a.y, &a.y)
-	fp384Sub(alpha, &a.x, delta)
-	fp384Add(alpha2, &a.x, delta)
+	fp384Mul(delta, &P.z, &P.z)
+	fp384Mul(gamma, &P.y, &P.y)
+	fp384Sub(alpha, &P.x, delta)
+	fp384Add(alpha2, &P.x, delta)
 	fp384Mul(alpha, alpha, alpha2)
 	*alpha2 = *alpha
 	fp384Add(alpha, alpha, alpha)
 	fp384Add(alpha, alpha, alpha2)
 
 	beta := &fp384{}
-	fp384Mul(beta, &a.x, gamma)
+	fp384Mul(beta, &P.x, gamma)
 
-	x3, beta8 := &fp384{}, &fp384{}
-	fp384Mul(x3, alpha, alpha)
+	beta8 := &fp384{}
+	fp384Sqr(&Q.x, alpha)
 	fp384Add(beta8, beta, beta)
 	fp384Add(beta8, beta8, beta8)
 	fp384Add(beta8, beta8, beta8)
-	fp384Sub(x3, x3, beta8)
+	fp384Sub(&Q.x, &Q.x, beta8)
 
-	z3 := &fp384{}
-	fp384Add(z3, &a.y, &a.z)
-	fp384Mul(z3, z3, z3)
-	fp384Sub(z3, z3, gamma)
-	fp384Sub(z3, z3, delta)
+	fp384Add(&Q.z, &P.y, &P.z)
+	fp384Sqr(&Q.z, &Q.z)
+	fp384Sub(&Q.z, &Q.z, gamma)
+	fp384Sub(&Q.z, &Q.z, delta)
 
 	fp384Add(beta, beta, beta)
 	fp384Add(beta, beta, beta)
-	fp384Sub(beta, beta, x3)
+	fp384Sub(beta, beta, &Q.x)
 
-	y3 := &fp384{}
-	fp384Mul(y3, alpha, beta)
+	fp384Mul(&Q.y, alpha, beta)
 
 	fp384Mul(gamma, gamma, gamma)
 	fp384Add(gamma, gamma, gamma)
 	fp384Add(gamma, gamma, gamma)
 	fp384Add(gamma, gamma, gamma)
-	fp384Sub(y3, y3, gamma)
+	fp384Sub(&Q.y, &Q.y, gamma)
 
-	return &jacobianPoint{*x3, *y3, *z3}
-}
-
-// Add returns the sum of (x1,y1) and (x2,y2)
-func (c *Curve) Add(x1, y1, x2, y2 *big.Int) (x, y *big.Int) {
-	pt := c.add(newAffinePoint(x1, y1).ToJacobian(), newAffinePoint(x2, y2))
-	return pt.ToAffine().ToInt()
-}
-
-// Double returns 2*(x,y)
-func (c *Curve) Double(x1, y1 *big.Int) (x, y *big.Int) {
-	pt := c.double(newAffinePoint(x1, y1).ToJacobian())
-	return pt.ToAffine().ToInt()
+	return &Q
 }
 
 // ScalarMult returns k*(Bx,By) where k is a number in big-endian form.
@@ -168,7 +167,7 @@ func (c *Curve) ScalarMult(x1, y1 *big.Int, k []byte) (x, y *big.Int) {
 		}
 	}
 
-	return sum.ToAffine().ToInt()
+	return sum.toAffine().toInt()
 }
 
 // ScalarBaseMult returns k*G, where G is the base point of the group
@@ -197,13 +196,13 @@ func (c *Curve) ScalarBaseMult(k []byte) (x, y *big.Int) {
 		}
 	}
 
-	return sum.ToAffine().ToInt()
+	return sum.toAffine().toInt()
 }
 
 func (c *Curve) CombinedMult(bigX, bigY *big.Int, baseScalar, scalar []byte) (x, y *big.Int) {
 	ptA := baseMultiples[0]
 	ptB := newAffinePoint(bigX, bigY)
-	ptC := c.add(ptA.ToJacobian(), ptB).ToAffine()
+	ptC := c.add(ptA.toJacobian(), ptB).toAffine()
 	sum := &jacobianPoint{}
 
 	kb, ks := 0, 0
@@ -235,16 +234,16 @@ func (c *Curve) CombinedMult(bigX, bigY *big.Int, baseScalar, scalar []byte) (x,
 		}
 	}
 
-	return sum.ToAffine().ToInt()
+	return sum.toAffine().toInt()
 }
 
 func initP384() {
-	params := elliptic.P384().Params()
+	params := ecc.P384().Params()
 	baseMultiples[0] = *newAffinePoint(params.Gx, params.Gy)
 
 	c := &Curve{}
 	for i := 1; i < len(baseMultiples); i++ {
-		pt := c.double(baseMultiples[i-1].ToJacobian()).ToAffine()
+		pt := c.double(baseMultiples[i-1].toJacobian()).toAffine()
 		baseMultiples[i] = *pt
 	}
 }

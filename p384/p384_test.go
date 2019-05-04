@@ -10,7 +10,7 @@ import (
 func TestIsOnCurveTrue(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		K := make([]byte, 384/8)
-		rand.Read(K)
+		_, _ = rand.Read(K)
 
 		X, Y := elliptic.P384().ScalarBaseMult(K)
 
@@ -66,8 +66,8 @@ func TestJacobianAdd(t *testing.T) {
 
 		c := &Curve{}
 		in1, in2 := newAffinePoint(X1, Y1), newAffinePoint(X2, Y2)
-		pt := c.add(in1.ToJacobian(), in2)
-		candX, candY := pt.ToAffine().ToInt()
+		pt := c.add(in1.toJacobian(), in2)
+		candX, candY := pt.toAffine().toInt()
 
 		if X3.Cmp(candX) != 0 || Y3.Cmp(candY) != 0 {
 			t.Fatal("points not the same!")
@@ -85,8 +85,8 @@ func TestJacobianAddSame(t *testing.T) {
 
 		c := &Curve{}
 		in1, in2 := newAffinePoint(X1, Y1), newAffinePoint(X1, Y1)
-		pt := c.add(in1.ToJacobian(), in2)
-		candX, candY := pt.ToAffine().ToInt()
+		pt := c.add(in1.toJacobian(), in2)
+		candX, candY := pt.toAffine().toInt()
 
 		if X3.Cmp(candX) != 0 || Y3.Cmp(candY) != 0 {
 			t.Fatal("points not the same!")
@@ -124,9 +124,9 @@ func TestJacobianDouble(t *testing.T) {
 
 		c := &Curve{}
 		in := newAffinePoint(X1, Y1)
-		pt := c.double(in.ToJacobian())
+		pt := c.double(in.toJacobian())
 		pt = c.double(pt)
-		candX, candY := pt.ToAffine().ToInt()
+		candX, candY := pt.toAffine().toInt()
 
 		if X3.Cmp(candX) != 0 || Y3.Cmp(candY) != 0 {
 			t.Fatal("points not the same!")
@@ -153,7 +153,7 @@ func TestScalarMult(t *testing.T) {
 func TestScalarBaseMult(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		K := make([]byte, 100)
-		rand.Read(K)
+		_, _ = rand.Read(K)
 
 		X, Y := elliptic.P384().Params().ScalarBaseMult(K)
 
