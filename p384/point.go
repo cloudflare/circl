@@ -4,14 +4,11 @@ import (
 	"math/big"
 )
 
-type affinePoint struct {
-	x, y fp384
-}
+type affinePoint struct{ x, y fp384 }
 
 func newAffinePoint(X, Y *big.Int) *affinePoint {
-	x, y := &fp384{}, &fp384{}
-	copy(x[:], X.Bits())
-	copy(y[:], Y.Bits())
+	x := fp384Set(X)
+	y := fp384Set(Y)
 
 	montEncode(x, x)
 	montEncode(y, y)
@@ -20,19 +17,19 @@ func newAffinePoint(X, Y *big.Int) *affinePoint {
 }
 
 func (ap *affinePoint) ToJacobian() *jacobianPoint {
-	z := fp384{big.Word(1)}
+	z := fp384{1}
 	montEncode(&z, &z)
 	return &jacobianPoint{ap.x, ap.y, z}
 }
 
 func (ap *affinePoint) ToInt() (*big.Int, *big.Int) {
 	x, y := &fp384{}, &fp384{}
-	*x, *y = ap.x, ap.y
+	// *x, *y = ap.x, ap.y
 
-	montDecode(x, x)
-	montDecode(y, y)
+	montDecode(x, &ap.x)
+	montDecode(y, &ap.y)
 
-	return x.Int(), y.Int()
+	return x.BigInt(), y.BigInt()
 }
 
 func (ap *affinePoint) IsZero() bool {
@@ -51,7 +48,7 @@ func (jp *jacobianPoint) ToAffine() *affinePoint {
 
 	z := &fp384{}
 	*z = jp.z
-	z.Invert(z)
+	fp384Inv(z, z)
 
 	x, y := &fp384{}, &fp384{}
 	*x, *y = jp.x, jp.y

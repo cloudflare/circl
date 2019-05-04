@@ -8,23 +8,13 @@ import (
 )
 
 var (
-	// p is the order of the base field, represented as little-endian 64-bit words.
-	p = fp384{0xffffffff, 0xffffffff00000000, 0xfffffffffffffffe, 0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff}
-
-	// pp satisfies r*rp - p*pp = 1 where rp and pp are both integers.
-	pp = fp384{0x100000001, 0x1, 0xfffffffbfffffffe, 0xfffffffcfffffffa, 0xc00000002, 0x1400000014}
-
-	// r2 is R^2 where R = 2^384 mod p.
-	r2 = fp384{0xfffffffe00000001, 0x200000000, 0xfffffffe00000000, 0x200000000, 0x1}
-
-	// r3 is R^3 where R = 2^384 mod p.
-	r3 = fp384{0xfffffffc00000002, 0x300000002, 0xfffffffcfffffffe, 0x300000005, 0xfffffffdfffffffd, 0x300000002}
-
-	// rN1 is R^-1 where R = 2^384 mod p.
-	rN1 = fp384{0xffffffe100000006, 0xffffffebffffffd8, 0xfffffffbfffffffd, 0xfffffffcfffffffa, 0xc00000002, 0x1400000014}
-
-	// b is the curve's B parameter, Montgomery encoded.
-	b = fp384{0x81188719d412dcc, 0xf729add87a4c32ec, 0x77f2209b1920022e, 0xe3374bee94938ae2, 0xb62b21f41f022094, 0xcd08114b604fbff9}
+	// bMon is the curve's B parameter encoded. bMon = B*R mod p.
+	bMon = fp384{
+		0xcc, 0x2d, 0x41, 0x9d, 0x71, 0x88, 0x11, 0x08, 0xec, 0x32, 0x4c, 0x7a,
+		0xd8, 0xad, 0x29, 0xf7, 0x2e, 0x02, 0x20, 0x19, 0x9b, 0x20, 0xf2, 0x77,
+		0xe2, 0x8a, 0x93, 0x94, 0xee, 0x4b, 0x37, 0xe3, 0x94, 0x20, 0x02, 0x1f,
+		0xf4, 0x21, 0x2b, 0xb6, 0xf9, 0xbf, 0x4f, 0x60, 0x4b, 0x11, 0x08, 0xcd,
+	}
 
 	// baseMultiples has [2^i] * G at position i.
 	baseMultiples [384]affinePoint
@@ -39,9 +29,8 @@ func (c *Curve) Params() *elliptic.CurveParams {
 }
 
 func (c *Curve) IsOnCurve(X, Y *big.Int) bool {
-	x, y := &fp384{}, &fp384{}
-	copy(x[:], X.Bits())
-	copy(y[:], Y.Bits())
+	x := fp384Set(X)
+	y := fp384Set(Y)
 	montEncode(x, x)
 	montEncode(y, y)
 
@@ -55,7 +44,7 @@ func (c *Curve) IsOnCurve(X, Y *big.Int) bool {
 	fp384Add(threeX, threeX, x)
 
 	fp384Sub(x3, x3, threeX)
-	fp384Add(x3, x3, &b)
+	fp384Add(x3, x3, &bMon)
 
 	return *y2 == *x3
 }
@@ -152,16 +141,19 @@ func (c *Curve) double(a *jacobianPoint) *jacobianPoint {
 	return &jacobianPoint{*x3, *y3, *z3}
 }
 
+// Add returns the sum of (x1,y1) and (x2,y2)
 func (c *Curve) Add(x1, y1, x2, y2 *big.Int) (x, y *big.Int) {
 	pt := c.add(newAffinePoint(x1, y1).ToJacobian(), newAffinePoint(x2, y2))
 	return pt.ToAffine().ToInt()
 }
 
+// Double returns 2*(x,y)
 func (c *Curve) Double(x1, y1 *big.Int) (x, y *big.Int) {
 	pt := c.double(newAffinePoint(x1, y1).ToJacobian())
 	return pt.ToAffine().ToInt()
 }
 
+// ScalarMult returns k*(Bx,By) where k is a number in big-endian form.
 func (c *Curve) ScalarMult(x1, y1 *big.Int, k []byte) (x, y *big.Int) {
 	pt := newAffinePoint(x1, y1)
 	sum := &jacobianPoint{}
@@ -179,10 +171,12 @@ func (c *Curve) ScalarMult(x1, y1 *big.Int, k []byte) (x, y *big.Int) {
 	return sum.ToAffine().ToInt()
 }
 
+// ScalarBaseMult returns k*G, where G is the base point of the group
+// and k is an integer in big-endian form.
 func (c *Curve) ScalarBaseMult(k []byte) (x, y *big.Int) {
 	sum := &jacobianPoint{}
-	max := 48
-	if len(k) < 48 {
+	max := sizeFp
+	if len(k) < sizeFp {
 		max = len(k)
 	}
 
@@ -193,7 +187,7 @@ func (c *Curve) ScalarBaseMult(k []byte) (x, y *big.Int) {
 			}
 		}
 	}
-	for i := 48; i < len(k); i++ {
+	for i := sizeFp; i < len(k); i++ {
 		for j := 7; j >= 0; j-- {
 			sum = c.double(sum)
 
