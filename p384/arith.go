@@ -1,7 +1,7 @@
 package p384
 
 import (
-	"github.com/cloudflare/circl/utils"
+	"github.com/cloudflare/circl/math"
 	"github.com/cloudflare/circl/utils/cpu"
 	"math/big"
 )
@@ -17,12 +17,12 @@ func fp384Set(b *big.Int) *fp384 {
 	if b.BitLen() > 384 || b.Sign() < 0 {
 		b = new(big.Int).Mod(b, p.BigInt())
 	}
-	copy(ret[:], utils.BigInt2Num(b, sizeFp))
+	copy(ret[:], math.BigInt2Num(b, sizeFp))
 	return &ret
 }
 
-func (e fp384) BigInt() *big.Int { return utils.Num2BigInt(e[:]) }
-func (e fp384) String() string   { return utils.Num2Hex(e[:]) }
+func (e fp384) BigInt() *big.Int { return math.Num2BigInt(e[:]) }
+func (e fp384) String() string   { return math.Num2Hex(e[:]) }
 
 func fp384Inv(z, x *fp384) {
 	t0, t1, t2, t3, t4 := &fp384{}, &fp384{}, &fp384{}, &fp384{}, &fp384{}

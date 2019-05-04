@@ -13,6 +13,8 @@ func newAffinePoint(X, Y *big.Int) *affinePoint {
 	return &P
 }
 
+func (ap *affinePoint) neg() { fp384Neg(&ap.y, &ap.y) }
+
 func (ap *affinePoint) toJacobian() *jacobianPoint {
 	var P jacobianPoint
 	P.x = ap.x
@@ -37,17 +39,100 @@ type jacobianPoint struct {
 	x, y, z fp384
 }
 
-func (jp *jacobianPoint) toAffine() *affinePoint {
-	var P affinePoint
+func (P *jacobianPoint) neg() { fp384Neg(&P.y, &P.y) }
+
+func (P *jacobianPoint) toAffine() *affinePoint {
+	var aP affinePoint
 	z, z2 := &fp384{}, &fp384{}
-	fp384Inv(z, &jp.z)
+	fp384Inv(z, &P.z)
 	fp384Sqr(z2, z)
-	fp384Mul(&P.x, &jp.x, z2)
-	fp384Mul(&P.y, &jp.y, z)
-	fp384Mul(&P.y, &P.y, z2)
-	return &P
+	fp384Mul(&aP.x, &P.x, z2)
+	fp384Mul(&aP.y, &P.y, z)
+	fp384Mul(&aP.y, &aP.y, z2)
+	return &aP
 }
 
-func (jp *jacobianPoint) isZero() bool { return jp.z == fp384{} }
+func (P *jacobianPoint) isZero() bool { return P.z == fp384{} }
 
-func (jp *jacobianPoint) dup() *jacobianPoint { return &jacobianPoint{jp.x, jp.y, jp.z} }
+func (P *jacobianPoint) dup() *jacobianPoint { return &jacobianPoint{P.x, P.y, P.z} }
+
+func (P *jacobianPoint) add(Q, R *jacobianPoint) {
+	if Q.isZero() {
+		*P = *R
+		return
+	} else if R.isZero() {
+		*P = *Q
+		return
+	}
+
+	// Cohen-Miyagi-Ono (1998)
+	// https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-3.html#addition-add-1998-cmo-2
+	X1, Y1, Z1 := &Q.x, &Q.y, &Q.z
+	X2, Y2, Z2 := &R.x, &R.y, &R.z
+	Z1Z1, Z2Z2, U1, U2 := &fp384{}, &fp384{}, &fp384{}, &fp384{}
+	H, HH, HHH, RR := &fp384{}, &fp384{}, &fp384{}, &fp384{}
+	V, t4, t5, t6, t7, t8 := &fp384{}, &fp384{}, &fp384{}, &fp384{}, &fp384{}, &fp384{}
+	t0, t1, t2, t3, S1, S2 := &fp384{}, &fp384{}, &fp384{}, &fp384{}, &fp384{}, &fp384{}
+	fp384Sqr(Z1Z1, Z1)     // Z1Z1 = Z1 ^ 2
+	fp384Sqr(Z2Z2, Z2)     // Z2Z2 = Z2 ^ 2
+	fp384Mul(U1, X1, Z2Z2) // U1 = X1 * Z2Z2
+	fp384Mul(U2, X2, Z1Z1) // U2 = X2 * Z1Z1
+	fp384Mul(t0, Z2, Z2Z2) // t0 = Z2 * Z2Z2
+	fp384Mul(S1, Y1, t0)   // S1 = Y1 * t0
+	fp384Mul(t1, Z1, Z1Z1) // t1 = Z1 * Z1Z1
+	fp384Mul(S2, Y2, t1)   // S2 = Y2 * t1
+	fp384Sub(H, U2, U1)    // H = U2 - U1
+	fp384Sqr(HH, H)        // HH = H ^ 2
+	fp384Mul(HHH, H, HH)   // HHH = H * HH
+	fp384Sub(RR, S2, S1)   // r = S2 - S1
+	fp384Mul(V, U1, HH)    // V = U1 * HH
+	fp384Sqr(t2, RR)       // t2 = r ^ 2
+	fp384Add(t3, V, V)     // t3 = V + V
+	fp384Sub(t4, t2, HHH)  // t4 = t2 - HHH
+	fp384Sub(&P.x, t4, t3) // X3 = t4 - t3
+	fp384Sub(t5, V, &P.x)  // t5 = V - X3
+	fp384Mul(t6, S1, HHH)  // t6 = S1 * HHH
+	fp384Mul(t7, RR, t5)   // t7 = r * t5
+	fp384Sub(&P.y, t7, t6) // Y3 = t7 - t6
+	fp384Mul(t8, Z2, H)    // t8 = Z2 * H
+	fp384Mul(&P.z, Z1, t8) // Z3 = Z1 * t8
+}
+
+func (P *jacobianPoint) double() {
+	delta, gamma, alpha, alpha2 := &fp384{}, &fp384{}, &fp384{}, &fp384{}
+	fp384Mul(delta, &P.z, &P.z)
+	fp384Mul(gamma, &P.y, &P.y)
+	fp384Sub(alpha, &P.x, delta)
+	fp384Add(alpha2, &P.x, delta)
+	fp384Mul(alpha, alpha, alpha2)
+	*alpha2 = *alpha
+	fp384Add(alpha, alpha, alpha)
+	fp384Add(alpha, alpha, alpha2)
+
+	beta := &fp384{}
+	fp384Mul(beta, &P.x, gamma)
+
+	beta8 := &fp384{}
+	fp384Sqr(&P.x, alpha)
+	fp384Add(beta8, beta, beta)
+	fp384Add(beta8, beta8, beta8)
+	fp384Add(beta8, beta8, beta8)
+	fp384Sub(&P.x, &P.x, beta8)
+
+	fp384Add(&P.z, &P.y, &P.z)
+	fp384Sqr(&P.z, &P.z)
+	fp384Sub(&P.z, &P.z, gamma)
+	fp384Sub(&P.z, &P.z, delta)
+
+	fp384Add(beta, beta, beta)
+	fp384Add(beta, beta, beta)
+	fp384Sub(beta, beta, &P.x)
+
+	fp384Mul(&P.y, alpha, beta)
+
+	fp384Sqr(gamma, gamma)
+	fp384Add(gamma, gamma, gamma)
+	fp384Add(gamma, gamma, gamma)
+	fp384Add(gamma, gamma, gamma)
+	fp384Sub(&P.y, &P.y, gamma)
+}

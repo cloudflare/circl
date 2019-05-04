@@ -3,8 +3,11 @@ package p384
 
 import (
 	ecc "crypto/elliptic"
+	"fmt"
 	"math/big"
 	"sync"
+
+	"github.com/cloudflare/circl/math"
 )
 
 var (
@@ -24,6 +27,14 @@ var (
 
 // Curve represents a short-form Weierstrass curve with a=-3.
 type Curve struct{}
+
+func (c *Curve) Zero() *jacobianPoint {
+	return &jacobianPoint{
+		x: fp384{1},
+		y: fp384{1},
+		z: fp384{0},
+	}
+}
 
 // Params returns the parameters for the curve.
 func (c *Curve) Params() *ecc.CurveParams { return ecc.P384().Params() }
@@ -52,7 +63,7 @@ func (c *Curve) IsOnCurve(X, Y *big.Int) bool {
 
 // Add returns the sum of (x1,y1) and (x2,y2)
 func (c *Curve) Add(x1, y1, x2, y2 *big.Int) (x, y *big.Int) {
-	return c.add(newAffinePoint(x1, y1).toJacobian(),
+	return c.mixadd(newAffinePoint(x1, y1).toJacobian(),
 		newAffinePoint(x2, y2)).toAffine().toInt()
 }
 
@@ -61,7 +72,7 @@ func (c *Curve) Double(x1, y1 *big.Int) (x, y *big.Int) {
 	return c.double(newAffinePoint(x1, y1).toJacobian()).toAffine().toInt()
 }
 
-func (c *Curve) add(a *jacobianPoint, b *affinePoint) *jacobianPoint {
+func (c *Curve) mixadd(a *jacobianPoint, b *affinePoint) *jacobianPoint {
 	if a.isZero() {
 		return b.toJacobian()
 	} else if b.isZero() {
@@ -143,7 +154,7 @@ func (c *Curve) double(P *jacobianPoint) *jacobianPoint {
 
 	fp384Mul(&Q.y, alpha, beta)
 
-	fp384Mul(gamma, gamma, gamma)
+	fp384Sqr(gamma, gamma)
 	fp384Add(gamma, gamma, gamma)
 	fp384Add(gamma, gamma, gamma)
 	fp384Add(gamma, gamma, gamma)
@@ -162,7 +173,7 @@ func (c *Curve) ScalarMult(x1, y1 *big.Int, k []byte) (x, y *big.Int) {
 			sum = c.double(sum)
 
 			if (k[i]>>uint(j))&1 == 1 {
-				sum = c.add(sum, pt)
+				sum = c.mixadd(sum, pt)
 			}
 		}
 	}
@@ -182,7 +193,7 @@ func (c *Curve) ScalarBaseMult(k []byte) (x, y *big.Int) {
 	for i := 0; i < max; i++ {
 		for j := 7; j >= 0; j-- {
 			if (k[i]>>uint(j))&1 == 1 {
-				sum = c.add(sum, &baseMultiples[8*(max-i-1)+j])
+				sum = c.mixadd(sum, &baseMultiples[8*(max-i-1)+j])
 			}
 		}
 	}
@@ -191,7 +202,7 @@ func (c *Curve) ScalarBaseMult(k []byte) (x, y *big.Int) {
 			sum = c.double(sum)
 
 			if (k[i]>>uint(j))&1 == 1 {
-				sum = c.add(sum, &baseMultiples[0])
+				sum = c.mixadd(sum, &baseMultiples[0])
 			}
 		}
 	}
@@ -199,10 +210,73 @@ func (c *Curve) ScalarBaseMult(k []byte) (x, y *big.Int) {
 	return sum.toAffine().toInt()
 }
 
+// OddMultiples calculates the points iP for i={1,3,5,7,..., 2^(n-1)-1}
+// Ensure that n > 1, otherwise it returns nil.
+func (P *jacobianPoint) OddMultiples(n uint) []jacobianPoint {
+	var t []jacobianPoint = nil
+	if n > 1 {
+		s := 1 << (n - 1)
+		t = make([]jacobianPoint, s)
+		t[0] = *P
+		_2P := *P
+		_2P.double()
+		for i := 1; i < s; i++ {
+			t[i].add(&t[i-1], &_2P)
+		}
+	}
+	return t
+}
+
+// SimultaneousMult calculates P=mG+nQ, where G is the generator and Q=(x,y,z).
+// Non-constant time.
+func (P *jacobianPoint) SimultaneousMult(Q *jacobianPoint, m, n []byte) {
+	const mOmega = uint(2)
+	const nOmega = uint(3)
+
+	nafM := math.OmegaNAF(math.Num2BigInt(m), mOmega)
+	nafN := math.OmegaNAF(math.Num2BigInt(n), nOmega)
+
+	fmt.Printf("nafM: %v %v\n", len(nafM), nafM)
+	fmt.Printf("nafN: %v %v\n", len(nafN), nafN)
+
+	switch {
+	case len(nafM) > len(nafN):
+		nafN = append(nafN, make([]int32, len(nafM)-len(nafN))...)
+	case len(nafM) < len(nafN):
+		nafM = append(nafM, make([]int32, len(nafN)-len(nafM))...)
+	}
+
+	fmt.Printf("nafM: %v %v\n", len(nafM), nafM)
+	fmt.Printf("nafN: %v %v\n", len(nafN), nafN)
+
+	c := &Curve{}
+	TabVar := Q.OddMultiples(nOmega)
+	*P = *c.Zero()
+	for i := len(nafN) - 1; i >= 0; i-- {
+		P.double()
+
+		if nafN[i] != 0 {
+			abs := math.Absolute(nafN[i])
+			idx := abs >> 1
+			R := &TabVar[idx]
+			if nafN[i] < 0 {
+				R.neg()
+			}
+			P.add(P, R)
+		}
+	}
+	// fmt.Printf("X: %v\n", P.x)
+	// fmt.Printf("Y: %v\n", P.y)
+	// fmt.Printf("Z: %v\n", P.z)
+
+}
+
+// CombinedMult calculates Q=mP+nG, where P=(x,y) and G is the generator
+// Non-constant time.
 func (c *Curve) CombinedMult(bigX, bigY *big.Int, baseScalar, scalar []byte) (x, y *big.Int) {
 	ptA := baseMultiples[0]
 	ptB := newAffinePoint(bigX, bigY)
-	ptC := c.add(ptA.toJacobian(), ptB).toAffine()
+	ptC := c.mixadd(ptA.toJacobian(), ptB).toAffine()
 	sum := &jacobianPoint{}
 
 	kb, ks := 0, 0
@@ -225,11 +299,11 @@ func (c *Curve) CombinedMult(bigX, bigY *big.Int, baseScalar, scalar []byte) (x,
 			}
 
 			if a == 1 && b == 0 {
-				sum = c.add(sum, &ptA)
+				sum = c.mixadd(sum, &ptA)
 			} else if a == 0 && b == 1 {
-				sum = c.add(sum, ptB)
+				sum = c.mixadd(sum, ptB)
 			} else if a == 1 && b == 1 {
-				sum = c.add(sum, ptC)
+				sum = c.mixadd(sum, ptC)
 			}
 		}
 	}
