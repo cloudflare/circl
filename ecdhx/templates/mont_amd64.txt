@@ -18,22 +18,22 @@
 #define b0 7*SizeField(regWork)
 #define b1 9*SizeField(regWork)
 
-// func ladderStepLeg{{ .Field }}(work []byte, move uint)
-// work contains variables used in the Montgomery's ladder step,
+// func ladderStepLeg{{ .Field }}(wbuf []byte, move uint)
+// wbuf contains variables used in the Montgomery's ladder step,
 // where {x1,x2,z2,x3,z3,t0,t1} are seven field.Element of field.Size bytes, and
 //       {b0,b1} are two field.bigElement of 2*field.Size bytes.
 TEXT ·ladderStepLegX{{ .Field }}(SB),NOSPLIT,$0
-    MOVQ work+0(FP), regWork
+    MOVQ wbuf+0(FP), regWork
     MOVQ move+24(FP), regMove
     ladderStepLeg()
     RET
 
-// func ladderStepBmi2Adx{{ .Field }}(work []byte, move uint)
-// work contains variables used in the Montgomery's ladder step,
+// func ladderStepBmi2Adx{{ .Field }}(wbuf []byte, move uint)
+// wbuf contains variables used in the Montgomery's ladder step,
 // where {x1,x2,z2,x3,z3,t0,t1} are seven field.Element of field.Size bytes, and
 //       {b0,b1} are two field.bigElement of 2*field.Size bytes.
 TEXT ·ladderStepBmi2AdxX{{ .Field }}(SB),NOSPLIT,$0
-    MOVQ work+0(FP), regWork
+    MOVQ wbuf+0(FP), regWork
     MOVQ move+24(FP), regMove
     ladderStepBmi2Adx()
     RET
@@ -59,43 +59,43 @@ TEXT ·ladderStepBmi2AdxX{{ .Field }}(SB),NOSPLIT,$0
 #define b1 6*SizeField(regWork)
 #define ui 0(regMu)
 
-// func difAdditionLegX{{ .Field }}(work []byte, mu []byte, swap uint)
-// work contains variables used in the Joye's ladder step,
+// func difAdditionLegX{{ .Field }}(wbuf []byte, mu []byte, swap uint)
+// wbuf contains variables used in the Joye's ladder step,
 // where {x1,z1,x2,z2} are four field.Element of field.Size bytes, and
 //       {b0,b1} are two field.bigElement of 2*field.Size bytes.
 TEXT ·difAdditionLegX{{ .Field }}(SB),NOSPLIT,$0
-    MOVQ work+0(FP), regWork
+    MOVQ wbuf+0(FP), regWork
     MOVQ mu+24(FP), regMu
     MOVQ swap+48(FP), regSwap
     difAdditionLeg()
     RET
 
-// func difAdditionBmi2AdxX{{ .Field }}(work []byte, mu []byte, swap uint)
-// work contains variables used in the Joye's ladder step,
+// func difAdditionBmi2AdxX{{ .Field }}(wbuf []byte, mu []byte, swap uint)
+// wbuf contains variables used in the Joye's ladder step,
 // where {x1,z1,x2,z2} are four field.Element of field.Size bytes, and
 //       {b0,b1} are two field.bigElement of 2*field.Size bytes.
 TEXT ·difAdditionBmi2AdxX{{ .Field }}(SB),NOSPLIT,$0
-    MOVQ work_data+0(FP), regWork
-    MOVQ mu_data+24(FP), regMu
+    MOVQ wbuf+0(FP), regWork
+    MOVQ mu+24(FP), regMu
     MOVQ swap+48(FP), regSwap
     difAdditionBmi2Adx()
     RET
 
-// func doubleLegX{{ .Field }}(work []byte)
-// work contains variables used in the Joye's ladder step,
+// func doubleLegX{{ .Field }}(wbuf []byte)
+// wbuf contains variables used in the Joye's ladder step,
 // where {x1,z1,x2,z2} are four field.Element of field.Size bytes, and
 //       {b0,b1} are two field.bigElement of 2*field.Size bytes.
 TEXT ·doubleLegX{{ .Field }}(SB),NOSPLIT,$0
-    MOVQ work_data+0(FP), regWork
+    MOVQ wbuf+0(FP), regWork
     doubleLeg()
     RET
 
-// func doubleBmi2AdxX{{ .Field }}(work *workJoye)
-// work contains variables used in the Joye's ladder step,
+// func doubleBmi2AdxX{{ .Field }}(wbuf *workJoye)
+// wbuf contains variables used in the Joye's ladder step,
 // where {x1,z1,x2,z2} are four field.Element of field.Size bytes, and
 //       {b0,b1} are two field.bigElement of 2*field.Size bytes.
 TEXT ·doubleBmi2AdxX{{ .Field }}(SB),NOSPLIT,$0
-    MOVQ work_data+0(FP), regWork
+    MOVQ wbuf+0(FP), regWork
     doubleBmi2Adx()
     RET
 
