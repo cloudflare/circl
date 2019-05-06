@@ -2,7 +2,7 @@
 
 // +build amd64
 
-#include "field/fp{{ .Field }}_amd64.h"
+#include "internal/field/fp{{ .Field }}_amd64.h"
 #include "mont_amd64.h"
 
 #define regWork   DI

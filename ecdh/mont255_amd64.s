@@ -2,7 +2,7 @@
 
 // +build amd64
 
-#include "field/fp255_amd64.h"
+#include "internal/field/fp255_amd64.h"
 #include "mont_amd64.h"
 
 #define regWork   DI

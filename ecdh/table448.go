@@ -2,7 +2,7 @@
 
 package ecdh
 
-import "github.com/cloudflare/circl/ecdh/field"
+import "github.com/cloudflare/circl/ecdh/internal/field"
 
 // tableBasePoint448 contains the set of points:
 //    t[i] = (xi+1)/(xi-1),

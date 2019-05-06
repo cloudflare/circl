@@ -10,29 +10,27 @@ import (
 	"os"
 	"strconv"
 	"testing"
-
-	dh "github.com/cloudflare/circl/ecdh"
 )
 
 type katVector struct {
 	TcId    int
-	Public  dh.XKey
-	Private dh.XKey
-	Shared  dh.XKey
+	Public  XKey
+	Private XKey
+	Shared  XKey
 }
 
 type timesVector struct {
 	T uint32
-	W dh.XKey
+	W XKey
 }
 
-func strToKey(s string, l int) dh.XKey {
+func strToKey(s string, l int) XKey {
 	z := make([]byte, l)
 	for j := 0; j < l; j++ {
 		a, _ := strconv.ParseUint(s[2*j:2*j+2], 16, 8)
 		z[j] = byte(a)
 	}
-	return dh.XKeyFromSlice(z)
+	return XKeyFromSlice(z)
 }
 
 // Indicates wether long tests should be run
@@ -52,7 +50,7 @@ func testVector(t *testing.T, v katVector) {
 }
 
 // Tests
-func baseTest(t *testing.T, x, base dh.XKey) {
+func baseTest(t *testing.T, x, base XKey) {
 	const times = 1 << 10
 	y := x
 	for i := 0; i < times; i++ {
@@ -64,8 +62,8 @@ func baseTest(t *testing.T, x, base dh.XKey) {
 	}
 }
 
-func TestBaseECDHx255(t *testing.T) { baseTest(t, dh.RandomKey255(), dh.GetBase255()) }
-func TestBaseECDHx448(t *testing.T) { baseTest(t, dh.RandomKey448(), dh.GetBase448()) }
+func TestBaseECDHx255(t *testing.T) { baseTest(t, RandomKey255(), GetBase255()) }
+func TestBaseECDHx448(t *testing.T) { baseTest(t, RandomKey448(), GetBase448()) }
 
 func TestRFC7748Kat(t *testing.T) {
 	readKatVectors := func(t *testing.T, nameFile string) (r []katVector) {
@@ -89,7 +87,7 @@ func TestRFC7748Kat(t *testing.T) {
 			t.Fatalf("File %v can not be loaded. Error: %v", nameFile, err)
 		}
 
-		l := dh.SizeKey255
+		l := SizeKey255
 		for _, v := range kat.X25519 {
 			r = append(r, katVector{
 				Public:  strToKey(v.Public, l),
@@ -97,7 +95,7 @@ func TestRFC7748Kat(t *testing.T) {
 				Private: strToKey(v.Private, l),
 			})
 		}
-		l = dh.SizeKey448
+		l = SizeKey448
 		for _, v := range kat.X448 {
 			r = append(r, katVector{
 				Public:  strToKey(v.Public, l),
@@ -114,7 +112,7 @@ func TestRFC7748Kat(t *testing.T) {
 }
 
 func TestRFC7748Times(t *testing.T) {
-	var u dh.XKey
+	var u XKey
 
 	readTimeVectors := func(t *testing.T, nameFile string) (r []timesVector) {
 		jsonFile, err := os.Open(nameFile)
@@ -137,13 +135,13 @@ func TestRFC7748Times(t *testing.T) {
 		for _, v := range kat.X25519 {
 			r = append(r, timesVector{
 				T: v.Times,
-				W: strToKey(v.Key, dh.SizeKey255),
+				W: strToKey(v.Key, SizeKey255),
 			})
 		}
 		for _, v := range kat.X448 {
 			r = append(r, timesVector{
 				T: v.Times,
-				W: strToKey(v.Key, dh.SizeKey448),
+				W: strToKey(v.Key, SizeKey448),
 			})
 		}
 		return r
@@ -155,10 +153,10 @@ func TestRFC7748Times(t *testing.T) {
 			continue
 		}
 		switch v.W.Size() {
-		case dh.SizeKey255:
-			u = dh.GetBase255()
-		case dh.SizeKey448:
-			u = dh.GetBase448()
+		case SizeKey255:
+			u = GetBase255()
+		case SizeKey448:
+			u = GetBase448()
 		}
 		k := u
 		for i := uint32(0); i < v.T; i++ {
@@ -202,9 +200,9 @@ func TestWycheproof(t *testing.T) {
 		vec := make([]katVector, len(vecRaw))
 		for i, v := range vecRaw {
 			vec[i].TcId = v.TcId
-			vec[i].Public = strToKey(v.Public, dh.SizeKey255)
-			vec[i].Private = strToKey(v.Private, dh.SizeKey255)
-			vec[i].Shared = strToKey(v.Shared, dh.SizeKey255)
+			vec[i].Public = strToKey(v.Public, SizeKey255)
+			vec[i].Private = strToKey(v.Private, SizeKey255)
+			vec[i].Shared = strToKey(v.Shared, SizeKey255)
 		}
 		return vec
 	}
@@ -215,7 +213,7 @@ func TestWycheproof(t *testing.T) {
 }
 
 // Benchmarks
-func benchECDH(b *testing.B, x, y dh.XKey) {
+func benchECDH(b *testing.B, x, y XKey) {
 	b.SetBytes(int64(x.Size()))
 	b.Run("KeyGen", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
@@ -231,15 +229,15 @@ func benchECDH(b *testing.B, x, y dh.XKey) {
 	})
 }
 
-func BenchmarkECDHx255(b *testing.B) { benchECDH(b, dh.RandomKey255(), dh.RandomKey255()) }
-func BenchmarkECDHx448(b *testing.B) { benchECDH(b, dh.RandomKey448(), dh.RandomKey448()) }
+func BenchmarkECDHx255(b *testing.B) { benchECDH(b, RandomKey255(), RandomKey255()) }
+func BenchmarkECDHx448(b *testing.B) { benchECDH(b, RandomKey448(), RandomKey448()) }
 
 func Example_x25519() {
 	// Generating Alice's secret and public keys
-	aliceSecret := dh.RandomKey255()
+	aliceSecret := RandomKey255()
 	alicePublic := aliceSecret.KeyGen()
 	// Generating Bob's secret and public keys
-	bobSecret := dh.RandomKey255()
+	bobSecret := RandomKey255()
 	bobPublic := bobSecret.KeyGen()
 	// Deriving Alice's shared key
 	aliceShared := aliceSecret.Shared(bobPublic)
