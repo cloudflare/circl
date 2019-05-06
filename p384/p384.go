@@ -3,7 +3,6 @@ package p384
 
 import (
 	ecc "crypto/elliptic"
-	"fmt"
 	"math/big"
 	"sync"
 
@@ -26,29 +25,22 @@ var (
 )
 
 // Curve represents a short-form Weierstrass curve with a=-3.
-type Curve struct{}
-
-func (c *Curve) Zero() *jacobianPoint {
-	return &jacobianPoint{
-		x: fp384{1},
-		y: fp384{1},
-		z: fp384{0},
-	}
-}
+type Curve int
 
 // Params returns the parameters for the curve.
-func (c *Curve) Params() *ecc.CurveParams { return ecc.P384().Params() }
+func (c Curve) Params() *ecc.CurveParams { return ecc.P384().Params() }
 
 // IsOnCurve reports whether the given (x,y) lies on the curve.
-func (c *Curve) IsOnCurve(X, Y *big.Int) bool {
-	x := fp384Set(X)
-	y := fp384Set(Y)
+func (c Curve) IsOnCurve(X, Y *big.Int) bool {
+	x, y := &fp384{}, &fp384{}
+	x.SetBigInt(X)
+	y.SetBigInt(Y)
 	montEncode(x, x)
 	montEncode(y, y)
 
 	y2, x3 := &fp384{}, &fp384{}
-	fp384Mul(y2, y, y)
-	fp384Mul(x3, x, x)
+	fp384Sqr(y2, y)
+	fp384Sqr(x3, x)
 	fp384Mul(x3, x3, x)
 
 	threeX := &fp384{}
@@ -62,266 +54,119 @@ func (c *Curve) IsOnCurve(X, Y *big.Int) bool {
 }
 
 // Add returns the sum of (x1,y1) and (x2,y2)
-func (c *Curve) Add(x1, y1, x2, y2 *big.Int) (x, y *big.Int) {
-	return c.mixadd(newAffinePoint(x1, y1).toJacobian(),
-		newAffinePoint(x2, y2)).toAffine().toInt()
+func (c Curve) Add(x1, y1, x2, y2 *big.Int) (x, y *big.Int) {
+	P := newAffinePoint(x1, y1).toJacobian()
+	P.mixadd(P, newAffinePoint(x2, y2))
+	return P.toAffine().toInt()
 }
 
 // Double returns 2*(x,y)
-func (c *Curve) Double(x1, y1 *big.Int) (x, y *big.Int) {
-	return c.double(newAffinePoint(x1, y1).toJacobian()).toAffine().toInt()
+func (c Curve) Double(x1, y1 *big.Int) (x, y *big.Int) {
+	P := newAffinePoint(x1, y1).toJacobian()
+	P.double()
+	return P.toAffine().toInt()
 }
 
-func (c *Curve) mixadd(a *jacobianPoint, b *affinePoint) *jacobianPoint {
-	if a.isZero() {
-		return b.toJacobian()
-	} else if b.isZero() {
-		return a.dup()
+// reduceScalar shorten a scalar modulo the order of the curve.
+func (c Curve) reduceScalar(k []byte) []byte {
+	max := sizeFp >> 3
+	if len(k) > max {
+		bigK := new(big.Int).SetBytes(k)
+		bigK.Mod(bigK, c.Params().N)
+		k = bigK.Bytes()
 	}
-
-	z1z1, u2 := &fp384{}, &fp384{}
-	fp384Mul(z1z1, &a.z, &a.z)
-	fp384Mul(u2, &b.x, z1z1)
-
-	s2 := &fp384{}
-	fp384Mul(s2, &b.y, &a.z)
-	fp384Mul(s2, s2, z1z1)
-	if a.x == *u2 {
-		if a.y != *s2 {
-			return &jacobianPoint{}
-		}
-		return c.double(a)
-	}
-
-	h, r := &fp384{}, &fp384{}
-	fp384Sub(h, u2, &a.x)
-	fp384Sub(r, s2, &a.y)
-
-	h2, h3 := &fp384{}, &fp384{}
-	fp384Mul(h2, h, h)
-	fp384Mul(h3, h2, h)
-
-	h2x1 := &fp384{}
-	fp384Mul(h2x1, h2, &a.x)
-
-	x3, y3, z3 := &fp384{}, &fp384{}, &fp384{}
-	fp384Mul(x3, r, r)
-	fp384Sub(x3, x3, h3)
-	fp384Sub(x3, x3, h2x1)
-	fp384Sub(x3, x3, h2x1)
-
-	fp384Sub(y3, h2x1, x3)
-	fp384Mul(y3, y3, r)
-	h3y1 := &fp384{}
-	fp384Mul(h3y1, h3, &a.y)
-	fp384Sub(y3, y3, h3y1)
-
-	fp384Mul(z3, h, &a.z)
-
-	return &jacobianPoint{*x3, *y3, *z3}
+	return k
 }
 
-func (c *Curve) double(P *jacobianPoint) *jacobianPoint {
-	var Q jacobianPoint
-	delta, gamma, alpha, alpha2 := &fp384{}, &fp384{}, &fp384{}, &fp384{}
-	fp384Mul(delta, &P.z, &P.z)
-	fp384Mul(gamma, &P.y, &P.y)
-	fp384Sub(alpha, &P.x, delta)
-	fp384Add(alpha2, &P.x, delta)
-	fp384Mul(alpha, alpha, alpha2)
-	*alpha2 = *alpha
-	fp384Add(alpha, alpha, alpha)
-	fp384Add(alpha, alpha, alpha2)
-
-	beta := &fp384{}
-	fp384Mul(beta, &P.x, gamma)
-
-	beta8 := &fp384{}
-	fp384Sqr(&Q.x, alpha)
-	fp384Add(beta8, beta, beta)
-	fp384Add(beta8, beta8, beta8)
-	fp384Add(beta8, beta8, beta8)
-	fp384Sub(&Q.x, &Q.x, beta8)
-
-	fp384Add(&Q.z, &P.y, &P.z)
-	fp384Sqr(&Q.z, &Q.z)
-	fp384Sub(&Q.z, &Q.z, gamma)
-	fp384Sub(&Q.z, &Q.z, delta)
-
-	fp384Add(beta, beta, beta)
-	fp384Add(beta, beta, beta)
-	fp384Sub(beta, beta, &Q.x)
-
-	fp384Mul(&Q.y, alpha, beta)
-
-	fp384Sqr(gamma, gamma)
-	fp384Add(gamma, gamma, gamma)
-	fp384Add(gamma, gamma, gamma)
-	fp384Add(gamma, gamma, gamma)
-	fp384Sub(&Q.y, &Q.y, gamma)
-
-	return &Q
-}
-
-// ScalarMult returns k*(Bx,By) where k is a number in big-endian form.
-func (c *Curve) ScalarMult(x1, y1 *big.Int, k []byte) (x, y *big.Int) {
-	pt := newAffinePoint(x1, y1)
+// ScalarMult returns (Qx,Qy)=k*(Px,Py) where k is a number in big-endian form.
+func (c Curve) ScalarMult(Px, Py *big.Int, k []byte) (Qx, Qy *big.Int) {
+	k = c.reduceScalar(k)
+	pt := newAffinePoint(Px, Py)
 	sum := &jacobianPoint{}
 
-	for i := 0; i < len(k); i++ {
-		for j := 7; j >= 0; j-- {
-			sum = c.double(sum)
+	for _, ki := range k {
+		for b := 7; b >= 0; b-- {
+			sum.double()
 
-			if (k[i]>>uint(j))&1 == 1 {
-				sum = c.mixadd(sum, pt)
+			if (ki>>uint(b))&1 == 1 {
+				sum.mixadd(sum, pt)
 			}
 		}
 	}
-
 	return sum.toAffine().toInt()
 }
 
 // ScalarBaseMult returns k*G, where G is the base point of the group
 // and k is an integer in big-endian form.
-func (c *Curve) ScalarBaseMult(k []byte) (x, y *big.Int) {
+func (c Curve) ScalarBaseMult(k []byte) (*big.Int, *big.Int) {
+	k = c.reduceScalar(k)
 	sum := &jacobianPoint{}
-	max := sizeFp
-	if len(k) < sizeFp {
-		max = len(k)
-	}
-
-	for i := 0; i < max; i++ {
-		for j := 7; j >= 0; j-- {
-			if (k[i]>>uint(j))&1 == 1 {
-				sum = c.mixadd(sum, &baseMultiples[8*(max-i-1)+j])
+	j := 0
+	for i := len(k) - 1; i >= 0; i-- {
+		for b := 7; b >= 0; b-- {
+			if (k[i]>>uint(b))&1 == 1 {
+				sum.mixadd(sum, &baseMultiples[j+b])
 			}
 		}
+		j += 8
 	}
-	for i := sizeFp; i < len(k); i++ {
-		for j := 7; j >= 0; j-- {
-			sum = c.double(sum)
-
-			if (k[i]>>uint(j))&1 == 1 {
-				sum = c.mixadd(sum, &baseMultiples[0])
-			}
-		}
-	}
-
 	return sum.toAffine().toInt()
-}
-
-// OddMultiples calculates the points iP for i={1,3,5,7,..., 2^(n-1)-1}
-// Ensure that n > 1, otherwise it returns nil.
-func (P *jacobianPoint) OddMultiples(n uint) []jacobianPoint {
-	var t []jacobianPoint = nil
-	if n > 1 {
-		s := 1 << (n - 1)
-		t = make([]jacobianPoint, s)
-		t[0] = *P
-		_2P := *P
-		_2P.double()
-		for i := 1; i < s; i++ {
-			t[i].add(&t[i-1], &_2P)
-		}
-	}
-	return t
 }
 
 // SimultaneousMult calculates P=mG+nQ, where G is the generator and Q=(x,y,z).
-// Non-constant time.
-func (P *jacobianPoint) SimultaneousMult(Q *jacobianPoint, m, n []byte) {
-	const mOmega = uint(2)
-	const nOmega = uint(3)
+// The scalars m and n are integers in big-endian form. Non-constant time.
+func (c Curve) SimultaneousMult(Qx, Qy *big.Int, m, n []byte) (Px, Py *big.Int) {
+	const nOmega = uint(5)
+	var k big.Int
+	k.SetBytes(m)
+	nafM := math.OmegaNAF(&k, baseOmega)
+	k.SetBytes(n)
+	nafN := math.OmegaNAF(&k, nOmega)
 
-	nafM := math.OmegaNAF(math.Num2BigInt(m), mOmega)
-	nafN := math.OmegaNAF(math.Num2BigInt(n), nOmega)
-
-	fmt.Printf("nafM: %v %v\n", len(nafM), nafM)
-	fmt.Printf("nafN: %v %v\n", len(nafN), nafN)
-
-	switch {
-	case len(nafM) > len(nafN):
+	if len(nafM) > len(nafN) {
 		nafN = append(nafN, make([]int32, len(nafM)-len(nafN))...)
-	case len(nafM) < len(nafN):
+	} else if len(nafM) < len(nafN) {
 		nafM = append(nafM, make([]int32, len(nafN)-len(nafM))...)
 	}
 
-	fmt.Printf("nafM: %v %v\n", len(nafM), nafM)
-	fmt.Printf("nafN: %v %v\n", len(nafN), nafN)
-
-	c := &Curve{}
-	TabVar := Q.OddMultiples(nOmega)
-	*P = *c.Zero()
+	TabQ := newAffinePoint(Qx, Qy).oddMultiples(nOmega)
+	var P, jR jacobianPoint
+	var aR affinePoint
 	for i := len(nafN) - 1; i >= 0; i-- {
 		P.double()
-
+		// Generator point
+		if nafM[i] != 0 {
+			idxM := math.Absolute(nafM[i]) >> 1
+			aR = baseOddMultiples[idxM]
+			if nafM[i] < 0 {
+				aR.neg()
+			}
+			P.mixadd(&P, &aR)
+		}
+		// Input point
 		if nafN[i] != 0 {
-			abs := math.Absolute(nafN[i])
-			idx := abs >> 1
-			R := &TabVar[idx]
+			idxN := math.Absolute(nafN[i]) >> 1
+			jR = TabQ[idxN]
 			if nafN[i] < 0 {
-				R.neg()
+				jR.neg()
 			}
-			P.add(P, R)
+			P.add(&P, &jR)
 		}
 	}
-	// fmt.Printf("X: %v\n", P.x)
-	// fmt.Printf("Y: %v\n", P.y)
-	// fmt.Printf("Z: %v\n", P.z)
-
-}
-
-// CombinedMult calculates Q=mP+nG, where P=(x,y) and G is the generator
-// Non-constant time.
-func (c *Curve) CombinedMult(bigX, bigY *big.Int, baseScalar, scalar []byte) (x, y *big.Int) {
-	ptA := baseMultiples[0]
-	ptB := newAffinePoint(bigX, bigY)
-	ptC := c.mixadd(ptA.toJacobian(), ptB).toAffine()
-	sum := &jacobianPoint{}
-
-	kb, ks := 0, 0
-	if len(baseScalar) < len(scalar) {
-		kb = len(scalar) - len(baseScalar)
-	} else if len(scalar) < len(baseScalar) {
-		ks = len(baseScalar) - len(scalar)
-	}
-
-	for i := 0; i < len(baseScalar)+kb; i++ {
-		for j := 7; j >= 0; j-- {
-			sum = c.double(sum)
-
-			var a, b byte
-			if k := i - kb; k >= 0 && k < len(baseScalar) {
-				a = (baseScalar[k] >> uint(j)) & 1
-			}
-			if k := i - ks; k >= 0 && k < len(scalar) {
-				b = (scalar[k] >> uint(j)) & 1
-			}
-
-			if a == 1 && b == 0 {
-				sum = c.mixadd(sum, &ptA)
-			} else if a == 0 && b == 1 {
-				sum = c.mixadd(sum, ptB)
-			} else if a == 1 && b == 1 {
-				sum = c.mixadd(sum, ptC)
-			}
-		}
-	}
-
-	return sum.toAffine().toInt()
+	return P.toAffine().toInt()
 }
 
 func initP384() {
-	params := ecc.P384().Params()
-	baseMultiples[0] = *newAffinePoint(params.Gx, params.Gy)
+	var c Curve
+	params := c.Params()
+	G := newAffinePoint(params.Gx, params.Gy)
+	baseMultiples[0] = *G
 
-	c := &Curve{}
+	P := G.toJacobian()
 	for i := 1; i < len(baseMultiples); i++ {
-		pt := c.double(baseMultiples[i-1].toJacobian()).toAffine()
-		baseMultiples[i] = *pt
+		P.double()
+		baseMultiples[i] = *P.toAffine()
 	}
 }
 
-func init() {
-	initonce.Do(initP384)
-}
+func init() { initonce.Do(initP384) }

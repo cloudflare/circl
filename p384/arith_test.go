@@ -9,25 +9,6 @@ import (
 	"github.com/cloudflare/circl/utils/test"
 )
 
-func TestDevel(t *testing.T) {
-	var x, y, z fp384
-
-	// utils.NonCryptoRand(x[:])
-	utils.NonCryptoRand(y[:])
-	utils.NonCryptoRand(z[:])
-
-	t.Logf("x: %v\n", x)
-	fp384Inv(&y, &x)
-	// t.Logf("x: %v\n", x)
-	// fp384Inv2(&z, &x)
-
-	t.Logf("x: %v\n", x)
-	t.Logf("y: %v\n", y)
-	// t.Logf("z: %v\n", z)
-	// t.Logf("c: %v\n", y == z)
-
-}
-
 func TestFpNegZero(t *testing.T) {
 	zero, x := &fp384{}, &fp384{}
 	fp384Neg(x, zero)
@@ -49,7 +30,8 @@ func TestFpSetBigInt(t *testing.T) {
 
 	for id, b := range []*big.Int{
 		neg, zero, one, two96, two384, two384two96, two768} {
-		x := fp384Set(b)
+		var x fp384
+		x.SetBigInt(b)
 		got := x.BigInt()
 		if b.BitLen() > 384 || b.Sign() < 0 {
 			b.Mod(b, P)

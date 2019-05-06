@@ -1,15 +1,20 @@
 package p384
 
 import (
+	"fmt"
 	"math/big"
 )
 
+// affinePoint represents an affine point of the curve. The point at
+// infinity is (0,0) leveraging that it is not an affine point.
 type affinePoint struct{ x, y fp384 }
 
 func newAffinePoint(X, Y *big.Int) *affinePoint {
 	var P affinePoint
-	montEncode(&P.x, fp384Set(X))
-	montEncode(&P.y, fp384Set(Y))
+	P.x.SetBigInt(X)
+	P.y.SetBigInt(Y)
+	montEncode(&P.x, &P.x)
+	montEncode(&P.y, &P.y)
 	return &P
 }
 
@@ -17,9 +22,11 @@ func (ap *affinePoint) neg() { fp384Neg(&ap.y, &ap.y) }
 
 func (ap *affinePoint) toJacobian() *jacobianPoint {
 	var P jacobianPoint
-	P.x = ap.x
-	P.y = ap.y
-	montEncode(&P.z, &fp384{1})
+	if !ap.isZero() {
+		P.x = ap.x
+		P.y = ap.y
+		montEncode(&P.z, &fp384{1})
+	}
 	return &P
 }
 
@@ -35,9 +42,32 @@ func (ap *affinePoint) isZero() bool {
 	return ap.x == zero && ap.y == zero
 }
 
-type jacobianPoint struct {
-	x, y, z fp384
+// OddMultiples calculates the points iP for i={1,3,5,7,..., 2^(n-1)-1}
+// Ensure that n > 1, otherwise it returns nil.
+func (ap affinePoint) oddMultiples(n uint) []jacobianPoint {
+	P := ap.toJacobian()
+	var t []jacobianPoint = nil
+	if n > 1 {
+		s := 1 << (n - 1)
+		t = make([]jacobianPoint, s)
+		t[0] = *P
+		_2P := *P
+		_2P.double()
+		for i := 1; i < s; i++ {
+			t[i].add(&t[i-1], &_2P)
+		}
+	}
+	return t
 }
+
+func (ap affinePoint) String() string {
+	return fmt.Sprintf("x: %v\ny: %v", ap.x, ap.y)
+}
+
+// jacobianPoint represents a point in Jacobian coordinates. The point at
+// infinity is any point with z=0 including (0,0,0) (although this is not a
+// projective point).
+type jacobianPoint struct{ x, y, z fp384 }
 
 func (P *jacobianPoint) neg() { fp384Neg(&P.y, &P.y) }
 
@@ -52,10 +82,18 @@ func (P *jacobianPoint) toAffine() *affinePoint {
 	return &aP
 }
 
+func (P *jacobianPoint) toInt() (*big.Int, *big.Int, *big.Int) {
+	x, y, z := &fp384{}, &fp384{}, &fp384{}
+	montDecode(x, &P.x)
+	montDecode(y, &P.y)
+	montDecode(z, &P.z)
+	return x.BigInt(), y.BigInt(), z.BigInt()
+}
+
 func (P *jacobianPoint) isZero() bool { return P.z == fp384{} }
 
-func (P *jacobianPoint) dup() *jacobianPoint { return &jacobianPoint{P.x, P.y, P.z} }
-
+// add calculates P=Q+R such that Q and R are different than the identity point,
+// and Q!==R. This function cannot be used for doublings.
 func (P *jacobianPoint) add(Q, R *jacobianPoint) {
 	if Q.isZero() {
 		*P = *R
@@ -98,6 +136,58 @@ func (P *jacobianPoint) add(Q, R *jacobianPoint) {
 	fp384Mul(&P.z, Z1, t8) // Z3 = Z1 * t8
 }
 
+// mixadd calculates P=Q+R such that P and Q different than the identity point,
+// and Q not in {P,-P, O}.
+func (P *jacobianPoint) mixadd(Q *jacobianPoint, R *affinePoint) {
+	if Q.isZero() {
+		*P = *R.toJacobian()
+		return
+	} else if R.isZero() {
+		*P = *Q
+		return
+	}
+
+	z1z1, u2 := &fp384{}, &fp384{}
+	fp384Sqr(z1z1, &Q.z)
+	fp384Mul(u2, &R.x, z1z1)
+
+	s2 := &fp384{}
+	fp384Mul(s2, &R.y, &Q.z)
+	fp384Mul(s2, s2, z1z1)
+	if Q.x == *u2 {
+		if Q.y != *s2 {
+			*P = jacobianPoint{}
+			return
+		}
+		*P = *Q
+		P.double()
+		return
+	}
+
+	h, r := &fp384{}, &fp384{}
+	fp384Sub(h, u2, &Q.x)
+	fp384Mul(&P.z, h, &Q.z)
+	fp384Sub(r, s2, &Q.y)
+
+	h2, h3 := &fp384{}, &fp384{}
+	fp384Sqr(h2, h)
+	fp384Mul(h3, h2, h)
+	h3y1 := &fp384{}
+	fp384Mul(h3y1, h3, &Q.y)
+
+	h2x1 := &fp384{}
+	fp384Mul(h2x1, h2, &Q.x)
+
+	fp384Sqr(&P.x, r)
+	fp384Sub(&P.x, &P.x, h3)
+	fp384Sub(&P.x, &P.x, h2x1)
+	fp384Sub(&P.x, &P.x, h2x1)
+
+	fp384Sub(&P.y, h2x1, &P.x)
+	fp384Mul(&P.y, &P.y, r)
+	fp384Sub(&P.y, &P.y, h3y1)
+}
+
 func (P *jacobianPoint) double() {
 	delta, gamma, alpha, alpha2 := &fp384{}, &fp384{}, &fp384{}, &fp384{}
 	fp384Mul(delta, &P.z, &P.z)
@@ -135,4 +225,8 @@ func (P *jacobianPoint) double() {
 	fp384Add(gamma, gamma, gamma)
 	fp384Add(gamma, gamma, gamma)
 	fp384Sub(&P.y, &P.y, gamma)
+}
+
+func (P jacobianPoint) String() string {
+	return fmt.Sprintf("x: %v\ny: %v\nz: %v", P.x, P.y, P.z)
 }
