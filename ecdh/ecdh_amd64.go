@@ -1,9 +1,9 @@
 // +build amd64
 
-package ecdhx
+package ecdh
 
 import (
-	"github.com/cloudflare/circl/ecdhx/field"
+	"github.com/cloudflare/circl/ecdh/field"
 	cpu "github.com/cloudflare/circl/utils"
 )
 

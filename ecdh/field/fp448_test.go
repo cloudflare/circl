@@ -7,27 +7,27 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/cloudflare/circl/ecdhx/field"
+	"github.com/cloudflare/circl/ecdh/field"
 )
 
-type test255 struct {
-	F     field.Arith255
-	in    [2]field.Element255
-	out   field.Element255
+type test448 struct {
+	F     field.Arith448
+	in    [2]field.Element448
+	out   field.Element448
 	want  big.Int
 	prime big.Int
 }
 
-func csel255(io *test255) {
+func csel448(io *test448) {
 	b := uint(io.in[0][0]) % 2
 	// big.Int
 	io.want.Set(io.in[b].BigInt())
-	// fp255
+	// fp448
 	io.F.CSel(&io.in[0], &io.in[1], b)
 	copy(io.out[:], io.in[0][:])
 }
 
-func cswap255(io *test255) {
+func cswap448(io *test448) {
 	var x, y big.Int
 	b := uint(io.in[0][0]) % 2
 	// big.Int
@@ -42,36 +42,36 @@ func cswap255(io *test255) {
 	io.want.Mul(&io.want, &x)
 	io.want.Mod(&io.want, &io.prime)
 
-	// fp255
+	// fp448
 	io.F.CSwap(&io.in[0], &io.in[1], b)
 	io.F.Div(&io.out, &io.in[0], &io.in[1])
 	io.F.Modp(&io.out)
 }
 
-func prime255(io *test255) {
+func prime448(io *test448) {
 	io.want.Set(&io.prime)
 	io.out = io.F.Prime()
 }
 
-func add255(io *test255) {
+func add448(io *test448) {
 	// big.Int
 	io.want.Add(io.in[0].BigInt(), io.in[1].BigInt())
 	io.want.Mod(&io.want, &io.prime)
-	// fp255
+	// fp448
 	io.F.Add(&io.out, &io.in[0], &io.in[1])
 	io.F.Modp(&io.out)
 }
 
-func sub255(io *test255) {
+func sub448(io *test448) {
 	// big.Int
 	io.want.Sub(io.in[0].BigInt(), io.in[1].BigInt())
 	io.want.Mod(&io.want, &io.prime)
-	// fp255
+	// fp448
 	io.F.Sub(&io.out, &io.in[0], &io.in[1])
 	io.F.Modp(&io.out)
 }
 
-func addsub255(io *test255) {
+func addsub448(io *test448) {
 	var x, y, add, sub big.Int
 	// big.Int
 	x.Set(io.in[0].BigInt())
@@ -82,61 +82,61 @@ func addsub255(io *test255) {
 	sub.Mod(&sub, &io.prime)
 	io.want.Mul(&add, &sub)
 	io.want.Mod(&io.want, &io.prime)
-	// fp255
+	// fp448
 	io.F.AddSub(&io.in[0], &io.in[1])
 	io.F.Mul(&io.out, &io.in[0], &io.in[1])
 	io.F.Modp(&io.out)
 }
 
-func mul255(io *test255) {
+func mul448(io *test448) {
 	// big.Int
 	io.want.Mul(io.in[0].BigInt(), io.in[1].BigInt())
 	io.want.Mod(&io.want, &io.prime)
-	// fp255
+	// fp448
 	io.F.Mul(&io.out, &io.in[0], &io.in[1])
 	io.F.Modp(&io.out)
 }
 
-func sqr255(io *test255) {
+func sqr448(io *test448) {
 	// big.Int
 	x := io.in[0].BigInt()
 	io.want.Mul(x, x)
 	io.want.Mod(&io.want, &io.prime)
-	// fp255
+	// fp448
 	io.F.Sqr(&io.out, &io.in[0])
 	io.F.Modp(&io.out)
 }
 
-func modp255(io *test255) {
+func modp448(io *test448) {
 	// big.Int
 	io.want.Mod(io.in[0].BigInt(), &io.prime)
-	// fp255
+	// fp448
 	io.F.Modp(&io.in[0])
 	io.out = io.in[0]
 }
 
-func div255(io *test255) {
+func div448(io *test448) {
 	// big.Int
 	io.want.ModInverse(io.in[1].BigInt(), &io.prime)
 	io.want.Mul(&io.want, io.in[0].BigInt())
 	io.want.Mod(&io.want, &io.prime)
-	// fp255
+	// fp448
 	io.F.Div(&io.out, &io.in[0], &io.in[1])
 	io.F.Modp(&io.out)
 }
 
-func mulw255(io *test255) {
+func mulw448(io *test448) {
 	// big.Int
-	const A24 = 121666
+	const A24 = 39082
 	io.want.SetUint64(A24)
 	io.want.Mul(&io.want, io.in[0].BigInt())
 	io.want.Mod(&io.want, &io.prime)
-	// fp255
+	// fp448
 	io.F.MulA24(&io.out, &io.in[0])
 	io.F.Modp(&io.out)
 }
 
-func genericTest255(t *testing.T, io *test255, f func(io *test255)) {
+func genericTest448(t *testing.T, io *test448, f func(io *test448)) {
 	const numTests = 1 << 13
 	for testID := 0; testID < numTests; testID++ {
 		for i := range io.in {
@@ -155,30 +155,32 @@ func genericTest255(t *testing.T, io *test255, f func(io *test255)) {
 	}
 }
 
-func TestFp255(t *testing.T) {
-	var io test255
-	io.F = field.Fp255
+func TestFp448(t *testing.T) {
+	var io test448
+	io.F = field.Fp448
 	io.prime.SetUint64(1)
-	io.prime.Lsh(&io.prime, 255)
-	io.prime.Sub(&io.prime, new(big.Int).SetInt64(19))
+	io.prime.Lsh(&io.prime, 224)
+	io.prime.Sub(&io.prime, new(big.Int).SetInt64(1))
+	io.prime.Lsh(&io.prime, 224)
+	io.prime.Sub(&io.prime, new(big.Int).SetInt64(1))
 
-	t.Run("prime", func(t *testing.T) { genericTest255(t, &io, prime255) })
-	t.Run("csel", func(t *testing.T) { genericTest255(t, &io, csel255) })
-	t.Run("cswap", func(t *testing.T) { genericTest255(t, &io, cswap255) })
-	t.Run("add", func(t *testing.T) { genericTest255(t, &io, add255) })
-	t.Run("sub", func(t *testing.T) { genericTest255(t, &io, sub255) })
-	t.Run("addsub", func(t *testing.T) { genericTest255(t, &io, addsub255) })
-	t.Run("mul", func(t *testing.T) { genericTest255(t, &io, mul255) })
-	t.Run("sqr", func(t *testing.T) { genericTest255(t, &io, sqr255) })
-	t.Run("modp", func(t *testing.T) { genericTest255(t, &io, modp255) })
-	t.Run("mula24", func(t *testing.T) { genericTest255(t, &io, mulw255) })
-	t.Run("div", func(t *testing.T) { genericTest255(t, &io, div255) })
+	t.Run("prime", func(t *testing.T) { genericTest448(t, &io, prime448) })
+	t.Run("csel", func(t *testing.T) { genericTest448(t, &io, csel448) })
+	t.Run("cswap", func(t *testing.T) { genericTest448(t, &io, cswap448) })
+	t.Run("add", func(t *testing.T) { genericTest448(t, &io, add448) })
+	t.Run("sub", func(t *testing.T) { genericTest448(t, &io, sub448) })
+	t.Run("addsub", func(t *testing.T) { genericTest448(t, &io, addsub448) })
+	t.Run("mul", func(t *testing.T) { genericTest448(t, &io, mul448) })
+	t.Run("sqr", func(t *testing.T) { genericTest448(t, &io, sqr448) })
+	t.Run("modp", func(t *testing.T) { genericTest448(t, &io, modp448) })
+	t.Run("mula24", func(t *testing.T) { genericTest448(t, &io, mulw448) })
+	t.Run("div", func(t *testing.T) { genericTest448(t, &io, div448) })
 }
 
-func BenchmarkFp255(b *testing.B) {
-	var x, y, z field.Element255
-	var io test255
-	io.F = field.Fp255
+func BenchmarkFp448(b *testing.B) {
+	var x, y, z field.Element448
+	var io test448
+	io.F = field.Fp448
 	b.Run("csel", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			io.F.CSel(&x, &y, uint(i))

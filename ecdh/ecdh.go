@@ -1,11 +1,11 @@
 // +build amd64
 
-// Package ecdhx provides the implementation of Diffie-Hellman X functions
+// Package ecdh provides the implementation of Elliptic-Curve Diffie-Hellman
 // based on Curve25519 and Curve448.
-package ecdhx
+package ecdh
 
 import (
-	"github.com/cloudflare/circl/ecdhx/field"
+	"github.com/cloudflare/circl/ecdh/field"
 )
 
 type xcurve struct {

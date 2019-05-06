@@ -1,6 +1,6 @@
 // +build amd64
 
-package ecdhx
+package ecdh
 
 import (
 	"encoding/json"
@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"testing"
 
-	dh "github.com/cloudflare/circl/ecdhx"
+	dh "github.com/cloudflare/circl/ecdh"
 )
 
 type katVector struct {
@@ -64,8 +64,8 @@ func baseTest(t *testing.T, x, base dh.XKey) {
 	}
 }
 
-func TestBaseECDHXx255(t *testing.T) { baseTest(t, dh.RandomKey255(), dh.GetBase255()) }
-func TestBaseECDHXx448(t *testing.T) { baseTest(t, dh.RandomKey448(), dh.GetBase448()) }
+func TestBaseECDHx255(t *testing.T) { baseTest(t, dh.RandomKey255(), dh.GetBase255()) }
+func TestBaseECDHx448(t *testing.T) { baseTest(t, dh.RandomKey448(), dh.GetBase448()) }
 
 func TestRFC7748Kat(t *testing.T) {
 	readKatVectors := func(t *testing.T, nameFile string) (r []katVector) {
@@ -231,8 +231,8 @@ func benchECDH(b *testing.B, x, y dh.XKey) {
 	})
 }
 
-func BenchmarkECDHXx255(b *testing.B) { benchECDH(b, dh.RandomKey255(), dh.RandomKey255()) }
-func BenchmarkECDHXx448(b *testing.B) { benchECDH(b, dh.RandomKey448(), dh.RandomKey448()) }
+func BenchmarkECDHx255(b *testing.B) { benchECDH(b, dh.RandomKey255(), dh.RandomKey255()) }
+func BenchmarkECDHx448(b *testing.B) { benchECDH(b, dh.RandomKey448(), dh.RandomKey448()) }
 
 func Example_x25519() {
 	// Generating Alice's secret and public keys
