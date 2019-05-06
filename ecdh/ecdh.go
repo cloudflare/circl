@@ -5,7 +5,7 @@
 package ecdh
 
 import (
-	"github.com/cloudflare/circl/ecdh/field"
+	"github.com/cloudflare/circl/ecdh/internal/field"
 )
 
 type xcurve struct {

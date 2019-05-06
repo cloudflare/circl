@@ -7,7 +7,7 @@ package ecdh
 import (
 	"crypto/rand"
 	"fmt"
-	"github.com/cloudflare/circl/ecdh/field"
+	"github.com/cloudflare/circl/ecdh/internal/field"
 )
 
 // SizeKey255 size in bytes of the key
