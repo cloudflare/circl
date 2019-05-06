@@ -1,6 +1,6 @@
-#include "textflag.h"
-
 // +build amd64
+
+#include "textflag.h"
 
 // func moduloP255(z *Element255)
 TEXT ·moduloP255(SB),NOSPLIT,$0
