@@ -52,6 +52,10 @@ cover: clean $(addprefix prep-,$(TARGETS))
 	cd $(GOPATH_LOCAL); GOPATH=$(GOPATH_LOCAL) $(GO) test \
 		-race -coverprofile=$(COVER_DIR)/coverage.txt \
 		-covermode=atomic $(OPTS) ./...
+
+generate: clean
+	$(GO) generate -v ./...
+
 clean:
 	rm -rf $(GOPATH_LOCAL)
 	rm -rf $(VENDOR_DIR)
