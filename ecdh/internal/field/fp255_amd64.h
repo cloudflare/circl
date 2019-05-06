@@ -74,7 +74,7 @@
 // Uses: AX, DX, R8-R11, FLAGS
 // Instr: x86_64, cmov
 #define subtraction(z,x,y) \
-     MOVL   $38,  AX; \
+    MOVL   $38,  AX; \
     MOVQ  0+x,  R8;  SUBQ  0+y,  R8; \
     MOVQ  8+x,  R9;  SBBQ  8+y,  R9; \
     MOVQ 16+x, R10;  SBBQ 16+y, R10; \

@@ -13,6 +13,7 @@ GO           ?= go
 BENCH_OPTS   ?= -v -bench=. -run="^_"
 V            ?= 0
 GOARCH       ?=
+BUILD_ARCH   = $(shell $(GO) env GOARCH)
 
 ifeq ($(NOASM),1)
 	OPTS+=$(OPTS_TAGS)
@@ -26,10 +27,14 @@ TARGETS= \
 	hash/	\
 	dh/	\
 	ecc/	\
-	ecdh/	\
 	etc/ 	\
 	kem/	\
 	utils
+
+# Packages with implementation only for AMD64
+ifeq ($(BUILD_ARCH), amd64)
+	TARGETS += ecdh
+endif
 
 fmtcheck:
 	$(ETC_DIR)/fmtcheck.sh
