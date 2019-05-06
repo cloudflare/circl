@@ -26,7 +26,7 @@ TARGETS= \
 	hash/	\
 	dh/	\
 	ecc/	\
-	ecdhx/	\
+	ecdh/	\
 	etc/ 	\
 	kem/	\
 	utils

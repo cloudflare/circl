@@ -1,13 +1,13 @@
 // +build amd64
 
-package ecdhx
+package ecdh
 
 //go:generate go run templates/gen.go
 
 import (
 	"crypto/rand"
 	"fmt"
-	"github.com/cloudflare/circl/ecdhx/field"
+	"github.com/cloudflare/circl/ecdh/field"
 )
 
 // SizeKey255 size in bytes of the key
