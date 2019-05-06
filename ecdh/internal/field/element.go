@@ -1,3 +1,5 @@
+// +build amd64
+
 // Package field provides arithmetic field operations over GF(2^255-19) and
 // GF(2^448-2^224-1). Elements are represented as an array of bytes which can
 // be operated using methods of the Arith255 and Arith448 interfaces.
