@@ -131,37 +131,37 @@ func (c *xcurve) ladderMontgomery(k []byte, xP []byte) []byte {
 //Functions defined in assembler files.
 
 //go:noescape
-func ladderStepLegX255(work []byte, move uint)
+func ladderStepLegX255(wbuf []byte, move uint)
 
 //go:noescape
-func ladderStepBmi2AdxX255(work []byte, move uint)
+func ladderStepBmi2AdxX255(wbuf []byte, move uint)
 
 //go:noescape
-func difAdditionLegX255(work []byte, mu []byte, swap uint)
+func difAdditionLegX255(wbuf []byte, mu []byte, swap uint)
 
 //go:noescape
-func difAdditionBmi2AdxX255(work []byte, mu []byte, swap uint)
+func difAdditionBmi2AdxX255(wbuf []byte, mu []byte, swap uint)
 
 //go:noescape
-func doubleBmi2AdxX255(work []byte)
+func doubleBmi2AdxX255(wbuf []byte)
 
 //go:noescape
-func doubleLegX255(work []byte)
+func doubleLegX255(wbuf []byte)
 
 //go:noescape
-func ladderStepLegX448(work []byte, move uint)
+func ladderStepLegX448(wbuf []byte, move uint)
 
 //go:noescape
-func ladderStepBmi2AdxX448(work []byte, move uint)
+func ladderStepBmi2AdxX448(wbuf []byte, move uint)
 
 //go:noescape
-func difAdditionLegX448(work []byte, mu []byte, swap uint)
+func difAdditionLegX448(wbuf []byte, mu []byte, swap uint)
 
 //go:noescape
-func difAdditionBmi2AdxX448(work []byte, mu []byte, swap uint)
+func difAdditionBmi2AdxX448(wbuf []byte, mu []byte, swap uint)
 
 //go:noescape
-func doubleBmi2AdxX448(work []byte)
+func doubleBmi2AdxX448(wbuf []byte)
 
 //go:noescape
-func doubleLegX448(work []byte)
+func doubleLegX448(wbuf []byte)
