@@ -699,8 +699,6 @@ TEXT ·fp384Sub(SB), NOSPLIT, $0-24
 	storeBlock(R8,R9,R10,R11,R12,R13, 0(DI))
 	RET
 
-
-
 TEXT ·fp384Mul(SB), NOSPLIT, $240-24
 	MOVQ a+8(FP), DI
 	MOVQ b+16(FP), SI

@@ -6,8 +6,7 @@ Cloudflare Interoperable, Reusable Cryptographic Library written in Go
 ## Implemented primitives
 * dh/
     - SIDH
-* ecc/
-    - P-384 (note that this implementation is not constant-time)
+* p384: elliptic curve operations for curve P-384
 * ecdh/
     - ECDH/x448
     - ECDH/x25519

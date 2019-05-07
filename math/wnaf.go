@@ -73,4 +73,3 @@ func OmegaNAF(n *big.Int, w uint) (L []int32) {
 	}
 	return L[:i]
 }
-
