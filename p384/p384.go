@@ -3,8 +3,9 @@ package p384
 
 import (
 	ecc "crypto/elliptic"
+	"crypto/subtle"
+	// "fmt"
 	"math/big"
-	"sync"
 
 	"github.com/cloudflare/circl/math"
 )
@@ -20,8 +21,6 @@ var (
 
 	// baseMultiples has [2^i] * G at position i.
 	baseMultiples [384]affinePoint
-
-	initonce sync.Once
 )
 
 // Curve represents a short-form Weierstrass curve with a=-3.
@@ -69,31 +68,66 @@ func (c Curve) Double(x1, y1 *big.Int) (x, y *big.Int) {
 
 // reduceScalar shorten a scalar modulo the order of the curve.
 func (c Curve) reduceScalar(k []byte) []byte {
-	max := sizeFp >> 3
+	const max = sizeFp
 	if len(k) > max {
 		bigK := new(big.Int).SetBytes(k)
 		bigK.Mod(bigK, c.Params().N)
 		k = bigK.Bytes()
+		// fmt.Printf("kredMax:%v\n", k)
+	}
+	if len(k) < max {
+		k = append(make([]byte, max-len(k)), k...)
+		// fmt.Printf("kredMin:%v\n", k)
 	}
 	return k
 }
 
+// toOdd performs k = (-k mod N) if k is even.
+func (c Curve) toOdd(k []byte) ([]byte, int) {
+	var X, Y big.Int
+	X.SetBytes(k)
+	Y.Neg(&X).Mod(&Y, c.Params().N)
+	isEven := 1 - int(X.Bit(0))
+	x := X.Bytes()
+	y := Y.Bytes()
+
+	if len(x) < len(y) {
+		x = append(make([]byte, len(y)-len(x)), x...)
+	} else if len(x) > len(y) {
+		y = append(make([]byte, len(x)-len(y)), y...)
+	}
+	subtle.ConstantTimeCopy(isEven, x, y)
+	return x, isEven
+}
+
 // ScalarMult returns (Qx,Qy)=k*(Px,Py) where k is a number in big-endian form.
 func (c Curve) ScalarMult(Px, Py *big.Int, k []byte) (Qx, Qy *big.Int) {
+	const omega = uint(5)
 	k = c.reduceScalar(k)
-	pt := newAffinePoint(Px, Py)
-	sum := &jacobianPoint{}
+	kOdd, kIsEven := c.toOdd(k)
 
-	for _, ki := range k {
-		for b := 7; b >= 0; b-- {
-			sum.double()
-
-			if (ki>>uint(b))&1 == 1 {
-				sum.mixadd(sum, pt)
-			}
-		}
+	var scalar big.Int
+	scalar.SetBytes(kOdd)
+	if scalar.Sign() == 0 {
+		return new(big.Int), new(big.Int)
 	}
-	return sum.toAffine().toInt()
+	L := math.OmegaNAFRegular(&scalar, omega)
+
+	var Q, R jacobianPoint
+	TabP := newAffinePoint(Px, Py).oddMultiples(omega)
+	for i := len(L) - 1; i >= 0; i-- {
+		for j := uint(0); j < omega-1; j++ {
+			Q.double()
+		}
+		idx := math.Absolute(L[i]) >> 1
+		for j := range TabP {
+			R.cmov(&TabP[j], subtle.ConstantTimeEq(int32(j), idx))
+		}
+		R.condNeg(int(L[i]>>31) & 1)
+		Q.add(&Q, &R)
+	}
+	Q.condNeg(kIsEven)
+	return Q.toAffine().toInt()
 }
 
 // ScalarBaseMult returns k*G, where G is the base point of the group
@@ -156,7 +190,7 @@ func (c Curve) SimultaneousMult(Qx, Qy *big.Int, m, n []byte) (Px, Py *big.Int) 
 	return P.toAffine().toInt()
 }
 
-func initP384() {
+func init() {
 	var c Curve
 	params := c.Params()
 	G := newAffinePoint(params.Gx, params.Gy)
@@ -168,5 +202,3 @@ func initP384() {
 		baseMultiples[i] = *P.toAffine()
 	}
 }
-
-func init() { initonce.Do(initP384) }

@@ -71,6 +71,20 @@ type jacobianPoint struct{ x, y, z fp384 }
 
 func (P *jacobianPoint) neg() { fp384Neg(&P.y, &P.y) }
 
+// condNeg if P is negated if b=1.
+func (P *jacobianPoint) condNeg(b int) {
+	var mY fp384
+	fp384Neg(&mY, &P.y)
+	fp384Cmov(&P.y, &mY, b)
+}
+
+// cmov sets P to Q if b=1
+func (P *jacobianPoint) cmov(Q *jacobianPoint, b int) {
+	fp384Cmov(&P.x, &Q.x, b)
+	fp384Cmov(&P.y, &Q.y, b)
+	fp384Cmov(&P.z, &Q.z, b)
+}
+
 func (P *jacobianPoint) toAffine() *affinePoint {
 	var aP affinePoint
 	z, z2 := &fp384{}, &fp384{}

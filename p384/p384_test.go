@@ -66,10 +66,9 @@ func TestScalarMult(t *testing.T) {
 	for i := 0; i < 128; i++ {
 		k, _ := rand.Int(rand.Reader, params.N)
 		wantX, wantY := params.ScalarBaseMult(k.Bytes())
-
 		gotX, gotY := c.ScalarMult(params.Gx, params.Gy, k.Bytes())
 
-		test.ReportError(t, gotX, wantX, k)
+		test.ReportError(t, gotX, wantX, k.Text(16))
 		test.ReportError(t, gotY, wantY)
 	}
 }
@@ -155,7 +154,7 @@ func BenchmarkP384(b *testing.B) {
 
 func BenchmarkScalarMult(b *testing.B) {
 	var c p384.Curve
-	params := elliptic.P384().Params()
+	params := c.Params()
 	K, _ := rand.Int(rand.Reader, params.N)
 	k := K.Bytes()
 
@@ -167,7 +166,7 @@ func BenchmarkScalarMult(b *testing.B) {
 
 func BenchmarkScalarBaseMult(b *testing.B) {
 	var c p384.Curve
-	params := elliptic.P384().Params()
+	params := c.Params()
 	K, _ := rand.Int(rand.Reader, params.N)
 	k := K.Bytes()
 

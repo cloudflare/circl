@@ -2,12 +2,32 @@ package p384
 
 import (
 	"crypto/elliptic"
+	"crypto/rand"
 	"math/big"
 	"testing"
 
-	"github.com/cloudflare/circl/utils"
 	"github.com/cloudflare/circl/utils/test"
 )
+
+func TestFpCmov(t *testing.T) {
+	var x, y, z fp384
+	for _, b := range []int{-2, -1, 1, 2} {
+		_, _ = rand.Read(x[:])
+		_, _ = rand.Read(y[:])
+		z = x
+		fp384Cmov(&z, &y, b)
+		got := z
+		want := y
+		test.ReportError(t, got, want, b, x, y)
+	}
+	_, _ = rand.Read(x[:])
+	_, _ = rand.Read(y[:])
+	z = x
+	fp384Cmov(&z, &y, 0)
+	got := z
+	want := x
+	test.ReportError(t, got, want, 0, x, y)
+}
 
 func TestFpNegZero(t *testing.T) {
 	zero, x := &fp384{}, &fp384{}
@@ -43,9 +63,7 @@ func TestFpSetBigInt(t *testing.T) {
 
 func TestMulZero(t *testing.T) {
 	x, zero := &fp384{}, &fp384{}
-
-	// Random numbers
-	utils.NonCryptoRand(x[:])
+	_, _ = rand.Read(x[:])
 
 	fp384Mul(x, x, zero)
 	got := x.BigInt()
@@ -67,8 +85,7 @@ func TestFp(t *testing.T) {
 
 	t.Run("Encode", func(t *testing.T) {
 		for i := 0; i < testTimes; i++ {
-			// Random numbers
-			utils.NonCryptoRand(x[:])
+			_, _ = rand.Read(x[:])
 			bigX := x.BigInt()
 
 			// fp384
@@ -84,8 +101,7 @@ func TestFp(t *testing.T) {
 
 	t.Run("Decode", func(t *testing.T) {
 		for i := 0; i < testTimes; i++ {
-			// Random numbers
-			utils.NonCryptoRand(x[:])
+			_, _ = rand.Read(x[:])
 			bigX := x.BigInt()
 
 			// fp384
@@ -101,8 +117,7 @@ func TestFp(t *testing.T) {
 
 	t.Run("Neg", func(t *testing.T) {
 		for i := 0; i < testTimes; i++ {
-			// Random numbers
-			utils.NonCryptoRand(x[:])
+			_, _ = rand.Read(x[:])
 			bigX := x.BigInt()
 
 			// fp384
@@ -118,9 +133,8 @@ func TestFp(t *testing.T) {
 
 	t.Run("Add", func(t *testing.T) {
 		for i := 0; i < testTimes; i++ {
-			// Random numbers
-			utils.NonCryptoRand(x[:])
-			utils.NonCryptoRand(y[:])
+			_, _ = rand.Read(x[:])
+			_, _ = rand.Read(y[:])
 			bigX := x.BigInt()
 			bigY := y.BigInt()
 
@@ -138,9 +152,8 @@ func TestFp(t *testing.T) {
 
 	t.Run("Sub", func(t *testing.T) {
 		for i := 0; i < testTimes; i++ {
-			// Random numbers
-			utils.NonCryptoRand(x[:])
-			utils.NonCryptoRand(y[:])
+			_, _ = rand.Read(x[:])
+			_, _ = rand.Read(y[:])
 			bigX := x.BigInt()
 			bigY := y.BigInt()
 
@@ -158,9 +171,8 @@ func TestFp(t *testing.T) {
 
 	t.Run("Mul", func(t *testing.T) {
 		for i := 0; i < testTimes; i++ {
-			// Random numbers
-			utils.NonCryptoRand(x[:])
-			utils.NonCryptoRand(y[:])
+			_, _ = rand.Read(x[:])
+			_, _ = rand.Read(y[:])
 			bigX := x.BigInt()
 			bigY := y.BigInt()
 
@@ -177,8 +189,7 @@ func TestFp(t *testing.T) {
 
 	t.Run("Inv", func(t *testing.T) {
 		for i := 0; i < testTimes; i++ {
-			// Random numbers
-			utils.NonCryptoRand(x[:])
+			_, _ = rand.Read(x[:])
 			bigX := x.BigInt()
 
 			// fp384

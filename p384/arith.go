@@ -1,12 +1,10 @@
 package p384
 
 import (
-	"github.com/cloudflare/circl/math"
-	"github.com/cloudflare/circl/utils/cpu"
 	"math/big"
-)
 
-var hasBMI2 = cpu.X86.HasBMI2
+	"github.com/cloudflare/circl/math"
+)
 
 const sizeFp = 48
 
@@ -115,7 +113,10 @@ func montEncode(c, a *fp384) { fp384Mul(c, a, &r2) }
 func montDecode(c, a *fp384) { fp384Mul(c, a, &fp384{1}) }
 func fp384Sqr(c, a *fp384)   { fp384Mul(c, a, a) }
 
-// go:noescape
+//go:noescape
+func fp384Cmov(x, y *fp384, b int)
+
+//go:noescape
 func fp384Neg(c, a *fp384)
 
 //go:noescape

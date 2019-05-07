@@ -94,7 +94,7 @@ func TestPointAdd(t *testing.T) {
 	})
 
 	t.Run("P+P=2P", func(t *testing.T) {
-		// This verifies that add cannot be used for doublings.
+		// This verifies that add function cannot be used for doublings.
 		for i := 0; i < 128; i++ {
 			P = randomJacobian()
 
