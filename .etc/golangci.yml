@@ -28,3 +28,9 @@ issues:
         - unused
         - deadcode
         - varcheck
+    - path: ecc/fourQ/
+      text: "is unused"
+      linters:
+        - unused
+        - deadcode
+        - varcheck
