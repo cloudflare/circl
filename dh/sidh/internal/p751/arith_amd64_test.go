@@ -4,7 +4,7 @@ package p751
 
 import (
 	. "github.com/cloudflare/circl/dh/sidh/internal/isogeny"
-	cpu "github.com/cloudflare/circl/utils"
+	"github.com/cloudflare/circl/utils/cpu"
 
 	"reflect"
 	"testing"

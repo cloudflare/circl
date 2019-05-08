@@ -5,7 +5,7 @@
 // "Intel® 64 and IA-32 Architectures Developer's Manual: Vol. 2A".
 // https://www.intel.com/content/www/us/en/architecture-and-technology/64-ia-32-architectures-software-developer-vol-2a-manual.html
 
-package utils
+package cpu
 
 // Performs CPUID and returns values of registers
 // go:nosplit

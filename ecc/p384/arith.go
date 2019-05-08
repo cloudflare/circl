@@ -2,7 +2,7 @@ package p384
 
 import (
 	"fmt"
-	cpu "github.com/cloudflare/circl/utils"
+	"github.com/cloudflare/circl/utils/cpu"
 	"math/big"
 )
 
