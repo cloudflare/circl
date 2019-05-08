@@ -24,8 +24,9 @@ ifeq ($(V),1)
 endif
 
 TARGETS= \
+	math/ 	\
 	hash/	\
-	dh/	\
+	dh/	    \
 	ecc/	\
 	etc/ 	\
 	kem/	\

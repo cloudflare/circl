@@ -4,7 +4,7 @@ package ecdh
 
 import (
 	"github.com/cloudflare/circl/ecdh/internal/field"
-	cpu "github.com/cloudflare/circl/utils"
+	"github.com/cloudflare/circl/utils/cpu"
 )
 
 func init() {

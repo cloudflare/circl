@@ -1,6 +1,6 @@
 package field
 
-import cpu "github.com/cloudflare/circl/utils"
+import "github.com/cloudflare/circl/utils/cpu"
 
 // Arith448 provides arithmetic operations over GF(2^448-2^224-1)
 type Arith448 interface {

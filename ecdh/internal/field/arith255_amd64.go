@@ -1,6 +1,6 @@
 package field
 
-import cpu "github.com/cloudflare/circl/utils"
+import "github.com/cloudflare/circl/utils/cpu"
 
 // Arith255 provides arithmetic operations over GF(2^255-19)
 type Arith255 interface {

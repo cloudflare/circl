@@ -1,4 +1,4 @@
-package utils
+package cpu
 
 type x86 struct {
 	// Signals support for MULX which is in BMI2
