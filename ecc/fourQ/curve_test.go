@@ -1,0 +1,111 @@
+// +build amd64,go1.12
+
+package fourQ_test
+
+import (
+	"crypto/rand"
+	"testing"
+
+	"github.com/cloudflare/circl/ecc/fourQ"
+	"github.com/cloudflare/circl/internal/conv"
+	"github.com/cloudflare/circl/internal/test"
+)
+
+func randomPoint(P *fourQ.Point) {
+	var k [fourQ.Size]byte
+	_, _ = rand.Read(k[:])
+	P.ScalarBaseMult(&k)
+}
+
+func TestMarshal(t *testing.T) {
+	testTimes := 1 << 10
+	var buf, k [fourQ.Size]byte
+	var P, Q, R fourQ.Point
+	t.Run("k*um(P)=kP", func(t *testing.T) {
+		for i := 0; i < testTimes; i++ {
+			randomPoint(&P)
+			_, _ = rand.Read(k[:])
+
+			P.Marshal(&buf)
+			if ok := Q.Unmarshal(&buf); !ok {
+				test.ReportError(t, ok, true)
+			}
+			Q.ScalarMult(&k, &Q)
+			R.ScalarMult(&k, &P)
+
+			got := Q.X
+			want := R.X
+			if got != want {
+				test.ReportError(t, got, want, P, k)
+			}
+			got = Q.Y
+			want = R.Y
+			if got != want {
+				test.ReportError(t, got, want, P, k)
+			}
+		}
+	})
+	t.Run("m(kP)~=m(-kP)", func(t *testing.T) {
+		c := fourQ.Params()
+		var minusK, encQ, encR [fourQ.Size]byte
+		for i := 0; i < testTimes; i++ {
+			randomPoint(&P)
+			bigK, _ := rand.Int(rand.Reader, c.N)
+			conv.BigInt2BytesLe(k[:], bigK)
+			bigK.Neg(bigK).Mod(bigK, c.N)
+			conv.BigInt2BytesLe(minusK[:], bigK)
+			Q.ScalarMult(&k, &P)
+			R.ScalarMult(&minusK, &P)
+			Q.Marshal(&encQ)
+			R.Marshal(&encR)
+
+			got := encQ[31] >> 7
+			want := 1 - (encR[31] >> 7)
+			encQ[31] &= 0x7F
+			encR[31] &= 0x7F
+
+			if encQ != encR {
+				test.ReportError(t, encQ, encR, P, k)
+			}
+			if got != want {
+				test.ReportError(t, got, want, P, k)
+			}
+		}
+	})
+}
+
+func BenchmarkCurve(b *testing.B) {
+	var P, Q, R fourQ.Point
+	var k [32]byte
+
+	_, _ = rand.Read(k[:])
+	P.ScalarBaseMult(&k)
+	_, _ = rand.Read(k[:])
+	Q.ScalarBaseMult(&k)
+	_, _ = rand.Read(k[:])
+	R.ScalarBaseMult(&k)
+
+	b.Run("Add", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			P.Add(&Q, &R)
+		}
+	})
+
+	b.Run("Double", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			P.Add(&Q, &Q)
+		}
+	})
+
+	b.Run("ScalarBaseMult", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			P.ScalarBaseMult(&k)
+		}
+	})
+
+	b.Run("ScalarMult", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			P.ScalarMult(&k, &Q)
+		}
+	})
+}

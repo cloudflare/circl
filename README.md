@@ -11,6 +11,7 @@ Cloudflare Interoperable, Reusable Cryptographic Library written in Go
 * ecdh/
     - ECDH/x448
     - ECDH/x25519
+* fourq: Elliptic curve operations for the FourQ curve.
 * hash/
     - SHA3/
         * cSHAKE, SHAKE
