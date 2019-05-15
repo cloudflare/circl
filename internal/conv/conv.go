@@ -1,5 +1,4 @@
-// Package math provides some utility functions for converting big integer numbers.
-package math
+package conv
 
 import (
 	"fmt"

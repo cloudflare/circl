@@ -1,10 +1,10 @@
-package math
+package conv
 
 import (
 	"math/big"
 	"testing"
 
-	"github.com/cloudflare/circl/utils/test"
+	"github.com/cloudflare/circl/internal/test"
 )
 
 func TestAbsoute(t *testing.T) {
@@ -14,6 +14,8 @@ func TestAbsoute(t *testing.T) {
 		want := big.NewInt(int64(x))
 		want.Abs(want)
 
-		test.CheckError(t, got, want, x)
+		if got.Cmp(want) != 0 {
+			test.ReportError(t, got, want, x)
+		}
 	}
 }

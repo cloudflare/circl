@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/cloudflare/circl/utils/test"
+	"github.com/cloudflare/circl/internal/test"
 )
 
 func TestOmegaNAF(t *testing.T) {
@@ -26,7 +26,9 @@ func TestOmegaNAF(t *testing.T) {
 			}
 			want := x
 			got := &y
-			test.CheckError(t, got, want, x.Text(16), w)
+			if got.Cmp(want) != 0 {
+				test.ReportError(t, got, want, x, w)
+			}
 		}
 	}
 }
@@ -50,7 +52,9 @@ func TestOmegaNAFRegular(t *testing.T) {
 			}
 			want := x
 			got := &y
-			test.CheckError(t, got, want, x.Text(16), w)
+			if got.Cmp(want) != 0 {
+				test.ReportError(t, got, want, x, w)
+			}
 		}
 	}
 }
