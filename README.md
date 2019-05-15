@@ -15,7 +15,8 @@ Cloudflare Interoperable, Reusable Cryptographic Library written in Go
         * cSHAKE, SHAKE
 * kem/
     - SIKE
-* math: Contains some utility functions for big integer numbers.
+* math/
+    - Contains some utility functions for converting big integer numbers.
 
 ## Make targets
 

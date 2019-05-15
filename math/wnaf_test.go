@@ -9,18 +9,6 @@ import (
 	"github.com/cloudflare/circl/utils/test"
 )
 
-func TestAbsoute(t *testing.T) {
-	for _, x := range []int32{-2, -1, 0, 1, 2} {
-		y := Absolute(x)
-		got := big.NewInt(int64(y))
-		want := big.NewInt(int64(x))
-		if x < 0 {
-			want.Neg(want)
-		}
-		test.ReportError(t, got, want, x)
-	}
-}
-
 func TestOmegaNAF(t *testing.T) {
 	testTimes := 1 << 7
 	var max big.Int
@@ -38,7 +26,7 @@ func TestOmegaNAF(t *testing.T) {
 			}
 			want := x
 			got := &y
-			test.ReportError(t, got, want, x.Text(16), w)
+			test.CheckError(t, got, want, x.Text(16), w)
 		}
 	}
 }
@@ -53,7 +41,7 @@ func TestOmegaNAFRegular(t *testing.T) {
 		for j := 0; j < testTimes; j++ {
 			x, _ := rand.Int(rand.Reader, &max)
 			x.SetBit(x, 0, uint(1)) // odd-numbers
-			L := OmegaNAFRegular(x, w)
+			L := SignedDigit(x, w)
 
 			var y big.Int
 			for i := len(L) - 1; i >= 0; i-- {
@@ -62,7 +50,7 @@ func TestOmegaNAFRegular(t *testing.T) {
 			}
 			want := x
 			got := &y
-			test.ReportError(t, got, want, x.Text(16), w)
+			test.CheckError(t, got, want, x.Text(16), w)
 		}
 	}
 }
@@ -92,7 +80,7 @@ func BenchmarkOmegaNAFRegular(b *testing.B) {
 			x.SetBit(x, 0, uint(1)) // odd-numbers
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				_ = OmegaNAFRegular(x, w)
+				_ = SignedDigit(x, w)
 			}
 		})
 	}
