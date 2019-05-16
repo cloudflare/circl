@@ -9,6 +9,10 @@ import (
 // infinity is (0,0) leveraging that it is not an affine point.
 type affinePoint struct{ x, y fp384 }
 
+func (ap affinePoint) String() string {
+	return fmt.Sprintf("x: %v\ny: %v", ap.x, ap.y)
+}
+
 func newAffinePoint(X, Y *big.Int) *affinePoint {
 	var P affinePoint
 	P.x.SetBigInt(X)
@@ -60,10 +64,6 @@ func (ap affinePoint) oddMultiples(n uint) []jacobianPoint {
 	return t
 }
 
-func (ap affinePoint) String() string {
-	return fmt.Sprintf("x: %v\ny: %v", ap.x, ap.y)
-}
-
 // jacobianPoint represents a point in Jacobian coordinates. The point at
 // infinity is any point with z=0 including (0,0,0) (although this is not a
 // projective point).
@@ -72,7 +72,7 @@ type jacobianPoint struct{ x, y, z fp384 }
 func (P *jacobianPoint) neg() { fp384Neg(&P.y, &P.y) }
 
 // condNeg if P is negated if b=1.
-func (P *jacobianPoint) condNeg(b int) {
+func (P *jacobianPoint) cneg(b int) {
 	var mY fp384
 	fp384Neg(&mY, &P.y)
 	fp384Cmov(&P.y, &mY, b)

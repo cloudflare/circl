@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/cloudflare/circl/utils/test"
+	"github.com/cloudflare/circl/internal/test"
 )
 
 func TestFpCmov(t *testing.T) {
@@ -18,7 +18,9 @@ func TestFpCmov(t *testing.T) {
 		fp384Cmov(&z, &y, b)
 		got := z
 		want := y
-		test.ReportError(t, got, want, b, x, y)
+		if got != want {
+			test.ReportError(t, got, want, b, x, y)
+		}
 	}
 	_, _ = rand.Read(x[:])
 	_, _ = rand.Read(y[:])
@@ -26,7 +28,9 @@ func TestFpCmov(t *testing.T) {
 	fp384Cmov(&z, &y, 0)
 	got := z
 	want := x
-	test.ReportError(t, got, want, 0, x, y)
+	if got != want {
+		test.ReportError(t, got, want, 0, x, y)
+	}
 }
 
 func TestFpNegZero(t *testing.T) {
@@ -34,7 +38,9 @@ func TestFpNegZero(t *testing.T) {
 	fp384Neg(x, zero)
 	got := x.BigInt()
 	want := zero.BigInt()
-	test.ReportError(t, got, want, x)
+	if got.Cmp(want) != 0 {
+		test.ReportError(t, got, want, x)
+	}
 }
 
 func TestFpSetBigInt(t *testing.T) {
@@ -57,7 +63,9 @@ func TestFpSetBigInt(t *testing.T) {
 			b.Mod(b, P)
 		}
 		want := b
-		test.ReportError(t, got, want, id)
+		if got.Cmp(want) != 0 {
+			test.ReportError(t, got, want, id)
+		}
 	}
 }
 
@@ -69,7 +77,9 @@ func TestMulZero(t *testing.T) {
 	got := x.BigInt()
 	want := zero.BigInt()
 
-	test.ReportError(t, got, want, x)
+	if got.Cmp(want) != 0 {
+		test.ReportError(t, got, want, x)
+	}
 }
 
 func TestFp(t *testing.T) {
@@ -94,8 +104,9 @@ func TestFp(t *testing.T) {
 
 			// big.Int
 			want := bigX.Mul(bigX, &bigR).Mod(bigX, P)
-
-			test.ReportError(t, got, want, x)
+			if got.Cmp(want) != 0 {
+				test.ReportError(t, got, want, x)
+			}
 		}
 	})
 
@@ -110,8 +121,9 @@ func TestFp(t *testing.T) {
 
 			// big.Int
 			want := bigX.Mul(bigX, new(big.Int).ModInverse(&bigR, P)).Mod(bigX, P)
-
-			test.ReportError(t, got, want, x)
+			if got.Cmp(want) != 0 {
+				test.ReportError(t, got, want, x)
+			}
 		}
 	})
 
@@ -126,8 +138,9 @@ func TestFp(t *testing.T) {
 
 			// big.Int
 			want := bigX.Neg(bigX).Mod(bigX, P)
-
-			test.ReportError(t, got, want, x)
+			if got.Cmp(want) != 0 {
+				test.ReportError(t, got, want, x)
+			}
 		}
 	})
 
@@ -145,8 +158,9 @@ func TestFp(t *testing.T) {
 			// big.Int
 			want := bigX.Add(bigX, bigY)
 			want = want.Mod(want, P)
-
-			test.ReportError(t, got, want, x, y)
+			if got.Cmp(want) != 0 {
+				test.ReportError(t, got, want, x, y)
+			}
 		}
 	})
 
@@ -164,8 +178,9 @@ func TestFp(t *testing.T) {
 			// big.Int
 			want := bigX.Sub(bigX, bigY)
 			want = want.Mod(want, P)
-
-			test.ReportError(t, got, want, x, y)
+			if got.Cmp(want) != 0 {
+				test.ReportError(t, got, want, x, y)
+			}
 		}
 	})
 
@@ -182,8 +197,9 @@ func TestFp(t *testing.T) {
 
 			// big.Int
 			want := bigX.Mul(bigX, bigY).Mul(bigX, &bigRinv).Mod(bigX, P)
-
-			test.ReportError(t, got, want, x, y)
+			if got.Cmp(want) != 0 {
+				test.ReportError(t, got, want, x, y)
+			}
 		}
 	})
 
@@ -198,8 +214,9 @@ func TestFp(t *testing.T) {
 
 			// big.Int
 			want := bigX.ModInverse(bigX, P).Mul(bigX, &bigR2).Mod(bigX, P)
-
-			test.ReportError(t, got, want, x)
+			if got.Cmp(want) != 0 {
+				test.ReportError(t, got, want, x)
+			}
 		}
 	})
 }

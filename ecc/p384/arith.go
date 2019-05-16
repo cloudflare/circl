@@ -3,21 +3,21 @@ package p384
 import (
 	"math/big"
 
-	"github.com/cloudflare/circl/math"
+	"github.com/cloudflare/circl/internal/conv"
 )
 
 const sizeFp = 48
 
 type fp384 [sizeFp]byte
 
-func (e fp384) BigInt() *big.Int { return math.Num2BigInt(e[:]) }
-func (e fp384) String() string   { return math.Num2Hex(e[:]) }
+func (e fp384) BigInt() *big.Int { return conv.BytesLe2BigInt(e[:]) }
+func (e fp384) String() string   { return conv.BytesLe2Hex(e[:]) }
 
 func (e *fp384) SetBigInt(b *big.Int) {
 	if b.BitLen() > 384 || b.Sign() < 0 {
 		b = new(big.Int).Mod(b, p.BigInt())
 	}
-	copy(e[:], math.BigInt2Num(b, sizeFp))
+	conv.BigInt2BytesLe(e[:], b)
 }
 
 func fp384Inv(z, x *fp384) {

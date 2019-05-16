@@ -6,7 +6,7 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"github.com/cloudflare/circl/utils/test"
+	"github.com/cloudflare/circl/internal/test"
 )
 
 func randomAffine() *affinePoint {
@@ -34,7 +34,9 @@ func TestPointDouble(t *testing.T) {
 		Z.double()
 		got := Z.isZero()
 		want := true
-		test.ReportError(t, got, want)
+		if got != want {
+			test.ReportError(t, got, want)
+		}
 	})
 
 	t.Run("2P=P+P", func(t *testing.T) {
@@ -47,9 +49,12 @@ func TestPointDouble(t *testing.T) {
 
 			P.double()
 			gotX, gotY := P.toAffine().toInt()
-
-			test.ReportError(t, gotX, wantX, P)
-			test.ReportError(t, gotY, wantY)
+			if gotX.Cmp(wantX) != 0 {
+				test.ReportError(t, gotX, wantX, P)
+			}
+			if gotY.Cmp(wantY) != 0 {
+				test.ReportError(t, gotY, wantY)
+			}
 		}
 	})
 }
@@ -63,25 +68,39 @@ func TestPointAdd(t *testing.T) {
 		R.add(Z, Z)
 		got := R.isZero()
 		want := true
-		test.ReportError(t, got, want)
+		if got != want {
+			test.ReportError(t, got, want)
+		}
 	})
 
 	t.Run("O+P=P", func(t *testing.T) {
 		R.add(Z, P)
 		gotX, gotY, gotZ := R.toInt()
 		wantX, wantY, wantZ := P.toInt()
-		test.ReportError(t, gotX, wantX, P)
-		test.ReportError(t, gotY, wantY)
-		test.ReportError(t, gotZ, wantZ)
+		if gotX.Cmp(wantX) != 0 {
+			test.ReportError(t, gotX, wantX, P)
+		}
+		if gotY.Cmp(wantY) != 0 {
+			test.ReportError(t, gotY, wantY)
+		}
+		if gotZ.Cmp(wantZ) != 0 {
+			test.ReportError(t, gotZ, wantZ)
+		}
 	})
 
 	t.Run("P+O=P", func(t *testing.T) {
 		R.add(P, Z)
 		gotX, gotY, gotZ := R.toInt()
 		wantX, wantY, wantZ := P.toInt()
-		test.ReportError(t, gotX, wantX, P)
-		test.ReportError(t, gotY, wantY)
-		test.ReportError(t, gotZ, wantZ)
+		if gotX.Cmp(wantX) != 0 {
+			test.ReportError(t, gotX, wantX, P)
+		}
+		if gotY.Cmp(wantY) != 0 {
+			test.ReportError(t, gotY, wantY)
+		}
+		if gotZ.Cmp(wantZ) != 0 {
+			test.ReportError(t, gotZ, wantZ)
+		}
 	})
 
 	t.Run("P+(-P)=O", func(t *testing.T) {
@@ -90,7 +109,9 @@ func TestPointAdd(t *testing.T) {
 		R.add(P, Q)
 		got := R.isZero()
 		want := true
-		test.ReportError(t, got, want, P)
+		if got != want {
+			test.ReportError(t, got, want, P)
+		}
 	})
 
 	t.Run("P+P=2P", func(t *testing.T) {
@@ -103,9 +124,15 @@ func TestPointAdd(t *testing.T) {
 
 			wantX, wantY, wantZ := fp384{}, fp384{}, fp384{}
 
-			test.ReportError(t, gotX, wantX, P)
-			test.ReportError(t, gotY, wantY)
-			test.ReportError(t, gotZ, wantZ)
+			if gotX != wantX {
+				test.ReportError(t, gotX, wantX, P)
+			}
+			if gotY != wantY {
+				test.ReportError(t, gotY, wantY)
+			}
+			if gotZ != wantZ {
+				test.ReportError(t, gotZ, wantZ)
+			}
 		}
 	})
 
@@ -121,8 +148,12 @@ func TestPointAdd(t *testing.T) {
 			R.add(P, Q)
 			gotX, gotY := R.toAffine().toInt()
 
-			test.ReportError(t, gotX, wantX, P, Q)
-			test.ReportError(t, gotY, wantY)
+			if gotX.Cmp(wantX) != 0 {
+				test.ReportError(t, gotX, wantX, P, Q)
+			}
+			if gotY.Cmp(wantY) != 0 {
+				test.ReportError(t, gotY, wantY)
+			}
 		}
 	})
 }
@@ -138,24 +169,36 @@ func TestPointMixAdd(t *testing.T) {
 		R.mixadd(jZ, aZ)
 		got := R.isZero()
 		want := true
-		test.ReportError(t, got, want)
+		if got != want {
+			test.ReportError(t, got, want)
+		}
 	})
 
 	t.Run("O+P=P", func(t *testing.T) {
 		R.mixadd(jZ, aP)
 		gotX, gotY := R.toAffine().toInt()
 		wantX, wantY := aP.toInt()
-		test.ReportError(t, gotX, wantX, aP)
-		test.ReportError(t, gotY, wantY)
+		if gotX.Cmp(wantX) != 0 {
+			test.ReportError(t, gotX, wantX, aP)
+		}
+		if gotY.Cmp(wantY) != 0 {
+			test.ReportError(t, gotY, wantY)
+		}
 	})
 
 	t.Run("P+O=P", func(t *testing.T) {
 		R.mixadd(jP, aZ)
 		gotX, gotY, gotZ := R.toInt()
 		wantX, wantY, wantZ := jP.toInt()
-		test.ReportError(t, gotX, wantX, jP)
-		test.ReportError(t, gotY, wantY)
-		test.ReportError(t, gotZ, wantZ)
+		if gotX.Cmp(wantX) != 0 {
+			test.ReportError(t, gotX, wantX, jP)
+		}
+		if gotY.Cmp(wantY) != 0 {
+			test.ReportError(t, gotY, wantY)
+		}
+		if gotZ.Cmp(wantZ) != 0 {
+			test.ReportError(t, gotZ, wantZ)
+		}
 	})
 
 	t.Run("P+(-P)=O", func(t *testing.T) {
@@ -164,7 +207,9 @@ func TestPointMixAdd(t *testing.T) {
 		R.mixadd(jP, aQ)
 		got := R.isZero()
 		want := true
-		test.ReportError(t, got, want, jP)
+		if got != want {
+			test.ReportError(t, got, want, jP)
+		}
 	})
 
 	t.Run("P+P=2P", func(t *testing.T) {
@@ -178,8 +223,12 @@ func TestPointMixAdd(t *testing.T) {
 			R.mixadd(jQ, aQ)
 			gotX, gotY := R.toAffine().toInt()
 
-			test.ReportError(t, gotX, wantX, aQ)
-			test.ReportError(t, gotY, wantY)
+			if gotX.Cmp(wantX) != 0 {
+				test.ReportError(t, gotX, wantX, aQ)
+			}
+			if gotY.Cmp(wantY) != 0 {
+				test.ReportError(t, gotY, wantY)
+			}
 		}
 	})
 
@@ -195,8 +244,12 @@ func TestPointMixAdd(t *testing.T) {
 			R.mixadd(jP, aP)
 			gotX, gotY := R.toAffine().toInt()
 
-			test.ReportError(t, gotX, wantX, jP, aP)
-			test.ReportError(t, gotY, wantY)
+			if gotX.Cmp(wantX) != 0 {
+				test.ReportError(t, gotX, wantX, jP, aP)
+			}
+			if gotY.Cmp(wantY) != 0 {
+				test.ReportError(t, gotY, wantY)
+			}
 		}
 	})
 }
@@ -208,7 +261,9 @@ func TestOddMultiples(t *testing.T) {
 			PP := P.oddMultiples(w)
 			got := len(PP)
 			want := 0
-			test.ReportError(t, got, want, w)
+			if got != want {
+				test.ReportError(t, got, want, w)
+			}
 		}
 	})
 
@@ -224,40 +279,37 @@ func TestOddMultiples(t *testing.T) {
 					binary.BigEndian.PutUint32(jOdd[:], uint32(2*j+1))
 					wantX, wantY := params.ScalarMult(X, Y, jOdd[:])
 					gotX, gotY := jP.toAffine().toInt()
-					test.ReportError(t, gotX, wantX, w, j)
-					test.ReportError(t, gotY, wantY)
+					if gotX.Cmp(wantX) != 0 {
+						test.ReportError(t, gotX, wantX, w, j)
+					}
+					if gotY.Cmp(wantY) != 0 {
+						test.ReportError(t, gotY, wantY)
+					}
 				}
 			}
 		}
 	})
 }
 
-func BenchmarkPointAddition(b *testing.B) {
-	var R jacobianPoint
+func BenchmarkPoint(b *testing.B) {
 	P := randomJacobian()
 	Q := randomJacobian()
+	R := randomJacobian()
+	aR := randomAffine()
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		R.add(P, Q)
-	}
-}
-
-func BenchmarkPointMixAdd(b *testing.B) {
-	P := randomJacobian()
-	Q := randomAffine()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		P.mixadd(P, Q)
-	}
-}
-
-func BenchmarkPointDouble(b *testing.B) {
-	P := randomJacobian()
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		P.double()
-	}
+	b.Run("addition", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			R.add(P, Q)
+		}
+	})
+	b.Run("mixadd", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			P.mixadd(P, aR)
+		}
+	})
+	b.Run("double", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			P.double()
+		}
+	})
 }

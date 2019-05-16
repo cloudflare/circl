@@ -1,10 +1,9 @@
-// Package p384 is an optimized P-384 implementation.
+// Package p384 provides optimized elliptic curve operations on the P-384 curve.
 package p384
 
 import (
-	ecc "crypto/elliptic"
+	"crypto/elliptic"
 	"crypto/subtle"
-	// "fmt"
 	"math/big"
 
 	"github.com/cloudflare/circl/math"
@@ -23,14 +22,42 @@ var (
 	baseMultiples [384]affinePoint
 )
 
-// Curve represents a short-form Weierstrass curve with a=-3.
-type Curve int
+type Curve interface {
+	elliptic.Curve
+	// IsAtInfinity returns True is the point is the identity point.
+	IsAtInfinity(X, Y *big.Int) bool
+	// SimultaneousMult calculates P=mG+nQ, where G is the generator and
+	// Q=(Qx,Qy). The scalars m and n are positive integers in big-endian form.
+	// Runs in non-constant time to be used in signature verification.
+	SimultaneousMult(Qx, Qy *big.Int, m, n []byte) (Px, Py *big.Int)
+}
 
-// Params returns the parameters for the curve.
-func (c Curve) Params() *ecc.CurveParams { return ecc.P384().Params() }
+// P384 returns a Curve which implements P-384 (see FIPS 186-3, section D.2.4).
+func P384() Curve { return p384 }
+
+type curve struct{ *elliptic.CurveParams }
+
+var p384 curve
+
+func init() {
+	p384.CurveParams = elliptic.P384().Params()
+	G := newAffinePoint(p384.CurveParams.Gx, p384.CurveParams.Gy)
+	baseMultiples[0] = *G
+
+	P := G.toJacobian()
+	for i := 1; i < len(baseMultiples); i++ {
+		P.double()
+		baseMultiples[i] = *P.toAffine()
+	}
+}
+
+// IsAtInfinity returns True is the point is the identity point.
+func (c curve) IsAtInfinity(X, Y *big.Int) bool {
+	return X.Sign() == 0 && Y.Sign() == 0
+}
 
 // IsOnCurve reports whether the given (x,y) lies on the curve.
-func (c Curve) IsOnCurve(X, Y *big.Int) bool {
+func (c curve) IsOnCurve(X, Y *big.Int) bool {
 	x, y := &fp384{}, &fp384{}
 	x.SetBigInt(X)
 	y.SetBigInt(Y)
@@ -53,37 +80,35 @@ func (c Curve) IsOnCurve(X, Y *big.Int) bool {
 }
 
 // Add returns the sum of (x1,y1) and (x2,y2)
-func (c Curve) Add(x1, y1, x2, y2 *big.Int) (x, y *big.Int) {
+func (c curve) Add(x1, y1, x2, y2 *big.Int) (x, y *big.Int) {
 	P := newAffinePoint(x1, y1).toJacobian()
 	P.mixadd(P, newAffinePoint(x2, y2))
 	return P.toAffine().toInt()
 }
 
 // Double returns 2*(x,y)
-func (c Curve) Double(x1, y1 *big.Int) (x, y *big.Int) {
+func (c curve) Double(x1, y1 *big.Int) (x, y *big.Int) {
 	P := newAffinePoint(x1, y1).toJacobian()
 	P.double()
 	return P.toAffine().toInt()
 }
 
 // reduceScalar shorten a scalar modulo the order of the curve.
-func (c Curve) reduceScalar(k []byte) []byte {
+func (c curve) reduceScalar(k []byte) []byte {
 	const max = sizeFp
 	if len(k) > max {
 		bigK := new(big.Int).SetBytes(k)
 		bigK.Mod(bigK, c.Params().N)
 		k = bigK.Bytes()
-		// fmt.Printf("kredMax:%v\n", k)
 	}
 	if len(k) < max {
 		k = append(make([]byte, max-len(k)), k...)
-		// fmt.Printf("kredMin:%v\n", k)
 	}
 	return k
 }
 
 // toOdd performs k = (-k mod N) if k is even.
-func (c Curve) toOdd(k []byte) ([]byte, int) {
+func (c curve) toOdd(k []byte) ([]byte, int) {
 	var X, Y big.Int
 	X.SetBytes(k)
 	Y.Neg(&X).Mod(&Y, c.Params().N)
@@ -101,17 +126,17 @@ func (c Curve) toOdd(k []byte) ([]byte, int) {
 }
 
 // ScalarMult returns (Qx,Qy)=k*(Px,Py) where k is a number in big-endian form.
-func (c Curve) ScalarMult(Px, Py *big.Int, k []byte) (Qx, Qy *big.Int) {
+func (c curve) ScalarMult(Px, Py *big.Int, k []byte) (Qx, Qy *big.Int) {
 	const omega = uint(5)
 	k = c.reduceScalar(k)
-	kOdd, kIsEven := c.toOdd(k)
+	oddK, isEvenK := c.toOdd(k)
 
 	var scalar big.Int
-	scalar.SetBytes(kOdd)
+	scalar.SetBytes(oddK)
 	if scalar.Sign() == 0 {
 		return new(big.Int), new(big.Int)
 	}
-	L := math.OmegaNAFRegular(&scalar, omega)
+	L := math.SignedDigit(&scalar, omega)
 
 	var Q, R jacobianPoint
 	TabP := newAffinePoint(Px, Py).oddMultiples(omega)
@@ -119,20 +144,20 @@ func (c Curve) ScalarMult(Px, Py *big.Int, k []byte) (Qx, Qy *big.Int) {
 		for j := uint(0); j < omega-1; j++ {
 			Q.double()
 		}
-		idx := math.Absolute(L[i]) >> 1
+		idx := absolute(L[i]) >> 1
 		for j := range TabP {
 			R.cmov(&TabP[j], subtle.ConstantTimeEq(int32(j), idx))
 		}
-		R.condNeg(int(L[i]>>31) & 1)
+		R.cneg(int(L[i]>>31) & 1)
 		Q.add(&Q, &R)
 	}
-	Q.condNeg(kIsEven)
+	Q.cneg(isEvenK)
 	return Q.toAffine().toInt()
 }
 
 // ScalarBaseMult returns k*G, where G is the base point of the group
 // and k is an integer in big-endian form.
-func (c Curve) ScalarBaseMult(k []byte) (*big.Int, *big.Int) {
+func (c curve) ScalarBaseMult(k []byte) (*big.Int, *big.Int) {
 	k = c.reduceScalar(k)
 	sum := &jacobianPoint{}
 	j := 0
@@ -149,7 +174,7 @@ func (c Curve) ScalarBaseMult(k []byte) (*big.Int, *big.Int) {
 
 // SimultaneousMult calculates P=mG+nQ, where G is the generator and Q=(x,y,z).
 // The scalars m and n are integers in big-endian form. Non-constant time.
-func (c Curve) SimultaneousMult(Qx, Qy *big.Int, m, n []byte) (Px, Py *big.Int) {
+func (c curve) SimultaneousMult(Qx, Qy *big.Int, m, n []byte) (Px, Py *big.Int) {
 	const nOmega = uint(5)
 	var k big.Int
 	k.SetBytes(m)
@@ -170,7 +195,7 @@ func (c Curve) SimultaneousMult(Qx, Qy *big.Int, m, n []byte) (Px, Py *big.Int) 
 		P.double()
 		// Generator point
 		if nafM[i] != 0 {
-			idxM := math.Absolute(nafM[i]) >> 1
+			idxM := absolute(nafM[i]) >> 1
 			aR = baseOddMultiples[idxM]
 			if nafM[i] < 0 {
 				aR.neg()
@@ -179,7 +204,7 @@ func (c Curve) SimultaneousMult(Qx, Qy *big.Int, m, n []byte) (Px, Py *big.Int) 
 		}
 		// Input point
 		if nafN[i] != 0 {
-			idxN := math.Absolute(nafN[i]) >> 1
+			idxN := absolute(nafN[i]) >> 1
 			jR = TabQ[idxN]
 			if nafN[i] < 0 {
 				jR.neg()
@@ -190,15 +215,8 @@ func (c Curve) SimultaneousMult(Qx, Qy *big.Int, m, n []byte) (Px, Py *big.Int) 
 	return P.toAffine().toInt()
 }
 
-func init() {
-	var c Curve
-	params := c.Params()
-	G := newAffinePoint(params.Gx, params.Gy)
-	baseMultiples[0] = *G
-
-	P := G.toJacobian()
-	for i := 1; i < len(baseMultiples); i++ {
-		P.double()
-		baseMultiples[i] = *P.toAffine()
-	}
+// absolute returns always a positive value.
+func absolute(x int32) int32 {
+	mask := x >> 31
+	return (x + mask) ^ mask
 }
