@@ -9,19 +9,6 @@ import (
 	"github.com/cloudflare/circl/math"
 )
 
-var (
-	// bMon is the curve's B parameter encoded. bMon = B*R mod p.
-	bMon = fp384{
-		0xcc, 0x2d, 0x41, 0x9d, 0x71, 0x88, 0x11, 0x08, 0xec, 0x32, 0x4c, 0x7a,
-		0xd8, 0xad, 0x29, 0xf7, 0x2e, 0x02, 0x20, 0x19, 0x9b, 0x20, 0xf2, 0x77,
-		0xe2, 0x8a, 0x93, 0x94, 0xee, 0x4b, 0x37, 0xe3, 0x94, 0x20, 0x02, 0x1f,
-		0xf4, 0x21, 0x2b, 0xb6, 0xf9, 0xbf, 0x4f, 0x60, 0x4b, 0x11, 0x08, 0xcd,
-	}
-
-	// baseMultiples has [2^i] * G at position i.
-	baseMultiples [384]affinePoint
-)
-
 type Curve interface {
 	elliptic.Curve
 	// IsAtInfinity returns True is the point is the identity point.
@@ -41,14 +28,6 @@ var p384 curve
 
 func init() {
 	p384.CurveParams = elliptic.P384().Params()
-	G := newAffinePoint(p384.CurveParams.Gx, p384.CurveParams.Gy)
-	baseMultiples[0] = *G
-
-	P := G.toJacobian()
-	for i := 1; i < len(baseMultiples); i++ {
-		P.double()
-		baseMultiples[i] = *P.toAffine()
-	}
 }
 
 // IsAtInfinity returns True is the point is the identity point.
@@ -58,6 +37,15 @@ func (c curve) IsAtInfinity(X, Y *big.Int) bool {
 
 // IsOnCurve reports whether the given (x,y) lies on the curve.
 func (c curve) IsOnCurve(X, Y *big.Int) bool {
+	// bMon is the curve's B parameter encoded. bMon = B*R mod p.
+	bMon := &fp384{
+		0xcc, 0x2d, 0x41, 0x9d, 0x71, 0x88, 0x11, 0x08,
+		0xec, 0x32, 0x4c, 0x7a, 0xd8, 0xad, 0x29, 0xf7,
+		0x2e, 0x02, 0x20, 0x19, 0x9b, 0x20, 0xf2, 0x77,
+		0xe2, 0x8a, 0x93, 0x94, 0xee, 0x4b, 0x37, 0xe3,
+		0x94, 0x20, 0x02, 0x1f, 0xf4, 0x21, 0x2b, 0xb6,
+		0xf9, 0xbf, 0x4f, 0x60, 0x4b, 0x11, 0x08, 0xcd,
+	}
 	x, y := &fp384{}, &fp384{}
 	x.SetBigInt(X)
 	y.SetBigInt(Y)
@@ -74,7 +62,7 @@ func (c curve) IsOnCurve(X, Y *big.Int) bool {
 	fp384Add(threeX, threeX, x)
 
 	fp384Sub(x3, x3, threeX)
-	fp384Add(x3, x3, &bMon)
+	fp384Add(x3, x3, bMon)
 
 	return *y2 == *x3
 }
@@ -158,18 +146,7 @@ func (c curve) ScalarMult(Px, Py *big.Int, k []byte) (Qx, Qy *big.Int) {
 // ScalarBaseMult returns k*G, where G is the base point of the group
 // and k is an integer in big-endian form.
 func (c curve) ScalarBaseMult(k []byte) (*big.Int, *big.Int) {
-	k = c.reduceScalar(k)
-	sum := &jacobianPoint{}
-	j := 0
-	for i := len(k) - 1; i >= 0; i-- {
-		for b := 7; b >= 0; b-- {
-			if (k[i]>>uint(b))&1 == 1 {
-				sum.mixadd(sum, &baseMultiples[j+b])
-			}
-		}
-		j += 8
-	}
-	return sum.toAffine().toInt()
+	return c.ScalarMult(c.Params().Gx, c.Params().Gy, k)
 }
 
 // SimultaneousMult calculates P=mG+nQ, where G is the generator and Q=(x,y,z).

@@ -47,17 +47,17 @@ func (ap *affinePoint) isZero() bool {
 }
 
 // OddMultiples calculates the points iP for i={1,3,5,7,..., 2^(n-1)-1}
-// Ensure that n > 1, otherwise it returns nil.
+// Ensure that 1 < n < 31, otherwise it returns an empty slice.
 func (ap affinePoint) oddMultiples(n uint) []jacobianPoint {
-	P := ap.toJacobian()
-	var t []jacobianPoint = nil
-	if n > 1 {
-		s := 1 << (n - 1)
+	var t []jacobianPoint
+	if n > 1 && n < 31 {
+		P := ap.toJacobian()
+		s := int32(1) << (n - 1)
 		t = make([]jacobianPoint, s)
 		t[0] = *P
 		_2P := *P
 		_2P.double()
-		for i := 1; i < s; i++ {
+		for i := int32(1); i < s; i++ {
 			t[i].add(&t[i-1], &_2P)
 		}
 	}
