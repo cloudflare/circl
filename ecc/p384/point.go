@@ -204,8 +204,8 @@ func (P *jacobianPoint) mixadd(Q *jacobianPoint, R *affinePoint) {
 
 func (P *jacobianPoint) double() {
 	delta, gamma, alpha, alpha2 := &fp384{}, &fp384{}, &fp384{}, &fp384{}
-	fp384Mul(delta, &P.z, &P.z)
-	fp384Mul(gamma, &P.y, &P.y)
+	fp384Sqr(delta, &P.z)
+	fp384Sqr(gamma, &P.y)
 	fp384Sub(alpha, &P.x, delta)
 	fp384Add(alpha2, &P.x, delta)
 	fp384Mul(alpha, alpha, alpha2)
