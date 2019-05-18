@@ -2,7 +2,7 @@
 
 #include "textflag.h"
 
-TEXT ·fp751ConditionalSwap(SB), NOSPLIT, $0-17
+TEXT ·cswapP751(SB), NOSPLIT, $0-17
 	MOVD	x+0(FP), R0
 	MOVD	y+8(FP), R1
 	MOVB	choice+16(FP), R2
@@ -67,7 +67,7 @@ TEXT ·fp751ConditionalSwap(SB), NOSPLIT, $0-17
 
 	RET
 
-TEXT ·fp751AddReduced(SB), NOSPLIT, $0-24
+TEXT ·addP751(SB), NOSPLIT, $0-24
 	MOVD	z+0(FP), R2
 	MOVD	x+8(FP), R0
 	MOVD	y+16(FP), R1
@@ -102,20 +102,20 @@ TEXT ·fp751AddReduced(SB), NOSPLIT, $0-24
 	ADC	R19, R14
 
 	// Subtract 2 * p751 in R15-R24 from the result in R3-R14
-	LDP	·p751x2+0(SB), (R15, R16)
+	LDP	·P751x2+0(SB), (R15, R16)
 	SUBS	R15, R3
 	SBCS	R16, R4
-	LDP	·p751x2+40(SB), (R17, R19)
+	LDP	·P751x2+40(SB), (R17, R19)
 	SBCS	R16, R5
 	SBCS	R16, R6
 	SBCS	R16, R7
-	LDP	·p751x2+56(SB), (R20, R21)
+	LDP	·P751x2+56(SB), (R20, R21)
 	SBCS	R17, R8
 	SBCS	R19, R9
-	LDP	·p751x2+72(SB), (R22, R23)
+	LDP	·P751x2+72(SB), (R22, R23)
 	SBCS	R20, R10
 	SBCS	R21, R11
-	MOVD	·p751x2+88(SB), R24
+	MOVD	·P751x2+88(SB), R24
 	SBCS	R22, R12
 	SBCS	R23, R13
 	SBCS	R24, R14
@@ -153,7 +153,7 @@ TEXT ·fp751AddReduced(SB), NOSPLIT, $0-24
 
 	RET
 
-TEXT ·fp751SubReduced(SB), NOSPLIT, $0-24
+TEXT ·subP751(SB), NOSPLIT, $0-24
 	MOVD	z+0(FP), R2
 	MOVD	x+8(FP), R0
 	MOVD	y+16(FP), R1
@@ -189,10 +189,10 @@ TEXT ·fp751SubReduced(SB), NOSPLIT, $0-24
 	SBC	ZR, ZR, R15
 
 	// If x - y < 0, R15 is 1 and 2 * p751 should be added
-	LDP	·p751x2+0(SB), (R16, R17)
+	LDP	·P751x2+0(SB), (R16, R17)
 	AND	R15, R16
 	AND	R15, R17
-	LDP	·p751x2+40(SB), (R19, R20)
+	LDP	·P751x2+40(SB), (R19, R20)
 	AND	R15, R19
 	AND	R15, R20
 
@@ -207,10 +207,10 @@ TEXT ·fp751SubReduced(SB), NOSPLIT, $0-24
 	STP	(R7, R8), 32(R2)
 	ADCS	R20, R9
 
-	LDP	·p751x2+56(SB), (R16, R17)
+	LDP	·P751x2+56(SB), (R16, R17)
 	AND	R15, R16
 	AND	R15, R17
-	LDP	·p751x2+72(SB), (R19, R20)
+	LDP	·P751x2+72(SB), (R19, R20)
 	AND	R15, R19
 	AND	R15, R20
 
@@ -221,56 +221,14 @@ TEXT ·fp751SubReduced(SB), NOSPLIT, $0-24
 	STP	(R11, R12), 64(R2)
 	ADCS	R20, R13
 
-	MOVD	·p751x2+88(SB), R16
+	MOVD	·P751x2+88(SB), R16
 	AND	R15, R16
 	ADC	R16, R14
 	STP	(R13, R14), 80(R2)
 
 	RET
 
-TEXT ·fp751AddLazy(SB), NOSPLIT, $0-24
-	MOVD	z+0(FP), R2
-	MOVD	x+8(FP), R0
-	MOVD	y+16(FP), R1
-
-	// Load first summand into R3-R14
-	// Add first summand and second summand and store result in R3-R14
-	LDP	0(R0), (R3, R4)
-	LDP	0(R1), (R15, R16)
-	LDP	16(R0), (R5, R6)
-	LDP	16(R1), (R17, R19)
-	ADDS	R15, R3
-	ADCS	R16, R4
-	STP	(R3, R4), 0(R2)
-	ADCS	R17, R5
-	ADCS	R19, R6
-	STP	(R5, R6), 16(R2)
-
-	LDP	32(R0), (R7, R8)
-	LDP	32(R1), (R15, R16)
-	LDP	48(R0), (R9, R10)
-	LDP	48(R1), (R17, R19)
-	ADCS	R15, R7
-	ADCS	R16, R8
-	STP	(R7, R8), 32(R2)
-	ADCS	R17, R9
-	ADCS	R19, R10
-	STP	(R9, R10), 48(R2)
-
-	LDP	64(R0), (R11, R12)
-	LDP	64(R1), (R15, R16)
-	LDP	80(R0), (R13, R14)
-	LDP	80(R1), (R17, R19)
-	ADCS	R15, R11
-	ADCS	R16, R12
-	STP	(R11, R12), 64(R2)
-	ADCS	R17, R13
-	ADC	R19, R14
-	STP	(R13, R14), 80(R2)
-
-	RET
-
-TEXT ·fp751X2AddLazy(SB), NOSPLIT, $0-24
+TEXT ·adlP751(SB), NOSPLIT, $0-24
 	MOVD	z+0(FP), R2
 	MOVD	x+8(FP), R0
 	MOVD	y+16(FP), R1
@@ -343,7 +301,7 @@ TEXT ·fp751X2AddLazy(SB), NOSPLIT, $0-24
 
 	RET
 
-TEXT ·fp751X2SubLazy(SB), NOSPLIT, $0-24
+TEXT ·sulP751(SB), NOSPLIT, $0-24
 	MOVD	z+0(FP), R2
 	MOVD	x+8(FP), R0
 	MOVD	y+16(FP), R1
@@ -410,9 +368,9 @@ TEXT ·fp751X2SubLazy(SB), NOSPLIT, $0-24
 	SBC	ZR, ZR, R15
 
 	// If x - y < 0, R15 is 1 and p751 should be added
-	MOVD	·p751+0(SB), R20
+	MOVD	·P751+0(SB), R20
 	AND	R15, R20
-	LDP	·p751+40(SB), (R16, R17)
+	LDP	·P751+40(SB), (R16, R17)
 	ADDS	R20, R3
 	ADCS	R20, R4
 	STP	(R3, R4), 96(R2)
@@ -421,21 +379,21 @@ TEXT ·fp751X2SubLazy(SB), NOSPLIT, $0-24
 	STP	(R5, R6), 112(R2)
 	ADCS	R20, R7
 
-	LDP	·p751+56(SB), (R19, R20)
+	LDP	·P751+56(SB), (R19, R20)
 	AND	R15, R16
 	AND 	R15, R17
 	ADCS	R16, R8
 	STP	(R7, R8), 128(R2)
 	ADCS	R17, R9
 
-	LDP	·p751+72(SB), (R16, R17)
+	LDP	·P751+72(SB), (R16, R17)
 	AND	R15, R19
 	AND	R15, R20
 	ADCS	R19, R10
 	STP	(R9, R10), 144(R2)
 	ADCS	R20, R11
 
-	MOVD	·p751+88(SB), R19
+	MOVD	·P751+88(SB), R19
 	AND 	R15, R16
 	AND 	R15, R17
 	ADCS	R16, R12
@@ -607,7 +565,7 @@ TEXT ·fp751X2SubLazy(SB), NOSPLIT, $0-24
 	ADC	ZR, Y2, T8
 
 
-TEXT ·fp751Mul(SB), NOSPLIT, $0-24
+TEXT ·mulP751(SB), NOSPLIT, $0-24
 	MOVD	z+0(FP), R2
 	MOVD	x+8(FP), R0
 	MOVD	y+16(FP), R1
@@ -827,12 +785,12 @@ TEXT ·fp751Mul(SB), NOSPLIT, $0-24
 
 	RET
 
-TEXT ·fp751MontgomeryReduce(SB), NOSPLIT, $0-16
+TEXT ·rdcP751(SB), NOSPLIT, $0-16
 	MOVD	z+0(FP), R0
 	MOVD	x+8(FP), R1
 
 	// Load p751+1 in R14-R17, R29, R19-R20, spread over arithmetic
-	LDP	·p751p1+40(SB), (R14, R15)
+	LDP	·P751p1+40(SB), (R14, R15)
 	// z0-z11 will be R2-R13
 	// Load x0-x4 to z0-z4 and x5, spread over arithmetic
 	LDP	0(R1), (R2, R3)
@@ -852,7 +810,7 @@ TEXT ·fp751MontgomeryReduce(SB), NOSPLIT, $0-16
 	ADC	R23, ZR, R26
 
 	MUL	R3, R14, R22
-	LDP	·p751p1+56(SB), (R16, R17)
+	LDP	·P751p1+56(SB), (R16, R17)
 	UMULH	R3, R14, R23
 	ADDS	R22, R25
 	ADCS	R23, R26
@@ -878,7 +836,7 @@ TEXT ·fp751MontgomeryReduce(SB), NOSPLIT, $0-16
 	ADC	ZR, R25
 
 	MUL	R4, R14, R22
-	LDP	·p751p1+72(SB), (R29, R19)
+	LDP	·P751p1+72(SB), (R29, R19)
 	UMULH	R4, R14, R23
 	ADDS	R22, R26
 	ADCS	R23, R24
@@ -897,7 +855,7 @@ TEXT ·fp751MontgomeryReduce(SB), NOSPLIT, $0-16
 	ADC	ZR, ZR, R26
 
 	MUL	R3, R16, R22
-	MOVD	·p751p1+88(SB), R20
+	MOVD	·P751p1+88(SB), R20
 	UMULH	R3, R16, R23
 	ADDS	R22, R24
 	ADCS	R23, R25
@@ -1454,33 +1412,33 @@ TEXT ·fp751MontgomeryReduce(SB), NOSPLIT, $0-16
 
 	RET
 
-TEXT ·fp751StrongReduce(SB), NOSPLIT, $0-8
+TEXT ·modP751(SB), NOSPLIT, $0-8
 	MOVD	x+0(FP), R0
 
 	// Keep x in R1-R12, p751 in R13-R21, subtract to R1-R12
-	MOVD	·p751+0(SB), R13
+	MOVD	·P751+0(SB), R13
 	LDP	0(R0), (R1, R2)
 	LDP	16(R0), (R3, R4)
 	SUBS	R13, R1
 	SBCS	R13, R2
 
 	LDP	32(R0), (R5, R6)
-	LDP	·p751+40(SB), (R14, R15)
+	LDP	·P751+40(SB), (R14, R15)
 	SBCS	R13, R3
 	SBCS	R13, R4
 
 	LDP	48(R0), (R7, R8)
-	LDP	·p751+56(SB), (R16, R17)
+	LDP	·P751+56(SB), (R16, R17)
 	SBCS	R13, R5
 	SBCS	R14, R6
 
 	LDP	64(R0), (R9, R10)
-	LDP	·p751+72(SB), (R19, R20)
+	LDP	·P751+72(SB), (R19, R20)
 	SBCS	R15, R7
 	SBCS	R16, R8
 
 	LDP	80(R0), (R11, R12)
-	MOVD	·p751+88(SB), R21
+	MOVD	·P751+88(SB), R21
 	SBCS	R17, R9
 	SBCS	R19, R10
 
