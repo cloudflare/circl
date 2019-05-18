@@ -361,7 +361,7 @@
 //    * MULS: either MULS_128x320_MULX or MULS_128x320_MULX_ADCX_ADOX
 // Output: OUT 512-bit
 #define REDC(OUT, IN, MULS) \
-	MULS(0(IN), ·p503p1, R8, R9, R10, R11, R12, R13, R14, BX, CX, R15) \
+	MULS(0(IN), ·P503p1, R8, R9, R10, R11, R12, R13, R14, BX, CX, R15) \
 	XORQ    R15, R15        \
 	ADDQ    (24)(IN), R8    \
 	ADCQ    (32)(IN), R9    \
@@ -395,7 +395,7 @@
 	MOVQ    R11, (112)(IN)  \
 	MOVQ    R12, (120)(IN)  \
 	\
-	MULS(16(IN), ·p503p1, R8, R9, R10, R11, R12, R13, R14, BX, CX, R15)    \
+	MULS(16(IN), ·P503p1, R8, R9, R10, R11, R12, R13, R14, BX, CX, R15)    \
 	XORQ    R15, R15        \
 	ADDQ    (40)(IN), R8    \
 	ADCQ    (48)(IN), R9    \
@@ -423,7 +423,7 @@
 	MOVQ    R9, (112)(IN)   \
 	MOVQ    R10, (120)(IN)  \
 	\
-	MULS(32(IN), ·p503p1, R8, R9, R10, R11, R12, R13, R14, BX, CX, R15)    \
+	MULS(32(IN), ·P503p1, R8, R9, R10, R11, R12, R13, R14, BX, CX, R15)    \
 	XORQ    R15, R15        \
 	XORQ    BX, BX          \
 	ADDQ    ( 56)(IN), R8   \
@@ -445,7 +445,7 @@
 	MOVQ    BX,  (120)(IN)  \
 	MOVQ    R9,  (  0)(OUT) \ // Result: OUT[0]
 	\
-	MULS(48(IN), ·p503p1, R8, R9, R10, R11, R12, R13, R14, BX, CX, R15)    \
+	MULS(48(IN), ·P503p1, R8, R9, R10, R11, R12, R13, R14, BX, CX, R15)    \
 	ADDQ    ( 72)(IN), R8   \
 	ADCQ    ( 80)(IN), R9   \
 	ADCQ    ( 88)(IN), R10  \
@@ -461,7 +461,7 @@
 	MOVQ    R13, (48)(OUT)  \ // Result: OUT[6] and OUT[7]
 	MOVQ    R14, (56)(OUT)
 
-TEXT ·fp503StrongReduce(SB), NOSPLIT, $0-8
+TEXT ·modP503(SB), NOSPLIT, $0-8
 	MOVQ	x+0(FP), REG_P1
 
 	// Zero AX for later use:
@@ -508,7 +508,7 @@ TEXT ·fp503StrongReduce(SB), NOSPLIT, $0-8
 
 	RET
 
-TEXT ·fp503ConditionalSwap(SB),NOSPLIT,$0-17
+TEXT ·cswapP503(SB),NOSPLIT,$0-17
 
 	MOVQ	x+0(FP), REG_P1
 	MOVQ	y+8(FP), REG_P2
@@ -544,7 +544,7 @@ TEXT ·fp503ConditionalSwap(SB),NOSPLIT,$0-17
 
 	RET
 
-TEXT ·fp503AddReduced(SB),NOSPLIT,$0-24
+TEXT ·addP503(SB),NOSPLIT,$0-24
 
 	MOVQ	z+0(FP), REG_P3
 	MOVQ	x+8(FP), REG_P1
@@ -625,7 +625,7 @@ TEXT ·fp503AddReduced(SB),NOSPLIT,$0-24
 	MOVQ    (56)(REG_P3), AX; ADCQ    R14, AX; MOVQ    AX, (56)(REG_P3)
 	RET
 
-TEXT ·fp503SubReduced(SB), NOSPLIT, $0-24
+TEXT ·subP503(SB), NOSPLIT, $0-24
 
 	MOVQ    z+0(FP), REG_P3
 	MOVQ    x+8(FP), REG_P1
@@ -691,7 +691,7 @@ TEXT ·fp503SubReduced(SB), NOSPLIT, $0-24
 
 	RET
 
-TEXT ·fp503Mul(SB), NOSPLIT, $104-24
+TEXT ·mulP503(SB), NOSPLIT, $104-24
 	MOVQ    z+0(FP), CX
 	MOVQ    x+8(FP), REG_P1
 	MOVQ    y+16(FP), REG_P2
@@ -1189,7 +1189,7 @@ mul_with_mulx:
 	MUL(CX, REG_P1, REG_P2, MULS256_MULX)
 	RET
 
-TEXT ·fp503MontgomeryReduce(SB), $0-16
+TEXT ·rdcP503(SB), $0-16
 	MOVQ    z+0(FP), REG_P2
 	MOVQ    x+8(FP), REG_P1
 
@@ -1516,42 +1516,7 @@ redc_with_mulx:
 	REDC(REG_P2, REG_P1, MULS_128x320_MULX)
 	RET
 
-TEXT ·fp503AddLazy(SB), NOSPLIT, $0-24
-
-	MOVQ z+0(FP), REG_P3
-	MOVQ x+8(FP), REG_P1
-	MOVQ y+16(FP), REG_P2
-
-	MOVQ	(REG_P1), R8
-	MOVQ	(8)(REG_P1), R9
-	MOVQ	(16)(REG_P1), R10
-	MOVQ	(24)(REG_P1), R11
-	MOVQ	(32)(REG_P1), R12
-	MOVQ	(40)(REG_P1), R13
-	MOVQ	(48)(REG_P1), R14
-	MOVQ	(56)(REG_P1), R15
-
-	ADDQ	(REG_P2), R8
-	ADCQ	(8)(REG_P2), R9
-	ADCQ	(16)(REG_P2), R10
-	ADCQ	(24)(REG_P2), R11
-	ADCQ	(32)(REG_P2), R12
-	ADCQ	(40)(REG_P2), R13
-	ADCQ	(48)(REG_P2), R14
-	ADCQ	(56)(REG_P2), R15
-
-	MOVQ	R8, (REG_P3)
-	MOVQ	R9, (8)(REG_P3)
-	MOVQ	R10, (16)(REG_P3)
-	MOVQ	R11, (24)(REG_P3)
-	MOVQ	R12, (32)(REG_P3)
-	MOVQ	R13, (40)(REG_P3)
-	MOVQ	R14, (48)(REG_P3)
-	MOVQ	R15, (56)(REG_P3)
-
-	RET
-
-TEXT ·fp503X2AddLazy(SB), NOSPLIT, $0-24
+TEXT ·adlP503(SB), NOSPLIT, $0-24
 
 	MOVQ	z+0(FP), REG_P3
 	MOVQ	x+8(FP), REG_P1
@@ -1613,7 +1578,7 @@ TEXT ·fp503X2AddLazy(SB), NOSPLIT, $0-24
 
 	RET
 
-TEXT ·fp503X2SubLazy(SB), NOSPLIT, $0-24
+TEXT ·sulP503(SB), NOSPLIT, $0-24
 
 	MOVQ z+0(FP), REG_P3
 	MOVQ x+8(FP), REG_P1

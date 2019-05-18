@@ -8,20 +8,25 @@ import (
 	"math/big"
 	"testing"
 
-	. "github.com/cloudflare/circl/dh/sidh/internal/isogeny"
+	"github.com/cloudflare/circl/dh/sidh/internal/common"
+	. "github.com/cloudflare/circl/internal/test"
 )
 
 /* -------------------------------------------------------------------------
    Test data
    -------------------------------------------------------------------------*/
-var tdata = map[uint8]struct {
+type sidhVec struct {
+	id   uint8
 	name string
 	PkA  string
 	PrA  string
 	PkB  string
 	PrB  string
-}{
+}
+
+var tdataSidh = map[uint8]sidhVec{
 	FP_503: {
+		id:   FP_503,
 		name: "P-503",
 		PrA:  "B0AD510708F4ABCF3E0D97DC2F2FF112D9D2AAE49D97FFD1E4267F21C6E71C03",
 		PrB:  "A885A8B889520A6DBAD9FB33365E5B77FDED629440A16A533F259A510F63A822",
@@ -51,6 +56,7 @@ var tdata = map[uint8]struct {
 			"3E3DAD7DFF935EE509D5DE561842B678CCEB133D62E270E9AC3E",
 	},
 	FP_751: {
+		id:   FP_751,
 		name: "P-751",
 		// PrA - Alice's Private Key: 2*randint(0,2^371)
 		PrA: "C09957CC83045FB4C3726384D784476ACB6FFD92E5B15B3C2D451BA063F1BD4CED8FBCF682A98DD0954D3" +
@@ -92,23 +98,6 @@ var tdata = map[uint8]struct {
 /* -------------------------------------------------------------------------
    Helpers
    -------------------------------------------------------------------------*/
-// Fail if err !=nil. Display msg as an error message
-func checkErr(t testing.TB, err error, msg string) {
-	if err != nil {
-		t.Error(msg)
-	}
-}
-
-// Utility used for running same test with all registered prime fields
-type MultiIdTestingFunc func(testing.TB, uint8)
-
-func Do(f MultiIdTestingFunc, t testing.TB) {
-	for id, val := range tdata {
-		fmt.Printf("\tTesting: %s\n", val.name)
-		f(t, id)
-	}
-}
-
 // Converts string to private key
 func convToPrv(s string, v KeyVariant, id uint8) *PrivateKey {
 	key := NewPrivateKey(id, v)
@@ -140,72 +129,81 @@ func convToPub(s string, v KeyVariant, id uint8) *PublicKey {
 /* -------------------------------------------------------------------------
    Unit tests
    -------------------------------------------------------------------------*/
-func testKeygen(t testing.TB, id uint8) {
-	alicePrivate := convToPrv(tdata[id].PrA, KeyVariant_SIDH_A, id)
-	bobPrivate := convToPrv(tdata[id].PrB, KeyVariant_SIDH_B, id)
-	expPubA := convToPub(tdata[id].PkA, KeyVariant_SIDH_A, id)
-	expPubB := convToPub(tdata[id].PkB, KeyVariant_SIDH_B, id)
+func testKeygen(t *testing.T, v sidhVec) {
+	pubA := NewPublicKey(v.id, KeyVariant_SIDH_A)
+	pubB := NewPublicKey(v.id, KeyVariant_SIDH_B)
+	alicePrivate := convToPrv(v.PrA, KeyVariant_SIDH_A, v.id)
+	bobPrivate := convToPrv(v.PrB, KeyVariant_SIDH_B, v.id)
+	expPubA := convToPub(v.PkA, KeyVariant_SIDH_A, v.id)
+	expPubB := convToPub(v.PkB, KeyVariant_SIDH_B, v.id)
 
-	pubA := alicePrivate.GeneratePublicKey()
-	pubB := bobPrivate.GeneratePublicKey()
+	alicePrivate.GeneratePublicKey(pubA)
+	bobPrivate.GeneratePublicKey(pubB)
 
-	if !bytes.Equal(pubA.Export(), expPubA.Export()) {
-		t.Fatalf("unexpected value of public key A")
+	got := make([]byte, expPubA.Size())
+	exp := make([]byte, expPubA.Size())
+	pubA.Export(got)
+	expPubA.Export(exp)
+	if !bytes.Equal(got, exp) {
+		t.Fatalf("unexpected value of public key A\ngot [%X]\nexp [%X]", got, exp)
 	}
-	if !bytes.Equal(pubB.Export(), expPubB.Export()) {
-		t.Fatalf("unexpected value of public key B")
+
+	got = make([]byte, expPubB.Size())
+	exp = make([]byte, expPubB.Size())
+	if !bytes.Equal(got, exp) {
+		t.Fatalf("unexpected value of public key B\ngot [%X]\nexp [%X]", got, exp)
 	}
 }
 
-func testRoundtrip(t testing.TB, id uint8) {
+func testRoundtrip(t *testing.T, v sidhVec) {
 	var err error
-
-	prvA := NewPrivateKey(id, KeyVariant_SIDH_A)
-	prvB := NewPrivateKey(id, KeyVariant_SIDH_B)
+	pubA := NewPublicKey(v.id, KeyVariant_SIDH_A)
+	pubB := NewPublicKey(v.id, KeyVariant_SIDH_B)
+	prvA := NewPrivateKey(v.id, KeyVariant_SIDH_A)
+	prvB := NewPrivateKey(v.id, KeyVariant_SIDH_B)
+	s1 := make([]byte, common.Params(v.id).SharedSecretSize)
+	s2 := make([]byte, common.Params(v.id).SharedSecretSize)
 
 	// Generate private keys
 	err = prvA.Generate(rand.Reader)
-	checkErr(t, err, "key generation failed")
+	CheckNoErr(t, err, "key generation failed")
 	err = prvB.Generate(rand.Reader)
-	checkErr(t, err, "key generation failed")
+	CheckNoErr(t, err, "key generation failed")
 
 	// Generate public keys
-	pubA := prvA.GeneratePublicKey()
-	pubB := prvB.GeneratePublicKey()
+	prvA.GeneratePublicKey(pubA)
+	prvB.GeneratePublicKey(pubB)
 
 	// Derive shared secret
-	s1, err := DeriveSecret(prvB, pubA)
-	checkErr(t, err, "")
-
-	s2, err := DeriveSecret(prvA, pubB)
-	checkErr(t, err, "")
+	prvB.DeriveSecret(s1, pubA)
+	prvA.DeriveSecret(s2, pubB)
 
 	if !bytes.Equal(s1[:], s2[:]) {
-		t.Fatalf("Tthe two shared keys: \n%X, \n%X do not match", s1, s2)
+		t.Fatalf("Two shared keys do not match:\ns1 [%X]\ns2 [%X]", s1, s2)
 	}
 }
 
-func testKeyAgreement(t testing.TB, id uint8, pkA, prA, pkB, prB string) {
+func testKeyAgreement(t *testing.T, v sidhVec) {
 	var e error
+	s1 := make([]byte, common.Params(v.id).SharedSecretSize)
+	s2 := make([]byte, common.Params(v.id).SharedSecretSize)
 
 	// KeyPairs
-	alicePublic := convToPub(pkA, KeyVariant_SIDH_A, id)
-	bobPublic := convToPub(pkB, KeyVariant_SIDH_B, id)
-	alicePrivate := convToPrv(prA, KeyVariant_SIDH_A, id)
-	bobPrivate := convToPrv(prB, KeyVariant_SIDH_B, id)
+	alicePublic := convToPub(v.PkA, KeyVariant_SIDH_A, v.id)
+	bobPublic := convToPub(v.PkB, KeyVariant_SIDH_B, v.id)
+	alicePrivate := convToPrv(v.PrA, KeyVariant_SIDH_A, v.id)
+	bobPrivate := convToPrv(v.PrB, KeyVariant_SIDH_B, v.id)
 
 	// Do actual test
-	s1, e := DeriveSecret(bobPrivate, alicePublic)
-	checkErr(t, e, "derivation s1")
-	s2, e := DeriveSecret(alicePrivate, bobPublic)
-	checkErr(t, e, "derivation s1")
+	bobPrivate.DeriveSecret(s1, alicePublic)
+	alicePrivate.DeriveSecret(s2, bobPublic)
 
 	if !bytes.Equal(s1[:], s2[:]) {
-		t.Fatalf("two shared keys: %d, %d do not match", s1, s2)
+		t.Fatalf("two shared keys do not match\ngot [%X]\nexp [%X]", s1, s2)
 	}
 
 	// Negative case
-	dec, e := hex.DecodeString(tdata[id].PkA)
+	dec, e := hex.DecodeString(v.PkA)
 	if e != nil {
 		t.FailNow()
 	}
@@ -215,53 +213,64 @@ func testKeyAgreement(t testing.TB, id uint8, pkA, prA, pkB, prB string) {
 		t.FailNow()
 	}
 
-	s1, e = DeriveSecret(bobPrivate, alicePublic)
-	checkErr(t, e, "derivation of s1 failed")
-	s2, e = DeriveSecret(alicePrivate, bobPublic)
-	checkErr(t, e, "derivation of s2 failed")
-
+	bobPrivate.DeriveSecret(s1, alicePublic)
+	alicePrivate.DeriveSecret(s2, bobPublic)
 	if bytes.Equal(s1[:], s2[:]) {
-		t.Fatalf("The two shared keys: %d, %d match", s1, s2)
+		t.Fatalf("DeriveSecret produces wrong results. The two shared keys match, but they shouldn't")
 	}
 }
 
-func testImportExport(t testing.TB, id uint8) {
+func testImportExport(t *testing.T, v sidhVec) {
 	var err error
-	a := NewPublicKey(id, KeyVariant_SIDH_A)
-	b := NewPublicKey(id, KeyVariant_SIDH_B)
+	a := NewPublicKey(v.id, KeyVariant_SIDH_A)
+	b := NewPublicKey(v.id, KeyVariant_SIDH_B)
 
 	// Import keys
-	a_hex, err := hex.DecodeString(tdata[id].PkA)
-	checkErr(t, err, "invalid hex-number provided")
+	a_hex, err := hex.DecodeString(v.PkA)
+	CheckNoErr(t, err, "invalid hex-number provided")
 
 	err = a.Import(a_hex)
-	checkErr(t, err, "import failed")
+	CheckNoErr(t, err, "import failed")
 
-	b_hex, err := hex.DecodeString(tdata[id].PkB)
-	checkErr(t, err, "invalid hex-number provided")
+	b_hex, err := hex.DecodeString(v.PkB)
+	CheckNoErr(t, err, "invalid hex-number provided")
 
 	err = b.Import(b_hex)
-	checkErr(t, err, "import failed")
+	CheckNoErr(t, err, "import failed")
+
+	aBytes := make([]byte, a.Size())
+	bBytes := make([]byte, b.Size())
+	a.Export(aBytes)
+	b.Export(bBytes)
 
 	// Export and check if same
-	if !bytes.Equal(b.Export(), b_hex) || !bytes.Equal(a.Export(), a_hex) {
+	if !bytes.Equal(bBytes, b_hex) || !bytes.Equal(aBytes, a_hex) {
 		t.Fatalf("export/import failed")
 	}
 
-	if (len(b.Export()) != b.Size()) || (len(a.Export()) != a.Size()) {
+	if (len(bBytes) != b.Size()) || (len(aBytes) != a.Size()) {
 		t.Fatalf("wrong size of exported keys")
+	}
+
+	// Ensure that public key is unchanged after it is exported
+	aBytes2 := make([]byte, a.Size())
+	bBytes2 := make([]byte, b.Size())
+	a.Export(aBytes2)
+	b.Export(bBytes2)
+	if !bytes.Equal(aBytes, aBytes2) || !bytes.Equal(aBytes, aBytes2) {
+		t.Fatalf("Second export doesn't match first export")
 	}
 }
 
 func testPrivateKeyBelowMax(t testing.TB, id uint8) {
-	params := Params(id)
-	for variant, keySz := range map[KeyVariant]*DomainParams{
-		KeyVariant_SIDH_A: &params.A,
-		KeyVariant_SIDH_B: &params.B} {
+	for variant, keySz := range map[KeyVariant]*common.DomainParams{
+		KeyVariant_SIDH_A: &common.Params(id).A,
+		KeyVariant_SIDH_B: &common.Params(id).B} {
 
-		func(v KeyVariant, dp *DomainParams) {
+		func(v KeyVariant, dp *common.DomainParams) {
 			var blen = int(dp.SecretByteLen)
 			var prv = NewPrivateKey(id, v)
+			var secretBytes = make([]byte, prv.Size())
 
 			// Calculate either (2^e2 - 1) or (2^s - 1); where s=ceil(log_2(3^e3)))
 			maxSecertVal := big.NewInt(int64(dp.SecretBitLen))
@@ -271,10 +280,10 @@ func testPrivateKeyBelowMax(t testing.TB, id uint8) {
 			// Do same test 1000 times
 			for i := 0; i < 1000; i++ {
 				err := prv.Generate(rand.Reader)
-				checkErr(t, err, "Private key generation")
+				CheckNoErr(t, err, "Private key generation")
 
 				// Convert to big-endian, as that's what expected by (*Int)SetBytes()
-				secretBytes := prv.Export()
+				prv.Export(secretBytes)
 				for i := 0; i < int(blen/2); i++ {
 					tmp := secretBytes[i] ^ secretBytes[blen-i-1]
 					secretBytes[i] = tmp ^ secretBytes[i]
@@ -290,55 +299,57 @@ func testPrivateKeyBelowMax(t testing.TB, id uint8) {
 	}
 }
 
-func TestKeyAgreement(t *testing.T) {
-	for id, val := range tdata {
-		fmt.Printf("\tTesting: %s\n", val.name)
-		testKeyAgreement(t, id, tdata[id].PkA, tdata[id].PrA, tdata[id].PkB, tdata[id].PrB)
-	}
-}
-
 func TestKeyAgreementP751_AliceEvenNumber(t *testing.T) {
 	// even alice
-	prE := "C09957CC83045FB4C3726384D784476ACB6FFD92E5B15B3C2D451BA063F1BD4CED8FBCF682A98DD0954D37BCAF730F"
-	pkE := "8A2DE6FD963C475F7829B689C8B8306FC0917A39EBBC35CA171546269A85698FEC0379E2E1A3C567BE1B8EF5639F81F304889737E6CC444DBED4579DB204DC8C7928F5CBB1ECDD682A1B5C48C0DAF34208C06BF201BE4E6063B1BFDC42413B0537F8E76BEE645C1A24118301BAB17EB8D6E0F283BCB16EFB833E4BB3463953C93165A0DDAC55B385059F27FF7228486D0A733812C81C792BE9EC3A16A5DB0EB099EEA76AC0E59612251A3AD19F7CC567DA2AEBD7733171F48E471D17648692355164E27B515D2A47D7BA34B3B48A047BE7C09C4ABEE2FCC9ACA7396C8A8C9E73E29533FC7369094DFA7988778E55E53F309922C6E233F8F9C7936C3D29CEA640406FCA06450AA1978FF39F227BF06B1E072F1763447C6F513B23CDF3B0EC0379070AEE5A02D9AD8E0EB023461D631F4A9643A4C79921334945F6B33DDFC11D9703BD06B047B4DA404AB12EFD2C3A49E5C42D10DA063352748B21DE41C32A5693FE1C0DCAB111F4990CD58BECADB1892EE7A7E99C9DB4DA4E69C96E57138B99038BC9B877ECE75914EFB98DD08B9E4A2DCCB948A8F7D2F26678A9952BA0EFAB1E9CF6E51B557480DEC2BA30DE0FE4AFE30A6B30765EE75EF64F678316D81C72755AD2CFA0B8C7706B07BFA52FBC3DB84EF9E79796C0089305B1E13C78660779E0FF2A13820CE141104F976B1678990F85B2D3D2B89CD5BC4DD52603A5D24D3EFEDA44BAA0F38CDB75A220AF45EAB70F2799875D435CE50FC6315EDD4BB7AA7260AFD7CD0561B69B4FA3A817904322661C3108DA24"
-	testKeyAgreement(t, FP_751, pkE, prE, tdata[FP_751].PkB, tdata[FP_751].PrB)
+	v := tdataSidh[FP_751]
+	v.PkA = "8A2DE6FD963C475F7829B689C8B8306FC0917A39EBBC35CA171546269A85698FEC0379E2E1A3C567BE1B8EF5639F81F304889737E6CC444DBED4579DB204DC8C7928F5CBB1ECDD682A1B5C48C0DAF34208C06BF201BE4E6063B1BFDC42413B0537F8E76BEE645C1A24118301BAB17EB8D6E0F283BCB16EFB833E4BB3463953C93165A0DDAC55B385059F27FF7228486D0A733812C81C792BE9EC3A16A5DB0EB099EEA76AC0E59612251A3AD19F7CC567DA2AEBD7733171F48E471D17648692355164E27B515D2A47D7BA34B3B48A047BE7C09C4ABEE2FCC9ACA7396C8A8C9E73E29533FC7369094DFA7988778E55E53F309922C6E233F8F9C7936C3D29CEA640406FCA06450AA1978FF39F227BF06B1E072F1763447C6F513B23CDF3B0EC0379070AEE5A02D9AD8E0EB023461D631F4A9643A4C79921334945F6B33DDFC11D9703BD06B047B4DA404AB12EFD2C3A49E5C42D10DA063352748B21DE41C32A5693FE1C0DCAB111F4990CD58BECADB1892EE7A7E99C9DB4DA4E69C96E57138B99038BC9B877ECE75914EFB98DD08B9E4A2DCCB948A8F7D2F26678A9952BA0EFAB1E9CF6E51B557480DEC2BA30DE0FE4AFE30A6B30765EE75EF64F678316D81C72755AD2CFA0B8C7706B07BFA52FBC3DB84EF9E79796C0089305B1E13C78660779E0FF2A13820CE141104F976B1678990F85B2D3D2B89CD5BC4DD52603A5D24D3EFEDA44BAA0F38CDB75A220AF45EAB70F2799875D435CE50FC6315EDD4BB7AA7260AFD7CD0561B69B4FA3A817904322661C3108DA24"
+	v.PrA = "C09957CC83045FB4C3726384D784476ACB6FFD92E5B15B3C2D451BA063F1BD4CED8FBCF682A98DD0954D37BCAF730F"
+	testKeyAgreement(t, v)
 }
 
 /* -------------------------------------------------------------------------
-   Wrappers for 'testing' module
+   Wrappers for 'testing' SIDH
    -------------------------------------------------------------------------*/
-func TestKeygen(t *testing.T)       { Do(testKeygen, t) }
-func TestRoundtrip(t *testing.T)    { Do(testRoundtrip, t) }
-func TestImportExport(t *testing.T) { Do(testImportExport, t) }
+func testSidhVec(t *testing.T, m *map[uint8]sidhVec, f func(t *testing.T, v sidhVec)) {
+	for _, v := range *m {
+		t.Run(v.name, func(t *testing.T) { f(t, v) })
+	}
+}
+func TestKeygen(t *testing.T)       { testSidhVec(t, &tdataSidh, testKeygen) }
+func TestRoundtrip(t *testing.T)    { testSidhVec(t, &tdataSidh, testRoundtrip) }
+func TestImportExport(t *testing.T) { testSidhVec(t, &tdataSidh, testImportExport) }
+func TestKeyAgreement(t *testing.T) { testSidhVec(t, &tdataSidh, testKeyAgreement) }
 
 /* -------------------------------------------------------------------------
    Benchmarking
    -------------------------------------------------------------------------*/
 func BenchmarkSidhKeyAgreementP751(b *testing.B) {
 	// KeyPairs
-	alicePublic := convToPub(tdata[FP_751].PkA, KeyVariant_SIDH_A, FP_751)
-	bobPublic := convToPub(tdata[FP_751].PkB, KeyVariant_SIDH_B, FP_751)
-	alicePrivate := convToPrv(tdata[FP_751].PrA, KeyVariant_SIDH_A, FP_751)
-	bobPrivate := convToPrv(tdata[FP_751].PrB, KeyVariant_SIDH_B, FP_751)
+	alicePublic := convToPub(tdataSidh[FP_751].PkA, KeyVariant_SIDH_A, FP_751)
+	bobPublic := convToPub(tdataSidh[FP_751].PkB, KeyVariant_SIDH_B, FP_751)
+	alicePrivate := convToPrv(tdataSidh[FP_751].PrA, KeyVariant_SIDH_A, FP_751)
+	bobPrivate := convToPrv(tdataSidh[FP_751].PrB, KeyVariant_SIDH_B, FP_751)
+	var ss [2 * 94]byte
 
 	for i := 0; i < b.N; i++ {
 		// Derive shared secret
-		DeriveSecret(bobPrivate, alicePublic)
-		DeriveSecret(alicePrivate, bobPublic)
+		bobPrivate.DeriveSecret(ss[:], alicePublic)
+		alicePrivate.DeriveSecret(ss[:], bobPublic)
 	}
 }
 
 func BenchmarkSidhKeyAgreementP503(b *testing.B) {
 	// KeyPairs
-	alicePublic := convToPub(tdata[FP_503].PkA, KeyVariant_SIDH_A, FP_503)
-	bobPublic := convToPub(tdata[FP_503].PkB, KeyVariant_SIDH_B, FP_503)
-	alicePrivate := convToPrv(tdata[FP_503].PrA, KeyVariant_SIDH_A, FP_503)
-	bobPrivate := convToPrv(tdata[FP_503].PrB, KeyVariant_SIDH_B, FP_503)
+	alicePublic := convToPub(tdataSidh[FP_503].PkA, KeyVariant_SIDH_A, FP_503)
+	bobPublic := convToPub(tdataSidh[FP_503].PkB, KeyVariant_SIDH_B, FP_503)
+	alicePrivate := convToPrv(tdataSidh[FP_503].PrA, KeyVariant_SIDH_A, FP_503)
+	bobPrivate := convToPrv(tdataSidh[FP_503].PrB, KeyVariant_SIDH_B, FP_503)
+	var ss [2 * 63]byte
 
 	for i := 0; i < b.N; i++ {
 		// Derive shared secret
-		DeriveSecret(bobPrivate, alicePublic)
-		DeriveSecret(alicePrivate, bobPublic)
+		bobPrivate.DeriveSecret(ss[:], alicePublic)
+		alicePrivate.DeriveSecret(ss[:], bobPublic)
 	}
 }
 
@@ -372,66 +383,104 @@ func BenchmarkBobKeyGenPrvP503(b *testing.B) {
 
 func BenchmarkAliceKeyGenPubP751(b *testing.B) {
 	prv := NewPrivateKey(FP_751, KeyVariant_SIDH_A)
+	pub := NewPublicKey(FP_751, KeyVariant_SIDH_A)
 	prv.Generate(rand.Reader)
 	for n := 0; n < b.N; n++ {
-		prv.GeneratePublicKey()
+		prv.GeneratePublicKey(pub)
 	}
 }
 
 func BenchmarkAliceKeyGenPubP503(b *testing.B) {
 	prv := NewPrivateKey(FP_503, KeyVariant_SIDH_A)
+	pub := NewPublicKey(FP_503, KeyVariant_SIDH_A)
 	prv.Generate(rand.Reader)
 	for n := 0; n < b.N; n++ {
-		prv.GeneratePublicKey()
+		prv.GeneratePublicKey(pub)
 	}
 }
 
 func BenchmarkBobKeyGenPubP751(b *testing.B) {
 	prv := NewPrivateKey(FP_751, KeyVariant_SIDH_B)
+	pub := NewPublicKey(FP_751, KeyVariant_SIDH_B)
 	prv.Generate(rand.Reader)
 	for n := 0; n < b.N; n++ {
-		prv.GeneratePublicKey()
+		prv.GeneratePublicKey(pub)
 	}
 }
 
 func BenchmarkBobKeyGenPubP503(b *testing.B) {
 	prv := NewPrivateKey(FP_503, KeyVariant_SIDH_B)
+	pub := NewPublicKey(FP_503, KeyVariant_SIDH_B)
 	prv.Generate(rand.Reader)
 	for n := 0; n < b.N; n++ {
-		prv.GeneratePublicKey()
+		prv.GeneratePublicKey(pub)
 	}
 }
 
 func BenchmarkSharedSecretAliceP751(b *testing.B) {
-	aPr := convToPrv(tdata[FP_751].PrA, KeyVariant_SIDH_A, FP_751)
-	bPk := convToPub(tdata[FP_751].PkB, KeyVariant_SIDH_B, FP_751)
+	aPr := convToPrv(tdataSidh[FP_751].PrA, KeyVariant_SIDH_A, FP_751)
+	bPk := convToPub(tdataSidh[FP_751].PkB, KeyVariant_SIDH_B, FP_751)
+	var ss [2 * 94]byte
 	for n := 0; n < b.N; n++ {
-		DeriveSecret(aPr, bPk)
+		aPr.DeriveSecret(ss[:], bPk)
 	}
 }
 
 func BenchmarkSharedSecretAliceP503(b *testing.B) {
-	aPr := convToPrv(tdata[FP_503].PrA, KeyVariant_SIDH_A, FP_503)
-	bPk := convToPub(tdata[FP_503].PkB, KeyVariant_SIDH_B, FP_503)
+	aPr := convToPrv(tdataSidh[FP_503].PrA, KeyVariant_SIDH_A, FP_503)
+	bPk := convToPub(tdataSidh[FP_503].PkB, KeyVariant_SIDH_B, FP_503)
+	var ss [2 * 63]byte
 	for n := 0; n < b.N; n++ {
-		DeriveSecret(aPr, bPk)
+		aPr.DeriveSecret(ss[:], bPk)
 	}
 }
 
 func BenchmarkSharedSecretBobP751(b *testing.B) {
 	// m_B = 3*randint(0,3^238)
-	aPk := convToPub(tdata[FP_751].PkA, KeyVariant_SIDH_A, FP_751)
-	bPr := convToPrv(tdata[FP_751].PrB, KeyVariant_SIDH_B, FP_751)
+	aPk := convToPub(tdataSidh[FP_751].PkA, KeyVariant_SIDH_A, FP_751)
+	bPr := convToPrv(tdataSidh[FP_751].PrB, KeyVariant_SIDH_B, FP_751)
+	var ss [2 * 94]byte
 	for n := 0; n < b.N; n++ {
-		DeriveSecret(bPr, aPk)
+		bPr.DeriveSecret(ss[:], aPk)
 	}
 }
 
 func BenchmarkSharedSecretBobP503(b *testing.B) {
 	// m_B = 3*randint(0,3^238)
-	aPk := convToPub(tdata[FP_503].PkA, KeyVariant_SIDH_A, FP_503)
-	bPr := convToPrv(tdata[FP_503].PrB, KeyVariant_SIDH_B, FP_503)
+	aPk := convToPub(tdataSidh[FP_503].PkA, KeyVariant_SIDH_A, FP_503)
+	bPr := convToPrv(tdataSidh[FP_503].PrB, KeyVariant_SIDH_B, FP_503)
+	var ss [2 * 63]byte
 	for n := 0; n < b.N; n++ {
-		DeriveSecret(bPr, aPk)
+		bPr.DeriveSecret(ss[:], aPk)
 	}
+}
+
+// Examples
+
+func ExamplePrivateKey() {
+	// Allice's key pair
+	prvA := NewPrivateKey(FP_503, KeyVariant_SIDH_A)
+	pubA := NewPublicKey(FP_503, KeyVariant_SIDH_A)
+	// Bob's key pair
+	prvB := NewPrivateKey(FP_503, KeyVariant_SIDH_B)
+	pubB := NewPublicKey(FP_503, KeyVariant_SIDH_B)
+	// Generate keypair for Allice
+	prvA.Generate(rand.Reader)
+	prvA.GeneratePublicKey(pubA)
+	// Generate keypair for Bob
+	prvB.Generate(rand.Reader)
+	prvB.GeneratePublicKey(pubB)
+	// Buffers storing shared secret
+	ssA := make([]byte, prvA.SharedSecretSize())
+	ssB := make([]byte, prvA.SharedSecretSize())
+	// Allice calculates shared secret with hers private
+	// key and Bob's public key
+	prvA.DeriveSecret(ssA[:], pubB)
+	// Bob calculates shared secret with hers private
+	// key and Allice's public key
+	prvB.DeriveSecret(ssB[:], pubA)
+	// Check if ssA == ssB
+	fmt.Printf("%t\n", bytes.Equal(ssA, ssB))
+	// Output:
+	// true
 }

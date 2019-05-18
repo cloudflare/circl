@@ -39,7 +39,7 @@
 #define REG_P2 SI
 #define REG_P3 DX
 
-TEXT ·fp751StrongReduce(SB), NOSPLIT, $0-8
+TEXT ·modP751(SB), NOSPLIT, $0-8
 	MOVQ	x+0(FP), REG_P1
 
 	// Zero AX for later use:
@@ -98,7 +98,7 @@ TEXT ·fp751StrongReduce(SB), NOSPLIT, $0-8
 
 	RET
 
-TEXT ·fp751ConditionalSwap(SB), NOSPLIT, $0-17
+TEXT ·cswapP751(SB), NOSPLIT, $0-17
 
 	MOVQ	x+0(FP), REG_P1
 	MOVQ	y+8(FP), REG_P2
@@ -228,7 +228,7 @@ TEXT ·fp751ConditionalSwap(SB), NOSPLIT, $0-17
 
 	RET
 
-TEXT ·fp751AddReduced(SB), NOSPLIT, $0-24
+TEXT ·addP751(SB), NOSPLIT, $0-24
 
 	MOVQ	z+0(FP), REG_P3
 	MOVQ	x+8(FP), REG_P1
@@ -359,7 +359,7 @@ TEXT ·fp751AddReduced(SB), NOSPLIT, $0-24
 
 	RET
 
-TEXT ·fp751SubReduced(SB), NOSPLIT, $0-24
+TEXT ·subP751(SB), NOSPLIT, $0-24
 
 	MOVQ	z+0(FP),  REG_P3
 	MOVQ	x+8(FP),  REG_P1
@@ -462,7 +462,7 @@ TEXT ·fp751SubReduced(SB), NOSPLIT, $0-24
 
 	RET
 
-TEXT ·fp751Mul(SB), $96-24
+TEXT ·mulP751(SB), $96-24
 
 	// Here we store the destination in CX instead of in REG_P3 because the
 	// multiplication instructions use DX as an implicit destination
@@ -1618,7 +1618,7 @@ TEXT ·fp751Mul(SB), $96-24
 // Output: OUT 768-bit
 #define REDC(C, M0, MULS) 	\
     \ // a[0-3] x p751p1_nz --> result: [reg_p2+48], [reg_p2+56], [reg_p2+64], and rbp, r8:r14
-    MULS(M0, ·p751p1, 48+C, R8, R9, R13, R10, R14, R12, R11, BP, BX, CX, R15) \
+    MULS(M0, ·P751p1, 48+C, R8, R9, R13, R10, R14, R12, R11, BP, BX, CX, R15) \
     XORQ    R15, R15        \
     MOVQ    48+C, AX        \
     MOVQ    56+C, DX        \
@@ -1669,7 +1669,7 @@ TEXT ·fp751Mul(SB), $96-24
     MOVQ    R13, 176+M0     \
     MOVQ    R14, 184+M0     \
     \ // a[4-7] x p751p1_nz --> result: [reg_p2+48], [reg_p2+56], [reg_p2+64], and rbp, r8:r14
-    MULS(32+M0, ·p751p1, 48+C, R8, R9, R13, R10, R14, R12, R11, BP, BX, CX, R15) \
+    MULS(32+M0, ·P751p1, 48+C, R8, R9, R13, R10, R14, R12, R11, BP, BX, CX, R15) \
     XORQ    R15, R15          \
     MOVQ    48+C, AX        \
     MOVQ    56+C, DX        \
@@ -1708,7 +1708,7 @@ TEXT ·fp751Mul(SB), $96-24
     MOVQ    R13, 176+M0     \
     MOVQ    R14, 184+M0     \
     \ // a[8-11] x p751p1_nz --> result: [reg_p2+48], [reg_p2+56], [reg_p2+64], and rbp, r8:r14
-    MULS(64+M0, ·p751p1, 48+C, R8, R9, R13, R10, R14, R12, R11, BP, BX, CX, R15) \
+    MULS(64+M0, ·P751p1, 48+C, R8, R9, R13, R10, R14, R12, R11, BP, BX, CX, R15) \
     MOVQ    48+C, AX        \   // Final result c1:c11
     MOVQ    56+C, DX        \
     MOVQ    64+C, BX        \
@@ -1735,7 +1735,7 @@ TEXT ·fp751Mul(SB), $96-24
     MOVQ    R13, 80+C       \
     MOVQ    R14, 88+C
 
-TEXT ·fp751MontgomeryReduce(SB), $0-16
+TEXT ·rdcP751(SB), $0-16
 	MOVQ z+0(FP), REG_P2
 	MOVQ x+8(FP), REG_P1
 
@@ -2361,54 +2361,7 @@ redc_with_mulx:
 	REDC(0(REG_P2), 0(REG_P1), mul256x448bmi2)
 	RET
 
-TEXT ·fp751AddLazy(SB), NOSPLIT, $0-24
-
-	MOVQ z+0(FP), REG_P3
-	MOVQ x+8(FP), REG_P1
-	MOVQ y+16(FP), REG_P2
-
-	MOVQ	(REG_P1), R8
-	MOVQ	(8)(REG_P1), R9
-	MOVQ	(16)(REG_P1), R10
-	MOVQ	(24)(REG_P1), R11
-	MOVQ	(32)(REG_P1), R12
-	MOVQ	(40)(REG_P1), R13
-	MOVQ	(48)(REG_P1), R14
-	MOVQ	(56)(REG_P1), R15
-	MOVQ	(64)(REG_P1), AX
-	MOVQ	(72)(REG_P1), BX
-	MOVQ	(80)(REG_P1), CX
-	MOVQ	(88)(REG_P1), DI
-
-	ADDQ	(REG_P2), R8
-	ADCQ	(8)(REG_P2), R9
-	ADCQ	(16)(REG_P2), R10
-	ADCQ	(24)(REG_P2), R11
-	ADCQ	(32)(REG_P2), R12
-	ADCQ	(40)(REG_P2), R13
-	ADCQ	(48)(REG_P2), R14
-	ADCQ	(56)(REG_P2), R15
-	ADCQ	(64)(REG_P2), AX
-	ADCQ	(72)(REG_P2), BX
-	ADCQ	(80)(REG_P2), CX
-	ADCQ	(88)(REG_P2), DI
-
-	MOVQ	R8, (REG_P3)
-	MOVQ	R9, (8)(REG_P3)
-	MOVQ	R10, (16)(REG_P3)
-	MOVQ	R11, (24)(REG_P3)
-	MOVQ	R12, (32)(REG_P3)
-	MOVQ	R13, (40)(REG_P3)
-	MOVQ	R14, (48)(REG_P3)
-	MOVQ	R15, (56)(REG_P3)
-	MOVQ	AX, (64)(REG_P3)
-	MOVQ	BX, (72)(REG_P3)
-	MOVQ	CX, (80)(REG_P3)
-	MOVQ	DI, (88)(REG_P3)
-
-	RET
-
-TEXT ·fp751X2AddLazy(SB), NOSPLIT, $0-24
+TEXT ·adlP751(SB), NOSPLIT, $0-24
 
 	MOVQ z+0(FP), REG_P3
 	MOVQ x+8(FP), REG_P1
@@ -2495,7 +2448,7 @@ TEXT ·fp751X2AddLazy(SB), NOSPLIT, $0-24
 	RET
 
 
-TEXT ·fp751X2SubLazy(SB), NOSPLIT, $0-24
+TEXT ·sulP751(SB), NOSPLIT, $0-24
 
 	MOVQ z+0(FP), REG_P3
 	MOVQ x+8(FP), REG_P1

@@ -2,7 +2,7 @@
 
 #include "textflag.h"
 
-TEXT ·fp503ConditionalSwap(SB), NOSPLIT, $0-17
+TEXT ·cswapP503(SB), NOSPLIT, $0-17
 	MOVD	x+0(FP), R0
 	MOVD	y+8(FP), R1
 	MOVB	choice+16(FP), R2
@@ -49,7 +49,7 @@ TEXT ·fp503ConditionalSwap(SB), NOSPLIT, $0-17
 
 	RET
 
-TEXT ·fp503AddReduced(SB), NOSPLIT, $0-24
+TEXT ·addP503(SB), NOSPLIT, $0-24
 	MOVD	z+0(FP), R2
 	MOVD	x+8(FP), R0
 	MOVD	y+16(FP), R1
@@ -75,14 +75,14 @@ TEXT ·fp503AddReduced(SB), NOSPLIT, $0-24
 	ADC	R14, R10
 
 	// Subtract 2 * p503 in R11-R17 from the result in R3-R10
-	LDP	·p503x2+0(SB), (R11, R12)
-	LDP	·p503x2+24(SB), (R13, R14)
+	LDP	·P503x2+0(SB), (R11, R12)
+	LDP	·P503x2+24(SB), (R13, R14)
 	SUBS	R11, R3
 	SBCS	R12, R4
-	LDP	·p503x2+40(SB), (R15, R16)
+	LDP	·P503x2+40(SB), (R15, R16)
 	SBCS	R12, R5
 	SBCS	R13, R6
-	MOVD	·p503x2+56(SB), R17
+	MOVD	·P503x2+56(SB), R17
 	SBCS	R14, R7
 	SBCS	R15, R8
 	SBCS	R16, R9
@@ -113,7 +113,7 @@ TEXT ·fp503AddReduced(SB), NOSPLIT, $0-24
 
 	RET
 
-TEXT ·fp503SubReduced(SB), NOSPLIT, $0-24
+TEXT ·subP503(SB), NOSPLIT, $0-24
 	MOVD	z+0(FP), R2
 	MOVD	x+8(FP), R0
 	MOVD	y+16(FP), R1
@@ -140,14 +140,14 @@ TEXT ·fp503SubReduced(SB), NOSPLIT, $0-24
 	SBC	ZR, ZR, R19
 
 	// If x - y < 0, R19 is 1 and 2 * p503 should be added
-	LDP	·p503x2+0(SB), (R11, R12)
-	LDP	·p503x2+24(SB), (R13, R14)
+	LDP	·P503x2+0(SB), (R11, R12)
+	LDP	·P503x2+24(SB), (R13, R14)
 	AND	R19, R11
 	AND	R19, R12
-	LDP	·p503x2+40(SB), (R15, R16)
+	LDP	·P503x2+40(SB), (R15, R16)
 	AND	R19, R13
 	AND	R19, R14
-	MOVD	·p503x2+56(SB), R17
+	MOVD	·P503x2+56(SB), R17
 	AND	R19, R15
 	AND	R19, R16
 	AND	R19, R17
@@ -167,38 +167,7 @@ TEXT ·fp503SubReduced(SB), NOSPLIT, $0-24
 
 	RET
 
-TEXT ·fp503AddLazy(SB), NOSPLIT, $0-24
-	MOVD	z+0(FP), R2
-	MOVD	x+8(FP), R0
-	MOVD	y+16(FP), R1
-
-	// Load first summand into R3-R10
-	// Add first summand and second summand and store result in R3-R10
-	LDP	0(R0), (R3, R4)
-	LDP	0(R1), (R11, R12)
-	LDP	16(R0), (R5, R6)
-	LDP	16(R1), (R13, R14)
-	ADDS	R11, R3
-	ADCS	R12, R4
-	STP	(R3, R4), 0(R2)
-	ADCS	R13, R5
-	ADCS	R14, R6
-	STP	(R5, R6), 16(R2)
-
-	LDP	32(R0), (R7, R8)
-	LDP	32(R1), (R11, R12)
-	LDP	48(R0), (R9, R10)
-	LDP	48(R1), (R13, R14)
-	ADCS	R11, R7
-	ADCS	R12, R8
-	STP	(R7, R8), 32(R2)
-	ADCS	R13, R9
-	ADC	R14, R10
-	STP	(R9, R10), 48(R2)
-
-	RET
-
-TEXT ·fp503X2AddLazy(SB), NOSPLIT, $0-24
+TEXT ·adlP503(SB), NOSPLIT, $0-24
 	MOVD	z+0(FP), R2
 	MOVD	x+8(FP), R0
 	MOVD	y+16(FP), R1
@@ -249,7 +218,7 @@ TEXT ·fp503X2AddLazy(SB), NOSPLIT, $0-24
 
 	RET
 
-TEXT ·fp503X2SubLazy(SB), NOSPLIT, $0-24
+TEXT ·sulP503(SB), NOSPLIT, $0-24
 	MOVD	z+0(FP), R2
 	MOVD	x+8(FP), R0
 	MOVD	y+16(FP), R1
@@ -296,11 +265,11 @@ TEXT ·fp503X2SubLazy(SB), NOSPLIT, $0-24
 	SBC	ZR, ZR, R15
 
 	// If x - y < 0, R15 is 1 and p503 should be added
-	LDP	·p503+16(SB), (R16, R17)
-	LDP	·p503+32(SB), (R19, R20)
+	LDP	·P503+16(SB), (R16, R17)
+	LDP	·P503+32(SB), (R19, R20)
 	AND	R15, R16
 	AND	R15, R17
-	LDP	·p503+48(SB), (R21, R22)
+	LDP	·P503+48(SB), (R21, R22)
 	AND	R15, R19
 	AND	R15, R20
 	AND	R15, R21
@@ -413,7 +382,7 @@ TEXT ·fp503X2SubLazy(SB), NOSPLIT, $0-24
 
 // This implements two-level Karatsuba with a 128x128 Comba multiplier
 // at the bottom
-TEXT ·fp503Mul(SB), NOSPLIT, $0-24
+TEXT ·mulP503(SB), NOSPLIT, $0-24
 	MOVD	z+0(FP), R2
 	MOVD	x+8(FP), R0
 	MOVD	y+16(FP), R1
@@ -601,15 +570,15 @@ TEXT ·fp503Mul(SB), NOSPLIT, $0-24
 
 // This implements the shifted 2^(B*w) Montgomery reduction from
 // https://eprint.iacr.org/2016/986.pdf with B = 4, w = 64
-TEXT ·fp503MontgomeryReduce(SB), NOSPLIT, $0-16
+TEXT ·rdcP503(SB), NOSPLIT, $0-16
 	MOVD	x+8(FP), R0
 
 	// Load x0-x1
 	LDP	0(R0), (R2, R3)
 
 	// Load the prime constant in R25-R29
-	LDP	·p503p1s8+32(SB), (R25, R26)
-	LDP	·p503p1s8+48(SB), (R27, R29)
+	LDP	·P503p1s8+32(SB), (R25, R26)
+	LDP	·P503p1s8+48(SB), (R27, R29)
 
 	// [x0,x1] * p503p1s8 to R4-R9
 	MUL	R2, R25, R4		// x0 * p503p1s8[0]
@@ -752,23 +721,23 @@ TEXT ·fp503MontgomeryReduce(SB), NOSPLIT, $0-16
 
 	RET
 
-TEXT ·fp503StrongReduce(SB), NOSPLIT, $0-8
+TEXT ·modP503(SB), NOSPLIT, $0-8
 	MOVD	x+0(FP), R0
 
 	// Keep x in R1-R8, p503 in R9-R14, subtract to R1-R8
-	LDP	·p503+16(SB), (R9, R10)
+	LDP	·P503+16(SB), (R9, R10)
 	LDP	0(R0), (R1, R2)
 	LDP	16(R0), (R3, R4)
 	SUBS	R9, R1
 	SBCS	R9, R2
 
 	LDP	32(R0), (R5, R6)
-	LDP	·p503+32(SB), (R11, R12)
+	LDP	·P503+32(SB), (R11, R12)
 	SBCS	R9, R3
 	SBCS	R10, R4
 
 	LDP	48(R0), (R7, R8)
-	LDP	·p503+48(SB), (R13, R14)
+	LDP	·P503+48(SB), (R13, R14)
 	SBCS	R11, R5
 	SBCS	R12, R6
 
