@@ -4,7 +4,7 @@
 
 package sha3
 
-// This file defines the ShakeHash interface, and provides
+// This file defines the CShake struct, and provides
 // functions for creating SHAKE and cSHAKE instances, as well as utility
 // functions for hashing bytes to arbitrary-length output.
 //
@@ -17,30 +17,10 @@ package sha3
 
 import (
 	"encoding/binary"
-	"io"
 )
 
-// ShakeHash defines the interface to hash functions that
-// support arbitrary-length output.
-type ShakeHash interface {
-	// Write absorbs more data into the hash's state. It panics if input is
-	// written to it after output has been read from it.
-	io.Writer
-
-	// Read reads more output from the hash; reading affects the hash's
-	// state. (ShakeHash.Read is thus very different from Hash.Sum)
-	// It never returns an error.
-	io.Reader
-
-	// Clone returns a copy of the ShakeHash in its current state.
-	Clone() ShakeHash
-
-	// Reset resets the ShakeHash to its initial state.
-	Reset()
-}
-
 // cSHAKE specific context
-type cshakeState struct {
+type CShake struct {
 	state // SHA-3 state context and Read/Write operations
 
 	// initBlock is the cSHAKE specific initialization set of bytes. It is initialized
@@ -81,77 +61,72 @@ func leftEncode(value uint64) []byte {
 	return b[i-1:]
 }
 
-func newCShake(N, S []byte, rate int, dsbyte byte) ShakeHash {
-	c := cshakeState{state: state{rate: rate, dsbyte: dsbyte}}
+func newCShake(N, S []byte, rate int, dsbyte byte) *CShake {
 
 	// leftEncode returns max 9 bytes
-	c.initBlock = make([]byte, 0, 9*2+len(N)+len(S))
-	c.initBlock = append(c.initBlock, leftEncode(uint64(len(N)*8))...)
-	c.initBlock = append(c.initBlock, N...)
-	c.initBlock = append(c.initBlock, leftEncode(uint64(len(S)*8))...)
-	c.initBlock = append(c.initBlock, S...)
-	c.Write(bytepad(c.initBlock, c.rate))
+	initBlock := make([]byte, 0, 9*2+len(N)+len(S))
+	initBlock = append(initBlock, leftEncode(uint64(len(N)*8))...)
+	initBlock = append(initBlock, N...)
+	initBlock = append(initBlock, leftEncode(uint64(len(S)*8))...)
+	initBlock = append(initBlock, S...)
+
+	c := CShake{
+		state:     state{rate: rate, dsbyte: dsbyte},
+		initBlock: bytepad(initBlock, rate),
+	}
+	c.Write(c.initBlock)
 	return &c
 }
 
 // Reset resets the hash to initial state.
-func (c *cshakeState) Reset() {
+func (c *CShake) Reset() {
 	c.state.Reset()
-	c.Write(bytepad(c.initBlock, c.rate))
+	c.Write(c.initBlock)
 }
 
 // Clone returns copy of a cSHAKE context within its current state.
-func (c *cshakeState) Clone() ShakeHash {
-	b := make([]byte, len(c.initBlock))
-	copy(b, c.initBlock)
-	return &cshakeState{state: *c.clone(), initBlock: b}
+func (c *CShake) Clone() CShake {
+	var ret CShake
+	c.clone(&ret.state)
+	ret.initBlock = make([]byte, len(c.initBlock))
+	copy(ret.initBlock, c.initBlock)
+	return ret
 }
 
-// Clone returns copy of SHAKE context within its current state.
-func (c *state) Clone() ShakeHash {
-	return c.clone()
-}
-
-// NewShake128 creates a new SHAKE128 variable-output-length ShakeHash.
+// NewShake128 creates a new SHAKE128 variable-output-length CShake.
 // Its generic security strength is 128 bits against all attacks if at
 // least 32 bytes of its output are used.
-func NewShake128() ShakeHash {
-	if h := newShake128Asm(); h != nil {
-		return h
-	}
-	return &state{rate: rate128, dsbyte: dsbyteShake}
+func NewShake128() *CShake {
+	return &CShake{state{rate: rate128, dsbyte: dsbyteShake}, nil}
 }
 
-// NewShake256 creates a new SHAKE256 variable-output-length ShakeHash.
+// NewShake256 creates a new SHAKE256 variable-output-length CShake.
 // Its generic security strength is 256 bits against all attacks if
 // at least 64 bytes of its output are used.
-func NewShake256() ShakeHash {
-	if h := newShake256Asm(); h != nil {
-		return h
-	}
-	return &state{rate: rate256, dsbyte: dsbyteShake}
+func NewShake256() *CShake {
+	return &CShake{state{rate: rate256, dsbyte: dsbyteShake}, nil}
 }
 
-// NewCShake128 creates a new instance of cSHAKE128 variable-output-length ShakeHash,
+// NewCShake128 creates a new instance of cSHAKE128 variable-output-length CShake,
 // a customizable variant of SHAKE128.
 // N is used to define functions based on cSHAKE, it can be empty when plain cSHAKE is
 // desired. S is a customization byte string used for domain separation - two cSHAKE
 // computations on same input with different S yield unrelated outputs.
 // When N and S are both empty, this is equivalent to NewShake128.
-func NewCShake128(N, S []byte) ShakeHash {
+func NewCShake128(N, S []byte) *CShake {
 	if len(N) == 0 && len(S) == 0 {
 		return NewShake128()
 	}
 	return newCShake(N, S, rate128, dsbyteCShake)
 }
 
-// NewCShake256 creates a new instance of cSHAKE256 variable-output-length ShakeHash,
+// NewCShake256 creates a new instance of cSHAKE256 variable-output-length CShake,
 // a customizable variant of SHAKE256.
 // N is used to define functions based on cSHAKE, it can be empty when plain cSHAKE is
 // desired. S is a customization byte string used for domain separation - two cSHAKE
 // computations on same input with different S yield unrelated outputs.
 // When N and S are both empty, this is equivalent to NewShake256.
-func NewCShake256(N, S []byte) ShakeHash {
+func NewCShake256(N, S []byte) *CShake {
 	if len(N) == 0 && len(S) == 0 {
 		return NewShake256()
 	}
