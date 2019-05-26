@@ -2,15 +2,14 @@
 MK_FILE_PATH = $(lastword $(MAKEFILE_LIST))
 PRJ_DIR      = $(abspath $(dir $(MK_FILE_PATH)))
 GOPATH_LOCAL = $(PRJ_DIR)/build
-GOPATH_DIR   = $(GOPATH_LOCAL)/src/github.com/cloudflare/circl
-VENDOR_DIR   = build/vendor
+VENDOR_DIR   = $(GOPATH_LOCAL)/vendor
 COVER_DIR    = $(GOPATH_LOCAL)/coverage
 ETC_DIR      = $(PRJ_DIR)/etc
 OPTS         ?= -v
 NOASM        ?=
 GO           ?= go
 # -run="^_" as we want to avoid running tests by 'bench' and there never be a test starting with _
-BENCH_OPTS   ?= -v -bench=. -run="^_"
+BENCH_OPTS   ?= -v -bench=. -run="^_" -benchmem
 V            ?= 0
 GOARCH       ?=
 BUILD_ARCH   = $(shell $(GO) env GOARCH)
@@ -23,40 +22,19 @@ ifeq ($(V),1)
 	OPTS += -v              # Be verbose
 endif
 
-TARGETS= \
-	math/ 	\
-	hash/	\
-	dh/	    \
-	ecc/	\
-	etc/ 	\
-	kem/	\
-	utils
-
-# Packages with implementation only for AMD64
-ifeq ($(BUILD_ARCH), amd64)
-	TARGETS += ecdh
-endif
-
 fmtcheck:
 	$(ETC_DIR)/fmtcheck.sh
 
-prep-%:
-	mkdir -p $(GOPATH_DIR)
-	cp -rf $* $(GOPATH_DIR)/$*
+test: clean
+	$(GO) vet ./...
+	$(GO) test $(OPTS) ./...
 
-test: clean $(addprefix prep-,$(TARGETS))
-	cd $(GOPATH_LOCAL); GOPATH=$(GOPATH_LOCAL) $(GO) vet ./...
-	cd $(GOPATH_LOCAL); GOARCH=$(GOARCH) GOPATH=$(GOPATH_LOCAL) \
-		$(GO) test $(OPTS) ./...
+bench: clean 
+	$(GO) test $(BENCH_OPTS) ./...
 
-bench: clean $(addprefix prep-,$(TARGETS))
-	cd $(GOPATH_LOCAL); GOPATH=$(GOPATH_LOCAL) $(GO) test \
-		$(BENCH_OPTS) ./...
-
-cover: clean $(addprefix prep-,$(TARGETS))
+cover: clean
 	mkdir -p $(COVER_DIR)
-	cd $(GOPATH_LOCAL); GOPATH=$(GOPATH_LOCAL) $(GO) test \
-		-race -coverprofile=$(COVER_DIR)/coverage.txt \
+	$(GO) test -race -coverprofile=$(COVER_DIR)/coverage.txt \
 		-covermode=atomic $(OPTS) ./...
 
 generate: clean
