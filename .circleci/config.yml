@@ -1,0 +1,19 @@
+# Use the latest 2.1 version of CircleCI pipeline processing engine, see https://circleci.com/docs/2.0/configuration-reference/
+version: 2.1
+
+.native_job: &nativejob
+        steps:
+                - checkout
+                - run:
+                        name: "Run tests"
+                        command:
+                                GOARCH=${GOARCH} make test
+jobs:
+        amd64:
+                <<: *nativejob
+                GOARCH: amd64
+
+workflows:
+        build:
+                jobs:
+                        - amd64
