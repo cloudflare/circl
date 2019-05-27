@@ -2,18 +2,69 @@
 version: 2.1
 
 .native_job: &nativejob
-        steps:
-                - checkout
-                - run:
-                        name: "Run tests"
-                        command:
-                                GOARCH=${GOARCH} make test
+    docker: # run the steps with Docker
+        # CircleCI Go images available at: https://hub.docker.com/r/circleci/golang/
+        - image: circleci/golang:${GOVER}
+    steps:
+        - checkout
+        - run:
+            name: "Run tests on Linux"
+            command:
+                make test
+
+.cover_job: &coverjob
+    docker: # run the steps with Docker
+        # CircleCI Go images available at: https://hub.docker.com/r/circleci/golang/
+        - image: circleci/golang:${GOVER}
+    steps:
+        - checkout
+        - run:
+            name: "Run coverage on Linux"
+            command:
+                make cover
+
+        - store_artifacts:
+            path: build/coverage/coverage.html
+
+.emulated_job: &emulatedjob
+  machine: true
+  steps:
+    - checkout
+    - run:
+        name: Install the emulation handlers
+        command: docker run --rm --privileged multiarch/qemu-user-static:register --reset
+    - run:
+        name: "Testing on Linux ARM64"
+        command:
+            docker run --rm -v `pwd`:`pwd` -w `pwd` "flowher/debian-buster-aarch64-go" /bin/bash -c "make test"
+
 jobs:
-        amd64:
-                <<: *nativejob
-                GOARCH: amd64
+    amd64:
+        <<: *nativejob
+        environment:
+            GOVER: latest
+
+    # Test against older version of golang
+    golang_1_11:
+        <<: *nativejob
+        environment:
+            GOVER: 1.11
+
+    # Test for ARM64
+    arm64:
+        <<: *emulatedjob
+        environment:
+
+    # Coverage job
+    cover:
+        <<: *coverjob
+        environment:
+            GOVER: latest
 
 workflows:
-        build:
-                jobs:
-                        - amd64
+    build:
+        jobs:
+            - amd64
+            - arm64
+            - cover
+            - golang_1_11

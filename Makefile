@@ -1,9 +1,9 @@
 # I'm sure there is better way. But I would need to find it first
 MK_FILE_PATH = $(lastword $(MAKEFILE_LIST))
 PRJ_DIR      = $(abspath $(dir $(MK_FILE_PATH)))
-GOPATH_LOCAL = $(PRJ_DIR)/build
-VENDOR_DIR   = $(GOPATH_LOCAL)/vendor
-COVER_DIR    = $(GOPATH_LOCAL)/coverage
+GOPATH_BUILD = $(PRJ_DIR)/build
+VENDOR_DIR   = $(GOPATH_BUILD)/vendor
+COVER_DIR    = $(GOPATH_BUILD)/coverage
 ETC_DIR      = $(PRJ_DIR)/etc
 OPTS         ?= -v
 NOASM        ?=
@@ -36,12 +36,13 @@ cover: clean
 	mkdir -p $(COVER_DIR)
 	$(GO) test -race -coverprofile=$(COVER_DIR)/coverage.txt \
 		-covermode=atomic $(OPTS) ./...
+	$(GO) tool cover -html $(COVER_DIR)/coverage.txt -o $(COVER_DIR)/coverage.html
 
 generate: clean
 	$(GO) generate -v ./...
 
 clean:
-	rm -rf $(GOPATH_LOCAL)
+	rm -rf $(GOPATH_BUILD)
 	rm -rf $(VENDOR_DIR)
 
 vendor: fmtcheck clean
