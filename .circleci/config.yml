@@ -45,10 +45,10 @@ jobs:
             GOVER: latest
 
     # Test against older version of golang
-    golang_1_11:
+    golang_1_12:
         <<: *nativejob
         environment:
-            GOVER: 1.11
+            GOVER: 1.12
 
     # Test for ARM64
     arm64:
@@ -67,4 +67,4 @@ workflows:
             - amd64
             - arm64
             - cover
-            - golang_1_11
+            - golang_1_12
