@@ -47,8 +47,8 @@ TEXT ·fp384Neg(SB), NOSPLIT, $0-16
 
 // Compute c = a+b mod p
 TEXT ·fp384Add(SB), NOSPLIT, $0-24
-	MOVD	c+ 0(FP), R0
-	MOVD	a+ 8(FP), R1
+	MOVD	c+0(FP), R0
+	MOVD	a+8(FP), R1
 	MOVD	b+16(FP), R2
 
 	// Load a in R3-R8, b in R9-R14
@@ -97,8 +97,8 @@ TEXT ·fp384Add(SB), NOSPLIT, $0-24
 
 // Compute c = a-b mod p
 TEXT ·fp384Sub(SB), NOSPLIT, $0-24
-	MOVD	c+ 0(FP), R0
-	MOVD	a+ 8(FP), R1
+	MOVD	c+0(FP), R0
+	MOVD	a+8(FP), R1
 	MOVD	b+16(FP), R2
 
 	// Load a in R3-R8, b in R9-R14
@@ -337,8 +337,8 @@ TEXT ·fp384Sub(SB), NOSPLIT, $0-24
 
 // Compute c = a*b*R^-1 mod p
 TEXT ·fp384Mul(SB), NOSPLIT, $200-24
-	MOVD	c+ 0(FP), R0
-	MOVD	a+ 8(FP), R1
+	MOVD	c+0(FP), R0
+	MOVD	a+8(FP), R1
 	MOVD	b+16(FP), R2
 
 	// Compute a*b in R2-R13
