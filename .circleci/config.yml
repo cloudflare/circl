@@ -38,6 +38,15 @@ version: 2.1
         command:
             docker run --rm -v `pwd`:`pwd` -w `pwd` "flowher/debian-buster-aarch64-go" /bin/bash -c "make test"
 
+.maintenance: &maintenance
+    machine: true
+    steps:
+        - checkout
+        - run:
+            name: "Maintenance task"
+            command:
+                make fmtcheck
+
 jobs:
     amd64:
         <<: *nativejob
@@ -61,6 +70,10 @@ jobs:
         environment:
             GOVER: latest
 
+    # ensures code is correctly formated
+    maintenance:
+        <<: *maintenance
+
 workflows:
     build:
         jobs:
@@ -68,3 +81,5 @@ workflows:
             - arm64
             - cover
             - golang_1_12
+            - maintenance
+
