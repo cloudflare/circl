@@ -2,7 +2,7 @@
 //
 // These are some improvements over crypto/elliptic package:
 //  - Around 10x faster in amd64 architecture.
-//  - Reduced memory allocation.
+//  - Reduced number of memory allocations.
 //  - Native support for arm64 architecture.
 //  - ScalarMult is perfomed using a constant-time algorithm.
 //  - ScalarBaseMult fallbacks into ScalarMult.
