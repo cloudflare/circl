@@ -7,7 +7,7 @@ import (
 	"crypto/rand"
 	"math/big"
 
-	"github.com/cloudflare/circl/utils/cpu"
+	"golang.org/x/sys/cpu"
 )
 
 func TestNegZero(t *testing.T) {
