@@ -2,7 +2,6 @@
 MK_FILE_PATH = $(lastword $(MAKEFILE_LIST))
 PRJ_DIR      = $(abspath $(dir $(MK_FILE_PATH)))
 GOPATH_BUILD = $(PRJ_DIR)/build
-VENDOR_DIR   = $(GOPATH_BUILD)/vendor
 COVER_DIR    = $(GOPATH_BUILD)/coverage
 ETC_DIR      = $(PRJ_DIR)/.etc
 OPTS         ?= -v
@@ -43,17 +42,3 @@ generate: clean
 
 clean:
 	rm -rf $(GOPATH_BUILD)
-	rm -rf $(VENDOR_DIR)
-
-vendor: fmtcheck clean
-	mkdir -p $(VENDOR_DIR)/github_com/cloudflare/circl
-	rsync -a . $(VENDOR_DIR)/github_com/cloudflare/circl \
-		--exclude=$(VENDOR_DIR) \
-		--exclude=.git          \
-		--exclude=.travis.yml   \
-		--exclude=README.md     \
-		--exclude=Makefile      \
-		--exclude=build
-	# This swaps all imports with github.com to github_com, so that standard library doesn't
-	# try to access external libraries.
-	find $(VENDOR_DIR) -type f -iname "*.go" -print0  | xargs -0 sed -i 's/github\.com/github_com/g'
