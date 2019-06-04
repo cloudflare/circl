@@ -4,7 +4,7 @@ package ecdh
 
 import (
 	"github.com/cloudflare/circl/ecdh/internal/field"
-	"github.com/cloudflare/circl/utils/cpu"
+	"golang.org/x/sys/cpu"
 )
 
 func init() {

@@ -4,7 +4,7 @@ package p503
 
 import (
 	"github.com/cloudflare/circl/dh/sidh/internal/common"
-	"github.com/cloudflare/circl/utils/cpu"
+	"golang.org/x/sys/cpu"
 )
 
 const (

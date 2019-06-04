@@ -11,7 +11,7 @@ import (
 	"testing/quick"
 
 	"github.com/cloudflare/circl/dh/sidh/internal/common"
-	"github.com/cloudflare/circl/utils/cpu"
+	"golang.org/x/sys/cpu"
 )
 
 type OptimFlag uint

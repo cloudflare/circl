@@ -2,7 +2,7 @@ package p384
 
 import (
 	"fmt"
-	"github.com/cloudflare/circl/utils/cpu"
+	"golang.org/x/sys/cpu"
 	"math/big"
 )
 

@@ -1,6 +1,6 @@
 package field
 
-import "github.com/cloudflare/circl/utils/cpu"
+import "golang.org/x/sys/cpu"
 
 // Arith448 provides arithmetic operations over GF(2^448-2^224-1)
 type Arith448 interface {
