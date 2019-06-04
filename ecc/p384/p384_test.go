@@ -1,3 +1,5 @@
+// +build arm64 amd64
+
 package p384
 
 import (
@@ -215,31 +217,4 @@ func TestAbsoute(t *testing.T) {
 			test.ReportError(t, got, want, cases[i])
 		}
 	}
-}
-
-func BenchmarkScalarMult(b *testing.B) {
-	curve := P384()
-	params := curve.Params()
-	K, _ := rand.Int(rand.Reader, params.N)
-	M, _ := rand.Int(rand.Reader, params.N)
-	N, _ := rand.Int(rand.Reader, params.N)
-	k := K.Bytes()
-	m := M.Bytes()
-	n := N.Bytes()
-
-	b.Run("kG", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			curve.ScalarBaseMult(k)
-		}
-	})
-	b.Run("kP", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			curve.ScalarMult(params.Gx, params.Gy, k)
-		}
-	})
-	b.Run("kG+lP", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			_, _ = curve.SimultaneousMult(params.Gx, params.Gy, m, n)
-		}
-	})
 }

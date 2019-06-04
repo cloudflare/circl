@@ -7,12 +7,21 @@ TEXT ·fp384Cmov(SB), NOSPLIT, $0
     MOVD y+8(FP), R1
     MOVW b+16(FP), R2
     CMP $0, R2
-    MOVD  0(R0), R3; MOVD  0(R1), R4; CSEL NE,R4,R3,R5; MOVD R5,  0(R0);
-    MOVD  8(R0), R3; MOVD  8(R1), R4; CSEL NE,R4,R3,R5; MOVD R5,  8(R0);
-    MOVD 16(R0), R3; MOVD 16(R1), R4; CSEL NE,R4,R3,R5; MOVD R5, 16(R0);
-    MOVD 24(R0), R3; MOVD 24(R1), R4; CSEL NE,R4,R3,R5; MOVD R5, 24(R0);
-    MOVD 32(R0), R3; MOVD 32(R1), R4; CSEL NE,R4,R3,R5; MOVD R5, 32(R0);
-    MOVD 40(R0), R3; MOVD 40(R1), R4; CSEL NE,R4,R3,R5; MOVD R5, 40(R0);
+    LDP   0(R0), (R3, R5)
+    LDP   0(R1), (R4, R6)
+    CSEL NE,R4,R3,R7
+    CSEL NE,R6,R5,R8
+    STP  (R7, R8),  0(R0)
+    LDP  16(R0), (R3, R5)
+    LDP  16(R1), (R4, R6)
+    CSEL NE,R4,R3,R7
+    CSEL NE,R6,R5,R8
+    STP  (R7, R8), 16(R0)
+    LDP  32(R0), (R3, R5)
+    LDP  32(R1), (R4, R6)
+    CSEL NE,R4,R3,R7
+    CSEL NE,R6,R5,R8
+    STP  (R7, R8), 32(R0)
     RET
 
 // Compute c = -a mod p

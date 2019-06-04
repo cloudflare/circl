@@ -1,4 +1,5 @@
-// Package p384 provides optimized elliptic curve operations on the P-384 curve.
+// +build arm64 amd64
+
 package p384
 
 import (
@@ -9,6 +10,8 @@ import (
 	"github.com/cloudflare/circl/math"
 )
 
+// Curve is used to provide the extended functionality and performance of
+// elliptic.Curve interface.
 type Curve interface {
 	elliptic.Curve
 	// IsAtInfinity returns True is the point is the identity point.

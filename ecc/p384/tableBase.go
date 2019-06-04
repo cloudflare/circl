@@ -1,3 +1,5 @@
+// +build arm64 amd64
+
 package p384
 
 const baseOmega = uint(7)
