@@ -51,6 +51,10 @@ version: 2.1
             name: "Linting"
             command:
                 TOOLS_DIR=$(mktemp -d) make bootstrap build lint
+        - run:
+            name: "Checks if code is generated correctly"
+            command:
+                make generate && test -z "$(git status --porcelain)"
 
 jobs:
     amd64:
