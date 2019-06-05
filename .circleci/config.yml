@@ -46,6 +46,11 @@ version: 2.1
             name: "Maintenance task"
             command:
                 make fmtcheck
+        = run:
+            name: "Linting"
+            command:
+              curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin v1.16.0
+              golangci-lint run ./... --build-tags noasm,amd64 --enable deadcode,errcheck,gosimple,govet,ineffassign,staticcheck,structcheck,typecheck,unused,varcheck,gofmt,goconst,unconvert,gocritic,depguard,dupl,gochecknoglobals,gochecknoinits,goconst,gocritic,gocyclo,gofmt,goimports,golint,gosec,interfacer,lll,maligned,misspell,nakedret,prealloc,scopelint,stylecheck,unconvert,unparam
 
 jobs:
     amd64:
