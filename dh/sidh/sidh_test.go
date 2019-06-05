@@ -257,7 +257,7 @@ func testImportExport(t *testing.T, v sidhVec) {
 	bBytes2 := make([]byte, b.Size())
 	a.Export(aBytes2)
 	b.Export(bBytes2)
-	if !bytes.Equal(aBytes, aBytes2) || !bytes.Equal(aBytes, aBytes2) {
+	if !bytes.Equal(aBytes, aBytes2) || !bytes.Equal(bBytes, bBytes2) {
 		t.Fatalf("Second export doesn't match first export")
 	}
 }

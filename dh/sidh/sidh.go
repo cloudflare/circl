@@ -177,7 +177,6 @@ func (prv *PrivateKey) Import(input []byte) error {
 //
 // Returns error in case user provided RNG fails.
 func (prv *PrivateKey) Generate(rand io.Reader) error {
-	var err error
 	var dp *common.DomainParams
 
 	if (prv.keyVariant & KeyVariant_SIDH_A) == KeyVariant_SIDH_A {
@@ -186,8 +185,10 @@ func (prv *PrivateKey) Generate(rand io.Reader) error {
 		dp = &prv.params.B
 	}
 
-	if prv.keyVariant == KeyVariant_SIKE && err == nil {
-		_, err = io.ReadFull(rand, prv.S)
+	if prv.keyVariant == KeyVariant_SIKE {
+		if _, err := io.ReadFull(rand, prv.S); err != nil {
+			return err
+		}
 	}
 
 	// Private key generation takes advantage of the fact that keyspace for secret
@@ -196,17 +197,18 @@ func (prv *PrivateKey) Generate(rand io.Reader) error {
 	// value between <0x00,0xFF>. Similarily for the last byte, but generation
 	// needs to chop off some bits, to make sure generated value is an element of
 	// a key-space.
-	_, err = io.ReadFull(rand, prv.Scalar)
-	if err != nil {
+	if _, err := io.ReadFull(rand, prv.Scalar); err != nil {
 		return err
 	}
+
 	prv.Scalar[len(prv.Scalar)-1] &= (1 << (dp.SecretBitLen % 8)) - 1
 	// Make sure scalar is SecretBitLen long. SIKE spec says that key
 	// space starts from 0, but I'm not confortable with having low
 	// value scalars used for private keys. It is still secrure as per
 	// table 5.1 in [SIKE].
 	prv.Scalar[len(prv.Scalar)-1] |= 1 << ((dp.SecretBitLen % 8) - 1)
-	return err
+
+	return nil
 }
 
 // Generates public key.
