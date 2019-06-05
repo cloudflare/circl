@@ -6,12 +6,6 @@ import (
 	"strings"
 )
 
-// Absolute returns always a positive value.
-func Absolute(x int32) int32 {
-	mask := x >> 31
-	return (x + mask) ^ mask
-}
-
 // BytesLe2Hex returns an hexadecimal string of a number stored in a
 // little-endian order slice x.
 func BytesLe2Hex(x []byte) string {

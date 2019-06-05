@@ -2,6 +2,28 @@
 
 #include "textflag.h"
 
+TEXT ·fp384Cmov(SB), NOSPLIT, $0
+    MOVD x+0(FP), R0
+    MOVD y+8(FP), R1
+    MOVW b+16(FP), R2
+    CMP $0, R2
+    LDP   0(R0), (R3, R5)
+    LDP   0(R1), (R4, R6)
+    CSEL NE,R4,R3,R7
+    CSEL NE,R6,R5,R8
+    STP  (R7, R8),  0(R0)
+    LDP  16(R0), (R3, R5)
+    LDP  16(R1), (R4, R6)
+    CSEL NE,R4,R3,R7
+    CSEL NE,R6,R5,R8
+    STP  (R7, R8), 16(R0)
+    LDP  32(R0), (R3, R5)
+    LDP  32(R1), (R4, R6)
+    CSEL NE,R4,R3,R7
+    CSEL NE,R6,R5,R8
+    STP  (R7, R8), 32(R0)
+    RET
+
 // Compute c = -a mod p
 TEXT ·fp384Neg(SB), NOSPLIT, $0-16
 	MOVD	c+0(FP), R0
@@ -487,5 +509,3 @@ TEXT ·fp384Mul(SB), NOSPLIT, $200-24
 	STP	(R11, R12), 32(R0)
 
 	RET
-
-

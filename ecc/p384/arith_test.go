@@ -1,170 +1,258 @@
+// +build arm64 amd64
+
 package p384
 
 import (
-	"testing"
-
 	"crypto/elliptic"
 	"crypto/rand"
 	"math/big"
+	"testing"
 
-	"golang.org/x/sys/cpu"
+	"github.com/cloudflare/circl/internal/test"
 )
 
-func TestNegZero(t *testing.T) {
+func TestFpCmov(t *testing.T) {
+	var x, y, z fp384
+	for _, b := range []int{-2, -1, 1, 2} {
+		_, _ = rand.Read(x[:])
+		_, _ = rand.Read(y[:])
+		z = x
+		fp384Cmov(&z, &y, b)
+		got := z
+		want := y
+		if got != want {
+			test.ReportError(t, got, want, b, x, y)
+		}
+	}
+	_, _ = rand.Read(x[:])
+	_, _ = rand.Read(y[:])
+	z = x
+	fp384Cmov(&z, &y, 0)
+	got := z
+	want := x
+	if got != want {
+		test.ReportError(t, got, want, 0, x, y)
+	}
+}
+
+func TestFpNegZero(t *testing.T) {
 	zero, x := &fp384{}, &fp384{}
 	fp384Neg(x, zero)
-
-	if *x != *zero {
-		t.Errorf("-%v should be %v, not %v", zero, zero, x)
-		t.Fatal()
+	got := x.BigInt()
+	want := zero.BigInt()
+	if got.Cmp(want) != 0 {
+		test.ReportError(t, got, want, x)
 	}
 }
 
-func TestNeg(t *testing.T) {
+func TestFpSetBigInt(t *testing.T) {
 	P := elliptic.P384().Params().P
 
-	for i := 0; i < 20000; i++ {
-		x, _ := rand.Int(rand.Reader, P)
-		X, Z, Zc := &fp384{}, &fp384{}, &fp384{}
-		copy(X[:], x.Bits())
+	neg := big.NewInt(-0xFF)                       // negative
+	zero := big.NewInt(0)                          // zero
+	one := big.NewInt(1)                           // one
+	two96 := new(big.Int).Lsh(one, 96)             // 2^96
+	two384 := new(big.Int).Lsh(one, 384)           // 2^384
+	two384two96 := new(big.Int).Sub(two384, two96) // 2^384-2^96
+	two768 := new(big.Int).Lsh(one, 768)           // 2^768
 
-		x.Neg(x).Mod(x, P)
-		copy(Zc[:], x.Bits())
-		fp384Neg(Z, X)
-
-		if x.Cmp(Z.Int()) != 0 {
-			t.Errorf("-%v should be %v, not %v", X, Zc, Z)
-			t.Fatal("not equal")
+	for id, b := range []*big.Int{
+		neg, zero, one, two96, two384, two384two96, two768} {
+		var x fp384
+		x.SetBigInt(b)
+		got := x.BigInt()
+		if b.BitLen() > 384 || b.Sign() < 0 {
+			b.Mod(b, P)
 		}
-	}
-}
-
-func TestAdd(t *testing.T) {
-	P := elliptic.P384().Params().P
-
-	for i := 0; i < 10000; i++ {
-		x, _ := rand.Int(rand.Reader, P)
-		y, _ := rand.Int(rand.Reader, P)
-		X, Y, Z, Zc := &fp384{}, &fp384{}, &fp384{}, &fp384{}
-		copy(X[:], x.Bits())
-		copy(Y[:], y.Bits())
-
-		x.Add(x, y).Mod(x, P)
-		copy(Zc[:], x.Bits())
-		fp384Add(Z, X, Y)
-
-		if x.Cmp(Z.Int()) != 0 {
-			t.Errorf("%v + %v should be %v, not %v", X, Y, Zc, Z)
-			t.Fatal()
-		}
-	}
-}
-
-func TestSub(t *testing.T) {
-	P := elliptic.P384().Params().P
-
-	for i := 0; i < 10000; i++ {
-		x, _ := rand.Int(rand.Reader, P)
-		y, _ := rand.Int(rand.Reader, P)
-		X, Y, Z, Zc := &fp384{}, &fp384{}, &fp384{}, &fp384{}
-		copy(X[:], x.Bits())
-		copy(Y[:], y.Bits())
-
-		x.Sub(x, y).Mod(x, P)
-		copy(Zc[:], x.Bits())
-		fp384Sub(Z, X, Y)
-
-		if x.Cmp(Z.Int()) != 0 {
-			t.Errorf("%v - %v should be %v, not %v", X, Y, Zc, Z)
-			t.Fatal("not equal")
+		want := b
+		if got.Cmp(want) != 0 {
+			test.ReportError(t, got, want, id)
 		}
 	}
 }
 
 func TestMulZero(t *testing.T) {
-	P := elliptic.P384().Params().P
-	x, _ := rand.Int(rand.Reader, P)
-	X := &fp384{}
-	copy(X[:], x.Bits())
+	x, zero := &fp384{}, &fp384{}
+	_, _ = rand.Read(x[:])
 
-	zero := &fp384{}
-	fp384Mul(X, X, zero)
+	fp384Mul(x, x, zero)
+	got := x.BigInt()
+	want := zero.BigInt()
 
-	if *X != *zero {
-		t.Errorf("%v * %v should be %v, not %v", zero, zero, zero, X)
-		t.Fatal("not zero")
+	if got.Cmp(want) != 0 {
+		test.ReportError(t, got, want, x)
 	}
 }
 
-func testMul(t *testing.T) {
+func TestFp(t *testing.T) {
 	P := elliptic.P384().Params().P
-	Rinv := big.NewInt(1)
-	Rinv.Lsh(Rinv, 384).Mod(Rinv, P).ModInverse(Rinv, P)
+	x, y, z := &fp384{}, &fp384{}, &fp384{}
+	testTimes := 1 << 12
 
-	for i := 0; i < 10000; i++ {
-		x, _ := rand.Int(rand.Reader, P)
-		y, _ := rand.Int(rand.Reader, P)
-		X, Y, Z, Zc := &fp384{}, &fp384{}, &fp384{}, &fp384{}
-		copy(X[:], x.Bits())
-		copy(Y[:], y.Bits())
+	var bigR, bigR2, bigRinv big.Int
+	one := big.NewInt(1)
+	bigR.Lsh(one, 384).Mod(&bigR, P)
+	bigR2.Lsh(one, 2*384).Mod(&bigR2, P)
+	bigRinv.ModInverse(&bigR, P)
 
-		x.Mul(x, y).Mul(x, Rinv).Mod(x, P)
-		copy(Zc[:], x.Bits())
-		fp384Mul(Z, X, Y)
+	t.Run("Encode", func(t *testing.T) {
+		for i := 0; i < testTimes; i++ {
+			_, _ = rand.Read(x[:])
+			bigX := x.BigInt()
 
-		if x.Cmp(Z.Int()) != 0 {
-			t.Errorf("%v * %v should be %v, not %v", X, Y, Zc, Z)
-			t.Fatal("not equal")
+			// fp384
+			montEncode(z, x)
+			got := z.BigInt()
+
+			// big.Int
+			want := bigX.Mul(bigX, &bigR).Mod(bigX, P)
+			if got.Cmp(want) != 0 {
+				test.ReportError(t, got, want, x)
+			}
 		}
-	}
-}
+	})
 
-func TestMul(t *testing.T) {
-	defer func() {
-		hasBMI2 = cpu.X86.HasBMI2
-	}()
+	t.Run("Decode", func(t *testing.T) {
+		for i := 0; i < testTimes; i++ {
+			_, _ = rand.Read(x[:])
+			bigX := x.BigInt()
 
-	testMul(t)
+			// fp384
+			montDecode(z, x)
+			got := z.BigInt()
 
-	// Test implementation without BMI2
-	if hasBMI2 {
-		hasBMI2 = false
-		testMul(t)
-	}
-}
-
-func TestInvert(t *testing.T) {
-	P := elliptic.P384().Params().P
-
-	for i := 0; i < 1000; i++ {
-		x, _ := rand.Int(rand.Reader, P)
-		X, Z, Zc := &fp384{}, &fp384{}, &fp384{}
-		copy(X[:], x.Bits())
-
-		x.ModInverse(x, P)
-		copy(Zc[:], x.Bits())
-		montEncode(Z, X)
-		Z.Invert(Z)
-		montDecode(Z, Z)
-
-		if x.Cmp(Z.Int()) != 0 {
-			t.Errorf("%v^-1 should be %v, not %v", X, Zc, Z)
-			t.Fatal("not equal")
+			// big.Int
+			want := bigX.Mul(bigX, new(big.Int).ModInverse(&bigR, P)).Mod(bigX, P)
+			if got.Cmp(want) != 0 {
+				test.ReportError(t, got, want, x)
+			}
 		}
-	}
+	})
+
+	t.Run("Neg", func(t *testing.T) {
+		for i := 0; i < testTimes; i++ {
+			_, _ = rand.Read(x[:])
+			bigX := x.BigInt()
+
+			// fp384
+			fp384Neg(z, x)
+			got := z.BigInt()
+
+			// big.Int
+			want := bigX.Neg(bigX).Mod(bigX, P)
+			if got.Cmp(want) != 0 {
+				test.ReportError(t, got, want, x)
+			}
+		}
+	})
+
+	t.Run("Add", func(t *testing.T) {
+		for i := 0; i < testTimes; i++ {
+			_, _ = rand.Read(x[:])
+			_, _ = rand.Read(y[:])
+			bigX := x.BigInt()
+			bigY := y.BigInt()
+
+			// fp384
+			fp384Add(z, x, y)
+			got := z.BigInt()
+
+			// big.Int
+			want := bigX.Add(bigX, bigY)
+			want = want.Mod(want, P)
+			if got.Cmp(want) != 0 {
+				test.ReportError(t, got, want, x, y)
+			}
+		}
+	})
+
+	t.Run("Sub", func(t *testing.T) {
+		for i := 0; i < testTimes; i++ {
+			_, _ = rand.Read(x[:])
+			_, _ = rand.Read(y[:])
+			bigX := x.BigInt()
+			bigY := y.BigInt()
+
+			// fp384
+			fp384Sub(z, x, y)
+			got := z.BigInt()
+
+			// big.Int
+			want := bigX.Sub(bigX, bigY)
+			want = want.Mod(want, P)
+			if got.Cmp(want) != 0 {
+				test.ReportError(t, got, want, x, y)
+			}
+		}
+	})
+
+	t.Run("Mul", func(t *testing.T) {
+		for i := 0; i < testTimes; i++ {
+			_, _ = rand.Read(x[:])
+			_, _ = rand.Read(y[:])
+			bigX := x.BigInt()
+			bigY := y.BigInt()
+
+			// fp384
+			fp384Mul(z, x, y)
+			got := z.BigInt()
+
+			// big.Int
+			want := bigX.Mul(bigX, bigY).Mul(bigX, &bigRinv).Mod(bigX, P)
+			if got.Cmp(want) != 0 {
+				test.ReportError(t, got, want, x, y)
+			}
+		}
+	})
+
+	t.Run("Inv", func(t *testing.T) {
+		for i := 0; i < testTimes; i++ {
+			_, _ = rand.Read(x[:])
+			bigX := x.BigInt()
+
+			// fp384
+			fp384Inv(z, x)
+			got := z.BigInt()
+
+			// big.Int
+			want := bigX.ModInverse(bigX, P).Mul(bigX, &bigR2).Mod(bigX, P)
+			if got.Cmp(want) != 0 {
+				test.ReportError(t, got, want, x)
+			}
+		}
+	})
 }
 
-func BenchmarkMul(b *testing.B) {
-	c := elliptic.P384()
-	params := c.Params()
-	x, _ := rand.Int(rand.Reader, params.P)
-	y, _ := rand.Int(rand.Reader, params.P)
-	X, Y, Z := &fp384{}, &fp384{}, &fp384{}
-	copy(X[:], x.Bits())
-	copy(Y[:], y.Bits())
+func BenchmarkFp(b *testing.B) {
+	x, y, z := &fp384{}, &fp384{}, &fp384{}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		fp384Mul(Z, X, Y)
-	}
+	b.Run("Add", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			fp384Add(z, x, y)
+		}
+	})
+
+	b.Run("Sub", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			fp384Sub(z, x, y)
+		}
+	})
+
+	b.Run("Mul", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			fp384Mul(z, x, y)
+		}
+	})
+
+	b.Run("Sqr", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			fp384Sqr(z, x)
+		}
+	})
+
+	b.Run("Inv", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			fp384Inv(z, x)
+		}
+	})
 }

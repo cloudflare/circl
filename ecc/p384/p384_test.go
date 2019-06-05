@@ -1,233 +1,220 @@
+// +build arm64 amd64
+
 package p384
 
 import (
-	"testing"
-
 	"crypto/elliptic"
 	"crypto/rand"
+	"testing"
+
+	"github.com/cloudflare/circl/internal/test"
 )
 
 func TestIsOnCurveTrue(t *testing.T) {
-	for i := 0; i < 100; i++ {
-		K := make([]byte, 384/8)
-		rand.Read(K)
+	curve := P384()
+	k := make([]byte, 384/8)
+	for i := 0; i < 128; i++ {
+		_, _ = rand.Read(k)
+		x, y := elliptic.P384().ScalarBaseMult(k)
 
-		X, Y := elliptic.P384().ScalarBaseMult(K)
+		got := curve.IsOnCurve(x, y)
+		want := true
+		if got != want {
+			test.ReportError(t, got, want, k)
+		}
 
-		c := &Curve{}
-		if !c.IsOnCurve(X, Y) {
-			t.Fatal("not on curve")
+		x = x.Neg(x)
+		got = curve.IsOnCurve(x, y)
+		want = false
+		if got != want {
+			test.ReportError(t, got, want, k)
 		}
 	}
 }
 
-func TestIsOnCurveFalse(t *testing.T) {
-	P := elliptic.P384().Params().P
-
-	for i := 0; i < 10000; i++ {
-		X, _ := rand.Int(rand.Reader, P)
-		Y, _ := rand.Int(rand.Reader, P)
-
-		c := &Curve{}
-		if c.IsOnCurve(X, Y) {
-			t.Fatal("bad point on curve")
-		}
-	}
-}
-
-func TestAffineAdd(t *testing.T) {
+func TestAffine(t *testing.T) {
+	curve := P384()
 	params := elliptic.P384().Params()
+	t.Run("Addition", func(t *testing.T) {
+		for i := 0; i < 128; i++ {
+			K1, _ := rand.Int(rand.Reader, params.N)
+			K2, _ := rand.Int(rand.Reader, params.N)
+			X1, Y1 := params.ScalarBaseMult(K1.Bytes())
+			X2, Y2 := params.ScalarBaseMult(K2.Bytes())
+			wantX, wantY := params.Add(X1, Y1, X2, Y2)
+			gotX, gotY := curve.Add(X1, Y1, X2, Y2)
 
-	for i := 0; i < 100; i++ {
-		K1, _ := rand.Int(rand.Reader, params.N)
-		K2, _ := rand.Int(rand.Reader, params.N)
-		X1, Y1 := params.ScalarBaseMult(K1.Bytes())
-		X2, Y2 := params.ScalarBaseMult(K2.Bytes())
-		X3, Y3 := params.Add(X1, Y1, X2, Y2)
-
-		c := &Curve{}
-		candX, candY := c.Add(X1, Y1, X2, Y2)
-
-		if X3.Cmp(candX) != 0 || Y3.Cmp(candY) != 0 {
-			t.Fatal("points not the same!")
+			if gotX.Cmp(wantX) != 0 {
+				test.ReportError(t, gotX, wantX, K1, K2)
+			}
+			if gotY.Cmp(wantY) != 0 {
+				test.ReportError(t, gotY, wantY)
+			}
 		}
-	}
-}
+	})
 
-func TestJacobianAdd(t *testing.T) {
-	params := elliptic.P384().Params()
+	t.Run("Double", func(t *testing.T) {
+		for i := 0; i < 128; i++ {
+			k, _ := rand.Int(rand.Reader, params.N)
+			x, y := params.ScalarBaseMult(k.Bytes())
+			wantX, wantY := params.Double(x, y)
 
-	for i := 0; i < 100; i++ {
-		K1, _ := rand.Int(rand.Reader, params.N)
-		K2, _ := rand.Int(rand.Reader, params.N)
-		X1, Y1 := params.ScalarBaseMult(K1.Bytes())
-		X2, Y2 := params.ScalarBaseMult(K2.Bytes())
-		X3, Y3 := params.Add(X1, Y1, X2, Y2)
+			gotX, gotY := curve.Double(x, y)
 
-		c := &Curve{}
-		in1, in2 := newAffinePoint(X1, Y1), newAffinePoint(X2, Y2)
-		pt := c.add(in1.ToJacobian(), in2)
-		candX, candY := pt.ToAffine().ToInt()
-
-		if X3.Cmp(candX) != 0 || Y3.Cmp(candY) != 0 {
-			t.Fatal("points not the same!")
+			if gotX.Cmp(wantX) != 0 {
+				test.ReportError(t, gotX, wantX, k)
+			}
+			if gotY.Cmp(wantY) != 0 {
+				test.ReportError(t, gotY, wantY)
+			}
 		}
-	}
-}
-
-func TestJacobianAddSame(t *testing.T) {
-	params := elliptic.P384().Params()
-
-	for i := 0; i < 100; i++ {
-		K, _ := rand.Int(rand.Reader, params.N)
-		X1, Y1 := params.ScalarBaseMult(K.Bytes())
-		X3, Y3 := params.Add(X1, Y1, X1, Y1)
-
-		c := &Curve{}
-		in1, in2 := newAffinePoint(X1, Y1), newAffinePoint(X1, Y1)
-		pt := c.add(in1.ToJacobian(), in2)
-		candX, candY := pt.ToAffine().ToInt()
-
-		if X3.Cmp(candX) != 0 || Y3.Cmp(candY) != 0 {
-			t.Fatal("points not the same!")
-		}
-	}
-}
-
-func TestAffineDouble(t *testing.T) {
-	params := elliptic.P384().Params()
-
-	for i := 0; i < 100; i++ {
-		K, _ := rand.Int(rand.Reader, params.N)
-		X1, Y1 := params.ScalarBaseMult(K.Bytes())
-		X3, Y3 := params.Double(X1, Y1)
-		X3, Y3 = params.Double(X3, Y3)
-
-		c := &Curve{}
-		candX, candY := c.Double(X1, Y1)
-		candX, candY = c.Double(candX, candY)
-
-		if X3.Cmp(candX) != 0 || Y3.Cmp(candY) != 0 {
-			t.Fatal("points not the same!")
-		}
-	}
-}
-
-func TestJacobianDouble(t *testing.T) {
-	params := elliptic.P384().Params()
-
-	for i := 0; i < 100; i++ {
-		K, _ := rand.Int(rand.Reader, params.N)
-		X1, Y1 := params.ScalarBaseMult(K.Bytes())
-		X3, Y3 := params.Double(X1, Y1)
-		X3, Y3 = params.Double(X3, Y3)
-
-		c := &Curve{}
-		in := newAffinePoint(X1, Y1)
-		pt := c.double(in.ToJacobian())
-		pt = c.double(pt)
-		candX, candY := pt.ToAffine().ToInt()
-
-		if X3.Cmp(candX) != 0 || Y3.Cmp(candY) != 0 {
-			t.Fatal("points not the same!")
-		}
-	}
+	})
 }
 
 func TestScalarMult(t *testing.T) {
-	params := elliptic.P384().Params()
+	curve := P384()
+	params := curve.Params()
+
+	t.Run("toOdd", func(t *testing.T) {
+		k := []byte{0xF0}
+		oddK, _ := p384.toOdd(k)
+		got := len(oddK)
+		want := 48
+		if got != want {
+			test.ReportError(t, got, want)
+		}
+
+		oddK[sizeFp-1] = 0x0
+		smallOddK, _ := p384.toOdd(oddK)
+		got = len(smallOddK)
+		want = 48
+		if got != want {
+			test.ReportError(t, got, want)
+		}
+	})
+
+	t.Run("k=0", func(t *testing.T) {
+		k := []byte{0x0}
+		gotX, gotY := curve.ScalarMult(params.Gx, params.Gy, k)
+		got := curve.IsAtInfinity(gotX, gotY)
+		want := true
+		if got != want {
+			test.ReportError(t, got, want)
+		}
+	})
+
+	t.Run("random k", func(t *testing.T) {
+		for i := 0; i < 128; i++ {
+			k, _ := rand.Int(rand.Reader, params.N)
+			gotX, gotY := curve.ScalarMult(params.Gx, params.Gy, k.Bytes())
+			wantX, wantY := params.ScalarBaseMult(k.Bytes())
+
+			if gotX.Cmp(wantX) != 0 {
+				test.ReportError(t, gotX, wantX, k)
+			}
+			if gotY.Cmp(wantY) != 0 {
+				test.ReportError(t, gotY, wantY)
+			}
+		}
+	})
+}
+
+func TestScalarBaseMult(t *testing.T) {
+	curve := P384()
+	params := curve.Params()
+
+	t.Run("0P", func(t *testing.T) {
+		k := make([]byte, 500)
+		for i := 0; i < len(k); i += 20 {
+			gotX, gotY := curve.ScalarBaseMult(k)
+			wantX, wantY := params.ScalarBaseMult(k)
+			if gotX.Cmp(wantX) != 0 {
+				test.ReportError(t, gotX, wantX, k)
+			}
+			if gotY.Cmp(wantY) != 0 {
+				test.ReportError(t, gotY, wantY)
+			}
+		}
+	})
+
+	t.Run("kP", func(t *testing.T) {
+		k := make([]byte, 48)
+		for i := 0; i < 64; i++ {
+			_, _ = rand.Read(k)
+			gotX, gotY := p384.ScalarBaseMult(k)
+			wantX, wantY := params.ScalarBaseMult(k)
+			if gotX.Cmp(wantX) != 0 {
+				test.ReportError(t, gotX, wantX, k)
+			}
+			if gotY.Cmp(wantY) != 0 {
+				test.ReportError(t, gotY, wantY)
+			}
+		}
+	})
+
+	t.Run("kSmall", func(t *testing.T) {
+		k := make([]byte, 16)
+		for i := 0; i < 64; i++ {
+			_, _ = rand.Read(k)
+			gotX, gotY := p384.ScalarBaseMult(k)
+			wantX, wantY := params.ScalarBaseMult(k)
+			if gotX.Cmp(wantX) != 0 {
+				test.ReportError(t, gotX, wantX, k)
+			}
+			if gotY.Cmp(wantY) != 0 {
+				test.ReportError(t, gotY, wantY)
+			}
+		}
+	})
+
+	t.Run("kLarge", func(t *testing.T) {
+		k := make([]byte, 384)
+		for i := 0; i < 64; i++ {
+			_, _ = rand.Read(k)
+			gotX, gotY := p384.ScalarBaseMult(k)
+			wantX, wantY := params.ScalarBaseMult(k)
+			if gotX.Cmp(wantX) != 0 {
+				test.ReportError(t, gotX, wantX, k)
+			}
+			if gotY.Cmp(wantY) != 0 {
+				test.ReportError(t, gotY, wantY)
+			}
+		}
+	})
+}
+
+func TestSimultaneous(t *testing.T) {
+	curve := P384()
+	params := curve.Params()
 
 	for i := 0; i < 100; i++ {
 		K, _ := rand.Int(rand.Reader, params.N)
 		X, Y := params.ScalarBaseMult(K.Bytes())
 
-		c := &Curve{}
-		candX, candY := c.ScalarMult(params.Gx, params.Gy, K.Bytes())
-
-		if X.Cmp(candX) != 0 || Y.Cmp(candY) != 0 {
-			t.Fatal("points not the same!")
-		}
-	}
-}
-
-func TestScalarBaseMult(t *testing.T) {
-	for i := 0; i < 100; i++ {
-		K := make([]byte, 100)
-		rand.Read(K)
-
-		X, Y := elliptic.P384().Params().ScalarBaseMult(K)
-
-		c := &Curve{}
-		candX, candY := c.ScalarBaseMult(K)
-
-		if X.Cmp(candX) != 0 || Y.Cmp(candY) != 0 {
-			t.Fatal("points not the same!")
-		}
-	}
-}
-
-func TestCombinedMult(t *testing.T) {
-	params := elliptic.P384().Params()
-	K, _ := rand.Int(rand.Reader, params.N)
-	X, Y := params.ScalarBaseMult(K.Bytes())
-
-	for i := 0; i < 100; i++ {
 		K1, _ := rand.Int(rand.Reader, params.N)
 		K2, _ := rand.Int(rand.Reader, params.N)
-		X1, Y1 := params.ScalarBaseMult(K1.Bytes())
-		X2, Y2 := params.ScalarMult(X, Y, K2.Bytes())
-		X3, Y3 := params.Add(X1, Y1, X2, Y2)
+		x1, y1 := params.ScalarBaseMult(K1.Bytes())
+		x2, y2 := params.ScalarMult(X, Y, K2.Bytes())
+		wantX, wantY := params.Add(x1, y1, x2, y2)
 
-		c := &Curve{}
-		candX, candY := c.CombinedMult(X, Y, K1.Bytes(), K2.Bytes())
-
-		if X3.Cmp(candX) != 0 || Y3.Cmp(candY) != 0 {
-			t.Fatal("points not the same!")
+		gotX, gotY := curve.SimultaneousMult(X, Y, K1.Bytes(), K2.Bytes())
+		if gotX.Cmp(wantX) != 0 {
+			test.ReportError(t, gotX, wantX, K, K1, K2)
+		}
+		if gotY.Cmp(wantY) != 0 {
+			test.ReportError(t, gotY, wantY)
 		}
 	}
 }
 
-func BenchmarkP384(b *testing.B) {
-	c := elliptic.P384()
-	params := c.Params()
-	K, _ := rand.Int(rand.Reader, params.N)
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		c.ScalarMult(params.Gx, params.Gy, K.Bytes())
-	}
-}
-
-func BenchmarkScalarMult(b *testing.B) {
-	params := elliptic.P384().Params()
-	K, _ := rand.Int(rand.Reader, params.N)
-	c := &Curve{}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		c.ScalarMult(params.Gx, params.Gy, K.Bytes())
-	}
-}
-
-func BenchmarkScalarBaseMult(b *testing.B) {
-	params := elliptic.P384().Params()
-	K, _ := rand.Int(rand.Reader, params.N)
-	c := &Curve{}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		c.ScalarBaseMult(K.Bytes())
-	}
-}
-
-func BenchmarkCombinedMult(b *testing.B) {
-	params := elliptic.P384().Params()
-	K1, _ := rand.Int(rand.Reader, params.N)
-	K2, _ := rand.Int(rand.Reader, params.N)
-	c := &Curve{}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		c.CombinedMult(params.Gx, params.Gy, K1.Bytes(), K2.Bytes())
+func TestAbsoute(t *testing.T) {
+	cases := []int32{-2, -1, 0, 1, 2}
+	expected := []int32{2, 1, 0, 1, 2}
+	for i := range cases {
+		got := absolute(cases[i])
+		want := expected[i]
+		if got != want {
+			test.ReportError(t, got, want, cases[i])
+		}
 	}
 }
