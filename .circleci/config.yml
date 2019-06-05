@@ -39,7 +39,8 @@ version: 2.1
             docker run --rm -v `pwd`:`pwd` -w `pwd` "flowher/debian-buster-aarch64-go" /bin/bash -c "make test"
 
 .maintenance: &maintenance
-    machine: true
+    docker:
+        - image: circleci/golang:${GOVER}
     steps:
         - checkout
         - run:
@@ -77,6 +78,8 @@ jobs:
     # ensures code is correctly formated
     maintenance:
         <<: *maintenance
+        environment:
+            GOVER: latest
 
 workflows:
     build:
