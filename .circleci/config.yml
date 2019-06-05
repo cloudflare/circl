@@ -49,7 +49,7 @@ version: 2.1
         - run:
             name: "Linting"
             command:
-                make bootstrap lint
+                TOOLS_DIR=$(mktemp -d) make bootstrap build lint
 
 jobs:
     amd64:
