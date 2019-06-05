@@ -3,10 +3,12 @@ MK_FILE_PATH = $(lastword $(MAKEFILE_LIST))
 PRJ_DIR      = $(abspath $(dir $(MK_FILE_PATH)))
 GOPATH_BUILD = $(PRJ_DIR)/build
 COVER_DIR    = $(GOPATH_BUILD)/coverage
+TOOLS_DIR   ?= $(GOPATH)/bin
 ETC_DIR      = $(PRJ_DIR)/.etc
 OPTS         ?= -v
 NOASM        ?=
 GO           ?= go
+GOLANGCILINT ?= $(TOOLS_DIR)/golangci-lint
 # -run="^_" as we want to avoid running tests by 'bench' and there never be a test starting with _
 BENCH_OPTS   ?= -v -bench=. -run="^_" -benchmem
 V            ?= 0
@@ -24,6 +26,12 @@ endif
 fmtcheck:
 	$(ETC_DIR)/fmtcheck.sh
 
+lint:
+	$(GOLANGCILINT) run --config $(ETC_DIR)/golangci.yml ./...
+
+build:
+	$(GO) build ./...
+
 test: clean
 	$(GO) vet ./...
 	$(GO) test $(OPTS) ./...
@@ -39,6 +47,9 @@ cover: clean
 
 generate: clean
 	$(GO) generate -v ./...
+
+bootstrap:
+	curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(TOOLS_DIR) v1.16.0
 
 clean:
 	rm -rf $(GOPATH_BUILD)
