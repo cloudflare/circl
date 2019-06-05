@@ -43,17 +43,13 @@ version: 2.1
     steps:
         - checkout
         - run:
-            name: "Install Tools"
-            command:
-                make bootstrap
-        - run:
             name: "Maintenance task"
             command:
                 make fmtcheck
         - run:
             name: "Linting"
             command:
-                make lint
+                make bootstrap lint
 
 jobs:
     amd64:
