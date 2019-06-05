@@ -7,6 +7,7 @@ ETC_DIR      = $(PRJ_DIR)/.etc
 OPTS         ?= -v
 NOASM        ?=
 GO           ?= go
+GOLANGCILINT ?= golangci-lint
 # -run="^_" as we want to avoid running tests by 'bench' and there never be a test starting with _
 BENCH_OPTS   ?= -v -bench=. -run="^_" -benchmem
 V            ?= 0
@@ -24,6 +25,9 @@ endif
 fmtcheck:
 	$(ETC_DIR)/fmtcheck.sh
 
+lint:
+	$(GOLANGCILINT) run --config $(ETC_DIR)/golangci.yml
+
 test: clean
 	$(GO) vet ./...
 	$(GO) test $(OPTS) ./...
@@ -39,6 +43,9 @@ cover: clean
 
 generate: clean
 	$(GO) generate -v ./...
+
+bootstrap:
+	curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b ${GOPATH}/bin v1.16.0
 
 clean:
 	rm -rf $(GOPATH_BUILD)

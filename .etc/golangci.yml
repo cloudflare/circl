@@ -1,0 +1,22 @@
+linters:
+  enable-all: true
+  disable:
+  - unconvert
+  - nakedret
+  - deadcode
+  - gosimple
+  - unused
+  - varcheck
+  - gofmt
+  - ineffassign
+  - goimports
+  - gocritic
+  - golint
+  - stylecheck
+  - errcheck
+  - misspell
+  - scopelint
+  - gosec
+  - lll
+  - gochecknoglobals
+  - gochecknoinits
