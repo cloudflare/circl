@@ -7,7 +7,7 @@ ETC_DIR      = $(PRJ_DIR)/.etc
 OPTS         ?= -v
 NOASM        ?=
 GO           ?= go
-GOLANGCILINT ?= golangci-lint
+GOLANGCILINT ?= $(GOPATH)/bin/golangci-lint
 # -run="^_" as we want to avoid running tests by 'bench' and there never be a test starting with _
 BENCH_OPTS   ?= -v -bench=. -run="^_" -benchmem
 V            ?= 0
