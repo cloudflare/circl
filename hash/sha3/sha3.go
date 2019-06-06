@@ -124,14 +124,14 @@ func (d *state) padAndPermute(dsbyte byte) {
 
 // Write absorbs more data into the hash's state. It produces an error
 // if more data is written to the ShakeHash after writing
-func (d *state) Write(p []byte) (written int, err error) {
+func (d *state) Write(p []byte) (int, error) {
 	if d.state != spongeAbsorbing {
 		panic("sha3: write to sponge after read")
 	}
 	if d.buf == nil {
 		d.buf = d.storage[:0]
 	}
-	written = len(p)
+	written := len(p)
 
 	for len(p) > 0 {
 		if len(d.buf) == 0 && len(p) >= d.rate {
@@ -155,7 +155,7 @@ func (d *state) Write(p []byte) (written int, err error) {
 		}
 	}
 
-	return
+	return written, nil
 }
 
 // Read squeezes an arbitrary number of bytes from the sponge.
