@@ -147,7 +147,7 @@ func (prv *PrivateKey) Export(out []byte) {
 func (prv *PrivateKey) Size() int {
 	tmp := len(prv.Scalar)
 	if prv.Variant() == KeyVariant_SIKE {
-		tmp += int(prv.params.MsgLen)
+		tmp += prv.params.MsgLen
 	}
 	return tmp
 }
