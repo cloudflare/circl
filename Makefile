@@ -23,9 +23,6 @@ ifeq ($(V),1)
 	OPTS += -v              # Be verbose
 endif
 
-fmtcheck:
-	$(ETC_DIR)/fmtcheck.sh
-
 lint:
 	$(GOLANGCILINT) run --config $(ETC_DIR)/golangci.yml ./...
 

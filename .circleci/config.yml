@@ -44,10 +44,6 @@ version: 2.1
     steps:
         - checkout
         - run:
-            name: "Maintenance task"
-            command:
-                make fmtcheck
-        - run:
             name: "Linting"
             command:
                 TOOLS_DIR=$(mktemp -d) make bootstrap build lint
@@ -93,4 +89,3 @@ workflows:
             - cover
             - golang_1_12
             - maintenance
-
