@@ -7,6 +7,7 @@ package ecdh
 import (
 	"crypto/rand"
 	"fmt"
+
 	"github.com/cloudflare/circl/ecdh/internal/field"
 )
 
