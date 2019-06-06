@@ -179,11 +179,11 @@ func (c *KEM) Decapsulate(secret []byte, prv *PrivateKey, pub *PublicKey, cipher
 // after Allocate and between subsequent calls to Encapsulate
 // and/or Decapsulate.
 func (c *KEM) Reset() {
-	for i, _ := range c.msg {
+	for i := range c.msg {
 		c.msg[i] = 0
 	}
 
-	for i, _ := range c.secretBytes {
+	for i := range c.secretBytes {
 		c.secretBytes[i] = 0
 	}
 }
@@ -207,7 +207,7 @@ func (c *KEM) generateCiphertext(ctext []byte, skA *PrivateKey, pkA, pkB *Public
 	c.cshakeF.Reset()
 	c.cshakeF.Write(j[:skA.params.SharedSecretSize])
 	c.cshakeF.Read(n[:ptextLen])
-	for i, _ := range ptext {
+	for i := range ptext {
 		n[i] ^= ptext[i]
 	}
 
@@ -256,7 +256,7 @@ func (c *KEM) decrypt(n []byte, prv *PrivateKey, ctext []byte) int {
 	c.cshakeF.Reset()
 	c.cshakeF.Write(j[:prv.params.SharedSecretSize])
 	c.cshakeF.Read(n[:c1_len])
-	for i, _ := range n[:c1_len] {
+	for i := range n[:c1_len] {
 		n[i] ^= ctext[pk_len+i]
 	}
 	return c1_len

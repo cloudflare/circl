@@ -44,7 +44,7 @@ func testPKERoundTrip(t *testing.T, v sikeVec) {
 	var params = common.Params(v.id)
 	var ct = make([]byte, v.kem.CiphertextSize())
 	var msg = make([]byte, params.MsgLen)
-	for i, _ := range msg {
+	for i := range msg {
 		msg[i] = byte(i)
 	}
 
@@ -80,7 +80,7 @@ func testPKEKeyGeneration(t *testing.T, v sikeVec) {
 	var pk = NewPublicKey(v.id, KeyVariant_SIKE)
 	var sk = NewPrivateKey(v.id, KeyVariant_SIKE)
 
-	for i, _ := range msg {
+	for i := range msg {
 		msg[i] = byte(i)
 	}
 
