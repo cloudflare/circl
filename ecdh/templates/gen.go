@@ -129,7 +129,7 @@ func main() {
 	p448.Sub(&p448, new(big.Int).SetInt64(1))
 
 	fields := []data{
-		data{
+		{
 			Field:    255,
 			Num:      252,
 			Size:     256,
@@ -139,7 +139,7 @@ func main() {
 			xCoord:   9,
 			A24:      121666,
 		},
-		data{
+		{
 			Field:    448,
 			Num:      446,
 			Size:     448,

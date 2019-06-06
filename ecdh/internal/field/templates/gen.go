@@ -69,12 +69,12 @@ func genAPI(fields []data) {
 }
 func main() {
 	fields := []data{
-		data{
+		{
 			A24:   121666,
 			Field: 255,
 			Prime: p255,
 		},
-		data{
+		{
 			A24:   39082,
 			Field: 448,
 			Prime: p448,
