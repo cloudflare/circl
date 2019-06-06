@@ -284,7 +284,7 @@ func testPrivateKeyBelowMax(t testing.TB, id uint8) {
 
 				// Convert to big-endian, as that's what expected by (*Int)SetBytes()
 				prv.Export(secretBytes)
-				for i := 0; i < int(blen/2); i++ {
+				for i := 0; i < blen/2; i++ {
 					tmp := secretBytes[i] ^ secretBytes[blen-i-1]
 					secretBytes[i] = tmp ^ secretBytes[i]
 					secretBytes[blen-i-1] = tmp ^ secretBytes[blen-i-1]

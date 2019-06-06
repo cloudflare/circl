@@ -15,7 +15,7 @@ func Cpick(pick int, out, in1, in2 []byte) {
 //
 // It is an error to call this function if the input byte slice is less than 2*bytelen(p) bytes long.
 func BytesToFp2(fp2 *Fp2, input []byte, bytelen int) {
-	if len(input) < int(2*bytelen) {
+	if len(input) < 2*bytelen {
 		panic("input byte slice too short")
 	}
 
@@ -31,7 +31,7 @@ func BytesToFp2(fp2 *Fp2, input []byte, bytelen int) {
 //
 // The output byte slice must be at least 2*bytelen(p) bytes long.
 func Fp2ToBytes(output []byte, fp2 *Fp2, bytelen int) {
-	if len(output) < int(2*bytelen) {
+	if len(output) < 2*bytelen {
 		panic("output byte slice too short")
 	}
 
