@@ -11,7 +11,6 @@ import (
 	"os"
 	"strings"
 	"text/template"
-	"time"
 )
 
 var p34 = map[string]struct {
@@ -62,14 +61,12 @@ func main() {
 	s := struct {
 		FIELD            string
 		PACKAGE          string
-		TIMESTAMP        string
 		P34_POW_STRATEGY string
 		P34_MUL_STRATEGY string
 		P34_INITIAL_MUL  int
 	}{
 		FIELD:            field,
 		PACKAGE:          strings.ToLower(field),
-		TIMESTAMP:        time.Now().Format(time.RFC822Z),
 		P34_POW_STRATEGY: p34[field].pow_strategy,
 		P34_MUL_STRATEGY: p34[field].mul_strategy,
 		P34_INITIAL_MUL:  p34[field].mul_initial,
