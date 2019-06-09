@@ -1,9 +1,6 @@
 linters:
   enable-all: true
   disable:
-  - deadcode
-  - unused
-  - varcheck
   - ineffassign
   - gocritic
   - golint
@@ -15,3 +12,18 @@ linters:
   - lll
   - gochecknoglobals
   - gochecknoinits
+
+issues:
+  exclude-rules:
+    - path: ecc/p384/
+      text: "`pp` is unused"
+      linters:
+        - unused
+        - deadcode
+        - varcheck
+    - path: ecc/p384/
+      text: "`hasBMI2` is unused"
+      linters:
+        - unused
+        - deadcode
+        - varcheck

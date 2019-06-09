@@ -22,7 +22,6 @@ const (
 const (
 	FP_503 uint8 = iota
 	FP_751
-	maxPrimeFieldId
 )
 
 // Representation of an element of the base field F_p.
