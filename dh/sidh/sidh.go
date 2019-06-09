@@ -42,7 +42,6 @@ type PrivateKey struct {
 const (
 	FP_503 = common.FP_503
 	FP_751 = common.FP_751
-	maxPrimeFieldId
 )
 
 const (
