@@ -2,7 +2,6 @@ linters:
   enable-all: true
   disable:
   - deadcode
-  - gosimple
   - unused
   - varcheck
   - ineffassign

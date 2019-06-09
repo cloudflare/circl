@@ -251,8 +251,8 @@ func TestClone(t *testing.T) {
 func TestCloneAndReset(t *testing.T) {
 	// Shake 256, uses SHA-3 with rate = 136
 	d1 := NewShake256()
-	buf1 := make([]byte, 28, 28)
-	buf2 := make([]byte, 28, 28)
+	buf1 := make([]byte, 28)
+	buf2 := make([]byte, 28)
 	d1.Write([]byte{0xcc})
 	// Reading x bytes where x<168-136. This makes capability
 	// of the state buffer shorter.
