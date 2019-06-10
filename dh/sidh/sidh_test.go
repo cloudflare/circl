@@ -262,14 +262,14 @@ func testImportExport(t *testing.T, v sidhVec) {
 	}
 }
 
-func testPrivateKeyBelowMax(t testing.TB, id uint8) {
+func testPrivateKeyBelowMax(t *testing.T, vec sidhVec) {
 	for variant, keySz := range map[KeyVariant]*common.DomainParams{
-		KeyVariant_SIDH_A: &common.Params(id).A,
-		KeyVariant_SIDH_B: &common.Params(id).B} {
+		KeyVariant_SIDH_A: &common.Params(vec.id).A,
+		KeyVariant_SIDH_B: &common.Params(vec.id).B} {
 
 		func(v KeyVariant, dp *common.DomainParams) {
 			var blen = int(dp.SecretByteLen)
-			var prv = NewPrivateKey(id, v)
+			var prv = NewPrivateKey(vec.id, v)
 			var secretBytes = make([]byte, prv.Size())
 
 			// Calculate either (2^e2 - 1) or (2^s - 1); where s=ceil(log_2(3^e3)))
@@ -315,10 +315,11 @@ func testSidhVec(t *testing.T, m *map[uint8]sidhVec, f func(t *testing.T, v sidh
 		t.Run(v.name, func(t *testing.T) { f(t, v) })
 	}
 }
-func TestKeygen(t *testing.T)       { testSidhVec(t, &tdataSidh, testKeygen) }
-func TestRoundtrip(t *testing.T)    { testSidhVec(t, &tdataSidh, testRoundtrip) }
-func TestImportExport(t *testing.T) { testSidhVec(t, &tdataSidh, testImportExport) }
-func TestKeyAgreement(t *testing.T) { testSidhVec(t, &tdataSidh, testKeyAgreement) }
+func TestKeygen(t *testing.T)             { testSidhVec(t, &tdataSidh, testKeygen) }
+func TestRoundtrip(t *testing.T)          { testSidhVec(t, &tdataSidh, testRoundtrip) }
+func TestImportExport(t *testing.T)       { testSidhVec(t, &tdataSidh, testImportExport) }
+func TestKeyAgreement(t *testing.T)       { testSidhVec(t, &tdataSidh, testKeyAgreement) }
+func TestPrivateKeyBelowMax(t *testing.T) { testSidhVec(t, &tdataSidh, testPrivateKeyBelowMax) }
 
 /* -------------------------------------------------------------------------
    Benchmarking
