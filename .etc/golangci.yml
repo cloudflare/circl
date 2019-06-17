@@ -12,6 +12,7 @@ linters:
   - lll
   - gochecknoglobals
   - gochecknoinits
+  - dupl
 
 issues:
   exclude-rules:
