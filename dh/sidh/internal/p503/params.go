@@ -55,7 +55,7 @@ var P503p1s8 = common.Fp{
 	0x085BDA2211E7A0AC, 0x9BF6C87B7E7DAF13, 0x45C6BDDA77A4D01B, 0x4066F541811E1E60,
 }
 
-// P503p1Zeros number of 0 digits in the least significat part of {{ .FIELD }} + 1
+// P503p1Zeros number of 0 digits in the least significant part of {{ .FIELD }} + 1
 var P503p1Zeros = 3
 
 var params common.SidhParams

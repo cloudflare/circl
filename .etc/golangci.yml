@@ -5,7 +5,6 @@ linters:
   - gocritic
   - stylecheck
   - errcheck
-  - misspell
   - scopelint
   - gosec
   - lll

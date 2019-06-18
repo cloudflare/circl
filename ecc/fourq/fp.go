@@ -13,7 +13,7 @@ var modulusP = Fp{
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f,
 }
 
-// SizeFp is the lenght in bytes to represent an element in the base field.
+// SizeFp is the length in bytes to represent an element in the base field.
 const SizeFp = 16
 
 // Fp is an element (in littleEndian order) of prime field GF(2^127-1).
