@@ -3,7 +3,6 @@ linters:
   disable:
   - ineffassign
   - gocritic
-  - stylecheck
   - errcheck
   - scopelint
   - gosec
