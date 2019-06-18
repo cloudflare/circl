@@ -23,7 +23,7 @@ var (
 	HasADXandBMI2 = cpu.X86.HasBMI2 && cpu.X86.HasADX
 )
 
-// P751p1Zeros number of 0 digits in the least significat part of {{ .FIELD }} + 1
+// P751p1Zeros number of 0 digits in the least significant part of {{ .FIELD }} + 1
 var P751p1Zeros = 5
 
 // P751 is a prime used by field Fp751

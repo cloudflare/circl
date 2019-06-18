@@ -193,7 +193,7 @@ func (prv *PrivateKey) Generate(rand io.Reader) error {
 	// Private key generation takes advantage of the fact that keyspace for secret
 	// key is (0, 2^x - 1), for some possitivite value of 'x' (see SIKE, 1.3.8).
 	// It means that all bytes in the secret key, but the last one, can take any
-	// value between <0x00,0xFF>. Similarily for the last byte, but generation
+	// value between <0x00,0xFF>. Similarly for the last byte, but generation
 	// needs to chop off some bits, to make sure generated value is an element of
 	// a key-space.
 	if _, err := io.ReadFull(rand, prv.Scalar); err != nil {
@@ -202,7 +202,7 @@ func (prv *PrivateKey) Generate(rand io.Reader) error {
 
 	prv.Scalar[len(prv.Scalar)-1] &= (1 << (dp.SecretBitLen % 8)) - 1
 	// Make sure scalar is SecretBitLen long. SIKE spec says that key
-	// space starts from 0, but I'm not confortable with having low
+	// space starts from 0, but I'm not comfortable with having low
 	// value scalars used for private keys. It is still secrure as per
 	// table 5.1 in [SIKE].
 	prv.Scalar[len(prv.Scalar)-1] |= 1 << ((dp.SecretBitLen % 8) - 1)
