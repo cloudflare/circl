@@ -222,7 +222,7 @@ func (c *KEM) encrypt(ctext []byte, rng io.Reader, pub *PublicKey, ptext []byte)
 	var ptextLen = len(ptext)
 	// c1 must be security level + 64 bits (see [SIKE] 1.4 and 4.3.3)
 	if ptextLen != (pub.params.KemSize + 8) {
-		return errors.New("Unsupported message length")
+		return errors.New("unsupported message length")
 	}
 
 	skA := NewPrivateKey(pub.params.ID, KeyVariantSidhA)
