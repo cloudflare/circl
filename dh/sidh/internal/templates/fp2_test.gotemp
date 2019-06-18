@@ -29,7 +29,7 @@ func vartimeEqFp2(lhs, rhs *common.Fp2) bool {
 	mod{{ .FIELD}}(&b.B)
 
 	eq := true
-	for i := 0; i < FP_WORDS && eq; i++ {
+	for i := 0; i < FpWords && eq; i++ {
 		eq = eq && (a.A[i] == b.A[i])
 		eq = eq && (a.B[i] == b.B[i])
 	}
@@ -50,12 +50,12 @@ func (testParams) generateFp2(rand *rand.Rand) common.Fp2 {
 	// This still allows generating values >= 2p, but hopefully that
 	// excess is OK (and if it's not, we'll find out, because it's for
 	// testing...)
-	highLimb := rand.Uint64() % {{ .FIELD}}x2[FP_WORDS-1]
+	highLimb := rand.Uint64() % {{ .FIELD}}x2[FpWords-1]
 	fpElementGen := func() (fp common.Fp) {
-		for i := 0; i < (FP_WORDS - 1); i++ {
+		for i := 0; i < (FpWords - 1); i++ {
 			fp[i] = rand.Uint64()
 		}
-		fp[FP_WORDS-1] = highLimb
+		fp[FpWords-1] = highLimb
 		return fp
 	}
 	return common.Fp2{A: fpElementGen(), B: fpElementGen()}
@@ -79,8 +79,8 @@ func (c testParams) Generate(rand *rand.Rand, size int) reflect.Value {
 func TestOne(t *testing.T) {
 	var tmp common.Fp2
 
-	mul(&tmp, &params.OneFp2, &params.A.Affine_P)
-	if !vartimeEqFp2(&tmp, &params.A.Affine_P) {
+	mul(&tmp, &params.OneFp2, &params.A.AffineP)
+	if !vartimeEqFp2(&tmp, &params.A.AffineP) {
 		t.Error("Not equal 1")
 	}
 }

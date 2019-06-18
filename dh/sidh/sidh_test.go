@@ -25,8 +25,8 @@ type sidhVec struct {
 }
 
 var tdataSidh = map[uint8]sidhVec{
-	FP_503: {
-		id:   FP_503,
+	Fp503: {
+		id:   Fp503,
 		name: "P-503",
 		PrA:  "B0AD510708F4ABCF3E0D97DC2F2FF112D9D2AAE49D97FFD1E4267F21C6E71C03",
 		PrB:  "A885A8B889520A6DBAD9FB33365E5B77FDED629440A16A533F259A510F63A822",
@@ -55,8 +55,8 @@ var tdataSidh = map[uint8]sidhVec{
 			"5EAE1132E582C88E47ED87B363D45F05BEA714D5E9933D7AF4071CBB5D49008F" +
 			"3E3DAD7DFF935EE509D5DE561842B678CCEB133D62E270E9AC3E",
 	},
-	FP_751: {
-		id:   FP_751,
+	Fp751: {
+		id:   Fp751,
 		name: "P-751",
 		// PrA - Alice's Private Key: 2*randint(0,2^371)
 		PrA: "C09957CC83045FB4C3726384D784476ACB6FFD92E5B15B3C2D451BA063F1BD4CED8FBCF682A98DD0954D3" +
@@ -130,12 +130,12 @@ func convToPub(s string, v KeyVariant, id uint8) *PublicKey {
    Unit tests
    -------------------------------------------------------------------------*/
 func testKeygen(t *testing.T, v sidhVec) {
-	pubA := NewPublicKey(v.id, KeyVariant_SIDH_A)
-	pubB := NewPublicKey(v.id, KeyVariant_SIDH_B)
-	alicePrivate := convToPrv(v.PrA, KeyVariant_SIDH_A, v.id)
-	bobPrivate := convToPrv(v.PrB, KeyVariant_SIDH_B, v.id)
-	expPubA := convToPub(v.PkA, KeyVariant_SIDH_A, v.id)
-	expPubB := convToPub(v.PkB, KeyVariant_SIDH_B, v.id)
+	pubA := NewPublicKey(v.id, KeyVariantSidhA)
+	pubB := NewPublicKey(v.id, KeyVariantSidhB)
+	alicePrivate := convToPrv(v.PrA, KeyVariantSidhA, v.id)
+	bobPrivate := convToPrv(v.PrB, KeyVariantSidhB, v.id)
+	expPubA := convToPub(v.PkA, KeyVariantSidhA, v.id)
+	expPubB := convToPub(v.PkB, KeyVariantSidhB, v.id)
 
 	alicePrivate.GeneratePublicKey(pubA)
 	bobPrivate.GeneratePublicKey(pubB)
@@ -157,10 +157,10 @@ func testKeygen(t *testing.T, v sidhVec) {
 
 func testRoundtrip(t *testing.T, v sidhVec) {
 	var err error
-	pubA := NewPublicKey(v.id, KeyVariant_SIDH_A)
-	pubB := NewPublicKey(v.id, KeyVariant_SIDH_B)
-	prvA := NewPrivateKey(v.id, KeyVariant_SIDH_A)
-	prvB := NewPrivateKey(v.id, KeyVariant_SIDH_B)
+	pubA := NewPublicKey(v.id, KeyVariantSidhA)
+	pubB := NewPublicKey(v.id, KeyVariantSidhB)
+	prvA := NewPrivateKey(v.id, KeyVariantSidhA)
+	prvB := NewPrivateKey(v.id, KeyVariantSidhB)
 	s1 := make([]byte, common.Params(v.id).SharedSecretSize)
 	s2 := make([]byte, common.Params(v.id).SharedSecretSize)
 
@@ -189,10 +189,10 @@ func testKeyAgreement(t *testing.T, v sidhVec) {
 	s2 := make([]byte, common.Params(v.id).SharedSecretSize)
 
 	// KeyPairs
-	alicePublic := convToPub(v.PkA, KeyVariant_SIDH_A, v.id)
-	bobPublic := convToPub(v.PkB, KeyVariant_SIDH_B, v.id)
-	alicePrivate := convToPrv(v.PrA, KeyVariant_SIDH_A, v.id)
-	bobPrivate := convToPrv(v.PrB, KeyVariant_SIDH_B, v.id)
+	alicePublic := convToPub(v.PkA, KeyVariantSidhA, v.id)
+	bobPublic := convToPub(v.PkB, KeyVariantSidhB, v.id)
+	alicePrivate := convToPrv(v.PrA, KeyVariantSidhA, v.id)
+	bobPrivate := convToPrv(v.PrB, KeyVariantSidhB, v.id)
 
 	// Do actual test
 	bobPrivate.DeriveSecret(s1, alicePublic)
@@ -222,20 +222,20 @@ func testKeyAgreement(t *testing.T, v sidhVec) {
 
 func testImportExport(t *testing.T, v sidhVec) {
 	var err error
-	a := NewPublicKey(v.id, KeyVariant_SIDH_A)
-	b := NewPublicKey(v.id, KeyVariant_SIDH_B)
+	a := NewPublicKey(v.id, KeyVariantSidhA)
+	b := NewPublicKey(v.id, KeyVariantSidhB)
 
 	// Import keys
-	a_hex, err := hex.DecodeString(v.PkA)
+	aHex, err := hex.DecodeString(v.PkA)
 	CheckNoErr(t, err, "invalid hex-number provided")
 
-	err = a.Import(a_hex)
+	err = a.Import(aHex)
 	CheckNoErr(t, err, "import failed")
 
-	b_hex, err := hex.DecodeString(v.PkB)
+	bHex, err := hex.DecodeString(v.PkB)
 	CheckNoErr(t, err, "invalid hex-number provided")
 
-	err = b.Import(b_hex)
+	err = b.Import(bHex)
 	CheckNoErr(t, err, "import failed")
 
 	aBytes := make([]byte, a.Size())
@@ -244,7 +244,7 @@ func testImportExport(t *testing.T, v sidhVec) {
 	b.Export(bBytes)
 
 	// Export and check if same
-	if !bytes.Equal(bBytes, b_hex) || !bytes.Equal(aBytes, a_hex) {
+	if !bytes.Equal(bBytes, bHex) || !bytes.Equal(aBytes, aHex) {
 		t.Fatalf("export/import failed")
 	}
 
@@ -264,8 +264,8 @@ func testImportExport(t *testing.T, v sidhVec) {
 
 func testPrivateKeyBelowMax(t *testing.T, vec sidhVec) {
 	for variant, keySz := range map[KeyVariant]*common.DomainParams{
-		KeyVariant_SIDH_A: &common.Params(vec.id).A,
-		KeyVariant_SIDH_B: &common.Params(vec.id).B} {
+		KeyVariantSidhA: &common.Params(vec.id).A,
+		KeyVariantSidhB: &common.Params(vec.id).B} {
 
 		func(v KeyVariant, dp *common.DomainParams) {
 			var blen = int(dp.SecretByteLen)
@@ -301,7 +301,7 @@ func testPrivateKeyBelowMax(t *testing.T, vec sidhVec) {
 
 func TestKeyAgreementP751_AliceEvenNumber(t *testing.T) {
 	// even alice
-	v := tdataSidh[FP_751]
+	v := tdataSidh[Fp751]
 	v.PkA = "8A2DE6FD963C475F7829B689C8B8306FC0917A39EBBC35CA171546269A85698FEC0379E2E1A3C567BE1B8EF5639F81F304889737E6CC444DBED4579DB204DC8C7928F5CBB1ECDD682A1B5C48C0DAF34208C06BF201BE4E6063B1BFDC42413B0537F8E76BEE645C1A24118301BAB17EB8D6E0F283BCB16EFB833E4BB3463953C93165A0DDAC55B385059F27FF7228486D0A733812C81C792BE9EC3A16A5DB0EB099EEA76AC0E59612251A3AD19F7CC567DA2AEBD7733171F48E471D17648692355164E27B515D2A47D7BA34B3B48A047BE7C09C4ABEE2FCC9ACA7396C8A8C9E73E29533FC7369094DFA7988778E55E53F309922C6E233F8F9C7936C3D29CEA640406FCA06450AA1978FF39F227BF06B1E072F1763447C6F513B23CDF3B0EC0379070AEE5A02D9AD8E0EB023461D631F4A9643A4C79921334945F6B33DDFC11D9703BD06B047B4DA404AB12EFD2C3A49E5C42D10DA063352748B21DE41C32A5693FE1C0DCAB111F4990CD58BECADB1892EE7A7E99C9DB4DA4E69C96E57138B99038BC9B877ECE75914EFB98DD08B9E4A2DCCB948A8F7D2F26678A9952BA0EFAB1E9CF6E51B557480DEC2BA30DE0FE4AFE30A6B30765EE75EF64F678316D81C72755AD2CFA0B8C7706B07BFA52FBC3DB84EF9E79796C0089305B1E13C78660779E0FF2A13820CE141104F976B1678990F85B2D3D2B89CD5BC4DD52603A5D24D3EFEDA44BAA0F38CDB75A220AF45EAB70F2799875D435CE50FC6315EDD4BB7AA7260AFD7CD0561B69B4FA3A817904322661C3108DA24"
 	v.PrA = "C09957CC83045FB4C3726384D784476ACB6FFD92E5B15B3C2D451BA063F1BD4CED8FBCF682A98DD0954D37BCAF730F"
 	testKeyAgreement(t, v)
@@ -326,10 +326,10 @@ func TestPrivateKeyBelowMax(t *testing.T) { testSidhVec(t, &tdataSidh, testPriva
    -------------------------------------------------------------------------*/
 func BenchmarkSidhKeyAgreementP751(b *testing.B) {
 	// KeyPairs
-	alicePublic := convToPub(tdataSidh[FP_751].PkA, KeyVariant_SIDH_A, FP_751)
-	bobPublic := convToPub(tdataSidh[FP_751].PkB, KeyVariant_SIDH_B, FP_751)
-	alicePrivate := convToPrv(tdataSidh[FP_751].PrA, KeyVariant_SIDH_A, FP_751)
-	bobPrivate := convToPrv(tdataSidh[FP_751].PrB, KeyVariant_SIDH_B, FP_751)
+	alicePublic := convToPub(tdataSidh[Fp751].PkA, KeyVariantSidhA, Fp751)
+	bobPublic := convToPub(tdataSidh[Fp751].PkB, KeyVariantSidhB, Fp751)
+	alicePrivate := convToPrv(tdataSidh[Fp751].PrA, KeyVariantSidhA, Fp751)
+	bobPrivate := convToPrv(tdataSidh[Fp751].PrB, KeyVariantSidhB, Fp751)
 	var ss [2 * 94]byte
 
 	for i := 0; i < b.N; i++ {
@@ -341,10 +341,10 @@ func BenchmarkSidhKeyAgreementP751(b *testing.B) {
 
 func BenchmarkSidhKeyAgreementP503(b *testing.B) {
 	// KeyPairs
-	alicePublic := convToPub(tdataSidh[FP_503].PkA, KeyVariant_SIDH_A, FP_503)
-	bobPublic := convToPub(tdataSidh[FP_503].PkB, KeyVariant_SIDH_B, FP_503)
-	alicePrivate := convToPrv(tdataSidh[FP_503].PrA, KeyVariant_SIDH_A, FP_503)
-	bobPrivate := convToPrv(tdataSidh[FP_503].PrB, KeyVariant_SIDH_B, FP_503)
+	alicePublic := convToPub(tdataSidh[Fp503].PkA, KeyVariantSidhA, Fp503)
+	bobPublic := convToPub(tdataSidh[Fp503].PkB, KeyVariantSidhB, Fp503)
+	alicePrivate := convToPrv(tdataSidh[Fp503].PrA, KeyVariantSidhA, Fp503)
+	bobPrivate := convToPrv(tdataSidh[Fp503].PrB, KeyVariantSidhB, Fp503)
 	var ss [2 * 63]byte
 
 	for i := 0; i < b.N; i++ {
@@ -355,36 +355,36 @@ func BenchmarkSidhKeyAgreementP503(b *testing.B) {
 }
 
 func BenchmarkAliceKeyGenPrvP751(b *testing.B) {
-	prv := NewPrivateKey(FP_751, KeyVariant_SIDH_A)
+	prv := NewPrivateKey(Fp751, KeyVariantSidhA)
 	for n := 0; n < b.N; n++ {
 		prv.Generate(rand.Reader)
 	}
 }
 
 func BenchmarkAliceKeyGenPrvP503(b *testing.B) {
-	prv := NewPrivateKey(FP_503, KeyVariant_SIDH_A)
+	prv := NewPrivateKey(Fp503, KeyVariantSidhA)
 	for n := 0; n < b.N; n++ {
 		prv.Generate(rand.Reader)
 	}
 }
 
 func BenchmarkBobKeyGenPrvP751(b *testing.B) {
-	prv := NewPrivateKey(FP_751, KeyVariant_SIDH_B)
+	prv := NewPrivateKey(Fp751, KeyVariantSidhB)
 	for n := 0; n < b.N; n++ {
 		prv.Generate(rand.Reader)
 	}
 }
 
 func BenchmarkBobKeyGenPrvP503(b *testing.B) {
-	prv := NewPrivateKey(FP_503, KeyVariant_SIDH_B)
+	prv := NewPrivateKey(Fp503, KeyVariantSidhB)
 	for n := 0; n < b.N; n++ {
 		prv.Generate(rand.Reader)
 	}
 }
 
 func BenchmarkAliceKeyGenPubP751(b *testing.B) {
-	prv := NewPrivateKey(FP_751, KeyVariant_SIDH_A)
-	pub := NewPublicKey(FP_751, KeyVariant_SIDH_A)
+	prv := NewPrivateKey(Fp751, KeyVariantSidhA)
+	pub := NewPublicKey(Fp751, KeyVariantSidhA)
 	prv.Generate(rand.Reader)
 	for n := 0; n < b.N; n++ {
 		prv.GeneratePublicKey(pub)
@@ -392,8 +392,8 @@ func BenchmarkAliceKeyGenPubP751(b *testing.B) {
 }
 
 func BenchmarkAliceKeyGenPubP503(b *testing.B) {
-	prv := NewPrivateKey(FP_503, KeyVariant_SIDH_A)
-	pub := NewPublicKey(FP_503, KeyVariant_SIDH_A)
+	prv := NewPrivateKey(Fp503, KeyVariantSidhA)
+	pub := NewPublicKey(Fp503, KeyVariantSidhA)
 	prv.Generate(rand.Reader)
 	for n := 0; n < b.N; n++ {
 		prv.GeneratePublicKey(pub)
@@ -401,8 +401,8 @@ func BenchmarkAliceKeyGenPubP503(b *testing.B) {
 }
 
 func BenchmarkBobKeyGenPubP751(b *testing.B) {
-	prv := NewPrivateKey(FP_751, KeyVariant_SIDH_B)
-	pub := NewPublicKey(FP_751, KeyVariant_SIDH_B)
+	prv := NewPrivateKey(Fp751, KeyVariantSidhB)
+	pub := NewPublicKey(Fp751, KeyVariantSidhB)
 	prv.Generate(rand.Reader)
 	for n := 0; n < b.N; n++ {
 		prv.GeneratePublicKey(pub)
@@ -410,8 +410,8 @@ func BenchmarkBobKeyGenPubP751(b *testing.B) {
 }
 
 func BenchmarkBobKeyGenPubP503(b *testing.B) {
-	prv := NewPrivateKey(FP_503, KeyVariant_SIDH_B)
-	pub := NewPublicKey(FP_503, KeyVariant_SIDH_B)
+	prv := NewPrivateKey(Fp503, KeyVariantSidhB)
+	pub := NewPublicKey(Fp503, KeyVariantSidhB)
 	prv.Generate(rand.Reader)
 	for n := 0; n < b.N; n++ {
 		prv.GeneratePublicKey(pub)
@@ -419,8 +419,8 @@ func BenchmarkBobKeyGenPubP503(b *testing.B) {
 }
 
 func BenchmarkSharedSecretAliceP751(b *testing.B) {
-	aPr := convToPrv(tdataSidh[FP_751].PrA, KeyVariant_SIDH_A, FP_751)
-	bPk := convToPub(tdataSidh[FP_751].PkB, KeyVariant_SIDH_B, FP_751)
+	aPr := convToPrv(tdataSidh[Fp751].PrA, KeyVariantSidhA, Fp751)
+	bPk := convToPub(tdataSidh[Fp751].PkB, KeyVariantSidhB, Fp751)
 	var ss [2 * 94]byte
 	for n := 0; n < b.N; n++ {
 		aPr.DeriveSecret(ss[:], bPk)
@@ -428,8 +428,8 @@ func BenchmarkSharedSecretAliceP751(b *testing.B) {
 }
 
 func BenchmarkSharedSecretAliceP503(b *testing.B) {
-	aPr := convToPrv(tdataSidh[FP_503].PrA, KeyVariant_SIDH_A, FP_503)
-	bPk := convToPub(tdataSidh[FP_503].PkB, KeyVariant_SIDH_B, FP_503)
+	aPr := convToPrv(tdataSidh[Fp503].PrA, KeyVariantSidhA, Fp503)
+	bPk := convToPub(tdataSidh[Fp503].PkB, KeyVariantSidhB, Fp503)
 	var ss [2 * 63]byte
 	for n := 0; n < b.N; n++ {
 		aPr.DeriveSecret(ss[:], bPk)
@@ -438,8 +438,8 @@ func BenchmarkSharedSecretAliceP503(b *testing.B) {
 
 func BenchmarkSharedSecretBobP751(b *testing.B) {
 	// m_B = 3*randint(0,3^238)
-	aPk := convToPub(tdataSidh[FP_751].PkA, KeyVariant_SIDH_A, FP_751)
-	bPr := convToPrv(tdataSidh[FP_751].PrB, KeyVariant_SIDH_B, FP_751)
+	aPk := convToPub(tdataSidh[Fp751].PkA, KeyVariantSidhA, Fp751)
+	bPr := convToPrv(tdataSidh[Fp751].PrB, KeyVariantSidhB, Fp751)
 	var ss [2 * 94]byte
 	for n := 0; n < b.N; n++ {
 		bPr.DeriveSecret(ss[:], aPk)
@@ -448,8 +448,8 @@ func BenchmarkSharedSecretBobP751(b *testing.B) {
 
 func BenchmarkSharedSecretBobP503(b *testing.B) {
 	// m_B = 3*randint(0,3^238)
-	aPk := convToPub(tdataSidh[FP_503].PkA, KeyVariant_SIDH_A, FP_503)
-	bPr := convToPrv(tdataSidh[FP_503].PrB, KeyVariant_SIDH_B, FP_503)
+	aPk := convToPub(tdataSidh[Fp503].PkA, KeyVariantSidhA, Fp503)
+	bPr := convToPrv(tdataSidh[Fp503].PrB, KeyVariantSidhB, Fp503)
 	var ss [2 * 63]byte
 	for n := 0; n < b.N; n++ {
 		bPr.DeriveSecret(ss[:], aPk)
@@ -460,11 +460,11 @@ func BenchmarkSharedSecretBobP503(b *testing.B) {
 
 func ExamplePrivateKey() {
 	// Allice's key pair
-	prvA := NewPrivateKey(FP_503, KeyVariant_SIDH_A)
-	pubA := NewPublicKey(FP_503, KeyVariant_SIDH_A)
+	prvA := NewPrivateKey(Fp503, KeyVariantSidhA)
+	pubA := NewPublicKey(Fp503, KeyVariantSidhA)
 	// Bob's key pair
-	prvB := NewPrivateKey(FP_503, KeyVariant_SIDH_B)
-	pubB := NewPublicKey(FP_503, KeyVariant_SIDH_B)
+	prvB := NewPrivateKey(Fp503, KeyVariantSidhB)
+	pubB := NewPublicKey(Fp503, KeyVariantSidhB)
 	// Generate keypair for Allice
 	prvA.Generate(rand.Reader)
 	prvA.GeneratePublicKey(pubA)
