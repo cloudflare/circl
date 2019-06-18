@@ -21,21 +21,21 @@ type KEM struct {
 	cshakeG, cshakeH, cshakeF *sha3.CShake
 }
 
-// Instantiate SIKE/p503 KEM
+// NewSike503 instantiates SIKE/p503 KEM
 func NewSike503(rng io.Reader) *KEM {
 	var c KEM
-	c.Allocate(FP_503, rng)
+	c.Allocate(Fp503, rng)
 	return &c
 }
 
-// Instantiate SIKE/p751 KEM
+// NewSike751 instantiates SIKE/p751 KEM
 func NewSike751(rng io.Reader) *KEM {
 	var c KEM
-	c.Allocate(FP_751, rng)
+	c.Allocate(Fp751, rng)
 	return &c
 }
 
-// Allocates KEM object for multiple SIKE operations. The rng
+// Allocate allocates KEM object for multiple SIKE operations. The rng
 // must be cryptographically secure PRNG.
 func (c *KEM) Allocate(id uint8, rng io.Reader) {
 	// Constants used for cSHAKE customization
@@ -55,7 +55,7 @@ func (c *KEM) Allocate(id uint8, rng io.Reader) {
 	c.allocated = true
 }
 
-// Encapsulation receives the public key and generates SIKE ciphertext and shared secret.
+// Encapsulate receives the public key and generates SIKE ciphertext and shared secret.
 // The generated ciphertext is used for authentication.
 // Error is returned in case PRNG fails. Function panics in case wrongly formated
 // input was provided.
@@ -64,7 +64,7 @@ func (c *KEM) Encapsulate(ciphertext, secret []byte, pub *PublicKey) error {
 		panic("KEM unallocated")
 	}
 
-	if KeyVariant_SIKE != pub.keyVariant {
+	if KeyVariantSike != pub.keyVariant {
 		panic("Wrong type of public key")
 	}
 
@@ -82,13 +82,13 @@ func (c *KEM) Encapsulate(ciphertext, secret []byte, pub *PublicKey) error {
 		return err
 	}
 
-	var buf [3 * common.MAX_SHARED_SECRET_BSZ]byte
+	var buf [3 * common.MaxSharedSecretBsz]byte
 	var skA = PrivateKey{
 		key: key{
 			params:     c.params,
-			keyVariant: KeyVariant_SIDH_A},
+			keyVariant: KeyVariantSidhA},
 		Scalar: c.secretBytes}
-	var pkA = NewPublicKey(c.params.Id, KeyVariant_SIDH_A)
+	var pkA = NewPublicKey(c.params.ID, KeyVariantSidhA)
 
 	pub.Export(buf[:])
 	c.cshakeG.Reset()
@@ -118,7 +118,7 @@ func (c *KEM) Decapsulate(secret []byte, prv *PrivateKey, pub *PublicKey, cipher
 		panic("KEM unallocated")
 	}
 
-	if KeyVariant_SIKE != pub.keyVariant {
+	if KeyVariantSike != pub.keyVariant {
 		panic("Wrong type of public key")
 	}
 
@@ -134,21 +134,21 @@ func (c *KEM) Decapsulate(secret []byte, prv *PrivateKey, pub *PublicKey, cipher
 		panic("ciphertext buffer to small")
 	}
 
-	var m [common.MAX_MSG_BSZ]byte
-	var r [common.MAX_SIDH_PRIVATE_KEY_BSZ]byte
-	var pkBytes [3 * common.MAX_SHARED_SECRET_BSZ]byte
+	var m [common.MaxMsgBsz]byte
+	var r [common.MaxSidhPrivateKeyBsz]byte
+	var pkBytes [3 * common.MaxSharedSecretBsz]byte
 	var skA = PrivateKey{
 		key: key{
 			params:     c.params,
-			keyVariant: KeyVariant_SIDH_A},
+			keyVariant: KeyVariantSidhA},
 		Scalar: c.secretBytes}
-	var pkA = NewPublicKey(c.params.Id, KeyVariant_SIDH_A)
-	c1_len := c.decrypt(m[:], prv, ciphertext)
+	var pkA = NewPublicKey(c.params.ID, KeyVariantSidhA)
+	c1Len := c.decrypt(m[:], prv, ciphertext)
 
 	// r' = G(m'||pub)
 	pub.Export(pkBytes[:])
 	c.cshakeG.Reset()
-	c.cshakeG.Write(m[:c1_len])
+	c.cshakeG.Write(m[:c1Len])
 	c.cshakeG.Write(pkBytes[:3*c.params.SharedSecretSize])
 	c.cshakeG.Read(r[:c.params.A.SecretByteLen])
 	// Ensure bitlength is not bigger than 2^e2-1
@@ -167,9 +167,9 @@ func (c *KEM) Decapsulate(secret []byte, prv *PrivateKey, pub *PublicKey, cipher
 	// See more details in "On the security of supersingular isogeny cryptosystems"
 	// (S. Galbraith, et al., 2016, ePrint #859).
 	mask := subtle.ConstantTimeCompare(pkBytes[:c.params.PublicKeySize], ciphertext[:pub.params.PublicKeySize])
-	common.Cpick(mask, m[:c1_len], m[:c1_len], prv.S)
+	common.Cpick(mask, m[:c1Len], m[:c1Len], prv.S)
 	c.cshakeH.Reset()
-	c.cshakeH.Write(m[:c1_len])
+	c.cshakeH.Write(m[:c1Len])
 	c.cshakeH.Write(ciphertext)
 	c.cshakeH.Read(secret[:c.SharedSecretSize()])
 	return nil
@@ -199,8 +199,8 @@ func (c *KEM) SharedSecretSize() int {
 }
 
 func (c *KEM) generateCiphertext(ctext []byte, skA *PrivateKey, pkA, pkB *PublicKey, ptext []byte) {
-	var n [common.MAX_MSG_BSZ]byte
-	var j [common.MAX_SHARED_SECRET_BSZ]byte
+	var n [common.MaxMsgBsz]byte
+	var j [common.MaxSharedSecretBsz]byte
 	var ptextLen = skA.params.MsgLen
 
 	skA.DeriveSecret(j[:], pkB)
@@ -215,8 +215,8 @@ func (c *KEM) generateCiphertext(ctext []byte, skA *PrivateKey, pkA, pkB *Public
 	copy(ctext[pkA.Size():], n[:ptextLen])
 }
 
-// Uses SIKE public key to encrypt plaintext. Requires cryptographically secure PRNG
-// Returns ciphertext in case encryption succeeds. Returns error in case PRNG fails
+// encrypt uses SIKE public key to encrypt plaintext. Requires cryptographically secure
+// PRNG. Returns ciphertext in case encryption succeeds. Returns error in case PRNG fails
 // or wrongly formated input was provided.
 func (c *KEM) encrypt(ctext []byte, rng io.Reader, pub *PublicKey, ptext []byte) error {
 	var ptextLen = len(ptext)
@@ -225,8 +225,8 @@ func (c *KEM) encrypt(ctext []byte, rng io.Reader, pub *PublicKey, ptext []byte)
 		return errors.New("Unsupported message length")
 	}
 
-	skA := NewPrivateKey(pub.params.Id, KeyVariant_SIDH_A)
-	pkA := NewPublicKey(pub.params.Id, KeyVariant_SIDH_A)
+	skA := NewPrivateKey(pub.params.ID, KeyVariantSidhA)
+	pkA := NewPublicKey(pub.params.ID, KeyVariantSidhA)
 	err := skA.Generate(rng)
 	if err != nil {
 		return err
@@ -237,27 +237,27 @@ func (c *KEM) encrypt(ctext []byte, rng io.Reader, pub *PublicKey, ptext []byte)
 	return nil
 }
 
-// Uses SIKE private key to decrypt ciphertext. Returns plaintext in case
+// decrypt uses SIKE private key to decrypt ciphertext. Returns plaintext in case
 // decryption succeeds or error in case unexptected input was provided.
 // Constant time
 func (c *KEM) decrypt(n []byte, prv *PrivateKey, ctext []byte) int {
-	var c1_len int
-	var j [common.MAX_SHARED_SECRET_BSZ]byte
-	var pk_len = prv.params.PublicKeySize
+	var c1Len int
+	var j [common.MaxSharedSecretBsz]byte
+	var pkLen = prv.params.PublicKeySize
 
 	// ctext is a concatenation of (ciphertext = pubkey_A || c1)
 	// it must be security level + 64 bits (see [SIKE] 1.4 and 4.3.3)
 	// Lengths has been already checked by Decapsulate()
-	c1_len = len(ctext) - pk_len
-	c0 := NewPublicKey(prv.params.Id, KeyVariant_SIDH_A)
+	c1Len = len(ctext) - pkLen
+	c0 := NewPublicKey(prv.params.ID, KeyVariantSidhA)
 	// Never fails
-	c0.Import(ctext[:pk_len])
+	c0.Import(ctext[:pkLen])
 	prv.DeriveSecret(j[:], c0)
 	c.cshakeF.Reset()
 	c.cshakeF.Write(j[:prv.params.SharedSecretSize])
-	c.cshakeF.Read(n[:c1_len])
-	for i := range n[:c1_len] {
-		n[i] ^= ctext[pk_len+i]
+	c.cshakeF.Read(n[:c1Len])
+	for i := range n[:c1Len] {
+		n[i] ^= ctext[pkLen+i]
 	}
-	return c1_len
+	return c1Len
 }

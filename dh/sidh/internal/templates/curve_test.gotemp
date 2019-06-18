@@ -18,14 +18,14 @@ func vartimeEqProjFp2(lhs, rhs *ProjectivePoint) bool {
 }
 
 func toAffine(point *ProjectivePoint) *Fp2 {
-	var affine_x Fp2
-	inv(&affine_x, &point.Z)
-	mul(&affine_x, &affine_x, &point.X)
-	return &affine_x
+	var affineX Fp2
+	inv(&affineX, &point.Z)
+	mul(&affineX, &affineX, &point.X)
+	return &affineX
 }
 
 func Test_jInvariant(t *testing.T) {
-	var curve = ProjectiveCurveParameters{A: curve_A, C: curve_C}
+	var curve = ProjectiveCurveParameters{A: curveA, C: curveC}
 	var jbufRes = make([]byte, params.SharedSecretSize)
 	var jbufExp = make([]byte, params.SharedSecretSize)
 	var jInv Fp2
@@ -46,54 +46,54 @@ func Test_jInvariant(t *testing.T) {
 func TestProjectivePointVartimeEq(t *testing.T) {
 	var xP ProjectivePoint
 
-	xP = ProjectivePoint{X: affine_xP, Z: params.OneFp2}
+	xP = ProjectivePoint{X: affineXP, Z: params.OneFp2}
 	xQ := xP
 
 	// Scale xQ, which results in the same projective point
-	mul(&xQ.X, &xQ.X, &curve_A)
-	mul(&xQ.Z, &xQ.Z, &curve_A)
+	mul(&xQ.X, &xQ.X, &curveA)
+	mul(&xQ.Z, &xQ.Z, &curveA)
 	if !vartimeEqProjFp2(&xP, &xQ) {
 		t.Error("Expected the scaled point to be equal to the original")
 	}
 }
 
 func TestPointMulVersusSage(t *testing.T) {
-	var curve = ProjectiveCurveParameters{A: curve_A, C: curve_C}
+	var curve = ProjectiveCurveParameters{A: curveA, C: curveC}
 	var cparams = CalcCurveParamsEquiv4(&curve)
 	var xP ProjectivePoint
 
 	// x 2
-	xP = ProjectivePoint{X: affine_xP, Z: params.OneFp2}
+	xP = ProjectivePoint{X: affineXP, Z: params.OneFp2}
 	Pow2k(&xP, &cparams, 1)
 	afxQ := toAffine(&xP)
-	if !vartimeEqFp2(afxQ, &affine_xP2) {
-		t.Error("\nExpected\n", affine_xP2, "\nfound\n", afxQ)
+	if !vartimeEqFp2(afxQ, &affineXP2) {
+		t.Error("\nExpected\n", affineXP2, "\nfound\n", afxQ)
 	}
 
 	// x 4
-	xP = ProjectivePoint{X: affine_xP, Z: params.OneFp2}
+	xP = ProjectivePoint{X: affineXP, Z: params.OneFp2}
 	Pow2k(&xP, &cparams, 2)
 	afxQ = toAffine(&xP)
-	if !vartimeEqFp2(afxQ, &affine_xP4) {
-		t.Error("\nExpected\n", affine_xP4, "\nfound\n", afxQ)
+	if !vartimeEqFp2(afxQ, &affineXP4) {
+		t.Error("\nExpected\n", affineXP4, "\nfound\n", afxQ)
 	}
 }
 
 func TestPointMul9VersusSage(t *testing.T) {
-	var curve = ProjectiveCurveParameters{A: curve_A, C: curve_C}
+	var curve = ProjectiveCurveParameters{A: curveA, C: curveC}
 	var cparams = CalcCurveParamsEquiv3(&curve)
 	var xP ProjectivePoint
 
-	xP = ProjectivePoint{X: affine_xP, Z: params.OneFp2}
+	xP = ProjectivePoint{X: affineXP, Z: params.OneFp2}
 	Pow3k(&xP, &cparams, 2)
 	afxQ := toAffine(&xP)
-	if !vartimeEqFp2(afxQ, &affine_xP9) {
-		t.Error("\nExpected\n", affine_xP9, "\nfound\n", afxQ)
+	if !vartimeEqFp2(afxQ, &affineXP9) {
+		t.Error("\nExpected\n", affineXP9, "\nfound\n", afxQ)
 	}
 }
 
 func BenchmarkThreePointLadder(b *testing.B) {
-	var curve = ProjectiveCurveParameters{A: curve_A, C: curve_C}
+	var curve = ProjectiveCurveParameters{A: curveA, C: curveC}
 	for n := 0; n < b.N; n++ {
 		ScalarMul3Pt(&curve, &threePointLadderInputs[0], &threePointLadderInputs[1], &threePointLadderInputs[2], uint(len(scalar3Pt)*8), scalar3Pt[:])
 	}

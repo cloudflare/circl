@@ -27,14 +27,14 @@ func TestFpCswap(t *testing.T) {
 	var y = two
 
 	cswapP751(&x, &y, 0)
-	for i := 0; i < FP_WORDS; i++ {
+	for i := 0; i < FpWords; i++ {
 		if (x[i] != one[i]) || (y[i] != two[i]) {
 			t.Error("Found", x, "expected", two)
 		}
 	}
 
 	cswapP751(&x, &y, 1)
-	for i := 0; i < FP_WORDS; i++ {
+	for i := 0; i < FpWords; i++ {
 		if (x[i] != two[i]) || (y[i] != one[i]) {
 			t.Error("Found", x, "expected", two)
 		}

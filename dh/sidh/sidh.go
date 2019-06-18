@@ -38,10 +38,10 @@ type PrivateKey struct {
 }
 
 // Id's correspond to bitlength of the prime field characteristic
-// Currently FP_751 is the only one supported by this implementation
+// Currently Fp751 is the only one supported by this implementation
 const (
-	FP_503 = common.FP_503
-	FP_751 = common.FP_751
+	Fp503 = common.Fp503
+	Fp751 = common.Fp751
 )
 
 const (
@@ -49,11 +49,11 @@ const (
 	// wether key is a SIKE variant (set) or SIDH (not set)
 
 	// 001 - SIDH: corresponds to 2-torsion group
-	KeyVariant_SIDH_A KeyVariant = 1 << 0
+	KeyVariantSidhA KeyVariant = 1 << 0
 	// 010 - SIDH: corresponds to 3-torsion group
-	KeyVariant_SIDH_B = 1 << 1
+	KeyVariantSidhB = 1 << 1
 	// 110 - SIKE
-	KeyVariant_SIKE = 1<<2 | KeyVariant_SIDH_B
+	KeyVariantSike = 1<<2 | KeyVariantSidhB
 )
 
 // Accessor to key variant
@@ -78,12 +78,12 @@ func (pub *PublicKey) Import(input []byte) error {
 	common.BytesToFp2(&pub.affine3Pt[0], input[0:ssSz], pub.params.Bytelen)
 	common.BytesToFp2(&pub.affine3Pt[1], input[ssSz:2*ssSz], pub.params.Bytelen)
 	common.BytesToFp2(&pub.affine3Pt[2], input[2*ssSz:3*ssSz], pub.params.Bytelen)
-	switch pub.params.Id {
-	case FP_503:
+	switch pub.params.ID {
+	case Fp503:
 		p503.ToMontgomery(&pub.affine3Pt[0], &pub.affine3Pt[0])
 		p503.ToMontgomery(&pub.affine3Pt[1], &pub.affine3Pt[1])
 		p503.ToMontgomery(&pub.affine3Pt[2], &pub.affine3Pt[2])
-	case FP_751:
+	case Fp751:
 		p751.ToMontgomery(&pub.affine3Pt[0], &pub.affine3Pt[0])
 		p751.ToMontgomery(&pub.affine3Pt[1], &pub.affine3Pt[1])
 		p751.ToMontgomery(&pub.affine3Pt[2], &pub.affine3Pt[2])
@@ -98,12 +98,12 @@ func (pub *PublicKey) Import(input []byte) error {
 func (pub *PublicKey) Export(out []byte) {
 	var feTmp [3]common.Fp2
 	ssSz := pub.params.SharedSecretSize
-	switch pub.params.Id {
-	case FP_503:
+	switch pub.params.ID {
+	case Fp503:
 		p503.FromMontgomery(&feTmp[0], &pub.affine3Pt[0])
 		p503.FromMontgomery(&feTmp[1], &pub.affine3Pt[1])
 		p503.FromMontgomery(&feTmp[2], &pub.affine3Pt[2])
-	case FP_751:
+	case Fp751:
 		p751.FromMontgomery(&feTmp[0], &pub.affine3Pt[0])
 		p751.FromMontgomery(&feTmp[1], &pub.affine3Pt[1])
 		p751.FromMontgomery(&feTmp[2], &pub.affine3Pt[2])
@@ -124,12 +124,12 @@ func (pub *PublicKey) Size() int {
 // Usage of this function guarantees that the object is correctly initialized.
 func NewPrivateKey(id uint8, v KeyVariant) *PrivateKey {
 	prv := &PrivateKey{key: key{params: common.Params(id), keyVariant: v}}
-	if (v & KeyVariant_SIDH_A) == KeyVariant_SIDH_A {
+	if (v & KeyVariantSidhA) == KeyVariantSidhA {
 		prv.Scalar = make([]byte, prv.params.A.SecretByteLen)
 	} else {
 		prv.Scalar = make([]byte, prv.params.B.SecretByteLen)
 	}
-	if v == KeyVariant_SIKE {
+	if v == KeyVariantSike {
 		prv.S = make([]byte, prv.params.MsgLen)
 	}
 	return prv
@@ -145,7 +145,7 @@ func (prv *PrivateKey) Export(out []byte) {
 // Size returns size of the private key in bytes
 func (prv *PrivateKey) Size() int {
 	tmp := len(prv.Scalar)
-	if prv.Variant() == KeyVariant_SIKE {
+	if prv.Variant() == KeyVariantSike {
 		tmp += prv.params.MsgLen
 	}
 	return tmp
@@ -178,13 +178,13 @@ func (prv *PrivateKey) Import(input []byte) error {
 func (prv *PrivateKey) Generate(rand io.Reader) error {
 	var dp *common.DomainParams
 
-	if (prv.keyVariant & KeyVariant_SIDH_A) == KeyVariant_SIDH_A {
+	if (prv.keyVariant & KeyVariantSidhA) == KeyVariantSidhA {
 		dp = &prv.params.A
 	} else {
 		dp = &prv.params.B
 	}
 
-	if prv.keyVariant == KeyVariant_SIKE {
+	if prv.keyVariant == KeyVariantSike {
 		if _, err := io.ReadFull(rand, prv.S); err != nil {
 			return err
 		}
@@ -212,20 +212,20 @@ func (prv *PrivateKey) Generate(rand io.Reader) error {
 
 // Generates public key.
 func (prv *PrivateKey) GeneratePublicKey(pub *PublicKey) {
-	var isA = (prv.keyVariant & KeyVariant_SIDH_A) == KeyVariant_SIDH_A
+	var isA = (prv.keyVariant & KeyVariantSidhA) == KeyVariantSidhA
 
-	if (pub.keyVariant != prv.keyVariant) || (pub.params.Id != prv.params.Id) {
+	if (pub.keyVariant != prv.keyVariant) || (pub.params.ID != prv.params.ID) {
 		panic("sidh: incompatbile public key")
 	}
 
-	switch prv.params.Id {
-	case FP_503:
+	switch prv.params.ID {
+	case Fp503:
 		if isA {
 			p503.PublicKeyGenA(&pub.affine3Pt, prv.Scalar)
 		} else {
 			p503.PublicKeyGenB(&pub.affine3Pt, prv.Scalar)
 		}
-	case FP_751:
+	case Fp751:
 		if isA {
 			p751.PublicKeyGenA(&pub.affine3Pt, prv.Scalar)
 		} else {
@@ -242,20 +242,20 @@ func (prv *PrivateKey) GeneratePublicKey(pub *PublicKey) {
 //
 // Caller must make sure key SIDH key pair is not used more than once.
 func (prv *PrivateKey) DeriveSecret(ss []byte, pub *PublicKey) {
-	var isA = (prv.keyVariant & KeyVariant_SIDH_A) == KeyVariant_SIDH_A
+	var isA = (prv.keyVariant & KeyVariantSidhA) == KeyVariantSidhA
 
-	if (pub.keyVariant == prv.keyVariant) || (pub.params.Id != prv.params.Id) {
+	if (pub.keyVariant == prv.keyVariant) || (pub.params.ID != prv.params.ID) {
 		panic("sidh: public and private are incompatbile")
 	}
 
-	switch prv.params.Id {
-	case FP_503:
+	switch prv.params.ID {
+	case Fp503:
 		if isA {
 			p503.DeriveSecretA(ss, prv.Scalar, &pub.affine3Pt)
 		} else {
 			p503.DeriveSecretB(ss, prv.Scalar, &pub.affine3Pt)
 		}
-	case FP_751:
+	case Fp751:
 		if isA {
 			p751.DeriveSecretA(ss, prv.Scalar, &pub.affine3Pt)
 		} else {

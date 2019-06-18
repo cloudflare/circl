@@ -9,7 +9,7 @@ import (
 
 const (
 	// Number of uint64 limbs used to store field element
-	FP_WORDS = 12
+	FpWords = 12
 )
 
 // CPU Capabilities. Those flags are referred by assembly code. According to
@@ -23,31 +23,31 @@ var (
 	HasADXandBMI2 = cpu.X86.HasBMI2 && cpu.X86.HasADX
 )
 
-// number of 0 digits in the least significat part of {{ .FIELD }} + 1
+// P751p1Zeros number of 0 digits in the least significat part of {{ .FIELD }} + 1
 var P751p1Zeros = 5
 
-// p751
+// P751 is a prime used by field Fp751
 var P751 = common.Fp{
 	0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff,
 	0xffffffffffffffff, 0xffffffffffffffff, 0xeeafffffffffffff,
 	0xe3ec968549f878a8, 0xda959b1a13f7cc76, 0x084e9867d6ebe876,
 	0x8562b5045cb25748, 0x0e12909f97badc66, 0x00006fe5d541f71c}
 
-// 2*p751 - 1
+// P751x2 = 2*p751 - 1
 var P751x2 = common.Fp{
 	0xFFFFFFFFFFFFFFFE, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
 	0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xDD5FFFFFFFFFFFFF,
 	0xC7D92D0A93F0F151, 0xB52B363427EF98ED, 0x109D30CFADD7D0ED,
 	0x0AC56A08B964AE90, 0x1C25213F2F75B8CD, 0x0000DFCBAA83EE38}
 
-// p751 + 1
+// P751p1 = p751 + 1
 var P751p1 = common.Fp{
 	0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
 	0x0000000000000000, 0x0000000000000000, 0xeeb0000000000000,
 	0xe3ec968549f878a8, 0xda959b1a13f7cc76, 0x084e9867d6ebe876,
 	0x8562b5045cb25748, 0x0e12909f97badc66, 0x00006fe5d541f71c}
 
-// R^2 = (2^768)^2 mod p
+// P751R2 = (2^768)^2 mod p
 var P751R2 = common.Fp{
 	2535603850726686808, 15780896088201250090, 6788776303855402382,
 	17585428585582356230, 5274503137951975249, 2266259624764636289,
@@ -58,14 +58,14 @@ var params common.SidhParams
 
 func init() {
 	params = common.SidhParams{
-		Id: common.FP_751,
+		ID: common.Fp751,
 		// SIDH public key byte size.
 		PublicKeySize: 564,
 		// SIDH shared secret byte size.
 		SharedSecretSize: 188,
 		A: common.DomainParams{
 			// The x-coordinate of PA
-			Affine_P: common.Fp2{
+			AffineP: common.Fp2{
 				A: common.Fp{
 					0xC2FC08CEAB50AD8B, 0x1D7D710F55E457B1, 0xE8738D92953DCD6E,
 					0xBAA7EBEE8A3418AA, 0xC9A288345F03F46F, 0xC8D18D167CFE2616,
@@ -80,7 +80,7 @@ func init() {
 				},
 			},
 			// The x-coordinate of QA
-			Affine_Q: common.Fp2{
+			AffineQ: common.Fp2{
 				A: common.Fp{
 					0xD56FE52627914862, 0x1FAD60DC96B5BAEA, 0x01E137D0BF07AB91,
 					0x404D3E9252161964, 0x3C5385E4CD09A337, 0x4476426769E4AF73,
@@ -95,7 +95,7 @@ func init() {
 				},
 			},
 			// The x-coordinate of RA = PA-QA
-			Affine_R: common.Fp2{
+			AffineR: common.Fp2{
 				A: common.Fp{
 					0x0BB84441DFFD19B3, 0x84B4DEA99B48C18E, 0x692DE648AD313805,
 					0xE6D72761B6DFAEE0, 0x223975C672C3058D, 0xA0FDE0C3CBA26FDC,
@@ -137,7 +137,7 @@ func init() {
 		},
 		B: common.DomainParams{
 			// The x-coordinate of PB
-			Affine_P: common.Fp2{
+			AffineP: common.Fp2{
 				A: common.Fp{
 					0xCFB6D71EF867AB0B, 0x4A5FDD76E9A45C76, 0x38B1EE69194B1F03,
 					0xF6E7B18A7761F3F0, 0xFCF01A486A52C84C, 0xCBE2F63F5AA75466,
@@ -152,7 +152,7 @@ func init() {
 				},
 			},
 			// The x-coordinate of QB
-			Affine_Q: common.Fp2{
+			AffineQ: common.Fp2{
 				A: common.Fp{
 					0xF1A8C9ED7B96C4AB, 0x299429DA5178486E, 0xEF4926F20CD5C2F4,
 					0x683B2E2858B4716A, 0xDDA2FBCC3CAC3EEB, 0xEC055F9F3A600460,
@@ -167,7 +167,7 @@ func init() {
 				},
 			},
 			// The x-coordinate of RB = PB - QB
-			Affine_R: common.Fp2{
+			AffineR: common.Fp2{
 				A: common.Fp{
 					0x1C0D6733769D0F31, 0xF084C3086E2659D1, 0xE23D5DA27BCBD133,
 					0xF38EC9A8D5864025, 0x6426DC781B3B645B, 0x4B24E8E3C9FB03EE,
@@ -236,5 +236,5 @@ func init() {
 		CiphertextSize: 24 + 8 + 564,
 	}
 
-	common.Register(common.FP_751, &params)
+	common.Register(common.Fp751, &params)
 }

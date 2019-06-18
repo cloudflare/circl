@@ -164,14 +164,14 @@ func PublicKeyGenA(pub3Pt *[3]Fp2, prvBytes []byte) {
 	var phi isogeny4
 
 	// Load points for A
-	xPA = ProjectivePoint{X: params.A.Affine_P, Z: params.OneFp2}
-	xQA = ProjectivePoint{X: params.A.Affine_Q, Z: params.OneFp2}
-	xRA = ProjectivePoint{X: params.A.Affine_R, Z: params.OneFp2}
+	xPA = ProjectivePoint{X: params.A.AffineP, Z: params.OneFp2}
+	xQA = ProjectivePoint{X: params.A.AffineQ, Z: params.OneFp2}
+	xRA = ProjectivePoint{X: params.A.AffineR, Z: params.OneFp2}
 
 	// Load points for B
-	xRB = ProjectivePoint{X: params.B.Affine_R, Z: params.OneFp2}
-	xQB = ProjectivePoint{X: params.B.Affine_Q, Z: params.OneFp2}
-	xPB = ProjectivePoint{X: params.B.Affine_P, Z: params.OneFp2}
+	xRB = ProjectivePoint{X: params.B.AffineR, Z: params.OneFp2}
+	xQB = ProjectivePoint{X: params.B.AffineQ, Z: params.OneFp2}
+	xPB = ProjectivePoint{X: params.B.AffineP, Z: params.OneFp2}
 
 	// Find isogeny kernel
 	tmp.C = params.OneFp2
@@ -204,14 +204,14 @@ func PublicKeyGenB(pub3Pt *[3]Fp2, prvBytes []byte) {
 	var phi isogeny3
 
 	// Load points for B
-	xRB = ProjectivePoint{X: params.B.Affine_R, Z: params.OneFp2}
-	xQB = ProjectivePoint{X: params.B.Affine_Q, Z: params.OneFp2}
-	xPB = ProjectivePoint{X: params.B.Affine_P, Z: params.OneFp2}
+	xRB = ProjectivePoint{X: params.B.AffineR, Z: params.OneFp2}
+	xQB = ProjectivePoint{X: params.B.AffineQ, Z: params.OneFp2}
+	xPB = ProjectivePoint{X: params.B.AffineP, Z: params.OneFp2}
 
 	// Load points for A
-	xPA = ProjectivePoint{X: params.A.Affine_P, Z: params.OneFp2}
-	xQA = ProjectivePoint{X: params.A.Affine_Q, Z: params.OneFp2}
-	xRA = ProjectivePoint{X: params.A.Affine_R, Z: params.OneFp2}
+	xPA = ProjectivePoint{X: params.A.AffineP, Z: params.OneFp2}
+	xQA = ProjectivePoint{X: params.A.AffineQ, Z: params.OneFp2}
+	xRA = ProjectivePoint{X: params.A.AffineR, Z: params.OneFp2}
 
 	tmp.C = params.OneFp2
 	xR = ScalarMul3Pt(&tmp, &xPB, &xQB, &xRB, params.B.SecretBitLen, prvBytes)
