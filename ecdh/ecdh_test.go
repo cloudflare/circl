@@ -13,7 +13,7 @@ import (
 )
 
 type katVector struct {
-	TcId    int
+	TcID    int
 	Public  XKey
 	Private XKey
 	Shared  XKey
@@ -183,7 +183,7 @@ func TestWycheproof(t *testing.T) {
 
 		input, _ := ioutil.ReadAll(jsonFile)
 		var vecRaw []struct {
-			TcId    int
+			TcID    int
 			Comment string
 			Curve   string
 			Public  string
@@ -199,7 +199,7 @@ func TestWycheproof(t *testing.T) {
 		}
 		vec := make([]katVector, len(vecRaw))
 		for i, v := range vecRaw {
-			vec[i].TcId = v.TcId
+			vec[i].TcID = v.TcID
 			vec[i].Public = strToKey(v.Public, SizeKey255)
 			vec[i].Private = strToKey(v.Private, SizeKey255)
 			vec[i].Shared = strToKey(v.Shared, SizeKey255)

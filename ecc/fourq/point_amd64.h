@@ -1,9 +1,9 @@
 #define _double(p) \
-    #define Px  const__x_ +p \
-    #define Py  const__y_ +p \
-    #define Pz  const__z_ +p \
-    #define Pta const__ta_+p \
-    #define Ptb const__tb_+p \
+    #define Px  const__x +p \
+    #define Py  const__y +p \
+    #define Pz  const__z +p \
+    #define Pta const__ta+p \
+    #define Ptb const__tb+p \
     #define a Px  \
     #define b Py  \
     #define c Pz  \
@@ -38,15 +38,15 @@
     #undef g
 
 #define _addAsm(p,q,local) \
-    #define addYX const__addYX_R2_+q \
-    #define subYX const__subYX_R2_+q \
-    #define z2    const__z2_R2_   +q \
-    #define dt2   const__dt2_R2_  +q \
-    #define Px    const__x_ +p \
-    #define Py    const__y_ +p \
-    #define Pz    const__z_ +p \
-    #define Pta   const__ta_+p \
-    #define Ptb   const__tb_+p \
+    #define addYX const__addYXR2+q \
+    #define subYX const__subYXR2+q \
+    #define z2    const__z2R2   +q \
+    #define dt2   const__dt2R2  +q \
+    #define Px    const__x +p \
+    #define Py    const__y +p \
+    #define Pz    const__z +p \
+    #define Pta   const__ta+p \
+    #define Ptb   const__tb+p \
     #define a Px    \
     #define b Py    \
     #define c local \
@@ -88,14 +88,14 @@
     #undef h
 
 #define _mixAddAsm(p,q,local) \
-    #define addYX const__addYX_R3_+q \
-    #define subYX const__subYX_R3_+q \
-    #define dt2   const__dt2_R3_  +q \
-    #define Px    const__x_ +p \
-    #define Py    const__y_ +p \
-    #define Pz    const__z_ +p \
-    #define Pta   const__ta_+p \
-    #define Ptb   const__tb_+p \
+    #define addYX const__addYXR3+q \
+    #define subYX const__subYXR3+q \
+    #define dt2   const__dt2R3  +q \
+    #define Px    const__x +p \
+    #define Py    const__y +p \
+    #define Pz    const__z +p \
+    #define Pta   const__ta+p \
+    #define Ptb   const__tb+p \
     #define a Px    \
     #define b Py    \
     #define c local \

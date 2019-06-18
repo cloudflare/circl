@@ -19,7 +19,7 @@ func ReportError(t *testing.T, got, want interface{}, inputs ...interface{}) {
 	t.Fatalf(b.String())
 }
 
-// Fails on error condition. mustFail indicates wether err is expected
+// checkErr fails on error condition. mustFail indicates wether err is expected
 // to be nil or not.
 func checkErr(t testing.TB, err error, mustFail bool, msg string) {
 	t.Helper()
@@ -32,13 +32,13 @@ func checkErr(t testing.TB, err error, mustFail bool, msg string) {
 	}
 }
 
-// Fail if err !=nil. Print msg as an error message
+// CheckNoErr fails if err !=nil. Print msg as an error message
 func CheckNoErr(t testing.TB, err error, msg string) { t.Helper(); checkErr(t, err, false, msg) }
 
-// Fail if err ==nil. Print msg as an error message
+// CheckIsErr fails if err ==nil. Print msg as an error message
 func CheckIsErr(t testing.TB, err error, msg string) { t.Helper(); checkErr(t, err, true, msg) }
 
-// Return true if call to function 'f' caused panic
+// CheckPanic returns true if call to function 'f' caused panic
 func CheckPanic(f func()) error {
 	var hasPaniced = errors.New("No panic detected")
 	defer func() {

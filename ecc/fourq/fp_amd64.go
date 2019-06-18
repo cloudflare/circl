@@ -1,6 +1,6 @@
 // +build amd64,go1.12
 
-package fourQ
+package fourq
 
 import (
 	"golang.org/x/sys/cpu"

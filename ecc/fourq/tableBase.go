@@ -1,19 +1,19 @@
 // +build amd64,go1.12
 
-package fourQ
+package fourq
 
 const (
 	// This is the size of the largest scalar k = 2^256 - 1 + order
-	fx_t = 257
+	fxT = 257
 	// Number of tables
-	fx_v = 2
+	fxV = 2
 	// Window size
-	fx_w = 3
+	fxW = 3
 	// Number of points per table
-	fx_2w1 = (1 << (uint(fx_w) - 1))
+	fx2w1 = (1 << (uint(fxW) - 1))
 )
 
-var tableBaseFixed = [fx_v][fx_2w1]pointR3{
+var tableBaseFixed = [fxV][fx2w1]pointR3{
 	{
 		{
 			addYX: Fq{

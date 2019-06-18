@@ -1,6 +1,6 @@
 // +build amd64,go1.12
 
-package fourQ
+package fourq
 
 import (
 	"crypto/rand"
@@ -11,7 +11,7 @@ import (
 	"github.com/cloudflare/circl/internal/test"
 )
 
-func randomPoint(P *pointR1) {
+func (P *pointR1) random() {
 	var k [Size]byte
 	_, _ = rand.Read(k[:])
 	P.ScalarBaseMult(&k)
@@ -26,7 +26,7 @@ func TestPoint(t *testing.T) {
 		_16P := &pointR1{}
 		S := &pointR2{}
 		for i := 0; i < testTimes; i++ {
-			randomPoint(&P)
+			P.random()
 			_16P.copy(&P)
 			S.FromR1(&P)
 			// 16P = 2^4P
@@ -48,7 +48,7 @@ func TestPoint(t *testing.T) {
 	t.Run("oddMultiples", func(t *testing.T) {
 		var Tab [8]pointR2
 		for i := 0; i < testTimes; i++ {
-			randomPoint(&P)
+			P.random()
 			// T = [1P, 3P, 5P, 7P, 9P, 11P, 13P, 15P]
 			P.oddMultiples(&Tab)
 			// Q = sum of all T[i] == 64P
@@ -69,7 +69,7 @@ func TestPoint(t *testing.T) {
 	})
 	t.Run("0P=0", func(t *testing.T) {
 		for i := 0; i < testTimes; i++ {
-			randomPoint(&P)
+			P.random()
 			Q.ScalarMult(&k, &P)
 			got := Q.IsIdentity()
 			want := true
@@ -81,7 +81,7 @@ func TestPoint(t *testing.T) {
 	t.Run("order*P=0", func(t *testing.T) {
 		conv.BigInt2BytesLe(k[:], conv.Uint64Le2BigInt(orderGenerator[:]))
 		for i := 0; i < testTimes; i++ {
-			randomPoint(&P)
+			P.random()
 			Q.ScalarMult(&k, &P)
 			got := Q.IsIdentity()
 			want := true
@@ -93,7 +93,7 @@ func TestPoint(t *testing.T) {
 	t.Run("cofactor*P=clear(P)", func(t *testing.T) {
 		conv.BigInt2BytesLe(k[:], big.NewInt(392))
 		for i := 0; i < testTimes; i++ {
-			randomPoint(&P)
+			P.random()
 			Q.ScalarMult(&k, &P)
 			P.ClearCofactor()
 			got := Q.isEqual(&P)
@@ -227,10 +227,11 @@ func BenchmarkPoint(b *testing.B) {
 	var k [Size]byte
 
 	_, _ = rand.Read(k[:])
-	randomPoint(&P)
-	randomPoint(&R)
+
+	P.random()
+	R.random()
 	Q.FromR1(&R)
-	randomPoint(&R)
+	R.random()
 
 	b.Run("affine", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {

@@ -1,6 +1,6 @@
 // +build amd64,go1.12
 
-package fourQ
+package fourq
 
 import (
 	"crypto/subtle"
@@ -143,9 +143,9 @@ func div2subY(x *[5]uint64, y int64) {
 //   their implementation on GLV–GLS curves" by (Faz-Hernandez et al.)
 //   http://doi.org/10.1007/s13389-014-0085-7
 func mLSBRecoding(L []int8, k []byte) {
-	const e = (fx_t + fx_w*fx_v - 1) / (fx_w * fx_v)
-	const d = e * fx_v
-	const l = d * fx_w
+	const e = (fxT + fxW*fxV - 1) / (fxW * fxV)
+	const d = e * fxV
+	const l = d * fxW
 	if len(L) == (l + 1) {
 		var m [5]uint64
 		m[0] = binary.LittleEndian.Uint64(k[0:8])
@@ -179,24 +179,24 @@ func mLSBRecoding(L []int8, k []byte) {
 
 func (P *pointR1) ScalarBaseMult(scalar *[Size]byte) {
 	var S pointR3
-	const e = (fx_t + fx_w*fx_v - 1) / (fx_w * fx_v)
-	const d = e * fx_v
-	const l = d * fx_w
+	const e = (fxT + fxW*fxV - 1) / (fxW * fxV)
+	const d = e * fxV
+	const l = d * fxW
 
 	var L [l + 1]int8
 	mLSBRecoding(L[:], scalar[:])
 	P.SetIdentity()
 	for ii := e - 1; ii >= 0; ii-- {
 		P.double()
-		for j := 0; j < fx_v; j++ {
-			dig := L[fx_w*d-j*e+ii-e]
-			for i := (fx_w-1)*d - j*e + ii - e; i >= (2*d - j*e + ii - e); i = i - d {
+		for j := 0; j < fxV; j++ {
+			dig := L[fxW*d-j*e+ii-e]
+			for i := (fxW-1)*d - j*e + ii - e; i >= (2*d - j*e + ii - e); i = i - d {
 				dig = 2*dig + L[i]
 			}
 			idx := absolute(int32(dig))
 			sig := L[d-j*e+ii-e]
-			Tabj := &tableBaseFixed[fx_v-j-1]
-			for k := 0; k < fx_2w1; k++ {
+			Tabj := &tableBaseFixed[fxV-j-1]
+			for k := 0; k < fx2w1; k++ {
 				S.cmov(&Tabj[k], subtle.ConstantTimeEq(int32(k), idx))
 			}
 			S.cneg(subtle.ConstantTimeEq(int32(sig), -1))
@@ -237,6 +237,7 @@ func (P *pointR1) ToAffine() {
 	P.Z.setOne()
 }
 
+// Marshal encodes a point P into out buffer.
 func (P *Point) Marshal(out *[Size]byte) {
 	P.Y.toBytes(out[:])
 	// b=0 if x is positive or zero
@@ -245,6 +246,7 @@ func (P *Point) Marshal(out *[Size]byte) {
 	out[Size-1] |= byte(b) << 7
 }
 
+// Unmarshal retrieves a point P from the input buffer. On success, returns true.
 func (P *Point) Unmarshal(in *[Size]byte) bool {
 	s := in[Size-1] >> 7
 	in[Size-1] &= 0x7F

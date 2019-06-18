@@ -1,6 +1,6 @@
 // +build amd64,go1.12
 
-package curve4Q
+package curve4q
 
 import (
 	"bytes"

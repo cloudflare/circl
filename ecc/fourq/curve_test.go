@@ -1,29 +1,28 @@
 // +build amd64,go1.12
 
-package fourQ_test
+package fourq
 
 import (
 	"crypto/rand"
 	"testing"
 
-	"github.com/cloudflare/circl/ecc/fourQ"
 	"github.com/cloudflare/circl/internal/conv"
 	"github.com/cloudflare/circl/internal/test"
 )
 
-func randomPoint(P *fourQ.Point) {
-	var k [fourQ.Size]byte
-	_, _ = rand.Read(k[:])
-	P.ScalarBaseMult(&k)
+func (P *Point) random() {
+	var _P pointR1
+	_P.random()
+	P.fromR1(&_P)
 }
 
 func TestMarshal(t *testing.T) {
 	testTimes := 1 << 10
-	var buf, k [fourQ.Size]byte
-	var P, Q, R fourQ.Point
+	var buf, k [Size]byte
+	var P, Q, R Point
 	t.Run("k*um(P)=kP", func(t *testing.T) {
 		for i := 0; i < testTimes; i++ {
-			randomPoint(&P)
+			P.random()
 			_, _ = rand.Read(k[:])
 
 			P.Marshal(&buf)
@@ -46,10 +45,10 @@ func TestMarshal(t *testing.T) {
 		}
 	})
 	t.Run("m(kP)~=m(-kP)", func(t *testing.T) {
-		c := fourQ.Params()
-		var minusK, encQ, encR [fourQ.Size]byte
+		c := Params()
+		var minusK, encQ, encR [Size]byte
 		for i := 0; i < testTimes; i++ {
-			randomPoint(&P)
+			P.random()
 			bigK, _ := rand.Int(rand.Reader, c.N)
 			conv.BigInt2BytesLe(k[:], bigK)
 			bigK.Neg(bigK).Mod(bigK, c.N)
@@ -75,7 +74,7 @@ func TestMarshal(t *testing.T) {
 }
 
 func BenchmarkCurve(b *testing.B) {
-	var P, Q, R fourQ.Point
+	var P, Q, R Point
 	var k [32]byte
 
 	_, _ = rand.Read(k[:])

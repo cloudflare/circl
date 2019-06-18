@@ -1,6 +1,6 @@
 // +build amd64
 
-package fourQ
+package fourq
 
 import (
 	"crypto/subtle"

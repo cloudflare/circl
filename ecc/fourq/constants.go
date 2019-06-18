@@ -1,6 +1,6 @@
 // +build amd64,go1.12
 
-package fourQ
+package fourq
 
 // prime is the modulus 2^127-1
 var prime = [2]uint64{ //LittleEndian
