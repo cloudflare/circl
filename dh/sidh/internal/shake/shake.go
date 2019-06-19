@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package sha3
+package shake
 
 // This file defines the CShake struct, and provides
 // functions for creating SHAKE and cSHAKE instances, as well as utility
@@ -131,18 +131,4 @@ func NewCShake256(N, S []byte) *CShake {
 		return NewShake256()
 	}
 	return newCShake(N, S, rate256, dsbyteCShake)
-}
-
-// ShakeSum128 writes an arbitrary-length digest of data into hash.
-func ShakeSum128(hash, data []byte) {
-	h := NewShake128()
-	h.Write(data)
-	h.Read(hash)
-}
-
-// ShakeSum256 writes an arbitrary-length digest of data into hash.
-func ShakeSum256(hash, data []byte) {
-	h := NewShake256()
-	h.Write(data)
-	h.Read(hash)
 }
