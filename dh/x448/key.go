@@ -1,5 +1,11 @@
 package x448
 
+import (
+	"crypto/subtle"
+
+	fp "github.com/cloudflare/circl/math/fp448"
+)
+
 // Size is the length in bytes of a X448 key.
 const Size = 56
 
@@ -13,15 +19,27 @@ func (k *Key) clamp(in *Key) *Key {
 	return k
 }
 
+// isValidPubKey verifies if the public key is not a low-order point.
+func (k *Key) isValidPubKey() bool {
+	fp.Modp((*fp.Elt)(k))
+	isLowOrder := false
+	for _, P := range lowOrderPoints {
+		isLowOrder = isLowOrder || subtle.ConstantTimeCompare(P[:], k[:]) != 0
+	}
+	return !isLowOrder
+}
+
 // KeyGen obtains a public key given a secret key.
 func KeyGen(public, secret *Key) {
 	ladderJoye(public.clamp(secret))
 }
 
 // Shared calculates Alice's shared key from Alice's secret key and Bob's
-// public key. Returns false when the recevied point is a low-order point.
+// public key returning true on success. Otherwise, it returns false when the
+// received public key is a low-order point.
 func Shared(shared, secret, public *Key) bool {
-	p := *public
-	ladderMontgomery(shared.clamp(secret), &p)
-	return true
+	validPk := *public
+	ok := validPk.isValidPubKey()
+	ladderMontgomery(shared.clamp(secret), &validPk)
+	return ok
 }

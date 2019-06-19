@@ -146,11 +146,11 @@ func Example_x448() {
 	KeyGen(&BobPublic, &BobSecret)
 
 	// Deriving Alice's shared key
-	Shared(&AliceShared, &AliceSecret, &BobPublic)
+	okA := Shared(&AliceShared, &AliceSecret, &BobPublic)
 
 	// Deriving Bob's shared key
-	Shared(&BobShared, &BobSecret, &AlicePublic)
+	okB := Shared(&BobShared, &BobSecret, &AlicePublic)
 
-	fmt.Println(AliceShared == BobShared)
+	fmt.Println(AliceShared == BobShared && okA && okB)
 	// Output: true
 }
