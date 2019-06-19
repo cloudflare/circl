@@ -35,8 +35,9 @@ func KeyGen(public, secret *Key) {
 }
 
 // Shared calculates Alice's shared key from Alice's secret key and Bob's
-// public key returning true on success. Otherwise, it returns false when the
-// received public key is a low-order point.
+// public key returning true on success. A failure case happens when the public
+// key is a low-order point, thus the shared key is all-zeros and the function
+// returns false.
 func Shared(shared, secret, public *Key) bool {
 	validPk := *public
 	validPk[31] &= (1 << (255 % 8)) - 1
