@@ -22,7 +22,7 @@ performance, and secure code.
 
 | Category | Algorithms | Description | Applications |
 |-----------|------------|-------------|--------------|
-| Hashing to Elliptic Curve Groups | Several algorithms: Elligator2, Ristretto, SWU, Icart. | Protocols based on elliptic curves require hash functions that map bit strings to points on an elliptic curve.  | Privacy Pass. OPAQUE. PAKE. Verifiable random functions. |
+| Hashing to Elliptic Curve Groups | Several algorithms: Elligator2, Ristretto, SWU, Icart. | Protocols based on elliptic curves require hash functions that map bit strings to points on an elliptic curve.  | VOPRF. OPAQUE. PAKE. Verifiable random functions. |
 | Bilinear Pairings | Plans for moving BN256 to stronger pairing curves. | A bilineal pairing is a mathematical operation that enables the implementation of advanced cryptographic protocols, such as identity-based encryption (IBE), short digital signatures (BLS), and attribute-based encryption (ABE). | Geo Key Manager, Randomness Beacon, Ethereum and other blockchain applications. |
 | PQ KEM | HRSS-SXY | Lattice (NTRU) based key encapsulation mechanism. | Key exchange for low-latency environments |
 | PQ KEM | Kyber | Lattice (M-LWE) based key encapsulation mechanism. | Post-Quantum Key exchange |
