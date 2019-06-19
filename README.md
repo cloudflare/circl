@@ -17,6 +17,7 @@ performance, and secure code.
 | Key Exchange | X25519, X448 | RFC-7748 provides new key exchange mechanisms based on Montgomery elliptic curves. | TLS 1.3. Secure Shell. |
 | Key Exchange | FourQ | One of the fastest elliptic curves at 128-bit security level. | Experimental for key agreement and digital signatures. |
 | Key Exchange / Digital signatures | P-384 | Our optimizations reduce the burden when moving from P-256 to P-384. |  ECDSA and ECDH using Suite B at top secret level. |
+| Digital Signatures | Ed25519 | RFC-8032 provides new signature schemes based on Edwards curves. | Digital certificates and authentication. |
 
 ## Work in Progress
 
@@ -55,8 +56,7 @@ CI build.
 
 ### Security
 
-This library is offered as-is, and without a guarantee. Therefore, we recommend
-that you take caution before using it in a production application.
+This library is offered as-is, and without a guarantee. Therefore, it is expected that changes in the code, repository, and API occur in the future. We recommend to take caution before using this library in a production application since part of its content is experimental.
 
 ### License
 
