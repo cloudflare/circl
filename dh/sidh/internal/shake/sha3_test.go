@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package sha3
+package shake
 
 // Tests include all the ShortMsgKATs provided by the Keccak team at
 // https://github.com/gvanas/KeccakCodePackage
@@ -27,7 +27,7 @@ const (
 	katFilename = "testdata/keccakKats.json.deflate"
 )
 
-// testShakes contains functions that return sha3.CShake instances for
+// testShakes contains functions that return shake.CShake instances for
 // with output-length equal to the KAT length.
 var testShakes = map[string]struct {
 	constructor  func(N []byte, S []byte) *CShake
@@ -321,7 +321,9 @@ func Example_sum() {
 	// A hash needs to be 64 bytes long to have 256-bit collision resistance.
 	h := make([]byte, 64)
 	// Compute a 64-byte hash of buf and put it in h.
-	ShakeSum256(h, buf)
+	shake := NewShake256()
+	shake.Write(buf)
+	shake.Read(h)
 	fmt.Printf("%x\n", h)
 	// Output: 0f65fe41fc353e52c55667bb9e2b27bfcc8476f2c413e9437d272ee3194a4e3146d05ec04a25d16b8f577c19b82d16b1424c3e022e783d2b4da98de3658d363d
 }

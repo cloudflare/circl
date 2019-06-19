@@ -4,7 +4,7 @@
 
 // +build !amd64,!386,!ppc64le
 
-package sha3
+package shake
 
 import "encoding/binary"
 

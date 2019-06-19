@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package sha3
+package shake
 
 import "hash"
 
@@ -126,7 +126,7 @@ func (d *state) padAndPermute(dsbyte byte) {
 // if more data is written to the ShakeHash after writing
 func (d *state) Write(p []byte) (int, error) {
 	if d.state != spongeAbsorbing {
-		panic("sha3: write to sponge after read")
+		panic("shake: write to sponge after read")
 	}
 	if d.buf == nil {
 		d.buf = d.storage[:0]

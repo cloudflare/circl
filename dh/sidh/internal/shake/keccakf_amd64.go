@@ -4,7 +4,7 @@
 
 // +build amd64,!appengine,!gccgo
 
-package sha3
+package shake
 
 // This function is implemented in keccakf_amd64.s.
 
