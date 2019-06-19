@@ -12,7 +12,8 @@ performance, and secure code.
 
 | Category | Algorithms | Description | Applications |
 |-----------|------------|-------------|--------------|
-| Post-Quantum Cryptography | SIDH, SIKE | Isogeny-based cryptography. SIDH provide key exchange mechanisms using ephemeral keys. SIKE is a key encapsulation method (KEM). | Experiments with TLS |
+| PQ Key Exchange | SIDH | SIDH provide key exchange mechanisms using ephemeral keys. | Post-quantum key exchange in TLS |
+| PQ KEM | SIKE | SIKE is a key encapsulation mechanism (KEM). | Post-quantum key exchange in TLS |
 | Key Exchange | X25519, X448 | RFC-7748 provides new key exchange mechanisms based on Montgomery elliptic curves. | TLS 1.3. Secure Shell. |
 | Key Exchange | FourQ | One of the fastest elliptic curves at 128-bit security level. | Experimental for key agreement and digital signatures. |
 | Key Exchange / Digital signatures | P-384 | Our optimizations reduce the burden when moving from P-256 to P-384. |  ECDSA and ECDH using Suite B at top secret level. |
@@ -21,8 +22,12 @@ performance, and secure code.
 
 | Category | Algorithms | Description | Applications |
 |-----------|------------|-------------|--------------|
-| Hashing to Elliptic Curve Groups| Several algorithms: Elligator2, Ristretto, SWU, Icart. | Protocols based on elliptic curves require hash functions that map bit strings to points on an elliptic curve.  | Privacy Pass. OPAQUE. PAKE. Verifiable random functions. |
+| Hashing to Elliptic Curve Groups | Several algorithms: Elligator2, Ristretto, SWU, Icart. | Protocols based on elliptic curves require hash functions that map bit strings to points on an elliptic curve.  | Privacy Pass. OPAQUE. PAKE. Verifiable random functions. |
 | Bilinear Pairings | Plans for moving BN256 to stronger pairing curves. | A bilineal pairing is a mathematical operation that enables the implementation of advanced cryptographic protocols, such as identity-based encryption (IBE), short digital signatures (BLS), and attribute-based encryption (ABE). | Geo Key Manager, Randomness Beacon, Ethereum and other blockchain applications. |
+| PQ KEM | HRSS-SXY | Lattice (NTRU) based key encapsulation mechanism. | Key exchange for low-latency environments |
+| PQ KEM | Kyber | Lattice (M-LWE) based key encapsulation mechanism. | Post-Quantum Key exchange |
+| PQ Key Exchange | cSIDH | Isogeny based drop-in replacement for Diffie–Hellman | Post-Quantum Key exchange. |
+| PQ Digital Signatures | SPHINCS+ | Stateless hash-based signature scheme | Post-Quantum PKI |
 
 
 ### Installation
@@ -38,9 +43,9 @@ You can get it by typing:
 Library comes with number of make targets which can be used for testing and
 benchmarking:
 
-*   ``test``: performs testing of the binary
-*   ``bench``: runs benchmarks
-*   ``cover``: produces coverage
+*   ``test``: performs testing of the binary.
+*   ``bench``: runs benchmarks.
+*   ``cover``: produces coverage.
 
 ### Contributing
 
