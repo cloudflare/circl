@@ -146,8 +146,11 @@ func TestWycheproof(t *testing.T) {
 		hexStr2Key(&pub, v.Public)
 		hexStr2Key(&priv, v.Private)
 		hexStr2Key(&want, v.Shared)
-		Shared(&got, &priv, &pub)
+		ok := Shared(&got, &priv, &pub)
 		if got != want {
+			test.ReportError(t, got, want, v.TcID, priv, pub)
+		}
+		if !ok && v.Result != "acceptable" {
 			test.ReportError(t, got, want, v.TcID, priv, pub)
 		}
 	}
@@ -186,11 +189,11 @@ func Example_x25519() {
 	KeyGen(&BobPublic, &BobSecret)
 
 	// Deriving Alice's shared key
-	Shared(&AliceShared, &AliceSecret, &BobPublic)
+	okA := Shared(&AliceShared, &AliceSecret, &BobPublic)
 
 	// Deriving Bob's shared key
-	Shared(&BobShared, &BobSecret, &AlicePublic)
+	okB := Shared(&BobShared, &BobSecret, &AlicePublic)
 
-	fmt.Println(AliceShared == BobShared)
+	fmt.Println(AliceShared == BobShared && okA && okB)
 	// Output: true
 }
