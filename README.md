@@ -1,14 +1,29 @@
-<img src=".etc/icon.png" align="right" />
+<img src=".etc/icon.png" align="right" height="300" width="300"/>
 
 # CIRCL
 [![CircleCI](https://circleci.com/gh/cloudflare/circl/tree/master.svg?style=svg&circle-token=a184a4d0cbff045907c8061bda35fc17dab465dc)](https://circleci.com/gh/cloudflare/circl/tree/master)
 
-CIRCL (Cloudflare Interoperable, Reusable Cryptographic Library) is a collection
+**CIRCL** (Cloudflare Interoperable, Reusable Cryptographic Library) is a collection
 of cryptographic primitives written in Go. The goal of this library is to be used as a tool for
-experimental deployment of cryptographic algorithms targeting cryptographic algorithms for Post-Quantum (PQ) and Elliptic
+experimental deployment of cryptographic algorithms targeting Post-Quantum (PQ) and Elliptic
 Curve Cryptography (ECC).
 
-## Implemented Primitives
+
+### Security Disclaimer
+
+🚨 This library is offered as-is, and without a guarantee. Therefore, it is expected that changes in the code, repository, and API occur in the future. We recommend to take caution before using this library in a production application since part of its content is experimental.
+
+
+### Installation
+
+You can get it by typing:
+
+```sh
+ $ go get -u github.com/cloudflare/circl
+```
+
+
+### Implemented Primitives
 
 | Category | Algorithms | Description | Applications |
 |-----------|------------|-------------|--------------|
@@ -19,7 +34,7 @@ Curve Cryptography (ECC).
 | Key Exchange / Digital signatures | P-384 | Our optimizations reduce the burden when moving from P-256 to P-384. |  ECDSA and ECDH using Suite B at top secret level. |
 | Digital Signatures | Ed25519 | RFC-8032 provides new signature schemes based on Edwards curves. | Digital certificates and authentication. |
 
-## Work in Progress
+### Work in Progress
 
 | Category | Algorithms | Description | Applications |
 |-----------|------------|-------------|--------------|
@@ -30,14 +45,6 @@ Curve Cryptography (ECC).
 | PQ Key Exchange | cSIDH | Isogeny based drop-in replacement for Diffie–Hellman | Post-Quantum Key exchange. |
 | PQ Digital Signatures | SPHINCS+ | Stateless hash-based signature scheme | Post-Quantum PKI |
 
-
-### Installation
-
-You can get it by typing:
-
-```sh
- $ go get -u github.com/cloudflare/circl
-```
 
 ### Testing and Benchmarking
 
@@ -54,9 +61,6 @@ To contribute, fork this repository and make your changes, and then make a Pull
 Request. A Pull Request requires approval of the admin team and a successful
 CI build.
 
-### Security
-
-🚨 This library is offered as-is, and without a guarantee. Therefore, it is expected that changes in the code, repository, and API occur in the future. We recommend to take caution before using this library in a production application since part of its content is experimental.
 
 ### License
 
