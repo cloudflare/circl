@@ -1,3 +1,5 @@
+<img src="./etc/icon.png" align="right" />
+
 # CIRCL
 [![CircleCI](https://circleci.com/gh/cloudflare/circl/tree/master.svg?style=svg&circle-token=a184a4d0cbff045907c8061bda35fc17dab465dc)](https://circleci.com/gh/cloudflare/circl/tree/master)
 
