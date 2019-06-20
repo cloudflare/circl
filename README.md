@@ -4,11 +4,9 @@
 [![CircleCI](https://circleci.com/gh/cloudflare/circl/tree/master.svg?style=svg&circle-token=a184a4d0cbff045907c8061bda35fc17dab465dc)](https://circleci.com/gh/cloudflare/circl/tree/master)
 
 CIRCL (Cloudflare Interoperable, Reusable Cryptographic Library) is a collection
-of cryptographic primitives written in Go. This library includes a set of
-packages that target cryptographic algorithms for Post-Quantum (PQ), and Elliptic
-Curve Cryptography (ECC). The goal of this library is to be used as an effective
-tool for deploying secure cryptography providing high quality, clear, high
-performance, and secure code.
+of cryptographic primitives written in Go. The goal of this library is to be used as a tool for
+experimental deployment of cryptographic algorithms targeting cryptographic algorithms for Post-Quantum (PQ) and Elliptic
+Curve Cryptography (ECC).
 
 ## Implemented Primitives
 
@@ -58,7 +56,7 @@ CI build.
 
 ### Security
 
-This library is offered as-is, and without a guarantee. Therefore, it is expected that changes in the code, repository, and API occur in the future. We recommend to take caution before using this library in a production application since part of its content is experimental.
+🚨 This library is offered as-is, and without a guarantee. Therefore, it is expected that changes in the code, repository, and API occur in the future. We recommend to take caution before using this library in a production application since part of its content is experimental.
 
 ### License
 
