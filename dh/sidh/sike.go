@@ -1,5 +1,3 @@
-// [SIKE] http://www.sike.org/files/SIDH-spec.pdf
-// [REF] https://github.com/Microsoft/PQCrypto-SIDH
 package sidh
 
 import (

@@ -12,49 +12,44 @@ const (
 	FpWords = 12
 )
 
-// CPU Capabilities. Those flags are referred by assembly code. According to
-// https://github.com/golang/go/issues/28230, variables referred from the
-// assembly must be in the same package.
-// We declare them variables not constants in order to facilitate testing.
 var (
-	// Signals support for MULX which is in BMI2
+	// HasBMI2 signals support for MULX which is in BMI2
 	HasBMI2 = cpu.X86.HasBMI2
-	// Signals support for ADX and BMI2
+	// HasADXandBMI2 signals support for ADX and BMI2
 	HasADXandBMI2 = cpu.X86.HasBMI2 && cpu.X86.HasADX
+	// P751 is a prime used by field Fp751
+	P751 = common.Fp{
+		0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff,
+		0xffffffffffffffff, 0xffffffffffffffff, 0xeeafffffffffffff,
+		0xe3ec968549f878a8, 0xda959b1a13f7cc76, 0x084e9867d6ebe876,
+		0x8562b5045cb25748, 0x0e12909f97badc66, 0x00006fe5d541f71c}
+
+	// P751x2 = 2*p751 - 1
+	P751x2 = common.Fp{
+		0xFFFFFFFFFFFFFFFE, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+		0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xDD5FFFFFFFFFFFFF,
+		0xC7D92D0A93F0F151, 0xB52B363427EF98ED, 0x109D30CFADD7D0ED,
+		0x0AC56A08B964AE90, 0x1C25213F2F75B8CD, 0x0000DFCBAA83EE38}
+
+	// P751p1 = p751 + 1
+	P751p1 = common.Fp{
+		0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
+		0x0000000000000000, 0x0000000000000000, 0xeeb0000000000000,
+		0xe3ec968549f878a8, 0xda959b1a13f7cc76, 0x084e9867d6ebe876,
+		0x8562b5045cb25748, 0x0e12909f97badc66, 0x00006fe5d541f71c}
+
+	// P751R2 = (2^768)^2 mod p
+	P751R2 = common.Fp{
+		2535603850726686808, 15780896088201250090, 6788776303855402382,
+		17585428585582356230, 5274503137951975249, 2266259624764636289,
+		11695651972693921304, 13072885652150159301, 4908312795585420432,
+		6229583484603254826, 488927695601805643, 72213483953973}
+
+	// P751p1Zeros number of 0 digits in the least significant part of P751+1
+	P751p1Zeros = 5
+
+	params common.SidhParams
 )
-
-// P751p1Zeros number of 0 digits in the least significant part of {{ .FIELD }} + 1
-var P751p1Zeros = 5
-
-// P751 is a prime used by field Fp751
-var P751 = common.Fp{
-	0xffffffffffffffff, 0xffffffffffffffff, 0xffffffffffffffff,
-	0xffffffffffffffff, 0xffffffffffffffff, 0xeeafffffffffffff,
-	0xe3ec968549f878a8, 0xda959b1a13f7cc76, 0x084e9867d6ebe876,
-	0x8562b5045cb25748, 0x0e12909f97badc66, 0x00006fe5d541f71c}
-
-// P751x2 = 2*p751 - 1
-var P751x2 = common.Fp{
-	0xFFFFFFFFFFFFFFFE, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
-	0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xDD5FFFFFFFFFFFFF,
-	0xC7D92D0A93F0F151, 0xB52B363427EF98ED, 0x109D30CFADD7D0ED,
-	0x0AC56A08B964AE90, 0x1C25213F2F75B8CD, 0x0000DFCBAA83EE38}
-
-// P751p1 = p751 + 1
-var P751p1 = common.Fp{
-	0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
-	0x0000000000000000, 0x0000000000000000, 0xeeb0000000000000,
-	0xe3ec968549f878a8, 0xda959b1a13f7cc76, 0x084e9867d6ebe876,
-	0x8562b5045cb25748, 0x0e12909f97badc66, 0x00006fe5d541f71c}
-
-// P751R2 = (2^768)^2 mod p
-var P751R2 = common.Fp{
-	2535603850726686808, 15780896088201250090, 6788776303855402382,
-	17585428585582356230, 5274503137951975249, 2266259624764636289,
-	11695651972693921304, 13072885652150159301, 4908312795585420432,
-	6229583484603254826, 488927695601805643, 72213483953973}
-
-var params common.SidhParams
 
 func init() {
 	params = common.SidhParams{

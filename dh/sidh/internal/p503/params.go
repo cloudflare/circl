@@ -12,53 +12,50 @@ const (
 	FpWords = 8
 )
 
-// CPU Capabilities. Those flags are referred by assembly code. According to
-// https://github.com/golang/go/issues/28230, variables referred from the
-// assembly must be in the same package.
-// We declare them variables not constants in order to facilitate testing.
-var (
-	// Signals support for MULX which is in BMI2
-	HasBMI2 = cpu.X86.HasBMI2
-	// Signals support for ADX and BMI2
-	HasADXandBMI2 = cpu.X86.HasBMI2 && cpu.X86.HasADX
-)
-
-// Constants used internally by this package
-
 // P503 is a prime used by field Fp503
-var P503 = common.Fp{
-	0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xABFFFFFFFFFFFFFF,
-	0x13085BDA2211E7A0, 0x1B9BF6C87B7E7DAF, 0x6045C6BDDA77A4D0, 0x004066F541811E1E,
-}
+var (
+	// According to https://github.com/golang/go/issues/28230,
+	// variables referred from the assembly must be in the same package.
+	// HasBMI2 signals support for MULX which is in BMI2
+	HasBMI2 = cpu.X86.HasBMI2
+	// HasADXandBMI2 signals support for ADX and BMI2
+	HasADXandBMI2 = cpu.X86.HasBMI2 && cpu.X86.HasADX
 
-// P503x2 = 2*p503 - 1
-var P503x2 = common.Fp{
-	0xFFFFFFFFFFFFFFFE, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0x57FFFFFFFFFFFFFF,
-	0x2610B7B44423CF41, 0x3737ED90F6FCFB5E, 0xC08B8D7BB4EF49A0, 0x0080CDEA83023C3C,
-}
+	// P503 is a prime used by field Fp503
+	P503 = common.Fp{
+		0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0xABFFFFFFFFFFFFFF,
+		0x13085BDA2211E7A0, 0x1B9BF6C87B7E7DAF, 0x6045C6BDDA77A4D0, 0x004066F541811E1E,
+	}
 
-// P503p1 = p503 + 1
-var P503p1 = common.Fp{
-	0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0xAC00000000000000,
-	0x13085BDA2211E7A0, 0x1B9BF6C87B7E7DAF, 0x6045C6BDDA77A4D0, 0x004066F541811E1E,
-}
+	// P503x2 = 2*p503 - 1
+	P503x2 = common.Fp{
+		0xFFFFFFFFFFFFFFFE, 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF, 0x57FFFFFFFFFFFFFF,
+		0x2610B7B44423CF41, 0x3737ED90F6FCFB5E, 0xC08B8D7BB4EF49A0, 0x0080CDEA83023C3C,
+	}
 
-// P503R2 = (2^512)^2 mod p
-var P503R2 = common.Fp{
-	0x5289A0CF641D011F, 0x9B88257189FED2B9, 0xA3B365D58DC8F17A, 0x5BC57AB6EFF168EC,
-	0x9E51998BD84D4423, 0xBF8999CBAC3B5695, 0x46E9127BCE14CDB6, 0x003F6CFCE8B81771,
-}
+	// P503p1 = p503 + 1
+	P503p1 = common.Fp{
+		0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0xAC00000000000000,
+		0x13085BDA2211E7A0, 0x1B9BF6C87B7E7DAF, 0x6045C6BDDA77A4D0, 0x004066F541811E1E,
+	}
 
-// P503p1s8 = p503 + 1 left-shifted by 8, assuming little endianness
-var P503p1s8 = common.Fp{
-	0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
-	0x085BDA2211E7A0AC, 0x9BF6C87B7E7DAF13, 0x45C6BDDA77A4D01B, 0x4066F541811E1E60,
-}
+	// P503R2 = (2^512)^2 mod p
+	P503R2 = common.Fp{
+		0x5289A0CF641D011F, 0x9B88257189FED2B9, 0xA3B365D58DC8F17A, 0x5BC57AB6EFF168EC,
+		0x9E51998BD84D4423, 0xBF8999CBAC3B5695, 0x46E9127BCE14CDB6, 0x003F6CFCE8B81771,
+	}
 
-// P503p1Zeros number of 0 digits in the least significant part of {{ .FIELD }} + 1
-var P503p1Zeros = 3
+	// P503p1s8 = p503 + 1 left-shifted by 8, assuming little endianness
+	P503p1s8 = common.Fp{
+		0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
+		0x085BDA2211E7A0AC, 0x9BF6C87B7E7DAF13, 0x45C6BDDA77A4D01B, 0x4066F541811E1E60,
+	}
 
-var params common.SidhParams
+	// P503p1Zeros number of 0 digits in the least significant part of P503+1
+	P503p1Zeros = 3
+
+	params common.SidhParams
+)
 
 func init() {
 	params = common.SidhParams{
