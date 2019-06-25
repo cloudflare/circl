@@ -2,6 +2,7 @@
 
 # CIRCL
 [![CircleCI](https://circleci.com/gh/cloudflare/circl/tree/master.svg?style=svg&circle-token=a184a4d0cbff045907c8061bda35fc17dab465dc)](https://circleci.com/gh/cloudflare/circl/tree/master)
+[![GoDoc](https://godoc.org/github.com/cloudflare/circl?status.svg)](https://godoc.org/github.com/cloudflare/circl)
 
 **CIRCL** (Cloudflare Interoperable, Reusable Cryptographic Library) is a collection
 of cryptographic primitives written in Go. The goal of this library is to be used as a tool for
