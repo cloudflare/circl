@@ -1,11 +1,6 @@
 package ed25519
 
-import (
-	"encoding/binary"
-	"fmt"
-
-	fp255 "github.com/cloudflare/circl/math/fp25519"
-)
+import fp255 "github.com/cloudflare/circl/math/fp25519"
 
 type pointR1 struct{ x, y, z, ta, tb fp255.Elt }
 type pointR2 struct {
@@ -13,18 +8,6 @@ type pointR2 struct {
 	z2 fp255.Elt
 }
 type pointR3 struct{ addYX, subYX, dt2 fp255.Elt }
-
-func (P pointR1) String() string {
-	return fmt.Sprintf("\nx=  %v\ny=  %v\nta= %v\ntb= %v\nz=  %v",
-		P.x, P.y, P.ta, P.tb, P.z)
-}
-func (P pointR3) String() string {
-	return fmt.Sprintf("\naddYX= %v\nsubYX= %v\ndt2=  %v",
-		P.addYX, P.subYX, P.dt2)
-}
-func (P pointR2) String() string {
-	return fmt.Sprintf("%v\nz2=  %v", &P.pointR3, P.z2)
-}
 
 func (P *pointR1) neg() {
 	fp255.Neg(&P.x, &P.x)
@@ -52,45 +35,19 @@ func (P *pointR1) toAffine() {
 
 func (P *pointR1) ToBytes(k []byte) {
 	P.toAffine()
-	var x [32]byte
+	var x [fp255.Size]byte
 	fp255.ToBytes(k, &P.y)
 	fp255.ToBytes(x[:], &P.x)
 	b := x[0] & 1
-	k[31] = k[31] | (b << 7)
+	k[Size-1] = k[Size-1] | (b << 7)
 }
 
-func isGreaterThanP(x *fp255.Elt) bool {
+func (P *pointR1) FromBytes(k *[Size]byte) bool {
+	signX := k[Size-1] >> 7
+	copy(P.y[:], k[:])
+	P.y[Size-1] &= 0x7F
 	p := fp255.P()
-	n := 8
-	x0 := binary.LittleEndian.Uint64(x[0*n : 1*n])
-	x1 := binary.LittleEndian.Uint64(x[1*n : 2*n])
-	x2 := binary.LittleEndian.Uint64(x[2*n : 3*n])
-	x3 := binary.LittleEndian.Uint64(x[3*n : 4*n])
-	p0 := binary.LittleEndian.Uint64(p[0*n : 1*n])
-	p1 := binary.LittleEndian.Uint64(p[1*n : 2*n])
-	p2 := binary.LittleEndian.Uint64(p[2*n : 3*n])
-	p3 := binary.LittleEndian.Uint64(p[3*n : 4*n])
-
-	if x3 >= p3 {
-		return true
-	} else if x2 >= p2 {
-		return true
-	} else if x1 >= p1 {
-		return true
-	} else if x0 >= p0 {
-		return true
-	}
-	return false
-}
-
-func (P *pointR1) FromBytes(k []byte) bool {
-	if len(k) != 32 {
-		panic("wrong size")
-	}
-	signX := k[31] >> 7
-	copy(P.y[:], k)
-	P.y[31] &= 0x7F
-	if isGreaterThanP(&P.y) {
+	if isLtModulus := isLessThan(P.y[:], p[:]); !isLtModulus {
 		return false
 	}
 
@@ -100,8 +57,8 @@ func (P *pointR1) FromBytes(k []byte) bool {
 	fp255.Mul(v, u, (*fp255.Elt)(&curve.paramD)) // v = dy^2
 	fp255.Sub(u, u, one)                         // u = y^2-1
 	fp255.Add(v, v, one)                         // v = dy^2+1
-	ok := fp255.InvSqrt(&P.x, u, v)              // x = sqrt(u/v)
-	if !ok {
+	isQR := fp255.InvSqrt(&P.x, u, v)            // x = sqrt(u/v)
+	if !isQR {
 		return false
 	}
 	fp255.Modp(&P.x) // x = x mod p
