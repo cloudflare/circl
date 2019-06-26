@@ -9,13 +9,16 @@ import (
 	"github.com/cloudflare/circl/math"
 )
 
-var curve = struct {
-	order              [(8 * Size) / 64]uint64
-	genX, genY, paramD [Size]byte
-}{
-	order: [(8 * Size) / 64]uint64{
-		0x5812631a5cf5d3ed, 0x14def9dea2f79cd6,
-		0x0000000000000000, 0x1000000000000000,
+var curve = struct{ order, genX, genY, paramD [Size]byte }{
+	// order: [(8 * Size) / 64]uint64{
+	// 	0x5812631a5cf5d3ed, 0x14def9dea2f79cd6,
+	// 	0x0000000000000000, 0x1000000000000000,
+	// },
+	order: [Size]byte{
+		0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58,
+		0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10,
 	},
 	genX: [Size]byte{
 		0x1a, 0xd5, 0x25, 0x8f, 0x60, 0x2d, 0x56, 0xc9,
@@ -39,10 +42,11 @@ var curve = struct {
 
 // mLSBRecoding parameters
 const (
-	fxT   = 257
-	fxV   = 2
-	fxW   = 3
-	fx2w1 = 1 << (uint(fxW) - 1)
+	fxT        = 257
+	fxV        = 2
+	fxW        = 3
+	fx2w1      = 1 << (uint(fxW) - 1)
+	numWords64 = (Size * 8 / 64)
 )
 
 // mLSBRecoding is the odd-only modified LSB-set.
@@ -56,11 +60,11 @@ func mLSBRecoding(L []int8, k []byte) {
 	const dd = ee * fxV
 	const ll = dd * fxW
 	if len(L) == (ll + 1) {
-		m := make([]uint64, len(curve.order)+1)
-		for i := 0; i < len(curve.order); i++ {
+		var m [numWords64 + 1]uint64
+		for i := 0; i < numWords64; i++ {
 			m[i] = binary.LittleEndian.Uint64(k[8*i : 8*i+8])
 		}
-		condAddOrderN(m[:])
+		condAddOrderN(&m)
 		L[dd-1] = 1
 		for i := 0; i < dd-1; i++ {
 			kip1 := (m[(i+1)/64] >> (uint(i+1) % 64)) & 0x1
@@ -69,7 +73,7 @@ func mLSBRecoding(L []int8, k []byte) {
 		{ // right-shift by d
 			right := uint(dd % 64)
 			left := uint(64) - right
-			lim := ((len(curve.order)+1)*64 - dd) / 64
+			lim := ((numWords64+1)*64 - dd) / 64
 			j := dd / 64
 			for i := 0; i < lim; i++ {
 				m[i] = (m[i+j] >> right) | (m[i+j+1] << left)
@@ -91,19 +95,17 @@ func absolute(x int32) int32 {
 }
 
 // condAddOrderN updates x = x+order if x is even, otherwise x remains unchanged
-func condAddOrderN(x []uint64) {
-	if len(x) != len(curve.order)+1 {
-		panic("wrong size")
-	}
+func condAddOrderN(x *[numWords64 + 1]uint64) {
 	isOdd := (x[0] & 0x1) - 1
 	c := uint64(0)
-	for i := range curve.order {
-		o := isOdd & curve.order[i]
+	for i := 0; i < numWords64; i++ {
+		orderWord := binary.LittleEndian.Uint64(curve.order[8*i : 8*i+8])
+		o := isOdd & orderWord
 		x0, c0 := bits.Add64(x[i], o, c)
 		x[i] = x0
 		c = c0
 	}
-	x[len(curve.order)], _ = bits.Add64(x[len(curve.order)], 0, c)
+	x[numWords64], _ = bits.Add64(x[numWords64], 0, c)
 }
 
 // div2subY update x = (x/2) - y
@@ -127,7 +129,7 @@ func div2subY(x []uint64, y int64, l int) {
 }
 
 func (P *pointR1) fixedMult(scalar []byte) {
-	if len(scalar) != 32 {
+	if len(scalar) != Size {
 		panic("wrong size")
 	}
 	const ee = (fxT + fxW*fxV - 1) / (fxW * fxV)

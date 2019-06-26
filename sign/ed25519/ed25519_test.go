@@ -50,7 +50,7 @@ func TestReduction(t *testing.T) {
 			bigX := conv.BytesLe2BigInt(x[:j])
 			copy(y[:j], x[:j])
 
-			reduceModOrder(y[:j])
+			reduceModOrder(y[:j], true)
 			got := conv.BytesLe2BigInt(y[:])
 
 			want := bigX.Mod(bigX, &order)
@@ -58,6 +58,80 @@ func TestReduction(t *testing.T) {
 			if got.Cmp(want) != 0 {
 				test.ReportError(t, got, want, x)
 			}
+		}
+	}
+}
+
+func TestRangeOrder(t *testing.T) {
+	aboveOrder := [...][Size]byte{
+		{ // order
+			0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58,
+			0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10,
+		},
+		{ // order+1
+			0xed + 1, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58,
+			0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10,
+		},
+		{ // all-ones
+			0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+			0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+			0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+			0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+		},
+	}
+
+	for i := range aboveOrder {
+		got := isLessThan(aboveOrder[i][:], curve.order[:])
+		want := false
+		if got != want {
+			test.ReportError(t, got, want, i, aboveOrder[i])
+		}
+	}
+}
+
+func TestWrongPublicKey(t *testing.T) {
+	var sig Signature
+	wrongPubKeys := [...]PubKey{
+		{ // y = p
+			0xed, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f,
+		},
+		{ // y > p
+			0xed + 1, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f,
+		},
+		{ // x^2 = u/v = (y^2-1)/(dy^2+1) is not a quadratic residue
+			0x9a, 0x0a, 0xbe, 0xc6, 0x23, 0xcb, 0x5a, 0x23,
+			0x4e, 0x49, 0xd8, 0x92, 0xc2, 0x72, 0xd5, 0xa8,
+			0x27, 0xff, 0x42, 0x07, 0x7d, 0xe3, 0xf2, 0xb4,
+			0x74, 0x75, 0x9d, 0x04, 0x34, 0xed, 0xa6, 0x70,
+		},
+		{ // y = 1 and x^2 = u/v = 0, and the sign of X is 1
+			0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 | 0x80,
+		},
+		{ // y = -1 and  x^2 = u/v = 0, and the sign of X is 1
+			0xec, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f | 0x80,
+		},
+	}
+	for _, public := range wrongPubKeys {
+		got := Pure{}.Verify([]byte{}, &public, &sig)
+		want := false
+		if got != want {
+			test.ReportError(t, got, want, public)
 		}
 	}
 }
@@ -261,78 +335,59 @@ var vectorsed25519 = [...]vector{
 	},
 }
 
-func TestEd25519(t *testing.T) {
-	scheme := Pure{}
-	var public PubKey
+func (v vector) isPure() bool      { return v.scheme == "Ed25519Pure" }
+func (v vector) matchMsgLen() bool { return uint(len(v.msg)) == v.msgLen }
+func (v vector) matchCtxLen() bool { return uint(len(v.ctx)) == v.ctxLen }
+func (v vector) testKeyGen(t *testing.T) {
 	var private PrivKey
+	var got, want PubKey
 
-	for _, v := range vectorsed25519 {
-		{
-			got := v.scheme
-			want := "Ed25519Pure"
-			if got != want {
-				test.ReportError(t, got, want, v)
-			}
-		}
-		{
-			got := uint(len(v.msg))
-			want := v.msgLen
-			if got != want {
-				test.ReportError(t, got, want, v)
-			}
-		}
-		{
-			got := uint(len(v.ctx))
-			want := v.ctxLen
-			if got != want {
-				test.ReportError(t, got, want, v)
-			}
-		}
+	copy(private[:], v.sk)
+	Pure{}.KeyGen(&got, &private)
+	copy(want[:], v.pk)
+
+	if got != want {
+		test.ReportError(t, got, want, v.sk)
 	}
+}
+func (v vector) testSign(t *testing.T) {
+	var private PrivKey
+	var public PubKey
+	var want Signature
+	copy(private[:], v.sk)
+	copy(public[:], v.pk)
+	sig := Pure{}.Sign(v.msg, &public, &private)
+	got := *sig
+	copy(want[:], v.sig)
+	if got != want {
+		test.ReportError(t, got, want, v.name)
+	}
+}
+func (v vector) testVerify(t *testing.T) {
+	var public PubKey
+	var sig Signature
+	copy(public[:], v.pk)
+	copy(sig[:], v.sig)
 
-	t.Run("keygen", func(t *testing.T) {
-		var want PubKey
-		for _, v := range vectorsed25519 {
-			copy(private[:], v.sk)
-			scheme.KeyGen(&public, &private)
-			got := public
-			copy(want[:], v.pk)
+	got := Pure{}.Verify(v.msg, &public, &sig)
+	want := true
 
-			if got != want {
-				test.ReportError(t, got, want, v.sk)
-			}
+	if got != want {
+		test.ReportError(t, got, want, v.name)
+	}
+}
+
+func TestEd25519(t *testing.T) {
+	for _, v := range vectorsed25519 {
+		got := v.isPure() && v.matchMsgLen() && v.matchCtxLen()
+		want := true
+		if got != want {
+			test.ReportError(t, got, want, v.sk)
 		}
-	})
-
-	t.Run("sign", func(t *testing.T) {
-		var want Signature
-		for _, v := range vectorsed25519 {
-			copy(private[:], v.sk)
-			copy(public[:], v.pk)
-			sig := scheme.Sign(v.msg, &public, &private)
-			got := *sig
-			copy(want[:], v.sig)
-
-			if got != want {
-				test.ReportError(t, got, want, v.name)
-			}
-		}
-	})
-
-	t.Run("Verify", func(t *testing.T) {
-		var sig Signature
-		for _, v := range vectorsed25519 {
-			copy(private[:], v.sk)
-			copy(public[:], v.pk)
-			copy(sig[:], v.sig)
-			got := scheme.Verify(v.msg, &public, &sig)
-			want := true
-
-			if got != want {
-				test.ReportError(t, got, want, v.name)
-			}
-		}
-	})
+		v.testKeyGen(t)
+		v.testSign(t)
+		v.testVerify(t)
+	}
 }
 
 func BenchmarkEd25519(b *testing.B) {

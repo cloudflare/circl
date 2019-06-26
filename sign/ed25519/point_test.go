@@ -15,7 +15,7 @@ func randomPoint(P *pointR1) {
 }
 
 func TestPoint(t *testing.T) {
-	testTimes := 1 << 10
+	const testTimes = 1 << 10
 
 	t.Run("add", func(t *testing.T) {
 		var P pointR1
@@ -42,6 +42,7 @@ func TestPoint(t *testing.T) {
 			}
 		}
 	})
+
 	t.Run("fixed", func(t *testing.T) {
 		var P pointR1
 		k := make([]byte, Size)

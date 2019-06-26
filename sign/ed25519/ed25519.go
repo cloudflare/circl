@@ -5,10 +5,12 @@ import (
 	"crypto/sha512"
 	"encoding/binary"
 	"math/bits"
+
+	fp255 "github.com/cloudflare/circl/math/fp25519"
 )
 
 // Size is the length in bytes of Ed25519 keys.
-const Size = 32
+const Size = fp255.Size
 
 // PubKey represents a public key of Ed25519.
 type PubKey [Size]byte
@@ -26,7 +28,7 @@ type Pure struct{}
 func (e Pure) KeyGen(public *PubKey, private *PrivKey) {
 	k := sha512.Sum512(private[:])
 	clamp(k[:])
-	reduceModOrder(k[:Size])
+	reduceModOrder(k[:Size], false)
 	var P pointR1
 	P.fixedMult(k[:Size])
 	P.ToBytes(public[:])
@@ -41,7 +43,7 @@ func (e Pure) Sign(message []byte, public *PubKey, private *PrivKey) *Signature 
 	_, _ = H.Write(k[Size:])
 	_, _ = H.Write(message)
 	r := H.Sum(nil)
-	reduceModOrder(r[:])
+	reduceModOrder(r[:], true)
 
 	var P pointR1
 	P.fixedMult(r[:Size])
@@ -53,7 +55,7 @@ func (e Pure) Sign(message []byte, public *PubKey, private *PrivKey) *Signature 
 	_, _ = H.Write(public[:])
 	_, _ = H.Write(message)
 	hRAM := H.Sum(nil)
-	reduceModOrder(hRAM[:])
+	reduceModOrder(hRAM[:], true)
 	calculateS(signature[Size:], r[:Size], hRAM[:Size], k[:Size])
 	return signature
 }
@@ -61,19 +63,20 @@ func (e Pure) Sign(message []byte, public *PubKey, private *PrivKey) *Signature 
 // Verify returns true if the signature is valid. Failure cases are invalid
 // signature, or public key cannot be decoded.
 func (e Pure) Verify(message []byte, public *PubKey, sig *Signature) bool {
-	var P pointR1
-	if ok := P.FromBytes(public[:]); !ok {
+	if isLtOrder := isLessThan(sig[Size:], curve.order[:Size]); !isLtOrder {
 		return false
 	}
+	var P pointR1
+	if ok := P.FromBytes((*[Size]byte)(public)); !ok {
+		return false
+	}
+
 	H := sha512.New()
 	_, _ = H.Write(sig[:Size])
 	_, _ = H.Write(public[:])
 	_, _ = H.Write(message)
 	hRAM := H.Sum(nil)
-	reduceModOrder(hRAM[:])
-	if ok := verifyRange(sig[Size:]); !ok {
-		return false
-	}
+	reduceModOrder(hRAM[:], true)
 	var Q pointR1
 	P.neg()
 	Q.doubleMult(&P, sig[Size:], hRAM[:Size])
@@ -88,19 +91,15 @@ func clamp(k []byte) {
 }
 
 // reduceModOrder calculates k = k mod order of the curve.
-func reduceModOrder(k []byte) {
-	if len(k) == Size || len(k) == 2*Size {
-		var X [8]uint64
-		numWords := len(k) >> 3
-		for i := 0; i < numWords; i++ {
-			X[i] = binary.LittleEndian.Uint64(k[i*8 : (i+1)*8])
-		}
-		red512(&X, len(k) == 2*Size)
-		for i := 0; i < numWords; i++ {
-			binary.LittleEndian.PutUint64(k[i*8:(i+1)*8], X[i])
-		}
-	} else {
-		panic("wrong size")
+func reduceModOrder(k []byte, is512Bit bool) {
+	var X [((2 * Size) * 8) / 64]uint64
+	numWords := len(k) >> 3
+	for i := 0; i < numWords; i++ {
+		X[i] = binary.LittleEndian.Uint64(k[i*8 : (i+1)*8])
+	}
+	red512(&X, is512Bit)
+	for i := 0; i < numWords; i++ {
+		binary.LittleEndian.PutUint64(k[i*8:(i+1)*8], X[i])
 	}
 }
 
@@ -242,17 +241,11 @@ func calculateS(s, r, k, a []byte) {
 	binary.LittleEndian.PutUint64(s[3*8:4*8], S[3])
 }
 
-// verifyRange returns true if 0 <= x < Order.
-func verifyRange(x []byte) bool {
-	order := [Size]byte{
-		0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58,
-		0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10,
-	}
+// isLessThan returns true if 0 <= x < y, both slices must have the same length.
+func isLessThan(x, y []byte) bool {
 	i := Size - 1
-	for i > 0 && x[i] == order[i] {
+	for i > 0 && x[i] == y[i] {
 		i--
 	}
-	return x[i] < order[i]
+	return x[i] < y[i]
 }

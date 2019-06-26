@@ -22,7 +22,7 @@ func processRow(t *testing.T, line string, lineNum int) {
 	scheme := Pure{}
 	values := strings.Split(line, ":")
 	if len(values) != 5 {
-		panic(fmt.Errorf("Len: %v %v", len(values), values))
+		panic(fmt.Errorf("len: %v %v", len(values), values))
 	}
 	b, _ := hex.DecodeString(values[0])
 	copy(v.private[:], b[:32])
