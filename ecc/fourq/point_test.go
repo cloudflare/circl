@@ -17,56 +17,62 @@ func (P *pointR1) random() {
 	P.ScalarBaseMult(&k)
 }
 
-func TestPoint(t *testing.T) {
-	testTimes := 1 << 10
-	var P, Q, R, G pointR1
+func TestPointAddition(t *testing.T) {
+	const testTimes = 1 << 10
+	var P, Q pointR1
+	_16P := &pointR1{}
+	S := &pointR2{}
+	for i := 0; i < testTimes; i++ {
+		P.random()
+		_16P.copy(&P)
+		S.FromR1(&P)
+		// 16P = 2^4P
+		for j := 0; j < 4; j++ {
+			_16P.double()
+		}
+		// 16P = P+P...+P
+		Q.SetIdentity()
+		for j := 0; j < 16; j++ {
+			Q.add(S)
+		}
+		got := _16P.isEqual(&Q)
+		want := true
+		if got != want {
+			test.ReportError(t, got, want, P)
+		}
+	}
+}
+
+func TestOddMultiples(t *testing.T) {
+	const testTimes = 1 << 10
+	var P, Q, R pointR1
+	var Tab [8]pointR2
+	for i := 0; i < testTimes; i++ {
+		P.random()
+		// T = [1P, 3P, 5P, 7P, 9P, 11P, 13P, 15P]
+		P.oddMultiples(&Tab)
+		// Q = sum of all T[i] == 64P
+		Q.SetIdentity()
+		for j := range Tab {
+			Q.add(&Tab[j])
+		}
+		// R = (2^6)P == 64P
+		for j := 0; j < 6; j++ {
+			R.double()
+		}
+		got := Q.isEqual(&R)
+		want := true
+		if got != want {
+			test.ReportError(t, got, want, P)
+		}
+	}
+}
+
+func TestScalarMult(t *testing.T) {
+	const testTimes = 1 << 10
+	var P, Q, G pointR1
 	var k [Size]byte
 
-	t.Run("addition", func(t *testing.T) {
-		_16P := &pointR1{}
-		S := &pointR2{}
-		for i := 0; i < testTimes; i++ {
-			P.random()
-			_16P.copy(&P)
-			S.FromR1(&P)
-			// 16P = 2^4P
-			for j := 0; j < 4; j++ {
-				_16P.double()
-			}
-			// 16P = P+P...+P
-			Q.SetIdentity()
-			for j := 0; j < 16; j++ {
-				Q.add(S)
-			}
-			got := _16P.isEqual(&Q)
-			want := true
-			if got != want {
-				test.ReportError(t, got, want, P)
-			}
-		}
-	})
-	t.Run("oddMultiples", func(t *testing.T) {
-		var Tab [8]pointR2
-		for i := 0; i < testTimes; i++ {
-			P.random()
-			// T = [1P, 3P, 5P, 7P, 9P, 11P, 13P, 15P]
-			P.oddMultiples(&Tab)
-			// Q = sum of all T[i] == 64P
-			Q.SetIdentity()
-			for j := range Tab {
-				Q.add(&Tab[j])
-			}
-			// R = (2^6)P == 64P
-			for j := 0; j < 6; j++ {
-				R.double()
-			}
-			got := Q.isEqual(&R)
-			want := true
-			if got != want {
-				test.ReportError(t, got, want, P)
-			}
-		}
-	})
 	t.Run("0P=0", func(t *testing.T) {
 		for i := 0; i < testTimes; i++ {
 			P.random()
@@ -120,7 +126,7 @@ func TestPoint(t *testing.T) {
 }
 
 func TestScalar(t *testing.T) {
-	testTimes := 1 << 12
+	const testTimes = 1 << 12
 	var x, xx [5]uint64
 	two256 := big.NewInt(1)
 	two256.Lsh(two256, 256)
