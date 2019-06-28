@@ -52,7 +52,7 @@ func BenchmarkScalarMult(b *testing.B) {
 	})
 }
 
-func ExampleP384() {
+func Example_p384() {
 	// import "github.com/cloudflare/circl/ecc/p384"
 	// import "crypto/elliptic"
 	circl := p384.P384()
