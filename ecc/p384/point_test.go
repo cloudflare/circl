@@ -62,9 +62,8 @@ func TestPointDouble(t *testing.T) {
 }
 
 func TestPointAdd(t *testing.T) {
-	params := elliptic.P384().Params()
-	Z, Q, R := &jacobianPoint{}, &jacobianPoint{}, &jacobianPoint{}
-	P := randomJacobian()
+	P, Q := &jacobianPoint{}, &jacobianPoint{}
+	R, Z := &jacobianPoint{}, &jacobianPoint{}
 
 	t.Run("O+O=O", func(t *testing.T) {
 		R.add(Z, Z)
@@ -115,49 +114,47 @@ func TestPointAdd(t *testing.T) {
 			test.ReportError(t, got, want, P)
 		}
 	})
+}
 
-	t.Run("P+P=2P", func(t *testing.T) {
-		// This verifies that add function cannot be used for doublings.
-		for i := 0; i < 128; i++ {
-			P = randomJacobian()
+func TestDouble(t *testing.T) {
+	// Verify that the `add` function cannot be used for doublings.
+	R := &jacobianPoint{}
+	for i := 0; i < 128; i++ {
+		P := randomJacobian()
 
-			R.add(P, P)
-			gotX, gotY, gotZ := R.x, R.y, R.z
+		R.add(P, P)
+		gotX, gotY, gotZ := R.x, R.y, R.z
 
-			wantX, wantY, wantZ := fp384{}, fp384{}, fp384{}
+		wantX, wantY, wantZ := fp384{}, fp384{}, fp384{}
 
-			if gotX != wantX {
-				test.ReportError(t, gotX, wantX, P)
-			}
-			if gotY != wantY {
-				test.ReportError(t, gotY, wantY)
-			}
-			if gotZ != wantZ {
-				test.ReportError(t, gotZ, wantZ)
-			}
+		if gotX != wantX || gotY != wantY || gotZ != wantZ {
+			test.ReportError(t, gotX, wantX, gotY, wantY, gotZ, wantZ, P)
 		}
-	})
+	}
+}
 
-	t.Run("P+Q=R", func(t *testing.T) {
-		for i := 0; i < 128; i++ {
-			P = randomJacobian()
-			Q = randomJacobian()
+func TestAddition(t *testing.T) {
+	const testTimes = 1 << 7
+	params := elliptic.P384().Params()
+	R := &jacobianPoint{}
+	for i := 0; i < testTimes; i++ {
+		P := randomJacobian()
+		Q := randomJacobian()
 
-			x1, y1 := P.toAffine().toInt()
-			x2, y2 := Q.toAffine().toInt()
-			wantX, wantY := params.Add(x1, y1, x2, y2)
+		x1, y1 := P.toAffine().toInt()
+		x2, y2 := Q.toAffine().toInt()
+		wantX, wantY := params.Add(x1, y1, x2, y2)
 
-			R.add(P, Q)
-			gotX, gotY := R.toAffine().toInt()
+		R.add(P, Q)
+		gotX, gotY := R.toAffine().toInt()
 
-			if gotX.Cmp(wantX) != 0 {
-				test.ReportError(t, gotX, wantX, P, Q)
-			}
-			if gotY.Cmp(wantY) != 0 {
-				test.ReportError(t, gotY, wantY)
-			}
+		if gotX.Cmp(wantX) != 0 {
+			test.ReportError(t, gotX, wantX, P, Q)
 		}
-	})
+		if gotY.Cmp(wantY) != 0 {
+			test.ReportError(t, gotY, wantY)
+		}
+	}
 }
 
 func TestPointMixAdd(t *testing.T) {
