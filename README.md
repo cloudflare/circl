@@ -1,7 +1,7 @@
 <img src=".etc/icon.png" align="right" height="300" width="300"/>
 
 # CIRCL
-[![CircleCI](https://circleci.com/gh/cloudflare/circl/tree/master.svg?style=svg&circle-token=a184a4d0cbff045907c8061bda35fc17dab465dc)](https://circleci.com/gh/cloudflare/circl/tree/master)
+[![CircleCI](https://circleci.com/gh/cloudflare/circl/tree/master.svg?style=svg)](https://circleci.com/gh/cloudflare/circl/tree/master)
 [![GoDoc](https://godoc.org/github.com/cloudflare/circl?status.svg)](https://godoc.org/github.com/cloudflare/circl)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cloudflare/circl)](https://goreportcard.com/report/github.com/cloudflare/circl)
 
