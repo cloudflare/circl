@@ -33,10 +33,11 @@ func TestIsOnCurveTrue(t *testing.T) {
 }
 
 func TestAffine(t *testing.T) {
+	const testTimes = 1 << 7
 	curve := P384()
 	params := elliptic.P384().Params()
 	t.Run("Addition", func(t *testing.T) {
-		for i := 0; i < 128; i++ {
+		for i := 0; i < testTimes; i++ {
 			K1, _ := rand.Int(rand.Reader, params.N)
 			K2, _ := rand.Int(rand.Reader, params.N)
 			X1, Y1 := params.ScalarBaseMult(K1.Bytes())
@@ -54,7 +55,7 @@ func TestAffine(t *testing.T) {
 	})
 
 	t.Run("Double", func(t *testing.T) {
-		for i := 0; i < 128; i++ {
+		for i := 0; i < testTimes; i++ {
 			k, _ := rand.Int(rand.Reader, params.N)
 			x, y := params.ScalarBaseMult(k.Bytes())
 			wantX, wantY := params.Double(x, y)
