@@ -6,11 +6,11 @@ import (
 	"encoding/binary"
 	"math/bits"
 
-	fp255 "github.com/cloudflare/circl/math/fp25519"
+	fp "github.com/cloudflare/circl/math/fp25519"
 )
 
 // Size is the length in bytes of Ed25519 keys.
-const Size = fp255.Size
+const Size = fp.Size
 
 // PubKey represents a public key of Ed25519.
 type PubKey [Size]byte

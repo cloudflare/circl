@@ -1,43 +1,43 @@
 package ed25519
 
-import fp255 "github.com/cloudflare/circl/math/fp25519"
+import fp "github.com/cloudflare/circl/math/fp25519"
 
-type pointR1 struct{ x, y, z, ta, tb fp255.Elt }
+type pointR1 struct{ x, y, z, ta, tb fp.Elt }
 type pointR2 struct {
 	pointR3
-	z2 fp255.Elt
+	z2 fp.Elt
 }
-type pointR3 struct{ addYX, subYX, dt2 fp255.Elt }
+type pointR3 struct{ addYX, subYX, dt2 fp.Elt }
 
 func (P *pointR1) neg() {
-	fp255.Neg(&P.x, &P.x)
-	fp255.Neg(&P.ta, &P.ta)
+	fp.Neg(&P.x, &P.x)
+	fp.Neg(&P.ta, &P.ta)
 }
 
 func (P *pointR1) SetIdentity() {
-	P.x = fp255.Elt{}
-	fp255.SetOne(&P.y)
-	fp255.SetOne(&P.z)
-	P.ta = fp255.Elt{}
-	P.tb = fp255.Elt{}
+	P.x = fp.Elt{}
+	fp.SetOne(&P.y)
+	fp.SetOne(&P.z)
+	P.ta = fp.Elt{}
+	P.tb = fp.Elt{}
 }
 
 func (P *pointR1) toAffine() {
-	fp255.Inv(&P.z, &P.z)
-	fp255.Mul(&P.x, &P.x, &P.z)
-	fp255.Mul(&P.y, &P.y, &P.z)
-	fp255.Modp(&P.x)
-	fp255.Modp(&P.y)
-	fp255.SetOne(&P.z)
+	fp.Inv(&P.z, &P.z)
+	fp.Mul(&P.x, &P.x, &P.z)
+	fp.Mul(&P.y, &P.y, &P.z)
+	fp.Modp(&P.x)
+	fp.Modp(&P.y)
+	fp.SetOne(&P.z)
 	P.ta = P.x
 	P.tb = P.y
 }
 
 func (P *pointR1) ToBytes(k []byte) {
 	P.toAffine()
-	var x [fp255.Size]byte
-	fp255.ToBytes(k, &P.y)
-	fp255.ToBytes(x[:], &P.x)
+	var x [fp.Size]byte
+	fp.ToBytes(k, &P.y)
+	fp.ToBytes(x[:], &P.x)
 	b := x[0] & 1
 	k[Size-1] = k[Size-1] | (b << 7)
 }
@@ -46,31 +46,31 @@ func (P *pointR1) FromBytes(k *[Size]byte) bool {
 	signX := k[Size-1] >> 7
 	copy(P.y[:], k[:])
 	P.y[Size-1] &= 0x7F
-	p := fp255.P()
+	p := fp.P()
 	if isLtModulus := isLessThan(P.y[:], p[:]); !isLtModulus {
 		return false
 	}
 
-	one, u, v := &fp255.Elt{}, &fp255.Elt{}, &fp255.Elt{}
-	fp255.SetOne(one)
-	fp255.Sqr(u, &P.y)                           // u = y^2
-	fp255.Mul(v, u, (*fp255.Elt)(&curve.paramD)) // v = dy^2
-	fp255.Sub(u, u, one)                         // u = y^2-1
-	fp255.Add(v, v, one)                         // v = dy^2+1
-	isQR := fp255.InvSqrt(&P.x, u, v)            // x = sqrt(u/v)
+	one, u, v := &fp.Elt{}, &fp.Elt{}, &fp.Elt{}
+	fp.SetOne(one)
+	fp.Sqr(u, &P.y)                        // u = y^2
+	fp.Mul(v, u, (*fp.Elt)(&curve.paramD)) // v = dy^2
+	fp.Sub(u, u, one)                      // u = y^2-1
+	fp.Add(v, v, one)                      // v = dy^2+1
+	isQR := fp.InvSqrt(&P.x, u, v)         // x = sqrt(u/v)
 	if !isQR {
 		return false
 	}
-	fp255.Modp(&P.x) // x = x mod p
-	if fp255.IsZero(&P.x) && signX == 1 {
+	fp.Modp(&P.x) // x = x mod p
+	if fp.IsZero(&P.x) && signX == 1 {
 		return false
 	}
 	if signX != (P.x[0] & 1) {
-		fp255.Neg(&P.x, &P.x)
+		fp.Neg(&P.x, &P.x)
 	}
 	P.ta = P.x
 	P.tb = P.y
-	fp255.SetOne(&P.z)
+	fp.SetOne(&P.z)
 	return true
 }
 
@@ -83,19 +83,19 @@ func (P *pointR1) double() {
 	e := Ptb
 	f := b
 	g := a
-	fp255.Add(e, Px, Py)
-	fp255.Sqr(a, Px)
-	fp255.Sqr(b, Py)
-	fp255.Sqr(c, Pz)
-	fp255.Add(c, c, c)
-	fp255.Add(d, a, b)
-	fp255.Sqr(e, e)
-	fp255.Sub(e, e, d)
-	fp255.Sub(f, b, a)
-	fp255.Sub(g, c, f)
-	fp255.Mul(Pz, f, g)
-	fp255.Mul(Px, e, g)
-	fp255.Mul(Py, d, f)
+	fp.Add(e, Px, Py)
+	fp.Sqr(a, Px)
+	fp.Sqr(b, Py)
+	fp.Sqr(c, Pz)
+	fp.Add(c, c, c)
+	fp.Add(d, a, b)
+	fp.Sqr(e, e)
+	fp.Sub(e, e, d)
+	fp.Sub(f, b, a)
+	fp.Sub(g, c, f)
+	fp.Mul(Pz, f, g)
+	fp.Mul(Px, e, g)
+	fp.Mul(Py, d, f)
 }
 
 func (P *pointR1) mixAdd(Q *pointR3) {
@@ -109,26 +109,26 @@ func (P *pointR1) mixAdd(Q *pointR3) {
 	Ptb := &P.tb
 	a := Px
 	b := Py
-	c := &fp255.Elt{}
+	c := &fp.Elt{}
 	d := b
 	e := Pta
 	f := a
 	g := b
 	h := Ptb
-	fp255.Mul(c, Pta, Ptb)
-	fp255.Sub(h, b, a)
-	fp255.Add(b, b, a)
-	fp255.Mul(a, h, subYX)
-	fp255.Mul(b, b, addYX)
-	fp255.Sub(e, b, a)
-	fp255.Add(h, b, a)
-	fp255.Add(d, Pz, Pz)
-	fp255.Mul(c, c, dt2)
-	fp255.Sub(f, d, c)
-	fp255.Add(g, d, c)
-	fp255.Mul(Pz, f, g)
-	fp255.Mul(Px, e, f)
-	fp255.Mul(Py, g, h)
+	fp.Mul(c, Pta, Ptb)
+	fp.Sub(h, b, a)
+	fp.Add(b, b, a)
+	fp.Mul(a, h, subYX)
+	fp.Mul(b, b, addYX)
+	fp.Sub(e, b, a)
+	fp.Add(h, b, a)
+	fp.Add(d, Pz, Pz)
+	fp.Mul(c, c, dt2)
+	fp.Sub(f, d, c)
+	fp.Add(g, d, c)
+	fp.Mul(Pz, f, g)
+	fp.Mul(Px, e, f)
+	fp.Mul(Py, g, h)
 }
 
 func (P *pointR1) add(Q *pointR2) {
@@ -143,26 +143,26 @@ func (P *pointR1) add(Q *pointR2) {
 	Ptb := &P.tb
 	a := Px
 	b := Py
-	c := &fp255.Elt{}
+	c := &fp.Elt{}
 	d := b
 	e := Pta
 	f := a
 	g := b
 	h := Ptb
-	fp255.Mul(c, Pta, Ptb)
-	fp255.Sub(h, b, a)
-	fp255.Add(b, b, a)
-	fp255.Mul(a, h, subYX)
-	fp255.Mul(b, b, addYX)
-	fp255.Sub(e, b, a)
-	fp255.Add(h, b, a)
-	fp255.Mul(d, Pz, z2)
-	fp255.Mul(c, c, dt2)
-	fp255.Sub(f, d, c)
-	fp255.Add(g, d, c)
-	fp255.Mul(Pz, f, g)
-	fp255.Mul(Px, e, f)
-	fp255.Mul(Py, g, h)
+	fp.Mul(c, Pta, Ptb)
+	fp.Sub(h, b, a)
+	fp.Add(b, b, a)
+	fp.Mul(a, h, subYX)
+	fp.Mul(b, b, addYX)
+	fp.Sub(e, b, a)
+	fp.Add(h, b, a)
+	fp.Mul(d, Pz, z2)
+	fp.Mul(c, c, dt2)
+	fp.Sub(f, d, c)
+	fp.Add(g, d, c)
+	fp.Mul(Pz, f, g)
+	fp.Mul(Px, e, f)
+	fp.Mul(Py, g, h)
 }
 
 func (P *pointR1) oddMultiples(T []pointR2) {
@@ -179,47 +179,47 @@ func (P *pointR1) oddMultiples(T []pointR2) {
 }
 
 func (P *pointR1) isEqual(Q *pointR1) bool {
-	l, r := &fp255.Elt{}, &fp255.Elt{}
-	fp255.Mul(l, &P.x, &Q.z)
-	fp255.Mul(r, &Q.x, &P.z)
-	fp255.Sub(l, l, r)
-	b := fp255.IsZero(l)
-	fp255.Mul(l, &P.y, &Q.z)
-	fp255.Mul(r, &Q.y, &P.z)
-	fp255.Sub(l, l, r)
-	b = b && fp255.IsZero(l)
-	fp255.Mul(l, &P.ta, &P.tb)
-	fp255.Mul(l, l, &Q.z)
-	fp255.Mul(r, &Q.ta, &Q.tb)
-	fp255.Mul(r, r, &P.z)
-	fp255.Sub(l, l, r)
-	b = b && fp255.IsZero(l)
+	l, r := &fp.Elt{}, &fp.Elt{}
+	fp.Mul(l, &P.x, &Q.z)
+	fp.Mul(r, &Q.x, &P.z)
+	fp.Sub(l, l, r)
+	b := fp.IsZero(l)
+	fp.Mul(l, &P.y, &Q.z)
+	fp.Mul(r, &Q.y, &P.z)
+	fp.Sub(l, l, r)
+	b = b && fp.IsZero(l)
+	fp.Mul(l, &P.ta, &P.tb)
+	fp.Mul(l, l, &Q.z)
+	fp.Mul(r, &Q.ta, &Q.tb)
+	fp.Mul(r, r, &P.z)
+	fp.Sub(l, l, r)
+	b = b && fp.IsZero(l)
 	return b
 }
 
 func (P *pointR3) neg() {
 	P.addYX, P.subYX = P.subYX, P.addYX
-	fp255.Neg(&P.dt2, &P.dt2)
+	fp.Neg(&P.dt2, &P.dt2)
 }
 
 func (P *pointR2) fromR1(Q *pointR1) {
-	fp255.Add(&P.addYX, &Q.y, &Q.x)
-	fp255.Sub(&P.subYX, &Q.y, &Q.x)
-	fp255.Mul(&P.dt2, &Q.ta, &Q.tb)
-	fp255.Mul(&P.dt2, &P.dt2, (*fp255.Elt)(&curve.paramD))
-	fp255.Add(&P.dt2, &P.dt2, &P.dt2)
-	fp255.Add(&P.z2, &Q.z, &Q.z)
+	fp.Add(&P.addYX, &Q.y, &Q.x)
+	fp.Sub(&P.subYX, &Q.y, &Q.x)
+	fp.Mul(&P.dt2, &Q.ta, &Q.tb)
+	fp.Mul(&P.dt2, &P.dt2, (*fp.Elt)(&curve.paramD))
+	fp.Add(&P.dt2, &P.dt2, &P.dt2)
+	fp.Add(&P.z2, &Q.z, &Q.z)
 }
 
 func (P *pointR3) cneg(b int) {
-	t := &fp255.Elt{}
-	fp255.Cswap(&P.addYX, &P.subYX, uint(b))
-	fp255.Neg(t, &P.dt2)
-	fp255.Cmov(&P.dt2, t, uint(b))
+	t := &fp.Elt{}
+	fp.Cswap(&P.addYX, &P.subYX, uint(b))
+	fp.Neg(t, &P.dt2)
+	fp.Cmov(&P.dt2, t, uint(b))
 }
 
 func (P *pointR3) cmov(Q *pointR3, b int) {
-	fp255.Cmov(&P.addYX, &Q.addYX, uint(b))
-	fp255.Cmov(&P.subYX, &Q.subYX, uint(b))
-	fp255.Cmov(&P.dt2, &Q.dt2, uint(b))
+	fp.Cmov(&P.addYX, &Q.addYX, uint(b))
+	fp.Cmov(&P.subYX, &Q.subYX, uint(b))
+	fp.Cmov(&P.dt2, &Q.dt2, uint(b))
 }
