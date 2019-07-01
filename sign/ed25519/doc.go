@@ -1,4 +1,4 @@
-// Package ed25519 provides the signature scheme Ed25519 as described in RFC-8032.
+// Package ed25519 implements Ed25519 signature scheme as described in RFC-8032.
 //
 // References:
 //  - RFC8032 https://rfc-editor.org/rfc/rfc8032.txt
