@@ -56,6 +56,7 @@ benchmarking:
 *   ``test``: performs testing of the binary.
 *   ``bench``: runs benchmarks.
 *   ``cover``: produces coverage.
+*   ``lint`` : runs set of linters on the code base.
 
 ### Contributing
 
