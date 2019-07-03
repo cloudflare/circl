@@ -5,18 +5,18 @@ GOPATH_BUILD = $(PRJ_DIR)/build
 COVER_DIR    = $(GOPATH_BUILD)/coverage
 TOOLS_DIR   ?= $(GOPATH)/bin
 ETC_DIR      = $(PRJ_DIR)/.etc
-OPTS         ?= -v
+OPTS         ?=
 NOASM        ?=
 GO           ?= go
 GOLANGCILINT ?= $(TOOLS_DIR)/golangci-lint
 # -run="^_" as we want to avoid running tests by 'bench' and there never be a test starting with _
-BENCH_OPTS   ?= -v -bench=. -run="^_" -benchmem
-V            ?= 0
+BENCH_OPTS   ?= -bench=. -run="^_" -benchmem
+V            ?= 1
 GOARCH       ?=
 BUILD_ARCH   = $(shell $(GO) env GOARCH)
 
 ifeq ($(NOASM),1)
-	OPTS+=$(OPTS_TAGS)
+	OPTS+=--tags noasm
 endif
 
 ifeq ($(V),1)
@@ -33,8 +33,8 @@ test: clean
 	$(GO) vet ./...
 	$(GO) test $(OPTS) ./...
 
-bench: clean 
-	$(GO) test $(BENCH_OPTS) ./...
+bench: clean
+	$(GO) test $(BENCH_OPTS) $(OPTS) ./...
 
 cover: clean
 	mkdir -p $(COVER_DIR)
