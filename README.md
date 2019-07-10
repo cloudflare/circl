@@ -24,6 +24,10 @@ You can get it by typing:
  $ go get -u github.com/cloudflare/circl
 ```
 
+### Versioning
+
+Version numbers are [Semvers](https://semver.org/). We release a minor version for new functionality, a major version for breaking API changes, and increment the patchlevel for bugfixes.
+
 
 ### Implemented Primitives
 
