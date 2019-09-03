@@ -16,10 +16,10 @@ type Curve interface {
 	elliptic.Curve
 	// IsAtInfinity returns True is the point is the identity point.
 	IsAtInfinity(X, Y *big.Int) bool
-	// SimultaneousMult calculates P=mG+nQ, where G is the generator and
+	// CombinedMult calculates P=mG+nQ, where G is the generator and
 	// Q=(Qx,Qy). The scalars m and n are positive integers in big-endian form.
 	// Runs in non-constant time to be used in signature verification.
-	SimultaneousMult(Qx, Qy *big.Int, m, n []byte) (Px, Py *big.Int)
+	CombinedMult(Qx, Qy *big.Int, m, n []byte) (Px, Py *big.Int)
 }
 
 // P384 returns a Curve which implements P-384 (see FIPS 186-3, section D.2.4).
@@ -152,9 +152,9 @@ func (c curve) ScalarBaseMult(k []byte) (*big.Int, *big.Int) {
 	return c.ScalarMult(c.Params().Gx, c.Params().Gy, k)
 }
 
-// SimultaneousMult calculates P=mG+nQ, where G is the generator and Q=(x,y,z).
+// CombinedMult calculates P=mG+nQ, where G is the generator and Q=(x,y,z).
 // The scalars m and n are integers in big-endian form. Non-constant time.
-func (c curve) SimultaneousMult(Qx, Qy *big.Int, m, n []byte) (Px, Py *big.Int) {
+func (c curve) CombinedMult(Qx, Qy *big.Int, m, n []byte) (Px, Py *big.Int) {
 	const nOmega = uint(5)
 	var k big.Int
 	k.SetBytes(m)

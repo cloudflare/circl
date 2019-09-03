@@ -197,7 +197,7 @@ func TestSimultaneous(t *testing.T) {
 		x2, y2 := params.ScalarMult(X, Y, K2.Bytes())
 		wantX, wantY := params.Add(x1, y1, x2, y2)
 
-		gotX, gotY := curve.SimultaneousMult(X, Y, K1.Bytes(), K2.Bytes())
+		gotX, gotY := curve.CombinedMult(X, Y, K1.Bytes(), K2.Bytes())
 		if gotX.Cmp(wantX) != 0 {
 			test.ReportError(t, gotX, wantX, K, K1, K2)
 		}
