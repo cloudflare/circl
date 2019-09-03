@@ -33,7 +33,7 @@ func BenchmarkScalarMult(b *testing.B) {
 	})
 	b.Run("kG+lP", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_, _ = curve.SimultaneousMult(params.Gx, params.Gy, m, n)
+			_, _ = curve.CombinedMult(params.Gx, params.Gy, m, n)
 		}
 	})
 
