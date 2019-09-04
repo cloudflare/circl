@@ -129,9 +129,10 @@ func (c curve) ScalarMult(Px, Py *big.Int, k []byte) (Qx, Qy *big.Int) {
 	}
 	L := math.SignedDigit(&scalar, omega, uint(c.CurveParams.N.BitLen()))
 
-	var Q, R jacobianPoint
+	var R jacobianPoint
+	Q := zeroPoint().toJacobian()
 	TabP := newAffinePoint(Px, Py).oddMultiples(omega)
-	for i := len(L) - 1; i >= 0; i-- {
+	for i := len(L) - 1; i > 0; i-- {
 		for j := uint(0); j < omega-1; j++ {
 			Q.double()
 		}
@@ -140,10 +141,20 @@ func (c curve) ScalarMult(Px, Py *big.Int, k []byte) (Qx, Qy *big.Int) {
 			R.cmov(&TabP[j], subtle.ConstantTimeEq(int32(j), idx))
 		}
 		R.cneg(int(L[i]>>31) & 1)
-		Q.add(&Q, &R)
+		Q.add(Q, &R)
 	}
-	Q.cneg(isEvenK)
-	return Q.toAffine().toInt()
+	for j := uint(0); j < omega-1; j++ {
+		Q.double()
+	}
+	idx := absolute(L[0]) >> 1
+	for j := range TabP {
+		R.cmov(&TabP[j], subtle.ConstantTimeEq(int32(j), idx))
+	}
+	R.cneg(int(L[0]>>31) & 1)
+	QQ := Q.toHomogeneous()
+	QQ.completeAdd(QQ, R.toHomogeneous())
+	QQ.cneg(isEvenK)
+	return QQ.toAffine().toInt()
 }
 
 // ScalarBaseMult returns k*G, where G is the base point of the group
@@ -169,8 +180,9 @@ func (c curve) CombinedMult(Qx, Qy *big.Int, m, n []byte) (Px, Py *big.Int) {
 	}
 
 	TabQ := newAffinePoint(Qx, Qy).oddMultiples(nOmega)
-	var P, jR jacobianPoint
+	var jR jacobianPoint
 	var aR affinePoint
+	P := zeroPoint().toJacobian()
 	for i := len(nafN) - 1; i >= 0; i-- {
 		P.double()
 		// Generator point
@@ -180,7 +192,7 @@ func (c curve) CombinedMult(Qx, Qy *big.Int, m, n []byte) (Px, Py *big.Int) {
 			if nafM[i] < 0 {
 				aR.neg()
 			}
-			P.mixadd(&P, &aR)
+			P.mixadd(P, &aR)
 		}
 		// Input point
 		if nafN[i] != 0 {
@@ -189,7 +201,7 @@ func (c curve) CombinedMult(Qx, Qy *big.Int, m, n []byte) (Px, Py *big.Int) {
 			if nafN[i] < 0 {
 				jR.neg()
 			}
-			P.add(&P, &jR)
+			P.add(P, &jR)
 		}
 	}
 	return P.toAffine().toInt()

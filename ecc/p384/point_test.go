@@ -21,18 +21,24 @@ func randomAffine() *affinePoint {
 func randomJacobian() *jacobianPoint {
 	params := elliptic.P384().Params()
 	P := randomAffine().toJacobian()
-	zz, _ := rand.Int(rand.Reader, params.P)
-	z := &fp384{}
-	z.SetBigInt(zz)
-	fp384Mul(&P.x, &P.x, z)
-	fp384Mul(&P.y, &P.y, z)
-	fp384Mul(&P.z, &P.z, z)
+	z, _ := rand.Int(rand.Reader, params.P)
+	var z1, z2, z3 fp384
+	z1.SetBigInt(z)
+	fp384Sqr(&z2, &z1)
+	fp384Mul(&z3, &z2, &z1)
+	fp384Mul(&P.x, &P.x, &z2)
+	fp384Mul(&P.y, &P.y, &z3)
+	fp384Mul(&P.z, &P.z, &z1)
 	return P
 }
 
+func randomHomogeneous() *homogeneousPoint {
+	return randomJacobian().toHomogeneous()
+}
+
 func TestPointDouble(t *testing.T) {
-	t.Run("2O=O", func(t *testing.T) {
-		Z := &jacobianPoint{}
+	t.Run("2∞=∞", func(t *testing.T) {
+		Z := zeroPoint().toJacobian()
 		Z.double()
 		got := Z.isZero()
 		want := true
@@ -62,10 +68,12 @@ func TestPointDouble(t *testing.T) {
 }
 
 func TestPointAdd(t *testing.T) {
-	P, Q := &jacobianPoint{}, &jacobianPoint{}
-	R, Z := &jacobianPoint{}, &jacobianPoint{}
+	params := elliptic.P384().Params()
+	Q, R := &jacobianPoint{}, &jacobianPoint{}
+	Z := zeroPoint().toJacobian()
+	P := randomJacobian()
 
-	t.Run("O+O=O", func(t *testing.T) {
+	t.Run("∞+∞=∞", func(t *testing.T) {
 		R.add(Z, Z)
 		got := R.isZero()
 		want := true
@@ -74,37 +82,31 @@ func TestPointAdd(t *testing.T) {
 		}
 	})
 
-	t.Run("O+P=P", func(t *testing.T) {
+	t.Run("∞+P=P", func(t *testing.T) {
 		R.add(Z, P)
-		gotX, gotY, gotZ := R.toInt()
-		wantX, wantY, wantZ := P.toInt()
+		gotX, gotY := R.toAffine().toInt()
+		wantX, wantY := P.toAffine().toInt()
 		if gotX.Cmp(wantX) != 0 {
 			test.ReportError(t, gotX, wantX, P)
 		}
 		if gotY.Cmp(wantY) != 0 {
-			test.ReportError(t, gotY, wantY)
-		}
-		if gotZ.Cmp(wantZ) != 0 {
-			test.ReportError(t, gotZ, wantZ)
+			test.ReportError(t, gotY, wantY, P)
 		}
 	})
 
-	t.Run("P+O=P", func(t *testing.T) {
+	t.Run("P+∞=P", func(t *testing.T) {
 		R.add(P, Z)
-		gotX, gotY, gotZ := R.toInt()
-		wantX, wantY, wantZ := P.toInt()
+		gotX, gotY := R.toAffine().toInt()
+		wantX, wantY := P.toAffine().toInt()
 		if gotX.Cmp(wantX) != 0 {
 			test.ReportError(t, gotX, wantX, P)
 		}
 		if gotY.Cmp(wantY) != 0 {
-			test.ReportError(t, gotY, wantY)
-		}
-		if gotZ.Cmp(wantZ) != 0 {
-			test.ReportError(t, gotZ, wantZ)
+			test.ReportError(t, gotY, wantY, P)
 		}
 	})
 
-	t.Run("P+(-P)=O", func(t *testing.T) {
+	t.Run("P+(-P)=∞", func(t *testing.T) {
 		*Q = *P
 		Q.neg()
 		R.add(P, Q)
@@ -114,57 +116,150 @@ func TestPointAdd(t *testing.T) {
 			test.ReportError(t, got, want, P)
 		}
 	})
-}
 
-func TestDouble(t *testing.T) {
-	// Verify that the `add` function cannot be used for doublings.
-	R := &jacobianPoint{}
-	for i := 0; i < 128; i++ {
-		P := randomJacobian()
+	t.Run("P+P=2P", func(t *testing.T) {
+		// This verifies that add function cannot be used for doublings.
+		for i := 0; i < 128; i++ {
+			P = randomJacobian()
 
-		R.add(P, P)
-		gotX, gotY, gotZ := R.x, R.y, R.z
+			R.add(P, P)
+			gotX, gotY := R.toAffine().toInt()
+			wantX, wantY := zeroPoint().toInt()
 
-		wantX, wantY, wantZ := fp384{}, fp384{}, fp384{}
-
-		if gotX != wantX || gotY != wantY || gotZ != wantZ {
-			test.ReportError(t, gotX, wantX, gotY, wantY, gotZ, wantZ, P)
+			if gotX.Cmp(wantX) != 0 {
+				test.ReportError(t, gotX, wantX, P)
+			}
+			if gotY.Cmp(wantY) != 0 {
+				test.ReportError(t, gotY, wantY, P)
+			}
 		}
-	}
+	})
+
+	t.Run("P+Q=R", func(t *testing.T) {
+		for i := 0; i < 128; i++ {
+			P = randomJacobian()
+			Q = randomJacobian()
+
+			x1, y1 := P.toAffine().toInt()
+			x2, y2 := Q.toAffine().toInt()
+			wantX, wantY := params.Add(x1, y1, x2, y2)
+
+			R.add(P, Q)
+			gotX, gotY := R.toAffine().toInt()
+
+			if gotX.Cmp(wantX) != 0 {
+				test.ReportError(t, gotX, wantX, P, Q)
+			}
+			if gotY.Cmp(wantY) != 0 {
+				test.ReportError(t, gotY, wantY, P, Q)
+			}
+		}
+	})
 }
 
-func TestAddition(t *testing.T) {
-	const testTimes = 1 << 7
+func TestPointCompleteAdd(t *testing.T) {
 	params := elliptic.P384().Params()
-	R := &jacobianPoint{}
-	for i := 0; i < testTimes; i++ {
-		P := randomJacobian()
-		Q := randomJacobian()
+	Q, R := &homogeneousPoint{}, &homogeneousPoint{}
+	Z := zeroPoint().toHomogeneous()
+	P := randomHomogeneous()
 
-		x1, y1 := P.toAffine().toInt()
-		x2, y2 := Q.toAffine().toInt()
-		wantX, wantY := params.Add(x1, y1, x2, y2)
+	t.Run("∞+∞=∞", func(t *testing.T) {
+		R.completeAdd(Z, Z)
+		got := R.isZero()
+		want := true
+		if got != want {
+			test.ReportError(t, got, want)
+		}
+	})
 
-		R.add(P, Q)
+	t.Run("∞+P=P", func(t *testing.T) {
+		R.completeAdd(Z, P)
 		gotX, gotY := R.toAffine().toInt()
-
+		wantX, wantY := P.toAffine().toInt()
 		if gotX.Cmp(wantX) != 0 {
-			test.ReportError(t, gotX, wantX, P, Q)
+			test.ReportError(t, gotX, wantX, P)
 		}
 		if gotY.Cmp(wantY) != 0 {
-			test.ReportError(t, gotY, wantY)
+			test.ReportError(t, gotY, wantY, P)
 		}
-	}
+	})
+
+	t.Run("P+∞=P", func(t *testing.T) {
+		R.completeAdd(P, Z)
+		gotX, gotY := R.toAffine().toInt()
+		wantX, wantY := P.toAffine().toInt()
+		if gotX.Cmp(wantX) != 0 {
+			test.ReportError(t, gotX, wantX, P)
+		}
+		if gotY.Cmp(wantY) != 0 {
+			test.ReportError(t, gotY, wantY, P)
+		}
+	})
+
+	t.Run("P+(-P)=∞", func(t *testing.T) {
+		*Q = *P
+		Q.cneg(1)
+		R.completeAdd(P, Q)
+		got := R.isZero()
+		want := true
+		if got != want {
+			test.ReportError(t, got, want, P)
+		}
+	})
+
+	t.Run("P+P=2P", func(t *testing.T) {
+		// This verifies that complete add can be used for doublings.
+		for i := 0; i < 128; i++ {
+			P := randomJacobian()
+			PP := P.toHomogeneous()
+
+			R.completeAdd(PP, PP)
+			P.double()
+
+			gotX, gotY := R.toAffine().toInt()
+			wantX, wantY := P.toAffine().toInt()
+
+			if gotX.Cmp(wantX) != 0 {
+				test.ReportError(t, gotX, wantX, P)
+			}
+			if gotY.Cmp(wantY) != 0 {
+				test.ReportError(t, gotY, wantY, P)
+			}
+		}
+	})
+
+	t.Run("P+Q=R", func(t *testing.T) {
+		for i := 0; i < 128; i++ {
+			P := randomHomogeneous()
+			Q := randomHomogeneous()
+
+			x1, y1 := P.toAffine().toInt()
+			x2, y2 := Q.toAffine().toInt()
+			wantX, wantY := params.Add(x1, y1, x2, y2)
+
+			R.completeAdd(P, Q)
+			gotX, gotY := R.toAffine().toInt()
+
+			if gotX.Cmp(wantX) != 0 {
+				test.ReportError(t, gotX, wantX, P, Q)
+			}
+			if gotY.Cmp(wantY) != 0 {
+				test.ReportError(t, gotY, wantY, P, Q)
+			}
+		}
+	})
 }
 
 func TestPointMixAdd(t *testing.T) {
 	params := elliptic.P384().Params()
-	aZ, aQ := &affinePoint{}, &affinePoint{}
-	jZ, R := &jacobianPoint{}, &jacobianPoint{}
+	aZ := zeroPoint()
+	jZ := zeroPoint().toJacobian()
+	R := &jacobianPoint{}
+	aQ := &affinePoint{}
 	aP := randomAffine()
 	jP := randomJacobian()
 
-	t.Run("O+O=O", func(t *testing.T) {
+	t.Run("∞+∞=∞", func(t *testing.T) {
 		R.mixadd(jZ, aZ)
 		got := R.isZero()
 		want := true
@@ -173,7 +268,7 @@ func TestPointMixAdd(t *testing.T) {
 		}
 	})
 
-	t.Run("O+P=P", func(t *testing.T) {
+	t.Run("∞+P=P", func(t *testing.T) {
 		R.mixadd(jZ, aP)
 		gotX, gotY := R.toAffine().toInt()
 		wantX, wantY := aP.toInt()
@@ -185,7 +280,7 @@ func TestPointMixAdd(t *testing.T) {
 		}
 	})
 
-	t.Run("P+O=P", func(t *testing.T) {
+	t.Run("P+∞=P", func(t *testing.T) {
 		R.mixadd(jP, aZ)
 		gotX, gotY, gotZ := R.toInt()
 		wantX, wantY, wantZ := jP.toInt()
@@ -200,7 +295,7 @@ func TestPointMixAdd(t *testing.T) {
 		}
 	})
 
-	t.Run("P+(-P)=O", func(t *testing.T) {
+	t.Run("P+(-P)=∞", func(t *testing.T) {
 		aQ = jP.toAffine()
 		aQ.neg()
 		R.mixadd(jP, aQ)
@@ -294,11 +389,18 @@ func BenchmarkPoint(b *testing.B) {
 	P := randomJacobian()
 	Q := randomJacobian()
 	R := randomJacobian()
+	QQ := Q.toHomogeneous()
+	RR := R.toHomogeneous()
 	aR := randomAffine()
 
 	b.Run("addition", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			R.add(P, Q)
+		}
+	})
+	b.Run("fullAddition", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			RR.completeAdd(RR, QQ)
 		}
 	})
 	b.Run("mixadd", func(b *testing.B) {
