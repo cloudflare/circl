@@ -127,7 +127,7 @@ func (c curve) ScalarMult(Px, Py *big.Int, k []byte) (Qx, Qy *big.Int) {
 	if scalar.Sign() == 0 {
 		return new(big.Int), new(big.Int)
 	}
-	L := math.SignedDigit(&scalar, omega)
+	L := math.SignedDigit(&scalar, omega, uint(c.CurveParams.N.BitLen()))
 
 	var Q, R jacobianPoint
 	TabP := newAffinePoint(Px, Py).oddMultiples(omega)
