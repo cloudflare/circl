@@ -12,6 +12,9 @@ import (
 type affinePoint struct{ x, y fp384 }
 
 func (ap affinePoint) String() string {
+	if ap.isZero() {
+		return fmt.Sprintf("∞")
+	}
 	return fmt.Sprintf("x: %v\ny: %v", ap.x, ap.y)
 }
 
@@ -24,11 +27,28 @@ func newAffinePoint(X, Y *big.Int) *affinePoint {
 	return &P
 }
 
+func zeroPoint() *affinePoint { return &affinePoint{} }
+
 func (ap *affinePoint) neg() { fp384Neg(&ap.y, &ap.y) }
 
 func (ap *affinePoint) toJacobian() *jacobianPoint {
 	var P jacobianPoint
-	if !ap.isZero() {
+	if ap.isZero() {
+		montEncode(&P.x, &fp384{1})
+		montEncode(&P.y, &fp384{1})
+	} else {
+		P.x = ap.x
+		P.y = ap.y
+		montEncode(&P.z, &fp384{1})
+	}
+	return &P
+}
+
+func (ap *affinePoint) toHomogeneous() *homogeneousPoint {
+	var P homogeneousPoint
+	if ap.isZero() {
+		montEncode(&P.y, &fp384{1})
+	} else {
 		P.x = ap.x
 		P.y = ap.y
 		montEncode(&P.z, &fp384{1})
@@ -67,8 +87,7 @@ func (ap affinePoint) oddMultiples(n uint) []jacobianPoint {
 }
 
 // jacobianPoint represents a point in Jacobian coordinates. The point at
-// infinity is any point with z=0 including (0,0,0) (although this is not a
-// projective point).
+// infinity is any point (x,y,0) such that x and y are different from 0.
 type jacobianPoint struct{ x, y, z fp384 }
 
 func (P *jacobianPoint) neg() { fp384Neg(&P.y, &P.y) }
@@ -106,7 +125,10 @@ func (P *jacobianPoint) toInt() (*big.Int, *big.Int, *big.Int) {
 	return x.BigInt(), y.BigInt(), z.BigInt()
 }
 
-func (P *jacobianPoint) isZero() bool { return P.z == fp384{} }
+func (P *jacobianPoint) isZero() bool {
+	zero := fp384{}
+	return P.x != zero && P.y != zero && P.z == zero
+}
 
 // add calculates P=Q+R such that Q and R are different than the identity point,
 // and Q!==R. This function cannot be used for doublings.
@@ -172,7 +194,7 @@ func (P *jacobianPoint) mixadd(Q *jacobianPoint, R *affinePoint) {
 	fp384Mul(s2, s2, z1z1)
 	if Q.x == *u2 {
 		if Q.y != *s2 {
-			*P = jacobianPoint{}
+			*P = *(zeroPoint().toJacobian())
 			return
 		}
 		*P = *Q
@@ -245,4 +267,96 @@ func (P *jacobianPoint) double() {
 
 func (P jacobianPoint) String() string {
 	return fmt.Sprintf("x: %v\ny: %v\nz: %v", P.x, P.y, P.z)
+}
+
+func (P *jacobianPoint) toHomogeneous() *homogeneousPoint {
+	var hP homogeneousPoint
+	hP.y = P.y
+	fp384Mul(&hP.x, &P.x, &P.z)
+	fp384Sqr(&hP.z, &P.z)
+	fp384Mul(&hP.z, &hP.z, &P.z)
+	return &hP
+}
+
+// homogeneousPoint represents a point in homogeneous coordinates.
+// The point at infinity is (0,y,0) such that y is different from 0.
+type homogeneousPoint struct {
+	x, y, z fp384
+}
+
+func (P homogeneousPoint) String() string {
+	return fmt.Sprintf("x: %v\ny: %v\nz: %v", P.x, P.y, P.z)
+}
+
+// condNeg if P is negated if b=1.
+func (P *homogeneousPoint) cneg(b int) {
+	var mY fp384
+	fp384Neg(&mY, &P.y)
+	fp384Cmov(&P.y, &mY, b)
+}
+
+func (P *homogeneousPoint) toAffine() *affinePoint {
+	var aP affinePoint
+	z := &fp384{}
+	fp384Inv(z, &P.z)
+	fp384Mul(&aP.x, &P.x, z)
+	fp384Mul(&aP.y, &P.y, z)
+	return &aP
+}
+
+// add calculates P=Q+R using complete addition formula for prime groups.
+func (P *homogeneousPoint) completeAdd(Q, R *homogeneousPoint) {
+	X1, Y1, Z1 := &Q.x, &Q.y, &Q.z
+	X2, Y2, Z2 := &R.x, &R.y, &R.z
+	X3, Y3, Z3 := &fp384{}, &fp384{}, &fp384{}
+	t0, t1, t2, t3, t4 := &fp384{}, &fp384{}, &fp384{}, &fp384{}, &fp384{}
+	fp384Mul(t0, X1, X2)  // 1.  t0 ← X1 · X2
+	fp384Mul(t1, Y1, Y2)  // 2.  t1 ← Y1 · Y2
+	fp384Mul(t2, Z1, Z2)  // 3.  t2 ← Z1 · Z2
+	fp384Add(t3, X1, Y1)  // 4.  t3 ← X1 + Y1
+	fp384Add(t4, X2, Y2)  // 5.  t4 ← X2 + Y2
+	fp384Mul(t3, t3, t4)  // 6.  t3 ← t3 · t4
+	fp384Add(t4, t0, t1)  // 7.  t4 ← t0 + t1
+	fp384Sub(t3, t3, t4)  // 8.  t3 ← t3 − t4
+	fp384Add(t4, Y1, Z1)  // 9.  t4 ← Y1 + Z1
+	fp384Add(X3, Y2, Z2)  // 10. X3 ← Y2 + Z2
+	fp384Mul(t4, t4, X3)  // 11. t4 ← t4 · X3
+	fp384Add(X3, t1, t2)  // 12. X3 ← t1 + t2
+	fp384Sub(t4, t4, X3)  // 13. t4 ← t4 − X3
+	fp384Add(X3, X1, Z1)  // 14. X3 ← X1 + Z1
+	fp384Add(Y3, X2, Z2)  // 15. Y3 ← X2 + Z2
+	fp384Mul(X3, X3, Y3)  // 16. X3 ← X3 · Y3
+	fp384Add(Y3, t0, t2)  // 17. Y3 ← t0 + t2
+	fp384Sub(Y3, X3, Y3)  // 18. Y3 ← X3 − Y3
+	fp384Mul(Z3, &bb, t2) // 19. Z3 ←  b · t2
+	fp384Sub(X3, Y3, Z3)  // 20. X3 ← Y3 − Z3
+	fp384Add(Z3, X3, X3)  // 21. Z3 ← X3 + X3
+	fp384Add(X3, X3, Z3)  // 22. X3 ← X3 + Z3
+	fp384Sub(Z3, t1, X3)  // 23. Z3 ← t1 − X3
+	fp384Add(X3, t1, X3)  // 24. X3 ← t1 + X3
+	fp384Mul(Y3, &bb, Y3) // 25. Y3 ←  b · Y3
+	fp384Add(t1, t2, t2)  // 26. t1 ← t2 + t2
+	fp384Add(t2, t1, t2)  // 27. t2 ← t1 + t2
+	fp384Sub(Y3, Y3, t2)  // 28. Y3 ← Y3 − t2
+	fp384Sub(Y3, Y3, t0)  // 29. Y3 ← Y3 − t0
+	fp384Add(t1, Y3, Y3)  // 30. t1 ← Y3 + Y3
+	fp384Add(Y3, t1, Y3)  // 31. Y3 ← t1 + Y3
+	fp384Add(t1, t0, t0)  // 32. t1 ← t0 + t0
+	fp384Add(t0, t1, t0)  // 33. t0 ← t1 + t0
+	fp384Sub(t0, t0, t2)  // 34. t0 ← t0 − t2
+	fp384Mul(t1, t4, Y3)  // 35. t1 ← t4 · Y3
+	fp384Mul(t2, t0, Y3)  // 36. t2 ← t0 · Y3
+	fp384Mul(Y3, X3, Z3)  // 37. Y3 ← X3 · Z3
+	fp384Add(Y3, Y3, t2)  // 38. Y3 ← Y3 + t2
+	fp384Mul(X3, t3, X3)  // 39. X3 ← t3 · X3
+	fp384Sub(X3, X3, t1)  // 40. X3 ← X3 − t1
+	fp384Mul(Z3, t4, Z3)  // 41. Z3 ← t4 · Z3
+	fp384Mul(t1, t3, t0)  // 42. t1 ← t3 · t0
+	fp384Add(Z3, Z3, t1)  // 43. Z3 ← Z3 + t1
+	P.x, P.y, P.z = *X3, *Y3, *Z3
+}
+
+func (P *homogeneousPoint) isZero() bool {
+	zero := fp384{}
+	return P.x == zero && P.y != zero && P.z == zero
 }
