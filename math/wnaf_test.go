@@ -35,15 +35,14 @@ func TestOmegaNAF(t *testing.T) {
 
 func TestOmegaNAFRegular(t *testing.T) {
 	testTimes := 1 << 7
-	var max big.Int
-	max.SetInt64(1)
-	max.Lsh(&max, 128)
+	Two128 := big.NewInt(1)
+	Two128.Lsh(Two128, 128)
 
 	for w := uint(2); w < 10; w++ {
 		for j := 0; j < testTimes; j++ {
-			x, _ := rand.Int(rand.Reader, &max)
+			x, _ := rand.Int(rand.Reader, Two128)
 			x.SetBit(x, 0, uint(1)) // odd-numbers
-			L := SignedDigit(x, w)
+			L := SignedDigit(x, w, 128)
 
 			var y big.Int
 			for i := len(L) - 1; i >= 0; i-- {
@@ -84,7 +83,7 @@ func BenchmarkOmegaNAFRegular(b *testing.B) {
 			x.SetBit(x, 0, uint(1)) // odd-numbers
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				_ = SignedDigit(x, w)
+				_ = SignedDigit(x, w, 128)
 			}
 		})
 	}
