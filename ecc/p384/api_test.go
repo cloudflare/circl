@@ -14,6 +14,7 @@ import (
 func BenchmarkScalarMult(b *testing.B) {
 	curve := p384.P384()
 	params := curve.Params()
+
 	K, _ := rand.Int(rand.Reader, params.N)
 	M, _ := rand.Int(rand.Reader, params.N)
 	N, _ := rand.Int(rand.Reader, params.N)
@@ -34,20 +35,6 @@ func BenchmarkScalarMult(b *testing.B) {
 	b.Run("kG+lP", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			_, _ = curve.CombinedMult(params.Gx, params.Gy, m, n)
-		}
-	})
-
-	curveStd := elliptic.P384()
-	prefix := "elliptic"
-
-	b.Run(fmt.Sprintf("%v/kG", prefix), func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			curveStd.ScalarBaseMult(k)
-		}
-	})
-	b.Run(fmt.Sprintf("%v/kP", prefix), func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			curveStd.ScalarMult(params.Gx, params.Gy, k)
 		}
 	})
 }

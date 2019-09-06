@@ -22,50 +22,40 @@ type Curve interface {
 	CombinedMult(Qx, Qy *big.Int, m, n []byte) (Px, Py *big.Int)
 }
 
+type curve struct{}
+
 // P384 returns a Curve which implements P-384 (see FIPS 186-3, section D.2.4).
-func P384() Curve { return p384 }
+func P384() Curve { return curve{} }
 
-type curve struct{ *elliptic.CurveParams }
-
-var p384 curve
-
-func init() {
-	p384.CurveParams = elliptic.P384().Params()
-}
+// Params returns the parameters for the curve. Note: The value returned by
+// this function fallbacks to the stdlib implementation of elliptic curve
+// operations. Use this method to only recover elliptic curve parameters.
+func (c curve) Params() *elliptic.CurveParams { return elliptic.P384().Params() }
 
 // IsAtInfinity returns True is the point is the identity point.
-func (c curve) IsAtInfinity(X, Y *big.Int) bool {
-	return X.Sign() == 0 && Y.Sign() == 0
+func (c curve) IsAtInfinity(x, y *big.Int) bool {
+	return x.Sign() == 0 && y.Sign() == 0
 }
 
 // IsOnCurve reports whether the given (x,y) lies on the curve.
-func (c curve) IsOnCurve(X, Y *big.Int) bool {
-	// bMon is the curve's B parameter encoded. bMon = B*R mod p.
-	bMon := &fp384{
-		0xcc, 0x2d, 0x41, 0x9d, 0x71, 0x88, 0x11, 0x08,
-		0xec, 0x32, 0x4c, 0x7a, 0xd8, 0xad, 0x29, 0xf7,
-		0x2e, 0x02, 0x20, 0x19, 0x9b, 0x20, 0xf2, 0x77,
-		0xe2, 0x8a, 0x93, 0x94, 0xee, 0x4b, 0x37, 0xe3,
-		0x94, 0x20, 0x02, 0x1f, 0xf4, 0x21, 0x2b, 0xb6,
-		0xf9, 0xbf, 0x4f, 0x60, 0x4b, 0x11, 0x08, 0xcd,
-	}
-	x, y := &fp384{}, &fp384{}
-	x.SetBigInt(X)
-	y.SetBigInt(Y)
-	montEncode(x, x)
-	montEncode(y, y)
+func (c curve) IsOnCurve(x, y *big.Int) bool {
+	x1, y1 := &fp384{}, &fp384{}
+	x1.SetBigInt(x)
+	y1.SetBigInt(y)
+	montEncode(x1, x1)
+	montEncode(y1, y1)
 
 	y2, x3 := &fp384{}, &fp384{}
-	fp384Sqr(y2, y)
-	fp384Sqr(x3, x)
-	fp384Mul(x3, x3, x)
+	fp384Sqr(y2, y1)
+	fp384Sqr(x3, x1)
+	fp384Mul(x3, x3, x1)
 
 	threeX := &fp384{}
-	fp384Add(threeX, x, x)
-	fp384Add(threeX, threeX, x)
+	fp384Add(threeX, x1, x1)
+	fp384Add(threeX, threeX, x1)
 
 	fp384Sub(x3, x3, threeX)
-	fp384Add(x3, x3, bMon)
+	fp384Add(x3, x3, &bb)
 
 	return *y2 == *x3
 }
@@ -117,8 +107,11 @@ func (c curve) toOdd(k []byte) ([]byte, int) {
 }
 
 // ScalarMult returns (Qx,Qy)=k*(Px,Py) where k is a number in big-endian form.
-func (c curve) ScalarMult(Px, Py *big.Int, k []byte) (Qx, Qy *big.Int) {
-	const omega = uint(5)
+func (c curve) ScalarMult(x1, y1 *big.Int, k []byte) (x, y *big.Int) {
+	return c.scalarMultOmega(x1, y1, k, 5)
+}
+
+func (c curve) scalarMultOmega(x1, y1 *big.Int, k []byte, omega uint) (x, y *big.Int) {
 	k = c.reduceScalar(k)
 	oddK, isEvenK := c.toOdd(k)
 
@@ -127,11 +120,12 @@ func (c curve) ScalarMult(Px, Py *big.Int, k []byte) (Qx, Qy *big.Int) {
 	if scalar.Sign() == 0 {
 		return new(big.Int), new(big.Int)
 	}
-	L := math.SignedDigit(&scalar, omega, uint(c.CurveParams.N.BitLen()))
+	const bitsN = uint(384)
+	L := math.SignedDigit(&scalar, omega, bitsN)
 
 	var R jacobianPoint
 	Q := zeroPoint().toJacobian()
-	TabP := newAffinePoint(Px, Py).oddMultiples(omega)
+	TabP := newAffinePoint(x1, y1).oddMultiples(omega)
 	for i := len(L) - 1; i > 0; i-- {
 		for j := uint(0); j < omega-1; j++ {
 			Q.double()
@@ -143,6 +137,7 @@ func (c curve) ScalarMult(Px, Py *big.Int, k []byte) (Qx, Qy *big.Int) {
 		R.cneg(int(L[i]>>31) & 1)
 		Q.add(Q, &R)
 	}
+	// Calculate the last iteration using complete addition formula.
 	for j := uint(0); j < omega-1; j++ {
 		Q.double()
 	}
@@ -159,8 +154,9 @@ func (c curve) ScalarMult(Px, Py *big.Int, k []byte) (Qx, Qy *big.Int) {
 
 // ScalarBaseMult returns k*G, where G is the base point of the group
 // and k is an integer in big-endian form.
-func (c curve) ScalarBaseMult(k []byte) (*big.Int, *big.Int) {
-	return c.ScalarMult(c.Params().Gx, c.Params().Gy, k)
+func (c curve) ScalarBaseMult(k []byte) (x, y *big.Int) {
+	params := c.Params()
+	return c.ScalarMult(params.Gx, params.Gy, k)
 }
 
 // CombinedMult calculates P=mG+nQ, where G is the generator and Q=(x,y,z).
