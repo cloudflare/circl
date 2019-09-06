@@ -48,12 +48,12 @@ func TestPointDouble(t *testing.T) {
 	})
 
 	t.Run("2P=P+P", func(t *testing.T) {
-		params := elliptic.P384().Params()
+		StdCurve := elliptic.P384()
 		for i := 0; i < 128; i++ {
 			P := randomJacobian()
 
 			x1, y1 := P.toAffine().toInt()
-			wantX, wantY := params.Double(x1, y1)
+			wantX, wantY := StdCurve.Double(x1, y1)
 
 			P.double()
 			gotX, gotY := P.toAffine().toInt()
@@ -68,7 +68,7 @@ func TestPointDouble(t *testing.T) {
 }
 
 func TestPointAdd(t *testing.T) {
-	params := elliptic.P384().Params()
+	StdCurve := elliptic.P384()
 	Q, R := &jacobianPoint{}, &jacobianPoint{}
 	Z := zeroPoint().toJacobian()
 	P := randomJacobian()
@@ -142,7 +142,7 @@ func TestPointAdd(t *testing.T) {
 
 			x1, y1 := P.toAffine().toInt()
 			x2, y2 := Q.toAffine().toInt()
-			wantX, wantY := params.Add(x1, y1, x2, y2)
+			wantX, wantY := StdCurve.Add(x1, y1, x2, y2)
 
 			R.add(P, Q)
 			gotX, gotY := R.toAffine().toInt()
@@ -158,7 +158,7 @@ func TestPointAdd(t *testing.T) {
 }
 
 func TestPointCompleteAdd(t *testing.T) {
-	params := elliptic.P384().Params()
+	StdCurve := elliptic.P384()
 	Q, R := &homogeneousPoint{}, &homogeneousPoint{}
 	Z := zeroPoint().toHomogeneous()
 	P := randomHomogeneous()
@@ -235,7 +235,7 @@ func TestPointCompleteAdd(t *testing.T) {
 
 			x1, y1 := P.toAffine().toInt()
 			x2, y2 := Q.toAffine().toInt()
-			wantX, wantY := params.Add(x1, y1, x2, y2)
+			wantX, wantY := StdCurve.Add(x1, y1, x2, y2)
 
 			R.completeAdd(P, Q)
 			gotX, gotY := R.toAffine().toInt()
@@ -251,7 +251,7 @@ func TestPointCompleteAdd(t *testing.T) {
 }
 
 func TestPointMixAdd(t *testing.T) {
-	params := elliptic.P384().Params()
+	StdCurve := elliptic.P384()
 	aZ := zeroPoint()
 	jZ := zeroPoint().toJacobian()
 	R := &jacobianPoint{}
@@ -312,7 +312,7 @@ func TestPointMixAdd(t *testing.T) {
 			jQ := aQ.toJacobian()
 
 			x, y := aQ.toInt()
-			wantX, wantY := params.Double(x, y)
+			wantX, wantY := StdCurve.Double(x, y)
 
 			R.mixadd(jQ, aQ)
 			gotX, gotY := R.toAffine().toInt()
@@ -333,7 +333,7 @@ func TestPointMixAdd(t *testing.T) {
 
 			x1, y1 := jP.toAffine().toInt()
 			x2, y2 := aP.toInt()
-			wantX, wantY := params.Add(x1, y1, x2, y2)
+			wantX, wantY := StdCurve.Add(x1, y1, x2, y2)
 
 			R.mixadd(jP, aP)
 			gotX, gotY := R.toAffine().toInt()
@@ -362,8 +362,8 @@ func TestOddMultiples(t *testing.T) {
 	})
 
 	t.Run("validOmega", func(t *testing.T) {
+		StdCurve := elliptic.P384()
 		var jOdd [4]byte
-		params := elliptic.P384().Params()
 		for i := 0; i < 32; i++ {
 			P := randomAffine()
 			X, Y := P.toInt()
@@ -371,7 +371,7 @@ func TestOddMultiples(t *testing.T) {
 				PP := P.oddMultiples(w)
 				for j, jP := range PP {
 					binary.BigEndian.PutUint32(jOdd[:], uint32(2*j+1))
-					wantX, wantY := params.ScalarMult(X, Y, jOdd[:])
+					wantX, wantY := StdCurve.ScalarMult(X, Y, jOdd[:])
 					gotX, gotY := jP.toAffine().toInt()
 					if gotX.Cmp(wantX) != 0 {
 						test.ReportError(t, gotX, wantX, w, j)

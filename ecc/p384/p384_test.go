@@ -5,26 +5,27 @@ package p384
 import (
 	"crypto/elliptic"
 	"crypto/rand"
+	"math/big"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/test"
 )
 
 func TestIsOnCurveTrue(t *testing.T) {
-	curve := P384()
+	CirclCurve := P384()
 	k := make([]byte, 384/8)
 	for i := 0; i < 128; i++ {
 		_, _ = rand.Read(k)
 		x, y := elliptic.P384().ScalarBaseMult(k)
 
-		got := curve.IsOnCurve(x, y)
+		got := CirclCurve.IsOnCurve(x, y)
 		want := true
 		if got != want {
 			test.ReportError(t, got, want, k)
 		}
 
 		x = x.Neg(x)
-		got = curve.IsOnCurve(x, y)
+		got = CirclCurve.IsOnCurve(x, y)
 		want = false
 		if got != want {
 			test.ReportError(t, got, want, k)
@@ -34,16 +35,18 @@ func TestIsOnCurveTrue(t *testing.T) {
 
 func TestAffine(t *testing.T) {
 	const testTimes = 1 << 7
-	curve := P384()
-	params := elliptic.P384().Params()
+	CirclCurve := P384()
+	StdCurve := elliptic.P384()
+	params := StdCurve.Params()
+
 	t.Run("Addition", func(t *testing.T) {
 		for i := 0; i < testTimes; i++ {
 			K1, _ := rand.Int(rand.Reader, params.N)
 			K2, _ := rand.Int(rand.Reader, params.N)
-			X1, Y1 := params.ScalarBaseMult(K1.Bytes())
-			X2, Y2 := params.ScalarBaseMult(K2.Bytes())
-			wantX, wantY := params.Add(X1, Y1, X2, Y2)
-			gotX, gotY := curve.Add(X1, Y1, X2, Y2)
+			X1, Y1 := StdCurve.ScalarBaseMult(K1.Bytes())
+			X2, Y2 := StdCurve.ScalarBaseMult(K2.Bytes())
+			wantX, wantY := StdCurve.Add(X1, Y1, X2, Y2)
+			gotX, gotY := CirclCurve.Add(X1, Y1, X2, Y2)
 
 			if gotX.Cmp(wantX) != 0 {
 				test.ReportError(t, gotX, wantX, K1, K2)
@@ -57,10 +60,10 @@ func TestAffine(t *testing.T) {
 	t.Run("Double", func(t *testing.T) {
 		for i := 0; i < testTimes; i++ {
 			k, _ := rand.Int(rand.Reader, params.N)
-			x, y := params.ScalarBaseMult(k.Bytes())
-			wantX, wantY := params.Double(x, y)
+			x, y := StdCurve.ScalarBaseMult(k.Bytes())
+			wantX, wantY := StdCurve.Double(x, y)
 
-			gotX, gotY := curve.Double(x, y)
+			gotX, gotY := CirclCurve.Double(x, y)
 
 			if gotX.Cmp(wantX) != 0 {
 				test.ReportError(t, gotX, wantX, k)
@@ -73,12 +76,15 @@ func TestAffine(t *testing.T) {
 }
 
 func TestScalarMult(t *testing.T) {
-	curve := P384()
-	params := curve.Params()
+	const testTimes = 1 << 7
+	CirclCurve := P384()
+	StdCurve := elliptic.P384()
+	params := StdCurve.Params()
 
 	t.Run("toOdd", func(t *testing.T) {
+		var c curve
 		k := []byte{0xF0}
-		oddK, _ := p384.toOdd(k)
+		oddK, _ := c.toOdd(k)
 		got := len(oddK)
 		want := 48
 		if got != want {
@@ -86,7 +92,7 @@ func TestScalarMult(t *testing.T) {
 		}
 
 		oddK[sizeFp-1] = 0x0
-		smallOddK, _ := p384.toOdd(oddK)
+		smallOddK, _ := c.toOdd(oddK)
 		got = len(smallOddK)
 		want = 48
 		if got != want {
@@ -96,19 +102,51 @@ func TestScalarMult(t *testing.T) {
 
 	t.Run("k=0", func(t *testing.T) {
 		k := []byte{0x0}
-		gotX, gotY := curve.ScalarMult(params.Gx, params.Gy, k)
-		got := curve.IsAtInfinity(gotX, gotY)
+		gotX, gotY := CirclCurve.ScalarMult(params.Gx, params.Gy, k)
+		got := CirclCurve.IsAtInfinity(gotX, gotY)
 		want := true
 		if got != want {
 			test.ReportError(t, got, want)
 		}
 	})
 
+	t.Run("special k", func(t *testing.T) {
+		cases := []struct { // known cases that require complete addition
+			w uint
+			k int
+		}{
+			{w: 2, k: 2},
+			{w: 5, k: 6},
+			{w: 6, k: 38},
+			{w: 7, k: 102},
+			{w: 9, k: 230},
+			{w: 12, k: 742},
+			{w: 14, k: 4838},
+			{w: 17, k: 21222},
+			{w: 19, k: 152294},
+		}
+
+		var c curve
+
+		for _, caseI := range cases {
+			k := big.NewInt(int64(caseI.k)).Bytes()
+			gotX, gotY := c.scalarMultOmega(params.Gx, params.Gy, k, caseI.w)
+			wantX, wantY := StdCurve.ScalarMult(params.Gx, params.Gy, k)
+
+			if gotX.Cmp(wantX) != 0 {
+				test.ReportError(t, gotX, wantX, caseI)
+			}
+			if gotY.Cmp(wantY) != 0 {
+				test.ReportError(t, gotY, wantY, caseI)
+			}
+		}
+	})
+
 	t.Run("random k", func(t *testing.T) {
-		for i := 0; i < 128; i++ {
+		for i := 0; i < testTimes; i++ {
 			k, _ := rand.Int(rand.Reader, params.N)
-			gotX, gotY := curve.ScalarMult(params.Gx, params.Gy, k.Bytes())
-			wantX, wantY := params.ScalarBaseMult(k.Bytes())
+			gotX, gotY := CirclCurve.ScalarMult(params.Gx, params.Gy, k.Bytes())
+			wantX, wantY := StdCurve.ScalarMult(params.Gx, params.Gy, k.Bytes())
 
 			if gotX.Cmp(wantX) != 0 {
 				test.ReportError(t, gotX, wantX, k)
@@ -118,19 +156,35 @@ func TestScalarMult(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("wrong P", func(t *testing.T) {
+		for i := 0; i < testTimes; i++ {
+			k, _ := rand.Int(rand.Reader, params.N)
+			x, _ := rand.Int(rand.Reader, params.P)
+			y, _ := rand.Int(rand.Reader, params.P)
+
+			got := CirclCurve.IsOnCurve(CirclCurve.ScalarMult(x, y, k.Bytes()))
+			want := StdCurve.IsOnCurve(StdCurve.ScalarMult(x, y, k.Bytes()))
+
+			if got != want {
+				test.ReportError(t, got, want, k, x, y)
+			}
+		}
+	})
 }
 
 func TestScalarBaseMult(t *testing.T) {
-	curve := P384()
-	params := curve.Params()
+	const testTimes = 1 << 7
+	CirclCurve := P384()
+	StdCurve := elliptic.P384()
 
 	t.Run("0P", func(t *testing.T) {
 		k := make([]byte, 500)
 		for i := 0; i < len(k); i += 20 {
-			gotX, gotY := curve.ScalarBaseMult(k)
-			wantX, wantY := params.ScalarBaseMult(k)
+			gotX, gotY := CirclCurve.ScalarBaseMult(k[:i])
+			wantX, wantY := StdCurve.ScalarBaseMult(k[:i])
 			if gotX.Cmp(wantX) != 0 {
-				test.ReportError(t, gotX, wantX, k)
+				test.ReportError(t, gotX, wantX, k[:i])
 			}
 			if gotY.Cmp(wantY) != 0 {
 				test.ReportError(t, gotY, wantY)
@@ -140,10 +194,10 @@ func TestScalarBaseMult(t *testing.T) {
 
 	t.Run("kP", func(t *testing.T) {
 		k := make([]byte, 48)
-		for i := 0; i < 64; i++ {
+		for i := 0; i < testTimes; i++ {
 			_, _ = rand.Read(k)
-			gotX, gotY := p384.ScalarBaseMult(k)
-			wantX, wantY := params.ScalarBaseMult(k)
+			gotX, gotY := CirclCurve.ScalarBaseMult(k)
+			wantX, wantY := StdCurve.ScalarBaseMult(k)
 			if gotX.Cmp(wantX) != 0 {
 				test.ReportError(t, gotX, wantX, k)
 			}
@@ -155,10 +209,10 @@ func TestScalarBaseMult(t *testing.T) {
 
 	t.Run("kSmall", func(t *testing.T) {
 		k := make([]byte, 16)
-		for i := 0; i < 64; i++ {
+		for i := 0; i < testTimes; i++ {
 			_, _ = rand.Read(k)
-			gotX, gotY := p384.ScalarBaseMult(k)
-			wantX, wantY := params.ScalarBaseMult(k)
+			gotX, gotY := CirclCurve.ScalarBaseMult(k)
+			wantX, wantY := StdCurve.ScalarBaseMult(k)
 			if gotX.Cmp(wantX) != 0 {
 				test.ReportError(t, gotX, wantX, k)
 			}
@@ -170,10 +224,10 @@ func TestScalarBaseMult(t *testing.T) {
 
 	t.Run("kLarge", func(t *testing.T) {
 		k := make([]byte, 384)
-		for i := 0; i < 64; i++ {
+		for i := 0; i < testTimes; i++ {
 			_, _ = rand.Read(k)
-			gotX, gotY := p384.ScalarBaseMult(k)
-			wantX, wantY := params.ScalarBaseMult(k)
+			gotX, gotY := CirclCurve.ScalarBaseMult(k)
+			wantX, wantY := StdCurve.ScalarBaseMult(k)
 			if gotX.Cmp(wantX) != 0 {
 				test.ReportError(t, gotX, wantX, k)
 			}
@@ -184,21 +238,23 @@ func TestScalarBaseMult(t *testing.T) {
 	})
 }
 
-func TestSimultaneous(t *testing.T) {
-	curve := P384()
-	params := curve.Params()
+func TestCombinedMult(t *testing.T) {
+	const testTimes = 1 << 7
+	CirclCurve := P384()
+	StdCurve := elliptic.P384()
+	params := StdCurve.Params()
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < testTimes; i++ {
 		K, _ := rand.Int(rand.Reader, params.N)
-		X, Y := params.ScalarBaseMult(K.Bytes())
+		X, Y := StdCurve.ScalarBaseMult(K.Bytes())
 
 		K1, _ := rand.Int(rand.Reader, params.N)
 		K2, _ := rand.Int(rand.Reader, params.N)
-		x1, y1 := params.ScalarBaseMult(K1.Bytes())
-		x2, y2 := params.ScalarMult(X, Y, K2.Bytes())
-		wantX, wantY := params.Add(x1, y1, x2, y2)
+		x1, y1 := StdCurve.ScalarBaseMult(K1.Bytes())
+		x2, y2 := StdCurve.ScalarMult(X, Y, K2.Bytes())
+		wantX, wantY := StdCurve.Add(x1, y1, x2, y2)
 
-		gotX, gotY := curve.CombinedMult(X, Y, K1.Bytes(), K2.Bytes())
+		gotX, gotY := CirclCurve.CombinedMult(X, Y, K1.Bytes(), K2.Bytes())
 		if gotX.Cmp(wantX) != 0 {
 			test.ReportError(t, gotX, wantX, K, K1, K2)
 		}
