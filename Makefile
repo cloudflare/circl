@@ -46,7 +46,7 @@ generate: clean
 	$(GO) generate -v ./...
 
 bootstrap:
-	curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(TOOLS_DIR) v1.16.0
+	GO111MODULE=off go get -u github.com/golangci/golangci-lint/cmd/golangci-lint
 
 clean:
 	rm -rf $(GOPATH_BUILD)
