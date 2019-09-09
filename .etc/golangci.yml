@@ -10,6 +10,7 @@ linters:
   - gochecknoglobals
   - gochecknoinits
   - dupl
+  - funlen
 
 issues:
   exclude-rules:
