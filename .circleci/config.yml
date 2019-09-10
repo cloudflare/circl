@@ -46,7 +46,7 @@ version: 2.1
         - run:
             name: "Linting"
             command:
-                make bootstrap build lint
+                TOOLS_DIR=$(mktemp -d) make bootstrap build lint
         - run:
             name: "Checks if code is generated correctly"
             command:
