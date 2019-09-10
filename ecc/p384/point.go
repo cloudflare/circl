@@ -11,13 +11,6 @@ import (
 // infinity is (0,0) leveraging that it is not an affine point.
 type affinePoint struct{ x, y fp384 }
 
-func (ap affinePoint) String() string {
-	if ap.isZero() {
-		return fmt.Sprintf("∞")
-	}
-	return fmt.Sprintf("x: %v\ny: %v", ap.x, ap.y)
-}
-
 func newAffinePoint(X, Y *big.Int) *affinePoint {
 	var P affinePoint
 	P.x.SetBigInt(X)
@@ -29,7 +22,26 @@ func newAffinePoint(X, Y *big.Int) *affinePoint {
 
 func zeroPoint() *affinePoint { return &affinePoint{} }
 
+func (ap affinePoint) String() string {
+	if ap.isZero() {
+		return fmt.Sprintf("∞")
+	}
+	return fmt.Sprintf("x: %v\ny: %v", ap.x, ap.y)
+}
+
+func (ap *affinePoint) isZero() bool {
+	zero := fp384{}
+	return ap.x == zero && ap.y == zero
+}
+
 func (ap *affinePoint) neg() { fp384Neg(&ap.y, &ap.y) }
+
+func (ap *affinePoint) toInt() (x, y *big.Int) {
+	var x1, y1 fp384
+	montDecode(&x1, &ap.x)
+	montDecode(&y1, &ap.y)
+	return x1.BigInt(), y1.BigInt()
+}
 
 func (ap *affinePoint) toJacobian() *jacobianPoint {
 	var P jacobianPoint
@@ -44,8 +56,8 @@ func (ap *affinePoint) toJacobian() *jacobianPoint {
 	return &P
 }
 
-func (ap *affinePoint) toHomogeneous() *homogeneousPoint {
-	var P homogeneousPoint
+func (ap *affinePoint) toProjective() *projectivePoint {
+	var P projectivePoint
 	if ap.isZero() {
 		montEncode(&P.y, &fp384{1})
 	} else {
@@ -54,18 +66,6 @@ func (ap *affinePoint) toHomogeneous() *homogeneousPoint {
 		montEncode(&P.z, &fp384{1})
 	}
 	return &P
-}
-
-func (ap *affinePoint) toInt() (*big.Int, *big.Int) {
-	x, y := &fp384{}, &fp384{}
-	montDecode(x, &ap.x)
-	montDecode(y, &ap.y)
-	return x.BigInt(), y.BigInt()
-}
-
-func (ap *affinePoint) isZero() bool {
-	zero := fp384{}
-	return ap.x == zero && ap.y == zero
 }
 
 // OddMultiples calculates the points iP for i={1,3,5,7,..., 2^(n-1)-1}
@@ -86,24 +86,44 @@ func (ap affinePoint) oddMultiples(n uint) []jacobianPoint {
 	return t
 }
 
-// jacobianPoint represents a point in Jacobian coordinates. The point at
-// infinity is any point (x,y,0) such that x and y are different from 0.
-type jacobianPoint struct{ x, y, z fp384 }
+// p2Point is a point in P^2
+type p2Point struct{ x, y, z fp384 }
 
-func (P *jacobianPoint) neg() { fp384Neg(&P.y, &P.y) }
+func (P *p2Point) String() string {
+	return fmt.Sprintf("x: %v\ny: %v\nz: %v", P.x, P.y, P.z)
+}
+
+func (P *p2Point) neg() { fp384Neg(&P.y, &P.y) }
 
 // condNeg if P is negated if b=1.
-func (P *jacobianPoint) cneg(b int) {
+func (P *p2Point) cneg(b int) {
 	var mY fp384
 	fp384Neg(&mY, &P.y)
 	fp384Cmov(&P.y, &mY, b)
 }
 
 // cmov sets P to Q if b=1
-func (P *jacobianPoint) cmov(Q *jacobianPoint, b int) {
+func (P *p2Point) cmov(Q *p2Point, b int) {
 	fp384Cmov(&P.x, &Q.x, b)
 	fp384Cmov(&P.y, &Q.y, b)
 	fp384Cmov(&P.z, &Q.z, b)
+}
+
+func (P *p2Point) toInt() (x, y, z *big.Int) {
+	var x1, y1, z1 fp384
+	montDecode(&x1, &P.x)
+	montDecode(&y1, &P.y)
+	montDecode(&z1, &P.z)
+	return x1.BigInt(), y1.BigInt(), z1.BigInt()
+}
+
+// jacobianPoint represents a point in Jacobian coordinates. The point at
+// infinity is any point (x,y,0) such that x and y are different from 0.
+type jacobianPoint struct{ p2Point }
+
+func (P *jacobianPoint) isZero() bool {
+	zero := fp384{}
+	return P.x != zero && P.y != zero && P.z == zero
 }
 
 func (P *jacobianPoint) toAffine() *affinePoint {
@@ -117,18 +137,7 @@ func (P *jacobianPoint) toAffine() *affinePoint {
 	return &aP
 }
 
-func (P *jacobianPoint) toInt() (*big.Int, *big.Int, *big.Int) {
-	x, y, z := &fp384{}, &fp384{}, &fp384{}
-	montDecode(x, &P.x)
-	montDecode(y, &P.y)
-	montDecode(z, &P.z)
-	return x.BigInt(), y.BigInt(), z.BigInt()
-}
-
-func (P *jacobianPoint) isZero() bool {
-	zero := fp384{}
-	return P.x != zero && P.y != zero && P.z == zero
-}
+func (P *jacobianPoint) cmov(Q *jacobianPoint, b int) { P.p2Point.cmov(&Q.p2Point, b) }
 
 // add calculates P=Q+R such that Q and R are different than the identity point,
 // and Q!==R. This function cannot be used for doublings.
@@ -265,12 +274,8 @@ func (P *jacobianPoint) double() {
 	fp384Sub(&P.y, &P.y, gamma)
 }
 
-func (P jacobianPoint) String() string {
-	return fmt.Sprintf("x: %v\ny: %v\nz: %v", P.x, P.y, P.z)
-}
-
-func (P *jacobianPoint) toHomogeneous() *homogeneousPoint {
-	var hP homogeneousPoint
+func (P *jacobianPoint) toProjective() *projectivePoint {
+	var hP projectivePoint
 	hP.y = P.y
 	fp384Mul(&hP.x, &P.x, &P.z)
 	fp384Sqr(&hP.z, &P.z)
@@ -278,24 +283,16 @@ func (P *jacobianPoint) toHomogeneous() *homogeneousPoint {
 	return &hP
 }
 
-// homogeneousPoint represents a point in homogeneous coordinates.
+// projectivePoint represents a point in projective homogeneous coordinates.
 // The point at infinity is (0,y,0) such that y is different from 0.
-type homogeneousPoint struct {
-	x, y, z fp384
+type projectivePoint struct{ p2Point }
+
+func (P *projectivePoint) isZero() bool {
+	zero := fp384{}
+	return P.x == zero && P.y != zero && P.z == zero
 }
 
-func (P homogeneousPoint) String() string {
-	return fmt.Sprintf("x: %v\ny: %v\nz: %v", P.x, P.y, P.z)
-}
-
-// condNeg if P is negated if b=1.
-func (P *homogeneousPoint) cneg(b int) {
-	var mY fp384
-	fp384Neg(&mY, &P.y)
-	fp384Cmov(&P.y, &mY, b)
-}
-
-func (P *homogeneousPoint) toAffine() *affinePoint {
+func (P *projectivePoint) toAffine() *affinePoint {
 	var aP affinePoint
 	z := &fp384{}
 	fp384Inv(z, &P.z)
@@ -305,7 +302,10 @@ func (P *homogeneousPoint) toAffine() *affinePoint {
 }
 
 // add calculates P=Q+R using complete addition formula for prime groups.
-func (P *homogeneousPoint) completeAdd(Q, R *homogeneousPoint) {
+func (P *projectivePoint) completeAdd(Q, R *projectivePoint) {
+	// Reference:
+	//   "Complete addition formulas for prime order elliptic curves" by
+	//   Costello-Renes-Batina. [Alg.4] (eprint.iacr.org/2015/1060).
 	X1, Y1, Z1 := &Q.x, &Q.y, &Q.z
 	X2, Y2, Z2 := &R.x, &R.y, &R.z
 	X3, Y3, Z3 := &fp384{}, &fp384{}, &fp384{}
@@ -354,9 +354,4 @@ func (P *homogeneousPoint) completeAdd(Q, R *homogeneousPoint) {
 	fp384Mul(t1, t3, t0)  // 42. t1 ← t3 · t0
 	fp384Add(Z3, Z3, t1)  // 43. Z3 ← Z3 + t1
 	P.x, P.y, P.z = *X3, *Y3, *Z3
-}
-
-func (P *homogeneousPoint) isZero() bool {
-	zero := fp384{}
-	return P.x == zero && P.y != zero && P.z == zero
 }

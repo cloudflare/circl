@@ -146,8 +146,8 @@ func (c curve) scalarMultOmega(x1, y1 *big.Int, k []byte, omega uint) (x, y *big
 		R.cmov(&TabP[j], subtle.ConstantTimeEq(int32(j), idx))
 	}
 	R.cneg(int(L[0]>>31) & 1)
-	QQ := Q.toHomogeneous()
-	QQ.completeAdd(QQ, R.toHomogeneous())
+	QQ := Q.toProjective()
+	QQ.completeAdd(QQ, R.toProjective())
 	QQ.cneg(isEvenK)
 	return QQ.toAffine().toInt()
 }
