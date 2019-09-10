@@ -14,26 +14,25 @@ import (
 func randomAffine() *affinePoint {
 	params := elliptic.P384().Params()
 	k, _ := rand.Int(rand.Reader, params.N)
-	x, y := params.ScalarBaseMult(k.Bytes())
-	return newAffinePoint(x, y)
+	return newAffinePoint(params.ScalarBaseMult(k.Bytes()))
 }
 
 func randomJacobian() *jacobianPoint {
 	params := elliptic.P384().Params()
 	P := randomAffine().toJacobian()
 	z, _ := rand.Int(rand.Reader, params.P)
-	var z1, z2, z3 fp384
-	z1.SetBigInt(z)
-	fp384Sqr(&z2, &z1)
-	fp384Mul(&z3, &z2, &z1)
-	fp384Mul(&P.x, &P.x, &z2)
-	fp384Mul(&P.y, &P.y, &z3)
-	fp384Mul(&P.z, &P.z, &z1)
+	var l fp384
+	l.SetBigInt(z)
+	fp384Mul(&P.z, &P.z, &l) // z = z * l^1
+	fp384Mul(&P.y, &P.y, &l)
+	fp384Sqr(&l, &l)
+	fp384Mul(&P.x, &P.x, &l) // x = x * l^2
+	fp384Mul(&P.y, &P.y, &l) // y = y * l^3
 	return P
 }
 
-func randomHomogeneous() *homogeneousPoint {
-	return randomJacobian().toHomogeneous()
+func randomProjective() *projectivePoint {
+	return randomJacobian().toProjective()
 }
 
 func TestPointDouble(t *testing.T) {
@@ -159,9 +158,9 @@ func TestPointAdd(t *testing.T) {
 
 func TestPointCompleteAdd(t *testing.T) {
 	StdCurve := elliptic.P384()
-	Q, R := &homogeneousPoint{}, &homogeneousPoint{}
-	Z := zeroPoint().toHomogeneous()
-	P := randomHomogeneous()
+	Q, R := &projectivePoint{}, &projectivePoint{}
+	Z := zeroPoint().toProjective()
+	P := randomProjective()
 
 	t.Run("∞+∞=∞", func(t *testing.T) {
 		R.completeAdd(Z, Z)
@@ -208,10 +207,10 @@ func TestPointCompleteAdd(t *testing.T) {
 	})
 
 	t.Run("P+P=2P", func(t *testing.T) {
-		// This verifies that complete add can be used for doublings.
+		// This verifies that completeAdd can be used for doublings.
 		for i := 0; i < 128; i++ {
 			P := randomJacobian()
-			PP := P.toHomogeneous()
+			PP := P.toProjective()
 
 			R.completeAdd(PP, PP)
 			P.double()
@@ -230,8 +229,8 @@ func TestPointCompleteAdd(t *testing.T) {
 
 	t.Run("P+Q=R", func(t *testing.T) {
 		for i := 0; i < 128; i++ {
-			P := randomHomogeneous()
-			Q := randomHomogeneous()
+			P := randomProjective()
+			Q := randomProjective()
 
 			x1, y1 := P.toAffine().toInt()
 			x2, y2 := Q.toAffine().toInt()
@@ -389,8 +388,8 @@ func BenchmarkPoint(b *testing.B) {
 	P := randomJacobian()
 	Q := randomJacobian()
 	R := randomJacobian()
-	QQ := Q.toHomogeneous()
-	RR := R.toHomogeneous()
+	QQ := randomProjective()
+	RR := randomProjective()
 	aR := randomAffine()
 
 	b.Run("addition", func(b *testing.B) {

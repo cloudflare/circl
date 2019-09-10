@@ -4,7 +4,7 @@ package math
 import "math/big"
 
 // SignedDigit obtains the signed-digit recoding of n and returns a list L of
-// digits such that n = sum( L[i]*2^(w-1) ), and each L[i] is an odd number
+// digits such that n = sum( L[i]*2^(i*(w-1)) ), and each L[i] is an odd number
 // in the set {±1, ±3, ..., ±2^(w-1)-1}. The third parameter ensures that the
 // output has ceil(l/(w-1)) digits.
 //
