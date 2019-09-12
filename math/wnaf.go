@@ -9,7 +9,7 @@ import "math/big"
 // output has ceil(l/(w-1)) digits.
 //
 // Restrictions:
-//  - n > 0.
+//  - n is odd and n > 0.
 //  - 1 < w < 32.
 //  - l >= bit length of n.
 //
