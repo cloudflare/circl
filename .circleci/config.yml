@@ -64,6 +64,11 @@ jobs:
         environment:
             GOVER: 1.12
 
+    golang_1_13:
+        <<: *nativejob
+        environment:
+            GOVER: 1.13
+
     # Test for ARM64
     arm64:
         <<: *emulatedjob
@@ -88,4 +93,5 @@ workflows:
             - arm64
             - cover
             - golang_1_12
+            - golang_1_13
             - maintenance
