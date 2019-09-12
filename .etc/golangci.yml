@@ -15,19 +15,7 @@ linters:
 issues:
   exclude-rules:
     - path: ecc/p384/
-      text: "`pp` is unused"
-      linters:
-        - unused
-        - deadcode
-        - varcheck
-    - path: ecc/p384/
       text: "`hasBMI2` is unused"
-      linters:
-        - unused
-        - deadcode
-        - varcheck
-    - path: ecc/fourQ/
-      text: "is unused"
       linters:
         - unused
         - deadcode
