@@ -11,10 +11,10 @@ import (
 // infinity is (0,0) leveraging that it is not an affine point.
 type affinePoint struct{ x, y fp384 }
 
-func newAffinePoint(X, Y *big.Int) *affinePoint {
+func newAffinePoint(x, y *big.Int) *affinePoint {
 	var P affinePoint
-	P.x.SetBigInt(X)
-	P.y.SetBigInt(Y)
+	P.x.SetBigInt(x)
+	P.y.SetBigInt(y)
 	montEncode(&P.x, &P.x)
 	montEncode(&P.y, &P.y)
 	return &P
@@ -24,7 +24,7 @@ func zeroPoint() *affinePoint { return &affinePoint{} }
 
 func (ap affinePoint) String() string {
 	if ap.isZero() {
-		return fmt.Sprintf("∞")
+		return fmt.Sprintf("inf")
 	}
 	return fmt.Sprintf("x: %v\ny: %v", ap.x, ap.y)
 }

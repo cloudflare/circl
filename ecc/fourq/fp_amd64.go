@@ -6,7 +6,7 @@ import (
 	"golang.org/x/sys/cpu"
 )
 
-var hasBMI2 = cpu.X86.HasBMI2 // nolint
+var hasBMI2 = cpu.X86.HasBMI2 //nolint
 
 //go:noescape
 func fpMod(c *Fp)

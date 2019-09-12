@@ -161,7 +161,7 @@ func (c curve) ScalarBaseMult(k []byte) (x, y *big.Int) {
 
 // CombinedMult calculates P=mG+nQ, where G is the generator and Q=(x,y,z).
 // The scalars m and n are integers in big-endian form. Non-constant time.
-func (c curve) CombinedMult(Qx, Qy *big.Int, m, n []byte) (Px, Py *big.Int) {
+func (c curve) CombinedMult(xQ, yQ *big.Int, m, n []byte) (xP, yP *big.Int) {
 	const nOmega = uint(5)
 	var k big.Int
 	k.SetBytes(m)
@@ -175,7 +175,7 @@ func (c curve) CombinedMult(Qx, Qy *big.Int, m, n []byte) (Px, Py *big.Int) {
 		nafM = append(nafM, make([]int32, len(nafN)-len(nafM))...)
 	}
 
-	TabQ := newAffinePoint(Qx, Qy).oddMultiples(nOmega)
+	TabQ := newAffinePoint(xQ, yQ).oddMultiples(nOmega)
 	var jR jacobianPoint
 	var aR affinePoint
 	P := zeroPoint().toJacobian()
