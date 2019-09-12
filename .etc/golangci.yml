@@ -1,7 +1,6 @@
 linters:
   enable-all: true
   disable:
-  - ineffassign
   - gocritic
   - errcheck
   - scopelint
@@ -11,12 +10,3 @@ linters:
   - gochecknoinits
   - dupl
   - funlen
-
-issues:
-  exclude-rules:
-    - path: ecc/p384/
-      text: "`hasBMI2` is unused"
-      linters:
-        - unused
-        - deadcode
-        - varcheck
