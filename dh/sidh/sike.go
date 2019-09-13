@@ -11,12 +11,12 @@ import (
 
 // SIKE KEM interface
 type KEM struct {
-	allocated                 bool
-	rng                       io.Reader
-	msg                       []byte
-	secretBytes               []byte
-	params                    *common.SidhParams
-	cshakeG, cshakeH, cshakeF *shake.CShake
+	allocated   bool
+	rng         io.Reader
+	msg         []byte
+	secretBytes []byte
+	params      *common.SidhParams
+	shake       *shake.Shake
 }
 
 // NewSike503 instantiates SIKE/p503 KEM
@@ -36,20 +36,11 @@ func NewSike751(rng io.Reader) *KEM {
 // Allocate allocates KEM object for multiple SIKE operations. The rng
 // must be cryptographically secure PRNG.
 func (c *KEM) Allocate(id uint8, rng io.Reader) {
-	// Constants used for cSHAKE customization
-	// Those values are different than in [SIKE] - they are encoded on 16bits. This is
-	// done in order for implementation to be compatible with [REF] and test vectors.
-	var G = []byte{0x00, 0x00}
-	var H = []byte{0x01, 0x00}
-	var F = []byte{0x02, 0x00}
-
-	c.cshakeG = shake.NewCShake256(nil, G)
-	c.cshakeH = shake.NewCShake256(nil, H)
-	c.cshakeF = shake.NewCShake256(nil, F)
 	c.rng = rng
 	c.params = common.Params(id)
 	c.msg = make([]byte, c.params.MsgLen)
 	c.secretBytes = make([]byte, c.params.A.SecretByteLen)
+	c.shake = shake.NewShake256()
 	c.allocated = true
 }
 
@@ -89,10 +80,10 @@ func (c *KEM) Encapsulate(ciphertext, secret []byte, pub *PublicKey) error {
 	var pkA = NewPublicKey(c.params.ID, KeyVariantSidhA)
 
 	pub.Export(buf[:])
-	c.cshakeG.Reset()
-	c.cshakeG.Write(c.msg)
-	c.cshakeG.Write(buf[:3*c.params.SharedSecretSize])
-	c.cshakeG.Read(skA.Scalar)
+	c.shake.Reset()
+	c.shake.Write(c.msg)
+	c.shake.Write(buf[:3*c.params.SharedSecretSize])
+	c.shake.Read(skA.Scalar)
 
 	// Ensure bitlength is not bigger then to 2^e2-1
 	skA.Scalar[len(skA.Scalar)-1] &= (1 << (c.params.A.SecretBitLen % 8)) - 1
@@ -100,10 +91,10 @@ func (c *KEM) Encapsulate(ciphertext, secret []byte, pub *PublicKey) error {
 	c.generateCiphertext(ciphertext, &skA, pkA, pub, c.msg[:])
 
 	// K = H(msg||(c0||c1))
-	c.cshakeH.Reset()
-	c.cshakeH.Write(c.msg)
-	c.cshakeH.Write(ciphertext)
-	c.cshakeH.Read(secret[:c.SharedSecretSize()])
+	c.shake.Reset()
+	c.shake.Write(c.msg)
+	c.shake.Write(ciphertext)
+	c.shake.Read(secret[:c.SharedSecretSize()])
 	return nil
 }
 
@@ -145,10 +136,10 @@ func (c *KEM) Decapsulate(secret []byte, prv *PrivateKey, pub *PublicKey, cipher
 
 	// r' = G(m'||pub)
 	pub.Export(pkBytes[:])
-	c.cshakeG.Reset()
-	c.cshakeG.Write(m[:c1Len])
-	c.cshakeG.Write(pkBytes[:3*c.params.SharedSecretSize])
-	c.cshakeG.Read(r[:c.params.A.SecretByteLen])
+	c.shake.Reset()
+	c.shake.Write(m[:c1Len])
+	c.shake.Write(pkBytes[:3*c.params.SharedSecretSize])
+	c.shake.Read(r[:c.params.A.SecretByteLen])
 	// Ensure bitlength is not bigger than 2^e2-1
 	r[c.params.A.SecretByteLen-1] &= (1 << (c.params.A.SecretBitLen % 8)) - 1
 
@@ -165,10 +156,10 @@ func (c *KEM) Decapsulate(secret []byte, prv *PrivateKey, pub *PublicKey, cipher
 	// (S. Galbraith, et al., 2016, ePrint #859).
 	mask := subtle.ConstantTimeCompare(pkBytes[:c.params.PublicKeySize], ciphertext[:pub.params.PublicKeySize])
 	common.Cpick(mask, m[:c1Len], m[:c1Len], prv.S)
-	c.cshakeH.Reset()
-	c.cshakeH.Write(m[:c1Len])
-	c.cshakeH.Write(ciphertext)
-	c.cshakeH.Read(secret[:c.SharedSecretSize()])
+	c.shake.Reset()
+	c.shake.Write(m[:c1Len])
+	c.shake.Write(ciphertext)
+	c.shake.Read(secret[:c.SharedSecretSize()])
 	return nil
 }
 
@@ -201,9 +192,9 @@ func (c *KEM) generateCiphertext(ctext []byte, skA *PrivateKey, pkA, pkB *Public
 	var ptextLen = skA.params.MsgLen
 
 	skA.DeriveSecret(j[:], pkB)
-	c.cshakeF.Reset()
-	c.cshakeF.Write(j[:skA.params.SharedSecretSize])
-	c.cshakeF.Read(n[:ptextLen])
+	c.shake.Reset()
+	c.shake.Write(j[:skA.params.SharedSecretSize])
+	c.shake.Read(n[:ptextLen])
 	for i := range ptext {
 		n[i] ^= ptext[i]
 	}
@@ -218,7 +209,7 @@ func (c *KEM) generateCiphertext(ctext []byte, skA *PrivateKey, pkA, pkB *Public
 func (c *KEM) encrypt(ctext []byte, rng io.Reader, pub *PublicKey, ptext []byte) error {
 	var ptextLen = len(ptext)
 	// c1 must be security level + 64 bits (see [SIKE] 1.4 and 4.3.3)
-	if ptextLen != (pub.params.KemSize + 8) {
+	if ptextLen != pub.params.KemSize {
 		return errors.New("unsupported message length")
 	}
 
@@ -250,9 +241,9 @@ func (c *KEM) decrypt(n []byte, prv *PrivateKey, ctext []byte) int {
 	// Never fails
 	c0.Import(ctext[:pkLen])
 	prv.DeriveSecret(j[:], c0)
-	c.cshakeF.Reset()
-	c.cshakeF.Write(j[:prv.params.SharedSecretSize])
-	c.cshakeF.Read(n[:c1Len])
+	c.shake.Reset()
+	c.shake.Write(j[:prv.params.SharedSecretSize])
+	c.shake.Read(n[:c1Len])
 	for i := range n[:c1Len] {
 		n[i] ^= ctext[pkLen+i]
 	}
