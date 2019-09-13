@@ -72,6 +72,8 @@ type SidhParams struct {
 	KemSize int
 	// Byte size of ciphertext that KEM produces
 	CiphertextSize int
+	// Defines A,C constant for starting curve Cy^2 = x^3 + Ax^2 + x
+	InitCurve ProjectiveCurveParameters
 }
 
 // Stores curve projective parameters equivalent to A/C. Meaning of the

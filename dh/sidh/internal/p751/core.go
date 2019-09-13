@@ -160,7 +160,6 @@ func PublicKeyGenA(pub3Pt *[3]Fp2, prvBytes []byte) {
 	var xPA, xQA, xRA ProjectivePoint
 	var xPB, xQB, xRB, xR ProjectivePoint
 	var invZP, invZQ, invZR Fp2
-	var tmp ProjectiveCurveParameters
 	var phi isogeny4
 
 	// Load points for A
@@ -174,13 +173,8 @@ func PublicKeyGenA(pub3Pt *[3]Fp2, prvBytes []byte) {
 	xPB = ProjectivePoint{X: params.B.AffineP, Z: params.OneFp2}
 
 	// Find isogeny kernel
-	tmp.C = params.OneFp2
-	xR = ScalarMul3Pt(&tmp, &xPA, &xQA, &xRA, params.A.SecretBitLen, prvBytes)
-
-	// Reset params object and travers isogeny tree
-	tmp.C = params.OneFp2
-	tmp.A = Fp2{}
-	traverseTreePublicKeyA(&tmp, &xR, &xPB, &xQB, &xRB)
+	xR = ScalarMul3Pt(&params.InitCurve, &xPA, &xQA, &xRA, params.A.SecretBitLen, prvBytes)
+	traverseTreePublicKeyA(&params.InitCurve, &xR, &xPB, &xQB, &xRB)
 
 	// Secret isogeny
 	phi.GenerateCurve(&xR)
@@ -200,7 +194,6 @@ func PublicKeyGenB(pub3Pt *[3]Fp2, prvBytes []byte) {
 	var xPB, xQB, xRB, xR ProjectivePoint
 	var xPA, xQA, xRA ProjectivePoint
 	var invZP, invZQ, invZR Fp2
-	var tmp ProjectiveCurveParameters
 	var phi isogeny3
 
 	// Load points for B
@@ -213,12 +206,9 @@ func PublicKeyGenB(pub3Pt *[3]Fp2, prvBytes []byte) {
 	xQA = ProjectivePoint{X: params.A.AffineQ, Z: params.OneFp2}
 	xRA = ProjectivePoint{X: params.A.AffineR, Z: params.OneFp2}
 
-	tmp.C = params.OneFp2
-	xR = ScalarMul3Pt(&tmp, &xPB, &xQB, &xRB, params.B.SecretBitLen, prvBytes)
-
-	tmp.C = params.OneFp2
-	tmp.A = Fp2{}
-	traverseTreePublicKeyB(&tmp, &xR, &xPA, &xQA, &xRA)
+	// Find isogeny kernel
+	xR = ScalarMul3Pt(&params.InitCurve, &xPB, &xQB, &xRB, params.B.SecretBitLen, prvBytes)
+	traverseTreePublicKeyB(&params.InitCurve, &xR, &xPA, &xQA, &xRA)
 
 	phi.GenerateCurve(&xR)
 	xPB = phi.EvaluatePoint(&xPA)
@@ -237,14 +227,13 @@ func PublicKeyGenB(pub3Pt *[3]Fp2, prvBytes []byte) {
 
 // Establishing shared keys in in 2-torsion group
 func DeriveSecretA(ss, prv []byte, pub3Pt *[3]Fp2) {
-	var cparam ProjectiveCurveParameters
 	var xP, xQ, xQmP ProjectivePoint
 	var xR ProjectivePoint
 	var phi isogeny4
 	var jInv Fp2
 
 	// Recover curve coefficients
-	cparam.C = params.OneFp2
+	cparam := params.InitCurve
 	RecoverCoordinateA(&cparam, &pub3Pt[0], &pub3Pt[1], &pub3Pt[2])
 
 	// Find kernel of the morphism
@@ -268,12 +257,11 @@ func DeriveSecretA(ss, prv []byte, pub3Pt *[3]Fp2) {
 func DeriveSecretB(ss, prv []byte, pub3Pt *[3]Fp2) {
 	var xP, xQ, xQmP ProjectivePoint
 	var xR ProjectivePoint
-	var cparam ProjectiveCurveParameters
 	var phi isogeny3
 	var jInv Fp2
 
 	// Recover curve coefficients
-	cparam.C = params.OneFp2
+	cparam := params.InitCurve
 	RecoverCoordinateA(&cparam, &pub3Pt[0], &pub3Pt[1], &pub3Pt[2])
 
 	// Find kernel of the morphism
