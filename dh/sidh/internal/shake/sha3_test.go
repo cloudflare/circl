@@ -27,20 +27,6 @@ const (
 	katFilename = "testdata/keccakKats.json.deflate"
 )
 
-// testShakes contains functions that return shake.CShake instances for
-// with output-length equal to the KAT length.
-var testShakes = map[string]struct {
-	constructor  func(N []byte, S []byte) *CShake
-	defAlgoName  string
-	defCustomStr string
-}{
-	// NewCShake without customization produces same result as SHAKE
-	"SHAKE128":  {NewCShake128, "", ""},
-	"SHAKE256":  {NewCShake256, "", ""},
-	"cSHAKE128": {NewCShake128, "CSHAKE128", "CustomStrign"},
-	"cSHAKE256": {NewCShake256, "CSHAKE256", "CustomStrign"},
-}
-
 // decodeHex converts a hex-encoded string into a raw byte string.
 func decodeHex(s string) []byte {
 	b, err := hex.DecodeString(s)
@@ -80,35 +66,24 @@ func TestKeccakKats(t *testing.T) {
 		t.Errorf("error decoding KATs: %s", err)
 	}
 
-	for algo, v := range testShakes {
-		for _, kat := range katSet.Kats[algo] {
-			N, err := hex.DecodeString(kat.N)
-			if err != nil {
-				t.Errorf("error decoding KAT: %s", err)
-			}
-
-			S, err := hex.DecodeString(kat.S)
-			if err != nil {
-				t.Errorf("error decoding KAT: %s", err)
-			}
-			d := v.constructor(N, S)
-			in, err := hex.DecodeString(kat.Message)
-			if err != nil {
-				t.Errorf("error decoding KAT: %s", err)
-			}
-
-			d.Write(in[:kat.Length/8])
-			out := make([]byte, len(kat.Digest)/2)
-			d.Read(out)
-			got := strings.ToUpper(hex.EncodeToString(out))
-			if got != kat.Digest {
-				t.Errorf("function=%s, length=%d N:%s\n S:%s\nmessage:\n %s \ngot:\n  %s\nwanted:\n %s",
-					algo, kat.Length, kat.N, kat.S, kat.Message, got, kat.Digest)
-				t.Logf("wanted %+v", kat)
-				t.FailNow()
-			}
-			continue
+	for _, kat := range katSet.Kats["SHAKE256"] {
+		d := NewShake256()
+		in, err := hex.DecodeString(kat.Message)
+		if err != nil {
+			t.Errorf("error decoding KAT: %s", err)
 		}
+
+		d.Write(in[:kat.Length/8])
+		out := make([]byte, len(kat.Digest)/2)
+		d.Read(out)
+		got := strings.ToUpper(hex.EncodeToString(out))
+		if got != kat.Digest {
+			t.Errorf("function=%s, length=%d N:%s\n S:%s\nmessage:\n %s \ngot:\n  %s\nwanted:\n %s",
+				"SHAKE256", kat.Length, kat.N, kat.S, kat.Message, got, kat.Digest)
+			t.Logf("wanted %+v", kat)
+			t.FailNow()
+		}
+		continue
 	}
 }
 
@@ -143,54 +118,50 @@ func TestUnalignedWrite(t *testing.T) {
 	buf := sequentialBytes(0x10000)
 
 	// Same for SHAKE
-	for alg, df := range testShakes {
-		want := make([]byte, 16)
-		got := make([]byte, 16)
-		d := df.constructor([]byte(df.defAlgoName), []byte(df.defCustomStr))
+	want := make([]byte, 16)
+	got := make([]byte, 16)
+	d := NewShake256()
 
-		d.Reset()
-		d.Write(buf)
-		d.Read(want)
-		d.Reset()
-		for i := 0; i < len(buf); {
-			// Cycle through offsets which make a 137 byte sequence.
-			// Because 137 is prime this sequence should exercise all corner cases.
-			offsets := [17]int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 1}
-			for _, j := range offsets {
-				if v := len(buf) - i; v < j {
-					j = v
-				}
-				d.Write(buf[i : i+j])
-				i += j
+	d.Reset()
+	d.Write(buf)
+	d.Read(want)
+	d.Reset()
+	for i := 0; i < len(buf); {
+		// Cycle through offsets which make a 137 byte sequence.
+		// Because 137 is prime this sequence should exercise all corner cases.
+		offsets := [17]int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 1}
+		for _, j := range offsets {
+			if v := len(buf) - i; v < j {
+				j = v
 			}
+			d.Write(buf[i : i+j])
+			i += j
 		}
-		d.Read(got)
-		if !bytes.Equal(got, want) {
-			t.Errorf("Unaligned writes, alg=%s\ngot %q, want %q", alg, got, want)
-		}
+	}
+	d.Read(got)
+	if !bytes.Equal(got, want) {
+		t.Errorf("Unaligned writes, alg=SHAKE256\ngot %q, want %q", got, want)
 	}
 }
 
 // TestSqueezing checks that squeezing the full output a single time produces
 // the same output as repeatedly squeezing the instance.
 func TestSqueezing(t *testing.T) {
-	for algo, v := range testShakes {
-		d0 := v.constructor([]byte(v.defAlgoName), []byte(v.defCustomStr))
-		d0.Write([]byte(testString))
-		ref := make([]byte, 32)
-		d0.Read(ref)
+	d0 := NewShake256()
+	d0.Write([]byte(testString))
+	ref := make([]byte, 32)
+	d0.Read(ref)
 
-		d1 := v.constructor([]byte(v.defAlgoName), []byte(v.defCustomStr))
-		d1.Write([]byte(testString))
-		var multiple []byte
-		for range ref {
-			one := make([]byte, 1)
-			d1.Read(one)
-			multiple = append(multiple, one...)
-		}
-		if !bytes.Equal(ref, multiple) {
-			t.Errorf("%s : squeezing %d bytes one at a time failed", algo, len(ref))
-		}
+	d1 := NewShake256()
+	d1.Write([]byte(testString))
+	multiple := make([]byte, 0, len(ref))
+	for range ref {
+		one := make([]byte, 1)
+		d1.Read(one)
+		multiple = append(multiple, one...)
+	}
+	if !bytes.Equal(ref, multiple) {
+		t.Errorf("SHAKE256 : squeezing %d bytes one at a time failed", len(ref))
 	}
 }
 
@@ -207,20 +178,18 @@ func TestReset(t *testing.T) {
 	out1 := make([]byte, 32)
 	out2 := make([]byte, 32)
 
-	for _, v := range testShakes {
-		// Calculate hash for the first time
-		c := v.constructor([]byte(v.defAlgoName), []byte(v.defCustomStr))
-		c.Write(sequentialBytes(0x100))
-		c.Read(out1)
+	// Calculate hash for the first time
+	c := NewShake256()
+	c.Write(sequentialBytes(0x100))
+	c.Read(out1)
 
-		// Calculate hash again
-		c.Reset()
-		c.Write(sequentialBytes(0x100))
-		c.Read(out2)
+	// Calculate hash again
+	c.Reset()
+	c.Write(sequentialBytes(0x100))
+	c.Read(out2)
 
-		if !bytes.Equal(out1, out2) {
-			t.Error("\nExpected:\n", out1, "\ngot:\n", out2)
-		}
+	if !bytes.Equal(out1, out2) {
+		t.Error("\nExpected:\n", out1, "\ngot:\n", out2)
 	}
 }
 
@@ -229,21 +198,19 @@ func TestClone(t *testing.T) {
 	out2 := make([]byte, 16)
 	in := sequentialBytes(0x100)
 
-	for _, v := range testShakes {
-		h1 := v.constructor([]byte(v.defAlgoName), []byte(v.defCustomStr))
-		h1.Write([]byte{0x01})
+	h1 := NewShake256()
+	h1.Write([]byte{0x01})
 
-		h2 := h1.Clone()
+	h2 := h1.Clone()
 
-		h1.Write(in)
-		h1.Read(out1)
+	h1.Write(in)
+	h1.Read(out1)
 
-		h2.Write(in)
-		h2.Read(out2)
+	h2.Write(in)
+	h2.Read(out2)
 
-		if !bytes.Equal(out1, out2) {
-			t.Error("\nExpected:\n", hex.EncodeToString(out1), "\ngot:\n", hex.EncodeToString(out2))
-		}
+	if !bytes.Equal(out1, out2) {
+		t.Error("\nExpected:\n", hex.EncodeToString(out1), "\ngot:\n", hex.EncodeToString(out2))
 	}
 }
 
@@ -281,7 +248,7 @@ func BenchmarkPermutationFunction(b *testing.B) {
 
 // benchmarkShake is specialized to the Shake instances, which don't
 // require a copy on reading output.
-func benchmarkShake(b *testing.B, h *CShake, size, num int) {
+func benchmarkShake(b *testing.B, h *Shake, size, num int) {
 	b.StopTimer()
 	h.Reset()
 	data := sequentialBytes(size)
@@ -299,21 +266,14 @@ func benchmarkShake(b *testing.B, h *CShake, size, num int) {
 	}
 }
 
-func BenchmarkShake128_MTU(b *testing.B)  { benchmarkShake(b, NewShake128(), 1350, 1) }
 func BenchmarkShake256_MTU(b *testing.B)  { benchmarkShake(b, NewShake256(), 1350, 1) }
 func BenchmarkShake256_16x(b *testing.B)  { benchmarkShake(b, NewShake256(), 16, 1024) }
 func BenchmarkShake256_1MiB(b *testing.B) { benchmarkShake(b, NewShake256(), 1024, 1024) }
-func BenchmarkCShake128_448_16x(b *testing.B) {
-	benchmarkShake(b, NewCShake128([]byte("ABC"), []byte("DEF")), 448, 16)
-}
-func BenchmarkCShake128_1MiB(b *testing.B) {
-	benchmarkShake(b, NewCShake128([]byte("ABC"), []byte("DEF")), 1024, 1024)
-}
 func BenchmarkCShake256_448_16x(b *testing.B) {
-	benchmarkShake(b, NewCShake256([]byte("ABC"), []byte("DEF")), 448, 16)
+	benchmarkShake(b, NewShake256(), 448, 16)
 }
 func BenchmarkCShake256_1MiB(b *testing.B) {
-	benchmarkShake(b, NewCShake256([]byte("ABC"), []byte("DEF")), 1024, 1024)
+	benchmarkShake(b, NewShake256(), 1024, 1024)
 }
 
 func Example_sum() {
@@ -344,36 +304,16 @@ func Example_mac() {
 	// Output: 78de2974bd2711d5549ffd32b753ef0f5fa80a0db2556db60f0987eb8a9218ff
 }
 
-func ExampleCShake() {
+func ExampleShake() {
 	out := make([]byte, 32)
 	msg := []byte("The quick brown fox jumps over the lazy dog")
 
-	// Example 1: Simple cshake
-	c1 := NewCShake256([]byte("NAME"), []byte("Partition1"))
+	// Example 1: Simple Shake
+	c1 := NewShake256()
 	c1.Write(msg)
-	c1.Read(out)
-	fmt.Println(hex.EncodeToString(out))
-
-	// Example 2: Different customization string produces different digest
-	c1 = NewCShake256([]byte("NAME"), []byte("Partition2"))
-	c1.Write(msg)
-	c1.Read(out)
-	fmt.Println(hex.EncodeToString(out))
-
-	// Example 3: Different output length produces different digest
-	out = make([]byte, 64)
-	c1 = NewCShake256([]byte("NAME"), []byte("Partition1"))
-	c1.Write(msg)
-	c1.Read(out)
-	fmt.Println(hex.EncodeToString(out))
-
-	// Example 4: Next read produces different result
 	c1.Read(out)
 	fmt.Println(hex.EncodeToString(out))
 
 	// Output:
-	//a90a4c6ca9af2156eba43dc8398279e6b60dcd56fb21837afe6c308fd4ceb05b
-	//a8db03e71f3e4da5c4eee9d28333cdd355f51cef3c567e59be5beb4ecdbb28f0
-	//a90a4c6ca9af2156eba43dc8398279e6b60dcd56fb21837afe6c308fd4ceb05b9dd98c6ee866ca7dc5a39d53e960f400bcd5a19c8a2d6ec6459f63696543a0d8
-	//85e73a72228d08b46515553ca3a29d47df3047e5d84b12d6c2c63e579f4fd1105716b7838e92e981863907f434bfd4443c9e56ea09da998d2f9b47db71988109
+	//2f671343d9b2e1604dc9dcf0753e5fe15c7c64a0d283cbbf722d411a0e36f6ca
 }
