@@ -22,6 +22,7 @@ const (
 const (
 	Fp503 uint8 = iota
 	Fp751
+	Fp434
 )
 
 // Representation of an element of the base field F_p.

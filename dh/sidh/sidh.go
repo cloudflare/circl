@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/cloudflare/circl/dh/sidh/internal/common"
+	"github.com/cloudflare/circl/dh/sidh/internal/p434"
 	"github.com/cloudflare/circl/dh/sidh/internal/p503"
 	"github.com/cloudflare/circl/dh/sidh/internal/p751"
 )
@@ -40,6 +41,7 @@ type PrivateKey struct {
 // Id's correspond to bitlength of the prime field characteristic
 // Currently Fp751 is the only one supported by this implementation
 const (
+	Fp434 = common.Fp434
 	Fp503 = common.Fp503
 	Fp751 = common.Fp751
 )
@@ -79,6 +81,10 @@ func (pub *PublicKey) Import(input []byte) error {
 	common.BytesToFp2(&pub.affine3Pt[1], input[ssSz:2*ssSz], pub.params.Bytelen)
 	common.BytesToFp2(&pub.affine3Pt[2], input[2*ssSz:3*ssSz], pub.params.Bytelen)
 	switch pub.params.ID {
+	case Fp434:
+		p434.ToMontgomery(&pub.affine3Pt[0], &pub.affine3Pt[0])
+		p434.ToMontgomery(&pub.affine3Pt[1], &pub.affine3Pt[1])
+		p434.ToMontgomery(&pub.affine3Pt[2], &pub.affine3Pt[2])
 	case Fp503:
 		p503.ToMontgomery(&pub.affine3Pt[0], &pub.affine3Pt[0])
 		p503.ToMontgomery(&pub.affine3Pt[1], &pub.affine3Pt[1])
@@ -99,6 +105,10 @@ func (pub *PublicKey) Export(out []byte) {
 	var feTmp [3]common.Fp2
 	ssSz := pub.params.SharedSecretSize
 	switch pub.params.ID {
+	case Fp434:
+		p434.FromMontgomery(&feTmp[0], &pub.affine3Pt[0])
+		p434.FromMontgomery(&feTmp[1], &pub.affine3Pt[1])
+		p434.FromMontgomery(&feTmp[2], &pub.affine3Pt[2])
 	case Fp503:
 		p503.FromMontgomery(&feTmp[0], &pub.affine3Pt[0])
 		p503.FromMontgomery(&feTmp[1], &pub.affine3Pt[1])
@@ -219,6 +229,12 @@ func (prv *PrivateKey) GeneratePublicKey(pub *PublicKey) {
 	}
 
 	switch prv.params.ID {
+	case Fp434:
+		if isA {
+			p434.PublicKeyGenA(&pub.affine3Pt, prv.Scalar)
+		} else {
+			p434.PublicKeyGenB(&pub.affine3Pt, prv.Scalar)
+		}
 	case Fp503:
 		if isA {
 			p503.PublicKeyGenA(&pub.affine3Pt, prv.Scalar)
@@ -249,6 +265,12 @@ func (prv *PrivateKey) DeriveSecret(ss []byte, pub *PublicKey) {
 	}
 
 	switch prv.params.ID {
+	case Fp434:
+		if isA {
+			p434.DeriveSecretA(ss, prv.Scalar, &pub.affine3Pt)
+		} else {
+			p434.DeriveSecretB(ss, prv.Scalar, &pub.affine3Pt)
+		}
 	case Fp503:
 		if isA {
 			p503.DeriveSecretA(ss, prv.Scalar, &pub.affine3Pt)
