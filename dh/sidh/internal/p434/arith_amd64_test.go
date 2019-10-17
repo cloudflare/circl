@@ -3,7 +3,7 @@
 
 // +build amd64,!noasm
 
-package {{ .PACKAGE}}
+package p434
 
 import (
 	"reflect"
@@ -19,14 +19,11 @@ type OptimFlag uint
 const (
 	// Indicates that optimisation which uses MUL instruction should be used
 	kUse_MUL OptimFlag = 1 << 0
-	// Indicates that optimisation which uses MULX instruction should be used
-	kUse_MULX = 1 << 1
 	// Indicates that optimisation which uses MULX, ADOX and ADCX instructions should be used
-	kUse_MULXandADxX = 1 << 2
+	kUse_MULXandADxX = 1 << 1
 )
 
 func resetCpuFeatures() {
-	HasBMI2 = cpu.X86.HasBMI2
 	HasADXandBMI2 = cpu.X86.HasBMI2 && cpu.X86.HasADX
 }
 
@@ -38,14 +35,12 @@ func testMul(t *testing.T, f1, f2 OptimFlag) {
 		var resMulRef, resMulOptim common.FpX2
 
 		// Compute multiplier*multiplicant with first implementation
-		HasBMI2 = (kUse_MULX & f1) == kUse_MULX
 		HasADXandBMI2 = (kUse_MULXandADxX & f1) == kUse_MULXandADxX
-		mul{{ .FIELD}}(&resMulOptim, &multiplier, &multiplicant)
+		mulP434(&resMulOptim, &multiplier, &multiplicant)
 
 		// Compute multiplier*multiplicant with second implementation
-		HasBMI2 = (kUse_MULX & f2) == kUse_MULX
 		HasADXandBMI2 = (kUse_MULXandADxX & f2) == kUse_MULXandADxX
-		mul{{ .FIELD}}(&resMulRef, &multiplier, &multiplicant)
+		mulP434(&resMulRef, &multiplier, &multiplicant)
 
 		// Compare results
 		return reflect.DeepEqual(resMulRef, resMulOptim)
@@ -65,14 +60,12 @@ func testRedc(t *testing.T, f1, f2 OptimFlag) {
 		var aRRcpy = aRR
 
 		// Compute redc with first implementation
-		HasBMI2 = (kUse_MULX & f1) == kUse_MULX
 		HasADXandBMI2 = (kUse_MULXandADxX & f1) == kUse_MULXandADxX
-		rdc{{ .FIELD}}(&resRedcF1, &aRR)
+		rdcP434(&resRedcF1, &aRR)
 
 		// Compute redc with second implementation
-		HasBMI2 = (kUse_MULX & f2) == kUse_MULX
 		HasADXandBMI2 = (kUse_MULXandADxX & f2) == kUse_MULXandADxX
-		rdc{{ .FIELD}}(&resRedcF2, &aRRcpy)
+		rdcP434(&resRedcF2, &aRRcpy)
 
 		// Compare results
 		return reflect.DeepEqual(resRedcF2, resRedcF1)
@@ -81,15 +74,6 @@ func testRedc(t *testing.T, f1, f2 OptimFlag) {
 	if err := quick.Check(doRedcTest, quickCheckConfig); err != nil {
 		t.Error(err)
 	}
-}
-
-// Ensures correctness of implementation of mul operation which uses MULX
-func TestMulWithMULX(t *testing.T) {
-	defer resetCpuFeatures()
-	if !HasBMI2 {
-		t.Skip("MULX not supported by the platform")
-	}
-	testMul(t, kUse_MULX, kUse_MUL)
 }
 
 // Ensures correctness of implementation of mul operation which uses MULX and ADOX/ADCX
@@ -101,24 +85,6 @@ func TestMulWithMULXADxX(t *testing.T) {
 	testMul(t, kUse_MULXandADxX, kUse_MUL)
 }
 
-// Ensures correctness of implementation of mul operation which uses MULX and ADOX/ADCX
-func TestMulWithMULXADxXAgainstMULX(t *testing.T) {
-	defer resetCpuFeatures()
-	if !HasADXandBMI2 {
-		t.Skip("MULX, ADCX and ADOX not supported by the platform")
-	}
-	testMul(t, kUse_MULX, kUse_MULXandADxX)
-}
-
-// Ensures correctness of Montgomery reduction implementation which uses MULX
-func TestRedcWithMULX(t *testing.T) {
-	defer resetCpuFeatures()
-	if !HasBMI2 {
-		t.Skip("MULX not supported by the platform")
-	}
-	testRedc(t, kUse_MULX, kUse_MUL)
-}
-
 // Ensures correctness of Montgomery reduction implementation which uses MULX
 // and ADCX/ADOX.
 func TestRedcWithMULXADxX(t *testing.T) {
@@ -127,14 +93,4 @@ func TestRedcWithMULXADxX(t *testing.T) {
 		t.Skip("MULX, ADCX and ADOX not supported by the platform")
 	}
 	testRedc(t, kUse_MULXandADxX, kUse_MUL)
-}
-
-// Ensures correctness of Montgomery reduction implementation which uses MULX
-// and ADCX/ADOX.
-func TestRedcWithMULXADxXAgainstMULX(t *testing.T) {
-	defer resetCpuFeatures()
-	if !HasADXandBMI2 {
-		t.Skip("MULX, ADCX and ADOX not supported by the platform")
-	}
-	testRedc(t, kUse_MULXandADxX, kUse_MULX)
 }

@@ -25,6 +25,36 @@ type sidhVec struct {
 }
 
 var tdataSidh = map[uint8]sidhVec{
+	Fp434: {
+		id:   Fp434,
+		name: "P-434",
+		PrA:  "3A727E04EA9B7E2A766A6F846489E7E7B915263BCEED308BB10FC900",
+		PrB:  "E37BFE55B43B32448F375903D8D226EC94ADBFEA1D2B3536EB987001",
+		PkA: "9E668D1E6750ED4B91EE052C32839CA9DD2E56D52BC24DECC950AAAD" +
+			"24CEED3F9049C77FE80F0B9B01E7F8DAD7833EEC2286544D6380009C" +
+			"379CDD3E7517CEF5E20EB01F8231D52FC30DC61D2F63FB357F85DC63" +
+			"96E8A95DB9740BD3A972C8DB7901B31F074CD3E45345CA78F9008171" +
+			"30E688A29A7CF0073B5C00FF2C65FBE776918EF9BD8E75B29EF7FAB7" +
+			"91969B60B0C5B37A8992EDEF95FA7BAC40A95DAFE02E237301FEE9A7" +
+			"A43FD0B73477E8035DD12B73FAFEF18D39904DDE3653A754F36BE188" +
+			"8F6607C6A7951349A414352CF31A29F2C40302DB406C48018C905EB9" +
+			"DC46AFBF42A9187A9BB9E51B587622A2862DC7D5CC598BF38ED6320F" +
+			"B51D8697AD3D7A72ABCC32A393F0133DA8DF5E253D9E00B760B2DF34" +
+			"2FCE974DCFE946CFE4727783531882800F9E5DD594D6D5A6275EEFEF" +
+			"9713ED838F4A06BB34D7B8D46E0B385AAEA1C7963601",
+		PkB: "C9F73E4497AAA3FDF9EB688135866A8A83934BA10E273B8CC3808CF0" +
+			"C1F5FAB3E9BB295885881B73DEBC875670C0F51C4BB40DF5FEDE01B8" +
+			"AF32D1BF10508B8C17B2734EB93B2B7F5D84A4A0F2F816E9E2C32AC2" +
+			"53C0B6025B124D05A87A9E2A8567930F44BAA14219B941B6B400B4AE" +
+			"D1D796DA12A5A9F0B8F3F5EE9DD43F64CB24A3B1719DF278ADF56B5F" +
+			"3395187829DA2319DEABF6BBD6EDA244DE2B62CC5AC250C1009DD1CD" +
+			"4712B0B37406612AD002B5E51A62B51AC9C0374D143ABBBD58275FAF" +
+			"C4A5E959C54838C2D6D9FB43B7B2609061267B6A2E6C6D01D295C422" +
+			"3E0D3D7A4CDCFB28A7818A737935279751A6DD8290FD498D1F6AD5F4" +
+			"FFF6BDFA536713F509DCE8047252F1E7D0DD9FCC414C0070B5DCCE36" +
+			"65A21A032D7FBE749181032183AFAD240B7E671E87FBBEC3A8CA4C11" +
+			"AA7A9A23AC69AE2ACF54B664DECD27753D63508F1B02",
+	},
 	Fp503: {
 		id:   Fp503,
 		name: "P-503",
@@ -377,6 +407,21 @@ func BenchmarkSidhKeyAgreementP503(b *testing.B) {
 	}
 }
 
+func BenchmarkSidhKeyAgreementP434(b *testing.B) {
+	// KeyPairs
+	alicePublic := convToPub(tdataSidh[Fp434].PkA, KeyVariantSidhA, Fp434)
+	bobPublic := convToPub(tdataSidh[Fp434].PkB, KeyVariantSidhB, Fp434)
+	alicePrivate := convToPrv(tdataSidh[Fp434].PrA, KeyVariantSidhA, Fp434)
+	bobPrivate := convToPrv(tdataSidh[Fp434].PrB, KeyVariantSidhB, Fp434)
+	var ss [2 * 63]byte
+
+	for i := 0; i < b.N; i++ {
+		// Derive shared secret
+		bobPrivate.DeriveSecret(ss[:], alicePublic)
+		alicePrivate.DeriveSecret(ss[:], bobPublic)
+	}
+}
+
 func BenchmarkAliceKeyGenPrvP751(b *testing.B) {
 	prv := NewPrivateKey(Fp751, KeyVariantSidhA)
 	for n := 0; n < b.N; n++ {
@@ -386,6 +431,13 @@ func BenchmarkAliceKeyGenPrvP751(b *testing.B) {
 
 func BenchmarkAliceKeyGenPrvP503(b *testing.B) {
 	prv := NewPrivateKey(Fp503, KeyVariantSidhA)
+	for n := 0; n < b.N; n++ {
+		prv.Generate(rand.Reader)
+	}
+}
+
+func BenchmarkAliceKeyGenPrvP434(b *testing.B) {
+	prv := NewPrivateKey(Fp434, KeyVariantSidhA)
 	for n := 0; n < b.N; n++ {
 		prv.Generate(rand.Reader)
 	}
@@ -405,6 +457,13 @@ func BenchmarkBobKeyGenPrvP503(b *testing.B) {
 	}
 }
 
+func BenchmarkBobKeyGenPrvP434(b *testing.B) {
+	prv := NewPrivateKey(Fp434, KeyVariantSidhB)
+	for n := 0; n < b.N; n++ {
+		prv.Generate(rand.Reader)
+	}
+}
+
 func BenchmarkAliceKeyGenPubP751(b *testing.B) {
 	prv := NewPrivateKey(Fp751, KeyVariantSidhA)
 	pub := NewPublicKey(Fp751, KeyVariantSidhA)
@@ -417,6 +476,15 @@ func BenchmarkAliceKeyGenPubP751(b *testing.B) {
 func BenchmarkAliceKeyGenPubP503(b *testing.B) {
 	prv := NewPrivateKey(Fp503, KeyVariantSidhA)
 	pub := NewPublicKey(Fp503, KeyVariantSidhA)
+	prv.Generate(rand.Reader)
+	for n := 0; n < b.N; n++ {
+		prv.GeneratePublicKey(pub)
+	}
+}
+
+func BenchmarkAliceKeyGenPubP434(b *testing.B) {
+	prv := NewPrivateKey(Fp434, KeyVariantSidhA)
+	pub := NewPublicKey(Fp434, KeyVariantSidhA)
 	prv.Generate(rand.Reader)
 	for n := 0; n < b.N; n++ {
 		prv.GeneratePublicKey(pub)
@@ -441,6 +509,15 @@ func BenchmarkBobKeyGenPubP503(b *testing.B) {
 	}
 }
 
+func BenchmarkBobKeyGenPubP434(b *testing.B) {
+	prv := NewPrivateKey(Fp434, KeyVariantSidhB)
+	pub := NewPublicKey(Fp434, KeyVariantSidhB)
+	prv.Generate(rand.Reader)
+	for n := 0; n < b.N; n++ {
+		prv.GeneratePublicKey(pub)
+	}
+}
+
 func BenchmarkSharedSecretAliceP751(b *testing.B) {
 	aPr := convToPrv(tdataSidh[Fp751].PrA, KeyVariantSidhA, Fp751)
 	bPk := convToPub(tdataSidh[Fp751].PkB, KeyVariantSidhB, Fp751)
@@ -453,6 +530,15 @@ func BenchmarkSharedSecretAliceP751(b *testing.B) {
 func BenchmarkSharedSecretAliceP503(b *testing.B) {
 	aPr := convToPrv(tdataSidh[Fp503].PrA, KeyVariantSidhA, Fp503)
 	bPk := convToPub(tdataSidh[Fp503].PkB, KeyVariantSidhB, Fp503)
+	var ss [2 * 63]byte
+	for n := 0; n < b.N; n++ {
+		aPr.DeriveSecret(ss[:], bPk)
+	}
+}
+
+func BenchmarkSharedSecretAliceP434(b *testing.B) {
+	aPr := convToPrv(tdataSidh[Fp434].PrA, KeyVariantSidhA, Fp434)
+	bPk := convToPub(tdataSidh[Fp434].PkB, KeyVariantSidhB, Fp434)
 	var ss [2 * 63]byte
 	for n := 0; n < b.N; n++ {
 		aPr.DeriveSecret(ss[:], bPk)
@@ -473,6 +559,16 @@ func BenchmarkSharedSecretBobP503(b *testing.B) {
 	// m_B = 3*randint(0,3^238)
 	aPk := convToPub(tdataSidh[Fp503].PkA, KeyVariantSidhA, Fp503)
 	bPr := convToPrv(tdataSidh[Fp503].PrB, KeyVariantSidhB, Fp503)
+	var ss [2 * 63]byte
+	for n := 0; n < b.N; n++ {
+		bPr.DeriveSecret(ss[:], aPk)
+	}
+}
+
+func BenchmarkSharedSecretBobP434(b *testing.B) {
+	// m_B = 3*randint(0,3^238)
+	aPk := convToPub(tdataSidh[Fp434].PkA, KeyVariantSidhA, Fp434)
+	bPr := convToPrv(tdataSidh[Fp434].PrB, KeyVariantSidhB, Fp434)
 	var ss [2 * 63]byte
 	for n := 0; n < b.N; n++ {
 		bPr.DeriveSecret(ss[:], aPk)

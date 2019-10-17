@@ -19,6 +19,13 @@ type KEM struct {
 	shake       *shake.Shake
 }
 
+// NewSike434 instantiates SIKE/p434 KEM
+func NewSike434(rng io.Reader) *KEM {
+	var c KEM
+	c.Allocate(Fp434, rng)
+	return &c
+}
+
 // NewSike503 instantiates SIKE/p503 KEM
 func NewSike503(rng io.Reader) *KEM {
 	var c KEM
