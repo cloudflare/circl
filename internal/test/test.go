@@ -19,6 +19,15 @@ func ReportError(t *testing.T, got, want interface{}, inputs ...interface{}) {
 	t.Fatalf(b.String())
 }
 
+// checkOk fails the test if result == false
+func CheckOk(result bool, msg string, t testing.TB) {
+	t.Helper()
+
+	if !result {
+		t.Error(msg)
+	}
+}
+
 // checkErr fails on error condition. mustFail indicates wether err is expected
 // to be nil or not.
 func checkErr(t testing.TB, err error, mustFail bool, msg string) {
