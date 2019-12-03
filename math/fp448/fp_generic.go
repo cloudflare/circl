@@ -184,15 +184,21 @@ func red64(z, h *elt64) {
 	l6, c6 = bits.Add64(l6, h6, c5)
 	l7, _ = bits.Add64(l7, 0, c6)
 
-	/* (C7 MOD P) + (C6,...,C0) */
+	/* (C7) + (C6,...,C0) */
+	l0, c0 = bits.Add64(l0, l7, 0)
+	l1, c1 = bits.Add64(l1, 0, c0)
+	l2, c2 = bits.Add64(l2, 0, c1)
+	l3, c3 = bits.Add64(l3, l7<<32, c2)
+	l4, c4 = bits.Add64(l4, 0, c3)
+	l5, c5 = bits.Add64(l5, 0, c4)
+	l6, l7 = bits.Add64(l6, 0, c5)
+
+	/* (C7) + (C6,...,C0) */
 	z[0], c0 = bits.Add64(l0, l7, 0)
 	z[1], c1 = bits.Add64(l1, 0, c0)
 	z[2], c2 = bits.Add64(l2, 0, c1)
 	z[3], c3 = bits.Add64(l3, l7<<32, c2)
 	z[4], c4 = bits.Add64(l4, 0, c3)
 	z[5], c5 = bits.Add64(l5, 0, c4)
-	z[6], l7 = bits.Add64(l6, 0, c5)
-
-	z[0] += l7
-	z[3] += l7 << 32
+	z[6], _ = bits.Add64(l6, 0, c5)
 }
