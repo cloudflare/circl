@@ -115,7 +115,7 @@ func rdc{{ .FIELD }}(z *common.Fp, x *common.FpX2) {
 		u = t
 		t = 0
 	}
-	v, carry = bits.Add64(v, x[2*FpWords-1], 0)
+	v, _ = bits.Add64(v, x[2*FpWords-1], 0)
 	z[FpWords-1] = v
 }
 
