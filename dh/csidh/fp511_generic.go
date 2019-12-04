@@ -36,7 +36,7 @@ func mul512(r, m1 *fp, m2 uint64) {
 	r[6], c = bits.Add64(l, c, 0)
 	c = h + c
 
-	h, l = bits.Mul64(m2, m1[7])
+	_, l = bits.Mul64(m2, m1[7])
 	r[7], _ = bits.Add64(l, c, 0)
 }
 
