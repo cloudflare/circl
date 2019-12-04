@@ -18,6 +18,8 @@ func addsub(x, y *Elt)        { addsubAmd64(x, y) }
 func mul(z, x, y *Elt)        { mulAmd64(z, x, y) }
 func sqr(z, x *Elt)           { sqrAmd64(z, x) }
 
+/* Functions defined in fp_amd64.s */
+
 //go:noescape
 func cmovAmd64(x, y *Elt, n uint)
 
