@@ -11,15 +11,6 @@ import (
 	"github.com/cloudflare/circl/sign/ed25519"
 )
 
-func hexStr2Key(k []byte, s string) bool {
-	b, err := hex.DecodeString(s)
-	if err != nil || len(k) != (len(s)/2) {
-		return false
-	}
-	copy(k[:], b)
-	return true
-}
-
 type group struct {
 	Key struct {
 		Curve string `json:"curve"`
@@ -46,71 +37,85 @@ type Wycheproof struct {
 	Groups  []group `json:"testGroups"`
 }
 
-func TestWycheproof(t *testing.T) {
-	// Test vectors from Wycheproof v0.4.12
-	const nameFile = "testdata/wycheproof_kat.json"
-	jsonFile, err := os.Open(nameFile)
+func (kat *Wycheproof) readFile(t *testing.T, fileName string) {
+	jsonFile, err := os.Open(fileName)
 	if err != nil {
-		t.Fatalf("File %v can not be opened. Error: %v", nameFile, err)
+		t.Fatalf("File %v can not be opened. Error: %v", fileName, err)
 	}
 	defer jsonFile.Close()
 	input, _ := ioutil.ReadAll(jsonFile)
 
-	var kat Wycheproof
 	err = json.Unmarshal(input, &kat)
 	if err != nil {
-		t.Fatalf("File %v can not be loaded. Error: %v", nameFile, err)
+		t.Fatalf("File %v can not be loaded. Error: %v", fileName, err)
 	}
+}
 
-	t.Run("EDDSAKeyPair", func(t *testing.T) {
-		var private ed25519.PrivKey
-		var want, got ed25519.PubKey
-		for i, g := range kat.Groups {
-			if g.Key.Curve != "edwards25519" {
-				t.Errorf("Curve not expected %v", g.Key.Curve)
-			}
-			ok := hexStr2Key(private[:], g.Key.Sk) &&
-				hexStr2Key(want[:], g.Key.Pk)
-			ed25519.Pure{}.KeyGen(&got, &private)
-			if got != want || !ok {
-				test.ReportError(t, got, want, i, g.Key.Sk)
-			}
+func (kat *Wycheproof) keyPair(t *testing.T) {
+	var seed [ed25519.Size]byte
+	var want ed25519.PublicKey
+	for i, g := range kat.Groups {
+		if g.Key.Curve != "edwards25519" {
+			t.Errorf("Curve not expected %v", g.Key.Curve)
 		}
-	})
+		ok := hexStr2Key(seed[:], g.Key.Sk) && hexStr2Key(want[:], g.Key.Pk)
+		public := ed25519.NewKeyFromSeed(seed[:]).GetPublic()
+		got := *public
+		if got != want || !ok {
+			test.ReportError(t, got, want, i, g.Key.Sk)
+		}
+	}
+}
 
-	t.Run("EDDSAVer", func(t *testing.T) {
-		var sig ed25519.Signature
-		var private ed25519.PrivKey
-		var public ed25519.PubKey
+func (kat *Wycheproof) verify(t *testing.T) {
+	var sig ed25519.Signature
+	var seed [ed25519.Size]byte
+	var public ed25519.PublicKey
 
-		for i, g := range kat.Groups {
-			for _, gT := range g.Tests {
-				msg := make([]byte, len(gT.Msg)/2)
-				isValid := gT.Result == "valid"
-				decoOK := hexStr2Key(private[:], g.Key.Sk) &&
-					hexStr2Key(public[:], g.Key.Pk) &&
-					hexStr2Key(sig[:], gT.Sig) &&
-					hexStr2Key(msg[:], gT.Msg)
+	for i, g := range kat.Groups {
+		for _, gT := range g.Tests {
+			msg := make([]byte, len(gT.Msg)/2)
+			isValid := gT.Result == "valid"
+			decoOK := hexStr2Key(seed[:], g.Key.Sk) &&
+				hexStr2Key(public[:], g.Key.Pk) &&
+				hexStr2Key(sig[:], gT.Sig) &&
+				hexStr2Key(msg[:], gT.Msg)
 
-				if !decoOK && isValid {
-					got := decoOK
-					want := isValid
-					test.ReportError(t, got, want, i, gT.TcID, gT.Result)
-				}
-				if isValid {
-					got := ed25519.Pure{}.Sign(msg, &public, &private)
-					want := sig
-					if *got != want {
-						test.ReportError(t, got, want, i, gT.TcID)
-					}
-				}
-				got := ed25519.Pure{}.Verify(msg, &public, &sig)
+			private := ed25519.NewKeyFromSeed(seed[:])
+			if !decoOK && isValid {
+				got := decoOK
 				want := isValid
+				test.ReportError(t, got, want, i, gT.TcID, gT.Result)
+			}
+			if isValid {
+				got := ed25519.Sign(private, msg)
+				want := sig
 				if got != want {
 					test.ReportError(t, got, want, i, gT.TcID)
 				}
 			}
+			got := ed25519.Verify(&public, msg, &sig)
+			want := isValid
+			if got != want {
+				test.ReportError(t, got, want, i, gT.TcID)
+			}
 		}
-	})
+	}
+}
 
+func TestWycheproof(t *testing.T) {
+	// Test vectors from Wycheproof v0.4.12
+	var kat Wycheproof
+	kat.readFile(t, "testdata/wycheproof_kat.json")
+	t.Run("EDDSAKeyPair", kat.keyPair)
+	t.Run("EDDSAVerify", kat.verify)
+}
+
+func hexStr2Key(k []byte, s string) bool {
+	b, err := hex.DecodeString(s)
+	if err != nil || len(k) != (len(s)/2) {
+		return false
+	}
+	copy(k[:], b)
+	return true
 }

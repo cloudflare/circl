@@ -2,9 +2,14 @@ package ed25519
 
 import (
 	"bytes"
+	"crypto"
+	"crypto/rand"
 	"crypto/sha512"
 	"encoding/binary"
+	"errors"
+	"io"
 	"math/bits"
+	"strconv"
 
 	fp "github.com/cloudflare/circl/math/fp25519"
 )
@@ -12,32 +17,78 @@ import (
 // Size is the length in bytes of Ed25519 keys.
 const Size = fp.Size
 
-// PubKey represents a public key of Ed25519.
-type PubKey [Size]byte
+// PublicKey represents a public key of Ed25519.
+type PublicKey [Size]byte
 
-// PrivKey represents a private key of Ed25519.
-type PrivKey [Size]byte
+// PrivateKey represents a private key of Ed25519. Implements crypto.Signer (golang.org/pkg/crypto/#Signer) interface.
+type PrivateKey struct {
+	public PublicKey  // This is a copy of the corresponding public key.
+	seed   [Size]byte // This is the secret (seed) key.
+}
 
 // Signature represents an Ed25519 signature.
 type Signature [2 * Size]byte
 
-// Pure corresponds to the Ed25519 PureEdDSA instance.
-type Pure struct{}
+// GetPublic returns a PublicKey corresponding to the private key.
+func (priv *PrivateKey) GetPublic() *PublicKey {
+	var public PublicKey
+	copy(public[:], priv.public[:])
+	return &public
+}
 
-// KeyGen generates a public key from a secret key.
-func (e Pure) KeyGen(public *PubKey, private *PrivKey) {
-	k := sha512.Sum512(private[:])
+// Public returns a crypto.PublicKey corresponding to the private key.
+func (priv *PrivateKey) Public() crypto.PublicKey { return priv.GetPublic() }
+
+// Sign signs the given message with priv.
+// Ed25519 performs two passes over messages to be signed and therefore cannot
+// handle pre-hashed messages. Thus opts.HashFunc() must return zero to
+// indicate the message hasn't been hashed. This can be achieved by passing
+// crypto.Hash(0) as the value for opts.
+func (priv *PrivateKey) Sign(rand io.Reader, message []byte, opts crypto.SignerOpts) ([]byte, error) {
+	if opts.HashFunc() != crypto.Hash(0) {
+		return nil, errors.New("ed25519: cannot sign hashed message")
+	}
+	sig := Sign(priv, message)
+	return sig[:], nil
+}
+
+// GenerateKey generates a pair of keys.
+func GenerateKey(rnd io.Reader) (*PrivateKey, *PublicKey, error) {
+	if rnd == nil {
+		rnd = rand.Reader
+	}
+
+	var seed [Size]byte
+	if _, err := io.ReadFull(rnd, seed[:]); err != nil {
+		return nil, nil, err
+	}
+	private := NewKeyFromSeed(seed[:])
+	return private, private.Public().(*PublicKey), nil
+}
+
+// NewKeyFromSeed calculates a private key from a seed. It will panic if
+// len(seed) is not SeedSize. This function is provided for interoperability
+// with RFC 8032. RFC 8032's private keys correspond to seeds in this
+// package.
+func NewKeyFromSeed(seed []byte) *PrivateKey {
+	if l := len(seed); l != Size {
+		panic("ed25519: bad seed length: " + strconv.Itoa(l))
+	}
+	var P pointR1
+	var private PrivateKey
+	k := sha512.Sum512(seed)
 	clamp(k[:])
 	reduceModOrder(k[:Size], false)
-	var P pointR1
 	P.fixedMult(k[:Size])
-	P.ToBytes(public[:])
+	P.ToBytes(private.public[:])
+	copy(private.seed[:], seed[:])
+	return &private
 }
 
 // Sign returns the signature of a message using both the private and public
 // keys of the signer.
-func (e Pure) Sign(message []byte, public *PubKey, private *PrivKey) *Signature {
-	k := sha512.Sum512(private[:])
+func Sign(private *PrivateKey, message []byte) Signature {
+	k := sha512.Sum512(private.seed[:])
 	clamp(k[:])
 	H := sha512.New()
 	_, _ = H.Write(k[Size:])
@@ -47,12 +98,12 @@ func (e Pure) Sign(message []byte, public *PubKey, private *PrivKey) *Signature 
 
 	var P pointR1
 	P.fixedMult(r[:Size])
-	signature := &Signature{}
+	var signature Signature
 	P.ToBytes(signature[:Size])
 
 	H.Reset()
 	_, _ = H.Write(signature[:Size])
-	_, _ = H.Write(public[:])
+	_, _ = H.Write(private.public[:])
 	_, _ = H.Write(message)
 	hRAM := H.Sum(nil)
 	reduceModOrder(hRAM[:], true)
@@ -62,7 +113,7 @@ func (e Pure) Sign(message []byte, public *PubKey, private *PrivKey) *Signature 
 
 // Verify returns true if the signature is valid. Failure cases are invalid
 // signature, or public key cannot be decoded.
-func (e Pure) Verify(message []byte, public *PubKey, sig *Signature) bool {
+func Verify(public *PublicKey, message []byte, sig *Signature) bool {
 	if isLtOrder := isLessThan(sig[Size:], curve.order[:Size]); !isLtOrder {
 		return false
 	}
