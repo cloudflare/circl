@@ -1,101 +1,16 @@
-package ed25519
+package ed25519_test
 
 import (
 	"crypto/rand"
-	"math/big"
+	"fmt"
 	"testing"
 
-	"github.com/cloudflare/circl/internal/conv"
 	"github.com/cloudflare/circl/internal/test"
+	"github.com/cloudflare/circl/sign/ed25519"
 )
 
-func TestCalculateS(t *testing.T) {
-	const testTimes = 1 << 10
-	s := make([]byte, Size)
-	k := make([]byte, Size)
-	r := make([]byte, Size)
-	a := make([]byte, Size)
-	var order big.Int
-	order.SetString("1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed", 16)
-
-	for i := 0; i < testTimes; i++ {
-		_, _ = rand.Read(k[:])
-		_, _ = rand.Read(r[:])
-		_, _ = rand.Read(a[:])
-		bigK := conv.BytesLe2BigInt(k[:])
-		bigR := conv.BytesLe2BigInt(r[:])
-		bigA := conv.BytesLe2BigInt(a[:])
-
-		calculateS(s, r, k, a)
-		got := conv.BytesLe2BigInt(s[:])
-
-		bigK.Mul(bigK, bigA).Add(bigK, bigR)
-		want := bigK.Mod(bigK, &order)
-
-		if got.Cmp(want) != 0 {
-			test.ReportError(t, got, want, k, r, a)
-		}
-	}
-}
-
-func TestReduction(t *testing.T) {
-	const testTimes = 1 << 10
-	var x, y [Size * 2]byte
-	var order big.Int
-	order.SetString("1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed", 16)
-
-	for i := 0; i < testTimes; i++ {
-		for _, j := range []int{Size, 2 * Size} {
-			_, _ = rand.Read(x[:j])
-			bigX := conv.BytesLe2BigInt(x[:j])
-			copy(y[:j], x[:j])
-
-			reduceModOrder(y[:j], true)
-			got := conv.BytesLe2BigInt(y[:])
-
-			want := bigX.Mod(bigX, &order)
-
-			if got.Cmp(want) != 0 {
-				test.ReportError(t, got, want, x)
-			}
-		}
-	}
-}
-
-func TestRangeOrder(t *testing.T) {
-	aboveOrder := [...][Size]byte{
-		{ // order
-			0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58,
-			0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10,
-		},
-		{ // order+1
-			0xed + 1, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58,
-			0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10,
-		},
-		{ // all-ones
-			0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-			0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-			0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-			0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-		},
-	}
-
-	for i := range aboveOrder {
-		got := isLessThan(aboveOrder[i][:], curve.order[:])
-		want := false
-		if got != want {
-			test.ReportError(t, got, want, i, aboveOrder[i])
-		}
-	}
-}
-
 func TestWrongPublicKey(t *testing.T) {
-	var sig Signature
-	wrongPublicKeys := [...]PublicKey{
+	wrongPublicKeys := [...]ed25519.PublicKey{
 		{ // y = p
 			0xed, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -127,8 +42,9 @@ func TestWrongPublicKey(t *testing.T) {
 			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f | 0x80,
 		},
 	}
+	sig := make([]byte, 2*ed25519.Size)
 	for _, public := range wrongPublicKeys {
-		got := Verify(&public, []byte{}, &sig)
+		got := ed25519.Verify(public, []byte(""), sig)
 		want := false
 		if got != want {
 			test.ReportError(t, got, want, public)
@@ -142,46 +58,41 @@ func BenchmarkEd25519(b *testing.B) {
 
 	b.Run("keygen", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			GenerateKey(rand.Reader)
+			ed25519.GenerateKey(rand.Reader)
 		}
 	})
 	b.Run("sign", func(b *testing.B) {
-		private, _, _ := GenerateKey(rand.Reader)
+		keys, _ := ed25519.GenerateKey(rand.Reader)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			Sign(private, msg)
+			ed25519.Sign(keys, msg)
 		}
 	})
 	b.Run("verify", func(b *testing.B) {
-		private, public, _ := GenerateKey(rand.Reader)
-		signature := Sign(private, msg)
+		keys, _ := ed25519.GenerateKey(rand.Reader)
+		signature := ed25519.Sign(keys, msg)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			Verify(public, msg, &signature)
+			ed25519.Verify(keys.GetPublic(), msg, signature)
 		}
 	})
 }
 
-//
-// func Example_ed25519() {
-// 	var AliceSecret, BobSecret,
-// 		AlicePublic, BobPublic,
-// 		AliceShared, BobShared Key
-//
-// 	// Generating Alice's secret and public keys
-// 	_, _ = io.ReadFull(rand.Reader, AliceSecret[:])
-// 	KeyGen(&AlicePublic, &AliceSecret)
-//
-// 	// Generating Bob's secret and public keys
-// 	_, _ = io.ReadFull(rand.Reader, BobSecret[:])
-// 	KeyGen(&BobPublic, &BobSecret)
-//
-// 	// Deriving Alice's shared key
-// 	okA := Shared(&AliceShared, &AliceSecret, &BobPublic)
-//
-// 	// Deriving Bob's shared key
-// 	okB := Shared(&BobShared, &BobSecret, &AlicePublic)
-//
-// 	fmt.Println(AliceShared == BobShared && okA && okB)
-// 	// Output: true
-// }
+func Example_ed25519() {
+	// import "github.com/cloudflare/circl/sign/ed25519"
+
+	// Generating Alice's key pair
+	keys, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		panic("error on generating keys")
+	}
+
+	// Alice signs a message.
+	message := []byte("A message to be signed")
+	signature := ed25519.Sign(keys, message)
+
+	// Anyone can verify the signature using Alice's public key.
+	ok := ed25519.Verify(keys.GetPublic(), message, signature)
+	fmt.Println(ok)
+	// Output: true
+}

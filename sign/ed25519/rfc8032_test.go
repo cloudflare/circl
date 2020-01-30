@@ -3,6 +3,7 @@ package ed25519_test
 import (
 	"archive/zip"
 	"bufio"
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"strings"
@@ -13,10 +14,10 @@ import (
 )
 
 type rfc8032Vector struct {
-	seed      []byte
+	private   ed25519.PrivateKey
 	public    ed25519.PublicKey
 	message   []byte
-	signature ed25519.Signature
+	signature []byte
 }
 
 func (v *rfc8032Vector) fetch(line string) {
@@ -24,32 +25,31 @@ func (v *rfc8032Vector) fetch(line string) {
 	if len(values) != 5 {
 		panic(fmt.Errorf("len: %v %v", len(values), values))
 	}
-	v.seed, _ = hex.DecodeString(values[0])
-	b, _ := hex.DecodeString(values[1])
-	copy(v.public[:], b)
+	v.private, _ = hex.DecodeString(values[0])
+	v.public, _ = hex.DecodeString(values[1])
 	v.message, _ = hex.DecodeString(values[2])
-	b, _ = hex.DecodeString(values[3])
-	copy(v.signature[:], b[:2*ed25519.Size])
+	v.signature, _ = hex.DecodeString(values[3])
+	v.private = v.private[:ed25519.Size]
+	v.signature = v.signature[:2*ed25519.Size]
 }
 
 func (v *rfc8032Vector) test(t *testing.T, lineNum int) {
-	private := ed25519.NewKeyFromSeed(v.seed[:ed25519.Size])
+	keys := ed25519.NewKeyFromSeed(v.private)
 	{
-		got := private.GetPublic()
+		got := keys.GetPublic()
 		want := v.public
-		if *got != want {
+		if !bytes.Equal(got, want) {
+			test.ReportError(t, got, want, lineNum, v)
+		}
+
+		got = ed25519.Sign(keys, v.message)
+		want = v.signature
+		if !bytes.Equal(got, want) {
 			test.ReportError(t, got, want, lineNum, v)
 		}
 	}
 	{
-		got := ed25519.Sign(private, v.message)
-		want := v.signature
-		if got != want {
-			test.ReportError(t, got, want, lineNum, v)
-		}
-	}
-	{
-		got := ed25519.Verify(&v.public, v.message, &v.signature)
+		got := ed25519.Verify(keys.GetPublic(), v.message, v.signature)
 		want := true
 		if got != want {
 			test.ReportError(t, got, want, lineNum, v)
@@ -285,33 +285,26 @@ func (v vector) matchMsgLen() bool { return uint(len(v.msg)) == v.msgLen }
 func (v vector) matchCtxLen() bool { return uint(len(v.ctx)) == v.ctxLen }
 
 func (v vector) testPublicKey(t *testing.T) {
-	var want ed25519.PublicKey
-	pub := ed25519.NewKeyFromSeed(v.sk).GetPublic()
-	got := *pub
-	copy(want[:], v.pk)
+	keys := ed25519.NewKeyFromSeed(v.sk)
+	got := keys.GetPublic()
+	want := v.pk
 
-	if got != want {
+	if !bytes.Equal(got, want) {
 		test.ReportError(t, got, want, v.sk)
 	}
 }
 
 func (v vector) testSign(t *testing.T) {
-	var want ed25519.Signature
 	private := ed25519.NewKeyFromSeed(v.sk)
 	got := ed25519.Sign(private, v.msg)
-	copy(want[:], v.sig)
-	if got != want {
+	want := v.sig
+	if !bytes.Equal(got, want) {
 		test.ReportError(t, got, want, v.name)
 	}
 }
 
 func (v vector) testVerify(t *testing.T) {
-	var public ed25519.PublicKey
-	var sig ed25519.Signature
-	copy(public[:], v.pk)
-	copy(sig[:], v.sig)
-
-	got := ed25519.Verify(&public, v.msg, &sig)
+	got := ed25519.Verify(v.pk, v.msg, v.sig)
 	want := true
 
 	if got != want {

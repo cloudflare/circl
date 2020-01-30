@@ -42,7 +42,7 @@ func (P *pointR1) ToBytes(k []byte) {
 	k[Size-1] = k[Size-1] | (b << 7)
 }
 
-func (P *pointR1) FromBytes(k *[Size]byte) bool {
+func (P *pointR1) FromBytes(k []byte) bool {
 	signX := k[Size-1] >> 7
 	copy(P.y[:], k[:])
 	P.y[Size-1] &= 0x7F
