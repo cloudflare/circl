@@ -85,7 +85,7 @@ func TestRangeOrder(t *testing.T) {
 	}
 
 	for i := range aboveOrder {
-		got := isLessThan(aboveOrder[i][:], curve.order[:])
+		got := isLessThan(aboveOrder[i][:], order[:])
 		want := false
 		if got != want {
 			test.ReportError(t, got, want, i, aboveOrder[i])
