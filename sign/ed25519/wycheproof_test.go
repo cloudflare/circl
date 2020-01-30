@@ -1,6 +1,7 @@
 package ed25519_test
 
 import (
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"io/ioutil"
@@ -52,49 +53,49 @@ func (kat *Wycheproof) readFile(t *testing.T, fileName string) {
 }
 
 func (kat *Wycheproof) keyPair(t *testing.T) {
-	var seed [ed25519.Size]byte
-	var want ed25519.PublicKey
+	private := make(ed25519.PrivateKey, ed25519.Size)
+	want := make(ed25519.PublicKey, ed25519.Size)
 	for i, g := range kat.Groups {
 		if g.Key.Curve != "edwards25519" {
 			t.Errorf("Curve not expected %v", g.Key.Curve)
 		}
-		ok := hexStr2Key(seed[:], g.Key.Sk) && hexStr2Key(want[:], g.Key.Pk)
-		public := ed25519.NewKeyFromSeed(seed[:]).GetPublic()
-		got := *public
-		if got != want || !ok {
+		ok := hexStr2Key(private, g.Key.Sk) && hexStr2Key(want[:], g.Key.Pk)
+		keys := ed25519.NewKeyFromSeed(private)
+		got := keys.GetPublic()
+		if !bytes.Equal(got, want) || !ok {
 			test.ReportError(t, got, want, i, g.Key.Sk)
 		}
 	}
 }
 
 func (kat *Wycheproof) verify(t *testing.T) {
-	var sig ed25519.Signature
-	var seed [ed25519.Size]byte
-	var public ed25519.PublicKey
+	private := make(ed25519.PrivateKey, ed25519.Size)
+	public := make(ed25519.PublicKey, ed25519.Size)
+	sig := make([]byte, 2*ed25519.Size)
 
 	for i, g := range kat.Groups {
 		for _, gT := range g.Tests {
 			msg := make([]byte, len(gT.Msg)/2)
 			isValid := gT.Result == "valid"
-			decoOK := hexStr2Key(seed[:], g.Key.Sk) &&
-				hexStr2Key(public[:], g.Key.Pk) &&
+			decoOK := hexStr2Key(private, g.Key.Sk) &&
+				hexStr2Key(public, g.Key.Pk) &&
 				hexStr2Key(sig[:], gT.Sig) &&
 				hexStr2Key(msg[:], gT.Msg)
 
-			private := ed25519.NewKeyFromSeed(seed[:])
+			keys := ed25519.NewKeyFromSeed(private)
 			if !decoOK && isValid {
 				got := decoOK
 				want := isValid
 				test.ReportError(t, got, want, i, gT.TcID, gT.Result)
 			}
 			if isValid {
-				got := ed25519.Sign(private, msg)
-				want := sig
-				if got != want {
+				got := ed25519.Sign(keys, msg)
+				want := sig[:]
+				if !bytes.Equal(got, want) {
 					test.ReportError(t, got, want, i, gT.TcID)
 				}
 			}
-			got := ed25519.Verify(&public, msg, &sig)
+			got := ed25519.Verify(keys.GetPublic(), msg, sig[:])
 			want := isValid
 			if got != want {
 				test.ReportError(t, got, want, i, gT.TcID)
@@ -116,6 +117,6 @@ func hexStr2Key(k []byte, s string) bool {
 	if err != nil || len(k) != (len(s)/2) {
 		return false
 	}
-	copy(k[:], b)
+	copy(k, b)
 	return true
 }
