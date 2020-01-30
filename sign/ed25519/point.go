@@ -53,11 +53,11 @@ func (P *pointR1) FromBytes(k []byte) bool {
 
 	one, u, v := &fp.Elt{}, &fp.Elt{}, &fp.Elt{}
 	fp.SetOne(one)
-	fp.Sqr(u, &P.y)                        // u = y^2
-	fp.Mul(v, u, (*fp.Elt)(&curve.paramD)) // v = dy^2
-	fp.Sub(u, u, one)                      // u = y^2-1
-	fp.Add(v, v, one)                      // v = dy^2+1
-	isQR := fp.InvSqrt(&P.x, u, v)         // x = sqrt(u/v)
+	fp.Sqr(u, &P.y)                // u = y^2
+	fp.Mul(v, u, &paramD)          // v = dy^2
+	fp.Sub(u, u, one)              // u = y^2-1
+	fp.Add(v, v, one)              // v = dy^2+1
+	isQR := fp.InvSqrt(&P.x, u, v) // x = sqrt(u/v)
 	if !isQR {
 		return false
 	}
@@ -206,7 +206,7 @@ func (P *pointR2) fromR1(Q *pointR1) {
 	fp.Add(&P.addYX, &Q.y, &Q.x)
 	fp.Sub(&P.subYX, &Q.y, &Q.x)
 	fp.Mul(&P.dt2, &Q.ta, &Q.tb)
-	fp.Mul(&P.dt2, &P.dt2, (*fp.Elt)(&curve.paramD))
+	fp.Mul(&P.dt2, &P.dt2, &paramD)
 	fp.Add(&P.dt2, &P.dt2, &P.dt2)
 	fp.Add(&P.z2, &Q.z, &Q.z)
 }

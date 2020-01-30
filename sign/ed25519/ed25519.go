@@ -106,7 +106,7 @@ func Verify(public PublicKey, message, sig []byte) bool {
 	if l := len(public); l != Size {
 		panic("ed25519: bad public key length")
 	}
-	if isLtOrder := isLessThan(sig[Size:], curve.order[:Size]); !isLtOrder {
+	if isLtOrder := isLessThan(sig[Size:], order[:Size]); !isLtOrder {
 		return false
 	}
 	var P pointR1
