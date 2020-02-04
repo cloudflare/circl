@@ -46,59 +46,83 @@ func Neg(z, x *Elt) { Sub(z, &p, x) }
 // Modp ensures that z is between [0,p-1].
 func Modp(z *Elt) { Sub(z, z, &p) }
 
+// InvSqrt calculates z = sqrt(x/y) iff x/y is a quadratic-residue, which is
+// indicated by returning isQR = true. Otherwise, when x/y is a quadratic
+// non-residue, z will have an undetermined value and isQR = false.
+func InvSqrt(z, x, y *Elt) (isQR bool) {
+	t0, t1 := &Elt{}, &Elt{}
+	Mul(t0, x, y)         // x*y
+	Sqr(t1, y)            // y^2
+	Mul(t1, t0, t1)       // x*y^3
+	powPminus3div4(z, t1) // (x*y^3)^k
+	Mul(z, z, t0)         // z = x*y*(x*y^3)^k = x^(k+1) * y^(3k+1)
+
+	// Check if x/y is a quadratic residue
+	Sqr(t0, z)     // z^2
+	Mul(t0, t0, y) // y*z^2
+	Sub(t0, t0, x) // y*z^2-x
+	return IsZero(t0)
+}
+
 // Inv calculates z = 1/x mod p.
 func Inv(z, x *Elt) {
-	x0, x1, x2 := &Elt{}, &Elt{}, &Elt{}
-	Sqr(x2, x)
-	Mul(x2, x2, x)
-	Sqr(x0, x2)
+	t := &Elt{}
+	powPminus3div4(t, x) // t = x^k
+	Sqr(t, t)            // t = x^2k
+	Sqr(t, t)            // t = x^4k
+	Mul(z, t, x)         // z = x^(4k+1)
+}
+
+// powPminus3div4 calculates z = x^k mod p, where k = (p-3)/4.
+func powPminus3div4(z, x *Elt) {
+	x0, x1 := &Elt{}, &Elt{}
+	Sqr(z, x)
+	Mul(z, z, x)
+	Sqr(x0, z)
 	Mul(x0, x0, x)
-	Sqr(x2, x0)
-	Sqr(x2, x2)
-	Sqr(x2, x2)
-	Mul(x2, x2, x0)
-	Sqr(x1, x2)
+	Sqr(z, x0)
+	Sqr(z, z)
+	Sqr(z, z)
+	Mul(z, z, x0)
+	Sqr(x1, z)
 	for i := 0; i < 5; i++ {
 		Sqr(x1, x1)
 	}
-	Mul(x1, x1, x2)
-	Sqr(x2, x1)
+	Mul(x1, x1, z)
+	Sqr(z, x1)
 	for i := 0; i < 11; i++ {
-		Sqr(x2, x2)
+		Sqr(z, z)
 	}
-	Mul(x2, x2, x1)
-	Sqr(x2, x2)
-	Sqr(x2, x2)
-	Sqr(x2, x2)
-	Mul(x2, x2, x0)
-	Sqr(x1, x2)
+	Mul(z, z, x1)
+	Sqr(z, z)
+	Sqr(z, z)
+	Sqr(z, z)
+	Mul(z, z, x0)
+	Sqr(x1, z)
 	for i := 0; i < 26; i++ {
 		Sqr(x1, x1)
 	}
-	Mul(x1, x1, x2)
-	Sqr(x2, x1)
+	Mul(x1, x1, z)
+	Sqr(z, x1)
 	for i := 0; i < 53; i++ {
-		Sqr(x2, x2)
+		Sqr(z, z)
 	}
-	Mul(x2, x2, x1)
-	Sqr(x2, x2)
-	Sqr(x2, x2)
-	Sqr(x2, x2)
-	Mul(x2, x2, x0)
-	Sqr(x1, x2)
+	Mul(z, z, x1)
+	Sqr(z, z)
+	Sqr(z, z)
+	Sqr(z, z)
+	Mul(z, z, x0)
+	Sqr(x1, z)
 	for i := 0; i < 110; i++ {
 		Sqr(x1, x1)
 	}
-	Mul(x1, x1, x2)
-	Sqr(x2, x1)
-	Mul(x2, x2, x)
+	Mul(x1, x1, z)
+	Sqr(z, x1)
+	Mul(z, z, x)
 	for i := 0; i < 223; i++ {
-		Sqr(x2, x2)
+		Sqr(z, z)
 	}
-	Mul(x2, x2, x1)
-	Sqr(x2, x2)
-	Sqr(x2, x2)
-	Mul(z, x2, x)
+	Mul(z, z, x1)
 }
 
 // Cmov assigns y to x if n is 1.

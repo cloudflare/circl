@@ -39,7 +39,7 @@ Version numbers are [Semvers](https://semver.org/). We release a minor version f
 | Key Exchange | X25519, X448 | RFC-7748 provides new key exchange mechanisms based on Montgomery elliptic curves. | TLS 1.3. Secure Shell. |
 | Key Exchange | FourQ | One of the fastest elliptic curves at 128-bit security level. | Experimental for key agreement and digital signatures. |
 | Key Exchange / Digital signatures | P-384 | Our optimizations reduce the burden when moving from P-256 to P-384. |  ECDSA and ECDH using Suite B at top secret level. |
-| Digital Signatures | Ed25519 | RFC-8032 provides new signature schemes based on Edwards curves. | Digital certificates and authentication. |
+| Digital Signatures | Ed25519, Ed448 | RFC-8032 provides new signature schemes based on Edwards curves. | Digital certificates and authentication. |
 
 ### Work in Progress
 

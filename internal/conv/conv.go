@@ -1,15 +1,27 @@
 package conv
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/big"
+	"math/bits"
 	"strings"
 )
+
+// Hex2BytesLe returns a little-endian byte slice representing an hexadecimal
+// number. The input must not have the '0x' preffix.
+func Hex2BytesLe(s string) []byte {
+	b, err := hex.DecodeString(s)
+	if err != nil {
+		panic(err)
+	}
+	return b
+}
 
 // BytesLe2Hex returns an hexadecimal string of a number stored in a
 // little-endian order slice x.
 func BytesLe2Hex(x []byte) string {
-	b := &strings.Builder{}
+	b := new(strings.Builder)
 	b.Grow(2*len(x) + 2)
 	fmt.Fprint(b, "0x")
 	if len(x) == 0 {
@@ -51,6 +63,36 @@ func BigInt2BytesLe(z []byte, x *big.Int) {
 			z[i] = 0
 		}
 	}
+}
+
+// Uint64Le2Hex returns an hexadecimal string of a number stored in a
+// little-endian order slice x.
+func Uint64Le2Hex(x []uint64) string {
+	b := new(strings.Builder)
+	b.Grow(16*len(x) + 2)
+	fmt.Fprint(b, "0x")
+	if len(x) == 0 {
+		fmt.Fprint(b, "00")
+	}
+	for i := len(x) - 1; i >= 0; i-- {
+		fmt.Fprintf(b, "%016x", x[i])
+	}
+	return b.String()
+}
+
+// UintLe2Hex returns an hexadecimal string of a number stored in a
+// little-endian order slice x.
+func UintLe2Hex(x []uint) string {
+	b := new(strings.Builder)
+	b.Grow((bits.UintSize/4)*len(x) + 2)
+	fmt.Fprint(b, "0x")
+	if len(x) == 0 {
+		fmt.Fprint(b, "00")
+	}
+	for i := len(x) - 1; i >= 0; i-- {
+		fmt.Fprintf(b, fmt.Sprintf("%%0%vx", bits.UintSize/4), x[i])
+	}
+	return b.String()
 }
 
 // Uint64Le2BigInt converts a llitle-endian slice x into a big number.
