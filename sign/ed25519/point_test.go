@@ -44,14 +44,12 @@ func TestPoint(t *testing.T) {
 	})
 
 	t.Run("fixed", func(t *testing.T) {
-		var P pointR1
+		var P, Q, R pointR1
 		k := make([]byte, Size)
 		l := make([]byte, Size)
 		for i := 0; i < testTimes; i++ {
 			randomPoint(&P)
 			_, _ = rand.Read(k[:])
-			Q := P
-			R := P
 
 			Q.fixedMult(k[:])
 			R.doubleMult(&P, k[:], l[:])
@@ -65,11 +63,10 @@ func TestPoint(t *testing.T) {
 	})
 }
 
-// Indicates wether long tests should be run
-var runLongTest = flag.Bool("long", false, "runs longer tests")
+var runLongBench = flag.Bool("long", false, "runs longer benchmark")
 
 func BenchmarkPoint(b *testing.B) {
-	if !*runLongTest {
+	if !*runLongBench {
 		b.Log("Skipped one long bench, add -long flag to run longer bench")
 		b.SkipNow()
 	}

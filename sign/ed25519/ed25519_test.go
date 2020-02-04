@@ -6,11 +6,11 @@ import (
 	"testing"
 
 	"github.com/cloudflare/circl/internal/test"
-	"github.com/cloudflare/circl/sign/ed25519"
+	eddsa "github.com/cloudflare/circl/sign/ed25519"
 )
 
 func TestWrongPublicKey(t *testing.T) {
-	wrongPublicKeys := [...]ed25519.PublicKey{
+	wrongPublicKeys := [...][eddsa.Size]byte{
 		{ // y = p
 			0xed, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -35,16 +35,16 @@ func TestWrongPublicKey(t *testing.T) {
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 | 0x80,
 		},
-		{ // y = -1 and  x^2 = u/v = 0, and the sign of X is 1
+		{ // y = -1 and x^2 = u/v = 0, and the sign of X is 1
 			0xec, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f | 0x80,
 		},
 	}
-	sig := make([]byte, 2*ed25519.Size)
+	sig := make([]byte, 2*eddsa.Size)
 	for _, public := range wrongPublicKeys {
-		got := ed25519.Verify(public, []byte(""), sig)
+		got := eddsa.Verify(public[:], []byte(""), sig)
 		want := false
 		if got != want {
 			test.ReportError(t, got, want, public)
@@ -58,22 +58,22 @@ func BenchmarkEd25519(b *testing.B) {
 
 	b.Run("keygen", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			ed25519.GenerateKey(rand.Reader)
+			eddsa.GenerateKey(rand.Reader)
 		}
 	})
 	b.Run("sign", func(b *testing.B) {
-		keys, _ := ed25519.GenerateKey(rand.Reader)
+		keys, _ := eddsa.GenerateKey(rand.Reader)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			ed25519.Sign(keys, msg)
+			eddsa.Sign(keys, msg)
 		}
 	})
 	b.Run("verify", func(b *testing.B) {
-		keys, _ := ed25519.GenerateKey(rand.Reader)
-		signature := ed25519.Sign(keys, msg)
+		keys, _ := eddsa.GenerateKey(rand.Reader)
+		signature := eddsa.Sign(keys, msg)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			ed25519.Verify(keys.GetPublic(), msg, signature)
+			eddsa.Verify(keys.GetPublic(), msg, signature)
 		}
 	})
 }
@@ -82,17 +82,17 @@ func Example_ed25519() {
 	// import "github.com/cloudflare/circl/sign/ed25519"
 
 	// Generating Alice's key pair
-	keys, err := ed25519.GenerateKey(rand.Reader)
+	keys, err := eddsa.GenerateKey(rand.Reader)
 	if err != nil {
 		panic("error on generating keys")
 	}
 
 	// Alice signs a message.
 	message := []byte("A message to be signed")
-	signature := ed25519.Sign(keys, message)
+	signature := eddsa.Sign(keys, message)
 
 	// Anyone can verify the signature using Alice's public key.
-	ok := ed25519.Verify(keys.GetPublic(), message, signature)
+	ok := eddsa.Verify(keys.GetPublic(), message, signature)
 	fmt.Println(ok)
 	// Output: true
 }
