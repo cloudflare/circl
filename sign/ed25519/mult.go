@@ -7,16 +7,10 @@ import (
 
 	"github.com/cloudflare/circl/internal/conv"
 	"github.com/cloudflare/circl/math"
-	"github.com/cloudflare/circl/math/fp25519"
+	fp "github.com/cloudflare/circl/math/fp25519"
 )
 
-var order = [Size]byte{
-	0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58,
-	0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10,
-}
-var paramD = fp25519.Elt{
+var paramD = fp.Elt{
 	0xa3, 0x78, 0x59, 0x13, 0xca, 0x4d, 0xeb, 0x75,
 	0xab, 0xd8, 0x41, 0x41, 0x4d, 0x0a, 0x70, 0x00,
 	0x98, 0xe8, 0x79, 0x77, 0x79, 0x40, 0xc7, 0x8c,
@@ -65,7 +59,7 @@ func mLSBRecoding(L []int8, k []byte) {
 		}
 		for i := dd; i < ll; i++ {
 			L[i] = L[i%dd] * int8(m[0]&0x1)
-			div2subY(m[:], int64(L[i]>>1), 4)
+			div2subY(m[:], int64(L[i]>>1), numWords64)
 		}
 		L[ll] = int8(m[0])
 	}
@@ -113,7 +107,7 @@ func div2subY(x []uint64, y int64, l int) {
 
 func (P *pointR1) fixedMult(scalar []byte) {
 	if len(scalar) != Size {
-		panic("wrong size")
+		panic("wrong scalar size")
 	}
 	const ee = (fxT + fxW*fxV - 1) / (fxW * fxV)
 	const dd = ee * fxV
@@ -147,7 +141,7 @@ const (
 	omegaVar = 5
 )
 
-// doubleMult returns P=mQ+nG
+// doubleMult returns P=mG+nQ
 func (P *pointR1) doubleMult(Q *pointR1, m, n []byte) {
 	nafFix := math.OmegaNAF(conv.BytesLe2BigInt(m), omegaFix)
 	nafVar := math.OmegaNAF(conv.BytesLe2BigInt(n), omegaVar)

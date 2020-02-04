@@ -107,7 +107,7 @@ func (kat *Wycheproof) verify(t *testing.T) {
 func TestWycheproof(t *testing.T) {
 	// Test vectors from Wycheproof v0.4.12
 	var kat Wycheproof
-	kat.readFile(t, "testdata/wycheproof_kat.json")
+	kat.readFile(t, "testdata/wycheproof_Ed25519.json")
 	t.Run("EDDSAKeyPair", kat.keyPair)
 	t.Run("EDDSAVerify", kat.verify)
 }

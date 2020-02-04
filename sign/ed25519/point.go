@@ -36,18 +36,21 @@ func (P *pointR1) toAffine() {
 func (P *pointR1) ToBytes(k []byte) {
 	P.toAffine()
 	var x [fp.Size]byte
-	fp.ToBytes(k, &P.y)
+	fp.ToBytes(k[:fp.Size], &P.y)
 	fp.ToBytes(x[:], &P.x)
 	b := x[0] & 1
 	k[Size-1] = k[Size-1] | (b << 7)
 }
 
 func (P *pointR1) FromBytes(k []byte) bool {
+	if len(k) != Size {
+		panic("wrong size")
+	}
 	signX := k[Size-1] >> 7
-	copy(P.y[:], k[:])
-	P.y[Size-1] &= 0x7F
+	copy(P.y[:], k[:fp.Size])
+	P.y[fp.Size-1] &= 0x7F
 	p := fp.P()
-	if isLtModulus := isLessThan(P.y[:], p[:]); !isLtModulus {
+	if !isLessThan(P.y[:], p[:]) {
 		return false
 	}
 
@@ -74,95 +77,53 @@ func (P *pointR1) FromBytes(k []byte) bool {
 	return true
 }
 
+// double calculates 2P for curves with A=-1
 func (P *pointR1) double() {
 	Px, Py, Pz, Pta, Ptb := &P.x, &P.y, &P.z, &P.ta, &P.tb
-	a := Px
-	b := Py
-	c := Pz
-	d := Pta
-	e := Ptb
-	f := b
-	g := a
-	fp.Add(e, Px, Py)
-	fp.Sqr(a, Px)
-	fp.Sqr(b, Py)
-	fp.Sqr(c, Pz)
-	fp.Add(c, c, c)
-	fp.Add(d, a, b)
-	fp.Sqr(e, e)
-	fp.Sub(e, e, d)
-	fp.Sub(f, b, a)
-	fp.Sub(g, c, f)
-	fp.Mul(Pz, f, g)
-	fp.Mul(Px, e, g)
-	fp.Mul(Py, d, f)
+	a, b, c, e, f, g, h := Px, Py, Pz, Pta, Px, Py, Ptb
+	fp.Add(e, Px, Py) // x+y
+	fp.Sqr(a, Px)     // A = x^2
+	fp.Sqr(b, Py)     // B = y^2
+	fp.Sqr(c, Pz)     // z^2
+	fp.Add(c, c, c)   // C = 2*z^2
+	fp.Add(h, a, b)   // H = A+B
+	fp.Sqr(e, e)      // (x+y)^2
+	fp.Sub(e, e, h)   // E = (x+y)^2-A-B
+	fp.Sub(g, b, a)   // G = B-A
+	fp.Sub(f, c, g)   // F = C-G
+	fp.Mul(Pz, f, g)  // Z = F * G
+	fp.Mul(Px, e, f)  // X = E * F
+	fp.Mul(Py, g, h)  // Y = G * H, T = E * H
 }
 
 func (P *pointR1) mixAdd(Q *pointR3) {
-	addYX := &Q.addYX
-	subYX := &Q.subYX
-	dt2 := &Q.dt2
-	Px := &P.x
-	Py := &P.y
-	Pz := &P.z
-	Pta := &P.ta
-	Ptb := &P.tb
-	a := Px
-	b := Py
-	c := &fp.Elt{}
-	d := b
-	e := Pta
-	f := a
-	g := b
-	h := Ptb
-	fp.Mul(c, Pta, Ptb)
-	fp.Sub(h, b, a)
-	fp.Add(b, b, a)
-	fp.Mul(a, h, subYX)
-	fp.Mul(b, b, addYX)
-	fp.Sub(e, b, a)
-	fp.Add(h, b, a)
-	fp.Add(d, Pz, Pz)
-	fp.Mul(c, c, dt2)
-	fp.Sub(f, d, c)
-	fp.Add(g, d, c)
-	fp.Mul(Pz, f, g)
-	fp.Mul(Px, e, f)
-	fp.Mul(Py, g, h)
+	fp.Add(&P.z, &P.z, &P.z) // D = 2*z1
+	P.coreAddition(Q)
 }
 
 func (P *pointR1) add(Q *pointR2) {
-	addYX := &Q.addYX
-	subYX := &Q.subYX
-	dt2 := &Q.dt2
-	z2 := &Q.z2
-	Px := &P.x
-	Py := &P.y
-	Pz := &P.z
-	Pta := &P.ta
-	Ptb := &P.tb
-	a := Px
-	b := Py
-	c := &fp.Elt{}
-	d := b
-	e := Pta
-	f := a
-	g := b
-	h := Ptb
-	fp.Mul(c, Pta, Ptb)
-	fp.Sub(h, b, a)
-	fp.Add(b, b, a)
-	fp.Mul(a, h, subYX)
-	fp.Mul(b, b, addYX)
-	fp.Sub(e, b, a)
-	fp.Add(h, b, a)
-	fp.Mul(d, Pz, z2)
-	fp.Mul(c, c, dt2)
-	fp.Sub(f, d, c)
-	fp.Add(g, d, c)
-	fp.Mul(Pz, f, g)
-	fp.Mul(Px, e, f)
-	fp.Mul(Py, g, h)
+	fp.Mul(&P.z, &P.z, &Q.z2) // D = 2*z1*z2
+	P.coreAddition(&Q.pointR3)
+}
+
+// coreAddition calculates P=P+Q for curves with A=-1
+func (P *pointR1) coreAddition(Q *pointR3) {
+	Px, Py, Pz, Pta, Ptb := &P.x, &P.y, &P.z, &P.ta, &P.tb
+	addYX2, subYX2, dt2 := &Q.addYX, &Q.subYX, &Q.dt2
+	a, b, c, d, e, f, g, h := Px, Py, &fp.Elt{}, Pz, Pta, Px, Py, Ptb
+	fp.Mul(c, Pta, Ptb)  // t1 = ta*tb
+	fp.Sub(h, Py, Px)    // y1-x1
+	fp.Add(b, Py, Px)    // y1+x1
+	fp.Mul(a, h, subYX2) // A = (y1-x1)*(y2-x2)
+	fp.Mul(b, b, addYX2) // B = (y1+x1)*(y2+x2)
+	fp.Mul(c, c, dt2)    // C = 2*D*t1*t2
+	fp.Sub(e, b, a)      // E = B-A
+	fp.Add(h, b, a)      // H = B+A
+	fp.Sub(f, d, c)      // F = D-C
+	fp.Add(g, d, c)      // G = D+C
+	fp.Mul(Pz, f, g)     // Z = F * G
+	fp.Mul(Px, e, f)     // X = E * F
+	fp.Mul(Py, g, h)     // Y = G * H, T = E * H
 }
 
 func (P *pointR1) oddMultiples(T []pointR2) {
