@@ -248,7 +248,7 @@ func BenchmarkPermutationFunction(b *testing.B) {
 
 // benchmarkShake is specialized to the Shake instances, which don't
 // require a copy on reading output.
-func benchmarkShake(b *testing.B, h *Shake, size, num int) {
+func benchmarkShake(b *testing.B, h Shake, size, num int) {
 	b.StopTimer()
 	h.Reset()
 	data := sequentialBytes(size)
