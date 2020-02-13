@@ -6,7 +6,7 @@ import (
 	"io"
 
 	"github.com/cloudflare/circl/dh/sidh/internal/common"
-	"github.com/cloudflare/circl/dh/sidh/internal/shake"
+	"github.com/cloudflare/circl/internal/shake"
 )
 
 // SIKE KEM interface
@@ -16,7 +16,7 @@ type KEM struct {
 	msg         []byte
 	secretBytes []byte
 	params      *common.SidhParams
-	shake       *shake.Shake
+	shake       shake.Shake
 }
 
 // NewSike434 instantiates SIKE/p434 KEM

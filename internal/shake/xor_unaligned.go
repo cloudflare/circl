@@ -9,7 +9,7 @@ package shake
 
 import "unsafe"
 
-func xorIn(d *state, buf []byte) {
+func xorIn(d *Shake, buf []byte) {
 	bw := (*[maxRate / 8]uint64)(unsafe.Pointer(&buf[0]))
 	n := len(buf)
 	if n >= 72 {
@@ -45,7 +45,7 @@ func xorIn(d *state, buf []byte) {
 	}
 }
 
-func copyOut(d *state, buf []byte) {
+func copyOut(d *Shake, buf []byte) {
 	ab := (*[maxRate]uint8)(unsafe.Pointer(&d.a[0]))
 	copy(buf, ab[:])
 }
