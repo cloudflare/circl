@@ -22,6 +22,10 @@ version: 2.1
             name: "Run coverage on Linux"
             command:
                 make cover
+        - run:
+            name: "Upload coverage to codecov"
+            command:
+                bash <(curl -s https://codecov.io/bash) -f build/coverage/coverage.txt
 
         - store_artifacts:
             path: build/coverage/coverage.html
