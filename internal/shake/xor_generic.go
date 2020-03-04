@@ -8,12 +8,6 @@ package shake
 
 import "encoding/binary"
 
-type storageBuf [maxRate]byte
-
-func (b *storageBuf) asBytes() *[maxRate]byte {
-    return (*[maxRate]byte)(b)
-}
-
 // xorInGeneric xors the bytes in buf into the state; it
 // makes no non-portable assumptions about memory layout
 // or alignment.

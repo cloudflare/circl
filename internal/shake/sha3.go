@@ -41,7 +41,7 @@ type Shake struct {
 	//     "Draft FIPS 202: SHA-3 Standard: Permutation-Based Hash and
 	//      Extendable-Output Functions (May 2014)"
 	dsbyte  byte
-	storage storageBuf
+	storage [maxRate]byte
 
 	// Specific to SHA-3 and SHAKE.
 	outputLen int             // the default output size in bytes
@@ -77,7 +77,7 @@ func (d *Shake) permute() {
 	case spongeAbsorbing:
 		// If we're absorbing, we need to xor the input into the state
 		// before applying the permutation.
-		xorIn(d, d.storage.asBytes()[d.bufo:d.bufe])
+		xorIn(d, d.storage[d.bufo:d.bufe])
 		d.bufe = 0
 		d.bufo = 0
 		keccakF1600(&d.a)
@@ -87,7 +87,7 @@ func (d *Shake) permute() {
 		keccakF1600(&d.a)
 		d.bufo = 0
 		d.bufe = d.rate
-		copyOut(d, d.storage.asBytes()[:d.rate])
+		copyOut(d, d.storage[:d.rate])
 	}
 }
 
@@ -98,24 +98,24 @@ func (d *Shake) padAndPermute(dsbyte byte) {
 	// at least one byte of space in d.buf because, if it were full,
 	// permute would have been called to empty it. dsbyte also contains the
 	// first one bit for the padding. See the comment in the state struct.
-	d.storage.asBytes()[d.bufe] = dsbyte
+	d.storage[d.bufe] = dsbyte
 	d.bufe++
 	zerosStart := d.bufe - d.bufo
 	d.bufo = 0
 	d.bufe = d.rate
 	for i := zerosStart; i < d.rate; i++ {
-		d.storage.asBytes()[i] = 0
+		d.storage[i] = 0
 	}
 	// This adds the final one bit for the padding. Because of the way that
 	// bits are numbered from the LSB upwards, the final bit is the MSB of
 	// the last byte.
-	d.storage.asBytes()[d.rate-1] ^= 0x80
+	d.storage[d.rate-1] ^= 0x80
 	// Apply the permutation
 	d.permute()
 	d.state = spongeSqueezing
 	d.bufo = 0
 	d.bufe = d.rate
-	copyOut(d, d.storage.asBytes()[:d.rate])
+	copyOut(d, d.storage[:d.rate])
 }
 
 // Write absorbs more data into the hash's state. It produces an error
@@ -138,7 +138,7 @@ func (d *Shake) Write(p []byte) (int, error) {
 			if todo > len(p) {
 				todo = len(p)
 			}
-			copy(d.storage.asBytes()[d.bufe:], p[:todo])
+			copy(d.storage[d.bufe:], p[:todo])
 			d.bufe += todo
 			p = p[todo:]
 
@@ -163,7 +163,7 @@ func (d *Shake) Read(out []byte) (n int, err error) {
 
 	// Now, do the squeezing.
 	for len(out) > 0 {
-		n := copy(out, d.storage.asBytes()[d.bufo:d.bufe])
+		n := copy(out, d.storage[d.bufo:d.bufe])
 		d.bufo += n
 		out = out[n:]
 
