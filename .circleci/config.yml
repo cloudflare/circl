@@ -60,7 +60,7 @@ jobs:
     amd64:
         <<: *nativejob
         environment:
-            GOVER: latest
+            GOVER: 1.14
 
     # Test against older version of golang
     golang_1_12:
@@ -77,18 +77,19 @@ jobs:
     arm64:
         <<: *emulatedjob
         environment:
+            GOVER: 1.14
 
     # Coverage job
     cover:
         <<: *coverjob
         environment:
-            GOVER: latest
+            GOVER: 1.13
 
     # ensures code is correctly formated
     maintenance:
         <<: *maintenance
         environment:
-            GOVER: latest
+            GOVER: 1.14
 
 workflows:
     build:
