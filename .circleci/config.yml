@@ -83,7 +83,7 @@ jobs:
     cover:
         <<: *coverjob
         environment:
-            GOVER: 1.13
+            GOVER: 1.14
 
     # ensures code is correctly formated
     maintenance:
