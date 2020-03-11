@@ -1,5 +1,3 @@
-// +build amd64,go1.12
-
 package fourq
 
 import (
@@ -19,6 +17,7 @@ const SizeFp = 16
 // Fp is an element (in littleEndian order) of prime field GF(2^127-1).
 type Fp [SizeFp]byte
 
+func (f *Fp) String() string       { return conv.BytesLe2Hex(f[:]) }
 func (f *Fp) isZero() bool         { fpMod(f); return *f == Fp{} }
 func (f *Fp) toBigInt() *big.Int   { fpMod(f); return conv.BytesLe2BigInt(f[:]) }
 func (f *Fp) setBigInt(b *big.Int) { conv.BigInt2BytesLe((*f)[:], b); fpMod(f) }

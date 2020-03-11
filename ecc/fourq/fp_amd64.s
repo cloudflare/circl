@@ -1,3 +1,5 @@
+// +build amd64,!purego
+
 #include "textflag.h"
 #include "fp_amd64.h"
 
