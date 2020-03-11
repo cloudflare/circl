@@ -1,4 +1,4 @@
-// +build amd64,go1.12
+// +build amd64,!purego
 
 package fourq
 
