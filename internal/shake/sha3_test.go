@@ -49,6 +49,13 @@ type KeccakKats struct {
 	}
 }
 
+// Run with "go test -race" on Go ≥1.14.
+func TestIssue89(t *testing.T) {
+	h := NewShake256()
+	var buf [200]byte
+	h.Write(buf[1:])
+}
+
 // TestKeccakKats tests the SHA-3 and Shake implementations against all the
 // ShortMsgKATs from https://github.com/gvanas/KeccakCodePackage
 // (The testvectors are stored in keccakKats.json.deflate due to their length.)
