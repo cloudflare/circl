@@ -1,5 +1,3 @@
-// +build amd64,go1.12
-
 package fourq
 
 import (
