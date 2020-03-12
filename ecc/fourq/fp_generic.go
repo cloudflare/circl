@@ -64,6 +64,8 @@ func fpMulGeneric(c, a, b *Fp) {
 	cc[1], _ = bits.Add64(c1, 0, x)
 }
 
+func fpSqrGeneric(c, a *Fp) { fpMulGeneric(c, a, a) }
+
 func fpHlfGeneric(c, a *Fp) {
 	aa, cc := (*elt64)(unsafe.Pointer(a)), (*elt64)(unsafe.Pointer(c))
 	hlf := aa[0] & 0x1
