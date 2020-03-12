@@ -8,6 +8,11 @@ import (
 	"github.com/cloudflare/circl/internal/test"
 )
 
+type tFqAdd = func(z, x, y *Fq)
+type tFqSub = func(z, x, y *Fq)
+type tFqMul = func(z, x, y *Fq)
+type tFqSqr = func(z, x *Fq)
+
 func TestFqOne(t *testing.T) {
 	x := &Fq{}
 	x.setOne()
@@ -154,7 +159,7 @@ func TestFqNeg(t *testing.T) {
 	}
 }
 
-func TestFqAdd(t *testing.T) {
+func testFqAdd(t *testing.T, f tFqAdd) {
 	testTimes := 1 << 9
 	x, y, z := &Fq{}, &Fq{}, &Fq{}
 	P := getModulus()
@@ -166,7 +171,7 @@ func TestFqAdd(t *testing.T) {
 
 		x.setBigInt(bigX0, bigX1)
 		y.setBigInt(bigY0, bigY1)
-		fqAdd(z, x, y)
+		f(z, x, y)
 		got0, got1 := z.toBigInt()
 
 		want0 := bigX0.Add(bigX0, bigY0)
@@ -183,7 +188,7 @@ func TestFqAdd(t *testing.T) {
 	}
 }
 
-func TestFqSub(t *testing.T) {
+func testFqSub(t *testing.T, f tFqSub) {
 	testTimes := 1 << 9
 	x, y, z := &Fq{}, &Fq{}, &Fq{}
 	P := getModulus()
@@ -195,7 +200,7 @@ func TestFqSub(t *testing.T) {
 
 		x.setBigInt(bigX0, bigX1)
 		y.setBigInt(bigY0, bigY1)
-		fqSub(z, x, y)
+		f(z, x, y)
 		got0, got1 := z.toBigInt()
 
 		want0 := bigX0.Sub(bigX0, bigY0)
@@ -212,7 +217,7 @@ func TestFqSub(t *testing.T) {
 	}
 }
 
-func TestFqMul(t *testing.T) {
+func testFqMul(t *testing.T, f tFqMul) {
 	testTimes := 1 << 9
 	x, y, z := &Fq{}, &Fq{}, &Fq{}
 	P := getModulus()
@@ -224,7 +229,7 @@ func TestFqMul(t *testing.T) {
 
 		x.setBigInt(bigX0, bigX1)
 		y.setBigInt(bigY0, bigY1)
-		fqMul(z, x, y)
+		f(z, x, y)
 		got0, got1 := z.toBigInt()
 
 		x0y0 := new(big.Int).Mul(bigX0, bigY0)
@@ -245,7 +250,7 @@ func TestFqMul(t *testing.T) {
 	}
 }
 
-func TestFqSqr(t *testing.T) {
+func testFqSqr(t *testing.T, f tFqSqr) {
 	testTimes := 1 << 9
 	x, z := &Fq{}, &Fq{}
 	P := getModulus()
@@ -254,7 +259,7 @@ func TestFqSqr(t *testing.T) {
 		bigX1, _ := rand.Int(rand.Reader, P)
 
 		x.setBigInt(bigX0, bigX1)
-		fqSqr(z, x)
+		f(z, x)
 		got0, got1 := z.toBigInt()
 
 		x0x0 := new(big.Int).Mul(bigX0, bigX0)
@@ -302,6 +307,20 @@ func TestFqInv(t *testing.T) {
 			test.ReportError(t, got1, want1, x)
 		}
 	}
+}
+
+func TestFqGeneric(t *testing.T) {
+	t.Run("Add", func(t *testing.T) { testFqAdd(t, fqAddGeneric) })
+	t.Run("Sub", func(t *testing.T) { testFqSub(t, fqSubGeneric) })
+	t.Run("Mul", func(t *testing.T) { testFqMul(t, fqMulGeneric) })
+	t.Run("Sqr", func(t *testing.T) { testFqSqr(t, fqSqrGeneric) })
+}
+
+func TestFqNative(t *testing.T) {
+	t.Run("Add", func(t *testing.T) { testFqAdd(t, fqAdd) })
+	t.Run("Sub", func(t *testing.T) { testFqSub(t, fqSub) })
+	t.Run("Mul", func(t *testing.T) { testFqMul(t, fqMul) })
+	t.Run("Sqr", func(t *testing.T) { testFqSqr(t, fqSqr) })
 }
 
 func BenchmarkFq(b *testing.B) {
