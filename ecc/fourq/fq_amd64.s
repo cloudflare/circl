@@ -2,7 +2,6 @@
 
 #include "fq_amd64.h"
 
-
 #define fqMulLegacy \
     _fqMulLeg(0(DI),0(SI),0(BX))
 #define fqMulBmi2 \

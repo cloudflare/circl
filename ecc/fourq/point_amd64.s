@@ -73,7 +73,6 @@ TEXT ·addAmd64(SB),0,$32-16
     #undef g
     #undef h
 
-
 // func mixAddAmd64(P *pointR1, Q *pointR3)
 TEXT ·mixAddAmd64(SB),0,$32-16
     MOVQ P+0(FP), DI
