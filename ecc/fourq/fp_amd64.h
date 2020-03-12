@@ -1,3 +1,14 @@
+// CHECK_BMI2 triggers bmi2 if supported,
+// otherwise it fallbacks to legacy code.
+#define CHECK_BMI2(label, legacy, bmi2) \
+    CMPB ·hasBMI2(SB), $0 \
+    JE label              \
+    bmi2                  \
+    RET                   \
+    label:                \
+    legacy                \
+    RET
+
 #define _fpReduce(c0, c1) \
     BTRQ $63, c1          \
     ADCQ  $0, c0          \

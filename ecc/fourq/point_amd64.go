@@ -21,15 +21,15 @@ const ( // constants used in assembly implementation
 		_z2R2 + _dt2R2 + _addYXR3 + _subYXR3 + _dt2R3
 )
 
-func (P *pointR1) double()           { doubleAsm(P) }
-func (P *pointR1) add(Q *pointR2)    { addAsm(P, Q) }
-func (P *pointR1) mixAdd(Q *pointR3) { mixAddAsm(P, Q) }
+func (P *pointR1) double()           { doubleAmd64(P) }
+func (P *pointR1) add(Q *pointR2)    { addAmd64(P, Q) }
+func (P *pointR1) mixAdd(Q *pointR3) { mixAddAmd64(P, Q) }
 
 //go:noescape
-func doubleAsm(P *pointR1)
+func doubleAmd64(P *pointR1)
 
 //go:noescape
-func addAsm(P *pointR1, Q *pointR2)
+func addAmd64(P *pointR1, Q *pointR2)
 
 //go:noescape
-func mixAddAsm(P *pointR1, Q *pointR3)
+func mixAddAmd64(P *pointR1, Q *pointR3)
