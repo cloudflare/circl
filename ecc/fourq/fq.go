@@ -1,5 +1,3 @@
-// +build amd64
-
 package fourq
 
 import (
@@ -12,6 +10,7 @@ import (
 // An element in Fq is represented as f[0]+f[1]*i, where f[0],f[1] are in Fp.
 type Fq [2]Fp
 
+func (e *Fq) String() string              { return e[1].String() + " *i+ " + e[0].String() }
 func (e *Fq) toBigInt() (f0, f1 *big.Int) { return e[0].toBigInt(), e[1].toBigInt() }
 func (e *Fq) setBigInt(f0, f1 *big.Int)   { e[0].setBigInt(f0); e[1].setBigInt(f1) }
 func (e *Fq) setZero()                    { var z Fp; e[0] = z; e[1] = z }
