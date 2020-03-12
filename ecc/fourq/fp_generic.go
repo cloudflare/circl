@@ -9,8 +9,6 @@ import (
 
 type elt64 = [2]uint64
 
-const mask = uint64(1) << 63
-
 func fpModGeneric(c *Fp) { fpSubGeneric(c, c, &modulusP) }
 
 func fpAddGeneric(c, a, b *Fp) {
