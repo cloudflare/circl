@@ -74,7 +74,7 @@
     _fqAdd(g, d, c)        \
     _fqMulLeg(Pz, f, g)    \
     _fqMulLeg(Px, e, f)    \
-    _fqMulLeg(Py, g, h)    \
+    _fqMulLeg(Py, g, h)
 
 #define mixAddBmi2          \
     _fqMulBmi2(c, Pta, Ptb) \
@@ -90,4 +90,4 @@
     _fqAdd(g, d, c)         \
     _fqMulBmi2(Pz, f, g)    \
     _fqMulBmi2(Px, e, f)    \
-    _fqMulBmi2(Py, g, h)    \
+    _fqMulBmi2(Py, g, h)

@@ -47,40 +47,11 @@ TEXT ·fpHlf(SB),0,$0-16
 TEXT ·fpMul(SB),0,$0-24
     MOVQ a+8(FP), DI
     MOVQ b+16(FP), SI
-    MOVQ $0, CX
-
-    MOVQ 0(DI), AX
-    MULQ 0(SI)
-    MOVQ AX, R8
-    MOVQ DX, R9
-
-    MOVQ 0(DI), AX
-    MULQ 8(SI)
-    SHLQ $1, DX
-    ADDQ DX, R8
-    ADCQ AX, R9
-    ADCQ $0, CX
-
-    MOVQ 8(DI), AX
-    MULQ 0(SI)
-    SHLQ $1, DX
-    ADDQ DX, R8
-    ADCQ AX, R9
-    ADCQ $0, CX
-
-    MOVQ 8(DI), AX
-    MULQ 8(SI)
-    SHLQ $1, DX
-    SHLQ $1, AX
-    ADCQ $0, DX
-    ADDQ AX, R8
-    ADCQ DX, R9
-    ADCQ $0, CX
-
-    SHLQ $1, CX
+    _fpMulLeg(R10, R9, R8, 0(DI), 0(SI))
+    SHLQ $1, R10
     BTRQ $63, R9
-    ADCQ CX, R8
-    ADCQ $0, R9
+    ADCQ R10, R8
+    ADCQ  $0, R9
     _fpReduce(R8, R9)
 
     MOVQ c+0(FP), DI

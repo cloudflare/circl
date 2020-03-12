@@ -55,3 +55,31 @@
     SBBQ  $0, DX      \
     MOVQ AX, 0+c      \
     MOVQ DX, 8+c
+
+#define _fpMulLeg(C2, C1, C0, a, b) \
+    MOVQ   $0, C2 \
+    MOVQ  0+b, CX \
+    MOVQ  0+a, AX \
+    MULQ CX       \
+    MOVQ AX, C0   \
+    MOVQ DX, C1   \
+    MOVQ  8+a, AX \
+    MULQ CX       \
+    SHLQ $1,DX    \
+    ADDQ DX,C0    \
+    ADCQ AX, C1   \
+    ADCQ $0, C2   \
+    MOVQ  8+b, CX \
+    MOVQ  0+a, AX \
+    MULQ CX       \
+    SHLQ $1,DX    \
+    ADDQ DX,C0    \
+    ADCQ AX, C1   \
+    ADCQ $0, C2   \
+    MOVQ  8+a, AX \
+    MULQ CX       \
+    SHLQ $1,AX,DX \
+    SHLQ $1,AX    \
+    ADDQ AX,C0    \
+    ADCQ DX, C1   \
+    ADCQ $0, C2
