@@ -1,12 +1,5 @@
 package fourq
 
-import "crypto/subtle"
-
-func fqCmovGeneric(c, a *Fq, b int) {
-	subtle.ConstantTimeCopy(b, c[0][:], a[0][:])
-	subtle.ConstantTimeCopy(b, c[1][:], a[1][:])
-}
-
 func fqAddGeneric(c, a, b *Fq) {
 	fpAddGeneric(&c[0], &a[0], &b[0])
 	fpAddGeneric(&c[1], &a[1], &b[1])
