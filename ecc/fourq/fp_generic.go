@@ -7,11 +7,12 @@ import (
 	"unsafe"
 )
 
-type elt64 [2]uint64
+type elt64 = [2]uint64
 
 const mask = uint64(1) << 63
 
 func fpModGeneric(c *Fp) { fpSubGeneric(c, c, &modulusP) }
+
 func fpAddGeneric(c, a, b *Fp) {
 	aa, bb, cc := (*elt64)(unsafe.Pointer(a)), (*elt64)(unsafe.Pointer(b)), (*elt64)(unsafe.Pointer(c))
 	c0, x := bits.Add64(aa[0], bb[0], 0)
@@ -21,6 +22,7 @@ func fpAddGeneric(c, a, b *Fp) {
 	cc[0], x = bits.Add64(c0, 0, bit)
 	cc[1], _ = bits.Add64(c1, 0, x)
 }
+
 func fpSubGeneric(c, a, b *Fp) {
 	aa, bb, cc := (*elt64)(unsafe.Pointer(a)), (*elt64)(unsafe.Pointer(b)), (*elt64)(unsafe.Pointer(c))
 	c0, x := bits.Sub64(aa[0], bb[0], 0)
@@ -30,6 +32,7 @@ func fpSubGeneric(c, a, b *Fp) {
 	cc[0], x = bits.Sub64(c0, 0, x)
 	cc[1], _ = bits.Sub64(c1, 0, x)
 }
+
 func fpMulGeneric(c, a, b *Fp) {
 	aa, bb, cc := (*elt64)(unsafe.Pointer(a)), (*elt64)(unsafe.Pointer(b)), (*elt64)(unsafe.Pointer(c))
 	c1, c0 := bits.Mul64(aa[0], bb[0])

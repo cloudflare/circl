@@ -1,3 +1,5 @@
+// +build amd64,!purego
+
 #include "go_asm.h"
 #include "fq_amd64.h"
 #include "point_amd64.h"
