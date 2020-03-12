@@ -1,3 +1,5 @@
+// +build amd64,!purego
+
 #include "fq_amd64.h"
 
 // func fqCmov(c, a *fq, b int)
