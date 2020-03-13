@@ -40,7 +40,7 @@ version: 2.1
     - run:
         name: "Testing on Linux ARM64"
         command:
-            docker run --rm -v `pwd`:`pwd` -w `pwd` "flowher/debian-buster-aarch64-go" /bin/bash -c "make test"
+            docker run --rm -v `pwd`:`pwd` -w `pwd` "flowher/debian-buster-aarch64-go-1.14" /bin/bash -c "make test"
 
 .maintenance: &maintenance
     docker:
