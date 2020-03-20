@@ -1,0 +1,56 @@
+name: CIRCL
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+jobs:
+  amd64_job:
+    name: amd64/Go-${{matrix.GOVER}}
+    runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        GOVER: ['1.12', '1.13', '1.14']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Linting
+        uses: ./.github/actions/golangci-lint
+        with:
+          args: run --config=.etc/golangci.yml ./...
+      - name: Setup Go-${{ matrix.GOVER }}
+        uses: actions/setup-go@v2-beta
+        with:
+          go-version: ${{ matrix.GOVER }}
+      - name: Verifying Code
+        run: |
+         go generate -v ./... && test -z "$(git status --porcelain)"
+         go vet ./...
+      - name: Building
+        run: go build -v ./...
+      - name: Testing
+        run: go test -v ./...
+      - name: Coverage
+        if: matrix.GOVER == '1.14'
+        run: |
+          go test -race -coverprofile=./coverage.txt -covermode=atomic ./...
+          bash <(curl -s https://codecov.io/bash) -f ./coverage.txt
+        shell: bash
+  arm64_job:
+    runs-on: ubuntu-18.04
+    name: arm64/Go-1.14
+    env:
+        GOVER: 1.14
+        SHA256: sha256:943fa6421fe7ca2b9fa40db22a5c14f99ed95afd0c18f9b7dec1e05b9ffce804
+    steps:
+      - uses: actions/checkout@v2
+      - name: Pulling Images
+        run: |
+          docker pull -q multiarch/qemu-user-static
+          docker pull -q arm64v8/golang@$SHA256
+      - name: Testing
+        run: |
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+          docker run --rm -v `pwd`:`pwd` -w `pwd` arm64v8/golang@$SHA256 go test -v ./...
