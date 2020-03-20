@@ -1,8 +1,8 @@
 <img src=".etc/icon.png" align="right" height="300" width="300"/>
 
 # CIRCL
-[![CircleCI](https://circleci.com/gh/cloudflare/circl/tree/master.svg?style=svg)](https://circleci.com/gh/cloudflare/circl/tree/master)
-[![GoDoc](https://godoc.org/github.com/cloudflare/circl?status.svg)](https://godoc.org/github.com/cloudflare/circl)
+[![CIRCL](https://github.com/cloudflare/circl/workflows/CIRCL/badge.svg)](https://github.com/cloudflare/circl/actions)
+[![GoDoc](https://godoc.org/github.com/cloudflare/circl?status.svg)](https://pkg.go.dev/github.com/cloudflare/circl?tab=overview)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cloudflare/circl)](https://goreportcard.com/report/github.com/cloudflare/circl)
 [![codecov](https://codecov.io/gh/cloudflare/circl/branch/master/graph/badge.svg)](https://codecov.io/gh/cloudflare/circl)
 
@@ -72,4 +72,4 @@ CI build.
 
 ### License
 
-The project is licensed under the BSD License.
+The project is licensed under the [BSD-3-Clause License](./LICENSE).

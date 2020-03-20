@@ -38,8 +38,7 @@ bench: clean
 
 cover: clean
 	mkdir -p $(COVER_DIR)
-	$(GO) test -race -coverprofile=$(COVER_DIR)/coverage.txt \
-		-covermode=atomic $(OPTS) ./...
+	$(GO) test -race -coverprofile=$(COVER_DIR)/coverage.txt -covermode=atomic $(OPTS) ./...
 	$(GO) tool cover -html $(COVER_DIR)/coverage.txt -o $(COVER_DIR)/coverage.html
 
 generate: clean
