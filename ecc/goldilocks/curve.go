@@ -1,9 +1,6 @@
 package goldilocks
 
 import (
-	"fmt"
-
-	"github.com/cloudflare/circl/internal/conv"
 	fp "github.com/cloudflare/circl/math/fp448"
 )
 
@@ -51,6 +48,9 @@ func (Curve) Generator() *Point {
 	}
 }
 
+// Order returns the number of points in the prime subgroup.
+func (Curve) Order() Scalar { return order }
+
 // Double returns 2P.
 func (Curve) Double(P *Point) *Point { R := *P; R.Double(); return &R }
 
@@ -58,26 +58,20 @@ func (Curve) Double(P *Point) *Point { R := *P; R.Double(); return &R }
 func (Curve) Add(P, Q *Point) *Point { R := *P; R.Add(Q); return &R }
 
 // ScalarMult returns kP.
-func (e Curve) ScalarMult(k []byte, P *Point) *Point {
-	div4(k[:])
+func (e Curve) ScalarMult(k *Scalar, P *Point) *Point {
+	k.divBy4()
 	return e.pull(twistCurve{}.ScalarMult(k, e.push(P)))
 }
 
 // ScalarBaseMult returns kG where G is the generator point.
-func (e Curve) ScalarBaseMult(k []byte) *Point {
-	var scalar [ScalarSize]byte
-	reduceModOrder(scalar[:], k)
-	fmt.Printf("k: %v\n", conv.BytesLe2Hex(scalar[:]))
-	// div4(scalar[:])
-	P := twistCurve{}.ScalarBaseMult(scalar[:])
-	P.ToAffine()
-	fmt.Printf("Q:\n%v\n", P)
-	return e.pull(P)
+func (e Curve) ScalarBaseMult(k *Scalar) *Point {
+	k.divBy4()
+	return e.pull(twistCurve{}.ScalarBaseMult(k))
 }
 
 // CombinedMult returns mG+nP.
-func (e Curve) CombinedMult(m, n []byte, P *Point) *Point {
-	div4(m[:])
-	div4(n[:])
+func (e Curve) CombinedMult(m, n *Scalar, P *Point) *Point {
+	m.divBy4()
+	n.divBy4()
 	return e.pull(twistCurve{}.CombinedMult(m, n, e.push(P)))
 }
