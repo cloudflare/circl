@@ -10,14 +10,9 @@ import (
 )
 
 func randomPoint() *goldilocks.Point {
-	k := make([]byte, 1)
-	_, _ = rand.Read(k[:])
-	var e goldilocks.Curve
-	P := e.Generator()
-	for i := byte(0); i < k[0]; i++ {
-		P = e.Double(P)
-	}
-	return P
+	var k goldilocks.Scalar
+	rand.Read(k[:])
+	return goldilocks.Curve{}.ScalarBaseMult(&k)
 }
 
 func TestPointAdd(t *testing.T) {
@@ -43,12 +38,12 @@ func TestPointMult(t *testing.T) {
 	t.SkipNow()
 	const testTimes = 1 << 10
 	var e goldilocks.Curve
-	k := make([]byte, goldilocks.ScalarSize)
-	z := make([]byte, goldilocks.ScalarSize)
+	k := &goldilocks.Scalar{}
+	z := &goldilocks.Scalar{}
 
 	for i := 0; i < testTimes; i++ {
 		P := randomPoint()
-		_, _ = rand.Read(k)
+		_, _ = rand.Read(k[:])
 
 		got := e.ScalarBaseMult(k)
 		want := e.CombinedMult(z, k, P)
@@ -106,11 +101,6 @@ func TestPointMarshal(t *testing.T) {
 }
 
 func BenchmarkPoint(b *testing.B) {
-	k := make([]byte, goldilocks.ScalarSize)
-	l := make([]byte, goldilocks.ScalarSize)
-	_, _ = rand.Read(k)
-	_, _ = rand.Read(l)
-	var e goldilocks.Curve
 	P := randomPoint()
 	Q := randomPoint()
 	b.Run("ToAffine", func(b *testing.B) {
@@ -118,29 +108,14 @@ func BenchmarkPoint(b *testing.B) {
 			P.ToAffine()
 		}
 	})
-	b.Run("add", func(b *testing.B) {
+	b.Run("Add", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			P.Add(Q)
 		}
 	})
-	b.Run("double", func(b *testing.B) {
+	b.Run("Double", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			P.Double()
-		}
-	})
-	b.Run("ScalarMult", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			P = e.ScalarMult(k, P)
-		}
-	})
-	b.Run("ScalarBaseMult", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			e.ScalarBaseMult(k)
-		}
-	})
-	b.Run("CombinedMult", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			P = e.CombinedMult(k, l, P)
 		}
 	})
 }

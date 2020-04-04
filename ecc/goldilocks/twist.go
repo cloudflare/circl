@@ -18,7 +18,7 @@ func (twistCurve) Identity() *twistPoint {
 }
 
 // ScalarMult returns kP.
-func (twistCurve) ScalarMult(k []byte, P *twistPoint) *twistPoint { return &twistPoint{} }
+func (twistCurve) ScalarMult(k *Scalar, P *twistPoint) *twistPoint { return &twistPoint{} }
 
 const (
 	omegaFix = 7
@@ -26,9 +26,9 @@ const (
 )
 
 // CombinedMult returns mG+nP
-func (e twistCurve) CombinedMult(m, n []byte, P *twistPoint) *twistPoint {
-	nafFix := math.OmegaNAF(conv.BytesLe2BigInt(m), omegaFix)
-	nafVar := math.OmegaNAF(conv.BytesLe2BigInt(n), omegaVar)
+func (e twistCurve) CombinedMult(m, n *Scalar, P *twistPoint) *twistPoint {
+	nafFix := math.OmegaNAF(conv.BytesLe2BigInt(m[:]), omegaFix)
+	nafVar := math.OmegaNAF(conv.BytesLe2BigInt(n[:]), omegaVar)
 
 	if len(nafFix) > len(nafVar) {
 		nafVar = append(nafVar, make([]int32, len(nafFix)-len(nafVar))...)
@@ -62,6 +62,7 @@ func (e twistCurve) CombinedMult(m, n []byte, P *twistPoint) *twistPoint {
 	}
 	return Q
 }
+
 // absolute returns always a positive value.
 func absolute(x int32) int32 {
 	mask := x >> 31

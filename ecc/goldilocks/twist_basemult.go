@@ -2,11 +2,8 @@ package goldilocks
 
 import (
 	"crypto/subtle"
-	"fmt"
-	"math/big"
 
 	fp "github.com/cloudflare/circl/math/fp448"
-	"github.com/cloudflare/circl/math/mlsbset"
 	mlsb "github.com/cloudflare/circl/math/mlsbset"
 )
 
@@ -19,65 +16,28 @@ const (
 )
 
 // ScalarBaseMult returns kG where G is the generator point.
-func (e twistCurve) ScalarBaseMult(k []byte) *twistPoint {
+func (e twistCurve) ScalarBaseMult(k *Scalar) *twistPoint {
 	m, err := mlsb.New(fxT, fxV, fxW)
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("m: %v\n", m)
 	if m.IsExtended() {
 		panic("not extended")
 	}
 
-	isEven := k[0] & 0x1
-	cNegate(k, int(isEven))
-
-	c, err := m.Encode(k)
+	minusK := *k
+	isEven := 1 - int(k[0]&0x1)
+	minusK.Neg()
+	subtle.ConstantTimeCopy(isEven, k[:], minusK[:])
+	c, err := m.Encode(k[:])
 	if err != nil {
 		panic(err)
 	}
-	// bigP := c.Exp(zzAdd{m.GetParams()})
-	// fmt.Printf("k: %v\n", bigP.(*big.Int).Text(16))
 
 	gP := c.Exp(groupMLSB{})
 	P := gP.(*twistPoint)
 	P.cneg(uint(isEven))
 	return P
-}
-
-type zzAdd struct{ set mlsbset.Params }
-
-func (zzAdd) Identity() mlsbset.EltG { return big.NewInt(0) }
-func (zzAdd) NewEltP() mlsbset.EltP  { return new(big.Int) }
-func (zzAdd) Sqr(x mlsbset.EltG) {
-	a := x.(*big.Int)
-	a.Add(a, a)
-}
-func (zzAdd) Mul(x mlsbset.EltG, y mlsbset.EltP) {
-	a := x.(*big.Int)
-	b := y.(*big.Int)
-	a.Add(a, b)
-}
-func (z zzAdd) ExtendedEltP() mlsbset.EltP {
-	a := big.NewInt(1)
-	a.Lsh(a, z.set.W*z.set.D)
-	return a
-}
-func (z zzAdd) Lookup(x mlsbset.EltP, idTable uint, sgnElt int32, idElt int32) {
-	a := x.(*big.Int)
-	a.SetInt64(1)
-	a.Lsh(a, z.set.E*idTable) // 2^(e*v)
-	sum := big.NewInt(0)
-	for i := int(z.set.W - 2); i >= 0; i-- {
-		ui := big.NewInt(int64((idElt >> uint(i)) & 0x1))
-		sum.Add(sum, ui)
-		sum.Lsh(sum, z.set.D)
-	}
-	sum.Add(sum, big.NewInt(1))
-	a.Mul(a, sum)
-	if sgnElt == -1 {
-		a.Neg(a)
-	}
 }
 
 type groupMLSB struct{}
