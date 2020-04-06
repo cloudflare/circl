@@ -11,7 +11,7 @@ import (
 
 func randomPoint() *goldilocks.Point {
 	var k goldilocks.Scalar
-	rand.Read(k[:])
+	_, _ = rand.Read(k[:])
 	return goldilocks.Curve{}.ScalarBaseMult(&k)
 }
 
@@ -30,26 +30,6 @@ func TestPointAdd(t *testing.T) {
 		want := Q
 		if !e.IsOnCurve(got) || !e.IsOnCurve(want) || !got.IsEqual(want) {
 			test.ReportError(t, got, want, P)
-		}
-	}
-}
-
-func TestPointMult(t *testing.T) {
-	t.SkipNow()
-	const testTimes = 1 << 10
-	var e goldilocks.Curve
-	k := &goldilocks.Scalar{}
-	z := &goldilocks.Scalar{}
-
-	for i := 0; i < testTimes; i++ {
-		P := randomPoint()
-		_, _ = rand.Read(k[:])
-
-		got := e.ScalarBaseMult(k)
-		want := e.CombinedMult(z, k, P)
-
-		if !e.IsOnCurve(got) || !e.IsOnCurve(want) || !got.IsEqual(want) {
-			test.ReportError(t, got, want, P, k)
 		}
 	}
 }

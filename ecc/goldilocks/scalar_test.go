@@ -16,7 +16,7 @@ func TestReduceModOrder(t *testing.T) {
 	bigOrder := conv.BytesLe2BigInt(order[:])
 	const max = 3*goldilocks.ScalarSize - 1
 	var b [max]byte
-	rand.Read(b[:])
+	_, _ = rand.Read(b[:])
 	var z goldilocks.Scalar
 	for i := 0; i < max; i++ {
 		x := b[0:i]
@@ -43,9 +43,10 @@ func testOp(t *testing.T,
 	order := goldilocks.Curve{}.Order()
 	want := new(big.Int)
 	bigOrder := conv.BytesLe2BigInt(order[:])
+
 	for i := 0; i < testTimes; i++ {
-		rand.Read(x[:])
-		rand.Read(y[:])
+		_, _ = rand.Read(x[:])
+		_, _ = rand.Read(y[:])
 		bigX := conv.BytesLe2BigInt(x[:])
 		bigY := conv.BytesLe2BigInt(y[:])
 
@@ -83,7 +84,7 @@ func TestScalar(t *testing.T) {
 func BenchmarkScalar(b *testing.B) {
 	var k [2 * goldilocks.ScalarSize]byte
 	var x, y, z goldilocks.Scalar
-	binary.Read(rand.Reader, binary.LittleEndian, x[:])
+	_ = binary.Read(rand.Reader, binary.LittleEndian, x[:])
 	b.Run("Add", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			z.Add(&x, &y)
