@@ -222,22 +222,18 @@ func TestToBytes(t *testing.T) {
 	var got, want [Size]byte
 	for i := 0; i < numTests; i++ {
 		_, _ = rand.Read(x[:])
-		ToBytes(got[:], &x)
+		err := ToBytes(got[:], &x)
 		conv.BigInt2BytesLe(want[:], conv.BytesLe2BigInt(x[:]))
 
-		if got != want {
+		if err != nil || got != want {
 			test.ReportError(t, got, want, x)
 		}
 	}
-	var small [Size + 1]byte
-	defer func() {
-		if r := recover(); r == nil {
-			got := r
-			want := "should panic!"
-			test.ReportError(t, got, want)
-		}
-	}()
-	ToBytes(small[:], &x)
+	var largeSlice [Size + 1]byte
+	err := ToBytes(largeSlice[:], &x)
+	if err == nil {
+		test.ReportError(t, got, want, largeSlice)
+	}
 }
 
 func TestString(t *testing.T) {
