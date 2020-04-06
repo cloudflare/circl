@@ -24,7 +24,7 @@ func FromAffine(x, y *fp.Elt) (*Point, error) {
 		tb: *y,
 	}
 	if !(Curve{}).IsOnCurve(P) {
-		return P, errors.New("Point not on Curve")
+		return P, errors.New("point not on curve")
 	}
 	return P, nil
 }

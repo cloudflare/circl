@@ -126,8 +126,8 @@ func (z *Scalar) FromBytes(x []byte) {
 	z64.modOrder()
 }
 
-// divBy4 calculates x = x/4 mod order.
-func (z *Scalar) divBy4() { z.Mul(z, &invFour) }
+// divBy4 calculates z = x/4 mod order.
+func (z *Scalar) divBy4(x *Scalar) { z.Mul(x, &invFour) }
 
 // Red reduces z mod order.
 func (z *Scalar) Red() { z.getScalar64().modOrder() }
@@ -179,3 +179,6 @@ func (z *Scalar) Mul(x, y *Scalar) {
 	t.modOrder()
 	*z64 = *t
 }
+
+// IsZero returns true if z=0.
+func (z *Scalar) IsZero() bool { z.Red(); return *z == Scalar{} }

@@ -1,8 +1,7 @@
+// Package goldilocks provides elliptic curve operations over the goldilocks curve.
 package goldilocks
 
-import (
-	fp "github.com/cloudflare/circl/math/fp448"
-)
+import fp "github.com/cloudflare/circl/math/fp448"
 
 // Curve is the Goldilocks curve x^2+y^2=z^2-39081x^2y^2.
 type Curve struct{}
@@ -57,21 +56,25 @@ func (Curve) Double(P *Point) *Point { R := *P; R.Double(); return &R }
 // Add returns P+Q.
 func (Curve) Add(P, Q *Point) *Point { R := *P; R.Add(Q); return &R }
 
-// ScalarMult returns kP.
+// ScalarMult returns kP. This function runs in constant time.
 func (e Curve) ScalarMult(k *Scalar, P *Point) *Point {
-	k.divBy4()
-	return e.pull(twistCurve{}.ScalarMult(k, e.push(P)))
+	k4 := &Scalar{}
+	k4.divBy4(k)
+	return e.pull(twistCurve{}.ScalarMult(k4, e.push(P)))
 }
 
-// ScalarBaseMult returns kG where G is the generator point.
+// ScalarBaseMult returns kG where G is the generator point. This function runs in constant time.
 func (e Curve) ScalarBaseMult(k *Scalar) *Point {
-	k.divBy4()
-	return e.pull(twistCurve{}.ScalarBaseMult(k))
+	k4 := &Scalar{}
+	k4.divBy4(k)
+	return e.pull(twistCurve{}.ScalarBaseMult(k4))
 }
 
-// CombinedMult returns mG+nP.
+// CombinedMult returns mG+nP, where G is the generator point. This function is non-constant time.
 func (e Curve) CombinedMult(m, n *Scalar, P *Point) *Point {
-	m.divBy4()
-	n.divBy4()
-	return e.pull(twistCurve{}.CombinedMult(m, n, e.push(P)))
+	m4 := &Scalar{}
+	n4 := &Scalar{}
+	m4.divBy4(m)
+	n4.divBy4(n)
+	return e.pull(twistCurve{}.CombinedMult(m4, n4, e.push(P)))
 }
