@@ -29,9 +29,9 @@ func FromAffine(x, y *fp.Elt) (*Point, error) {
 	return P, nil
 }
 
-// isLessThan returns true if 0 <= x < y, and assumes that slices have the same length.
+// isLessThan returns true if 0 <= x < y, and assumes that slices are of the
+// same length and are interpreted in little-endian order.
 func isLessThan(x, y []byte) bool {
-
 	i := len(x) - 1
 	for i > 0 && x[i] == y[i] {
 		i--
@@ -142,6 +142,9 @@ func (P *Point) Double() { P.Add(P) }
 
 // Add sets P =P+Q..
 func (P *Point) Add(Q *Point) {
+	// This is formula (5) from "Twisted Edwards Curves Revisited" by
+	// Hisil H., Wong K.KH., Carter G., Dawson E. (2008)
+	// https://doi.org/10.1007/978-3-540-89255-7_20
 	x1, y1, z1, ta1, tb1 := &P.x, &P.y, &P.z, &P.ta, &P.tb
 	x2, y2, z2, ta2, tb2 := &Q.x, &Q.y, &Q.z, &Q.ta, &Q.tb
 	x3, y3, z3, E, H := &P.x, &P.y, &P.z, &P.ta, &P.tb

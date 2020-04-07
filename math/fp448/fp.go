@@ -57,10 +57,15 @@ func Neg(z, x *Elt) { Sub(z, &p, x) }
 // Modp ensures that z is between [0,p-1].
 func Modp(z *Elt) { Sub(z, z, &p) }
 
-// InvSqrt calculates z = sqrt(x/y) iff x/y is a quadratic-residue, which is
-// indicated by returning isQR = true. Otherwise, when x/y is a quadratic
-// non-residue, z will have an undetermined value and isQR = false.
+// InvSqrt calculates z = sqrt(x/y) iff x/y is a quadratic-residue. If so,
+// isQR = true; otherwise, isQR = false, since x/y is a quadratic non-residue,
+// and z = sqrt(-x/y).
 func InvSqrt(z, x, y *Elt) (isQR bool) {
+	// First note that x^(2(k+1)) = x^(p-1)/2 * x = legendre(x) * x
+	// so that's x if x is a quadratic residue and -x otherwise.
+	// Next, y^(6k+3) = y^(4k+2) * y^(2k+1) = y^(p-1) * y^((p-1)/2) = legendre(y).
+	// So the z we compute satisfies z^2 y = x^(2(k+1)) y^(6k+3) = legendre(x)*legendre(y).
+	// Thus if x and y are quadratic residues, then z is indeed sqrt(x/y).
 	t0, t1 := &Elt{}, &Elt{}
 	Mul(t0, x, y)         // x*y
 	Sqr(t1, y)            // y^2
@@ -77,6 +82,7 @@ func InvSqrt(z, x, y *Elt) (isQR bool) {
 
 // Inv calculates z = 1/x mod p.
 func Inv(z, x *Elt) {
+	// Calculates z = x^(4k+1) = x^(p-3+1) = x^(p-2) = x^-1, where k = (p-3)/4.
 	t := &Elt{}
 	powPminus3div4(t, x) // t = x^k
 	Sqr(t, t)            // t = x^2k

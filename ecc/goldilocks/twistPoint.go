@@ -30,6 +30,9 @@ func (P *twistPoint) cneg(b uint) {
 
 // Double updates P with 2P.
 func (P *twistPoint) Double() {
+	// This is formula (7) from "Twisted Edwards Curves Revisited" by
+	// Hisil H., Wong K.KH., Carter G., Dawson E. (2008)
+	// https://doi.org/10.1007/978-3-540-89255-7_20
 	Px, Py, Pz, Pta, Ptb := &P.x, &P.y, &P.z, &P.ta, &P.tb
 	a, b, c, e, f, g, h := Px, Py, Pz, Pta, Px, Py, Ptb
 	fp.Add(e, Px, Py) // x+y
@@ -55,6 +58,9 @@ func (P *twistPoint) mixAddZ1(Q *preTwistPointAffine) {
 
 // coreAddition calculates P=P+Q for curves with A=-1
 func (P *twistPoint) coreAddition(Q *preTwistPointAffine) {
+	// This is the formula following (5) from "Twisted Edwards Curves Revisited" by
+	// Hisil H., Wong K.KH., Carter G., Dawson E. (2008)
+	// https://doi.org/10.1007/978-3-540-89255-7_20
 	Px, Py, Pz, Pta, Ptb := &P.x, &P.y, &P.z, &P.ta, &P.tb
 	addYX2, subYX2, dt2 := &Q.addYX, &Q.subYX, &Q.dt2
 	a, b, c, d, e, f, g, h := Px, Py, &fp.Elt{}, Pz, Pta, Px, Py, Ptb
@@ -120,10 +126,10 @@ func (P *preTwistPointProy) cmov(Q *preTwistPointProy, b uint) {
 
 // FromTwistPoint precomputes some coordinates of Q for mised addition.
 func (P *preTwistPointProy) FromTwistPoint(Q *twistPoint) {
-	fp.Add(&P.addYX, &Q.y, &Q.x)
-	fp.Sub(&P.subYX, &Q.y, &Q.x)
-	fp.Mul(&P.dt2, &Q.ta, &Q.tb)
-	fp.Mul(&P.dt2, &P.dt2, &paramDTwist)
-	fp.Add(&P.dt2, &P.dt2, &P.dt2)
-	fp.Add(&P.z2, &Q.z, &Q.z)
+	fp.Add(&P.addYX, &Q.y, &Q.x)         // addYX = X + Y
+	fp.Sub(&P.subYX, &Q.y, &Q.x)         // subYX = Y - X
+	fp.Mul(&P.dt2, &Q.ta, &Q.tb)         // T = ta*tb
+	fp.Mul(&P.dt2, &P.dt2, &paramDTwist) // D*T
+	fp.Add(&P.dt2, &P.dt2, &P.dt2)       // dt2 = 2*D*T
+	fp.Add(&P.z2, &Q.z, &Q.z)            // z2 = 2*Z
 }
