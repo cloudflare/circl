@@ -1,7 +1,10 @@
 package ed448_test
 
 import (
+	"bytes"
+	"crypto"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -67,6 +70,103 @@ func TestWrongPublicKey(t *testing.T) {
 	}
 }
 
+func TestSigner(t *testing.T) {
+	seed := make(ed448.PrivateKey, ed448.Size)
+	_, _ = rand.Read(seed)
+	key := ed448.NewKeyFromSeed(seed)
+
+	priv := key.GetPrivate()
+	if !bytes.Equal(seed, priv) {
+		got := priv
+		want := seed
+		test.ReportError(t, got, want)
+	}
+	priv = key.Seed()
+	if !bytes.Equal(seed, priv) {
+		got := priv
+		want := seed
+		test.ReportError(t, got, want)
+	}
+
+	signer := crypto.Signer(key)
+	ops := crypto.Hash(0)
+	msg := make([]byte, 16)
+	_, _ = rand.Read(msg)
+	sig, err := signer.Sign(nil, msg, ops)
+	if err != nil {
+		got := err
+		var want error
+		test.ReportError(t, got, want)
+	}
+	if len(sig) != ed448.SignatureSize {
+		got := len(sig)
+		want := ed448.SignatureSize
+		test.ReportError(t, got, want)
+	}
+
+	pubKey := key.GetPublic()
+	pubSigner, ok := signer.Public().(ed448.PublicKey)
+	if !ok {
+		got := ok
+		want := true
+		test.ReportError(t, got, want)
+	}
+	if !bytes.Equal(pubKey, pubSigner) {
+		got := pubSigner
+		want := pubKey
+		test.ReportError(t, got, want)
+	}
+
+	got := ed448.Verify(pubSigner, msg, nil, sig)
+	want := true
+	if got != want {
+		test.ReportError(t, got, want)
+	}
+}
+
+type badReader struct{}
+
+func (badReader) Read([]byte) (n int, err error) { return 0, errors.New("cannot read") }
+
+func TestErrors(t *testing.T) {
+	shouldPanic := func(t *testing.T) {
+		t.Helper()
+		if r := recover(); r == nil {
+			t.Errorf("it should panic")
+		}
+	}
+
+	t.Run("badHash", func(t *testing.T) {
+		var msg [16]byte
+		ops := crypto.SHA224
+		key, _ := ed448.GenerateKey(nil)
+		_, got := key.Sign(nil, msg[:], ops)
+		want := errors.New("ed448: cannot sign hashed message")
+		if got.Error() != want.Error() {
+			test.ReportError(t, got, want)
+		}
+	})
+	t.Run("badReader", func(t *testing.T) {
+		_, got := ed448.GenerateKey(badReader{})
+		want := errors.New("cannot read")
+		if got.Error() != want.Error() {
+			test.ReportError(t, got, want)
+		}
+	})
+	t.Run("wrongSeedSize", func(t *testing.T) {
+		defer shouldPanic(t)
+		var seed [256]byte
+		ed448.NewKeyFromSeed(seed[:])
+	})
+	t.Run("bigContext", func(t *testing.T) {
+		defer shouldPanic(t)
+		var msg [16]byte
+		var ctx [256]byte
+		key, _ := ed448.GenerateKey(nil)
+		ed448.Sign(key, msg[:], ctx[:])
+	})
+}
+
 func BenchmarkEd448(b *testing.B) {
 	msg := make([]byte, 128)
 	ctx := make([]byte, 128)
@@ -98,7 +198,7 @@ func Example_ed448() {
 	// import "github.com/cloudflare/circl/sign/ed448"
 
 	// Generating Alice's key pair
-	keys, err := ed448.GenerateKey(rand.Reader)
+	key, err := ed448.GenerateKey(rand.Reader)
 	if err != nil {
 		panic("error on generating keys")
 	}
@@ -106,10 +206,10 @@ func Example_ed448() {
 	// Alice signs a message.
 	message := []byte("A message to be signed")
 	context := []byte("This is a context string")
-	signature := ed448.Sign(keys, message, context)
+	signature := ed448.Sign(key, message, context)
 
 	// Anyone can verify the signature using Alice's public key.
-	ok := ed448.Verify(keys.GetPublic(), message, context, signature)
+	ok := ed448.Verify(key.GetPublic(), message, context, signature)
 	fmt.Println(ok)
 	// Output: true
 }
