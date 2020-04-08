@@ -174,10 +174,14 @@ func isLessThanOrder(x []byte) bool {
 	return x[Size-1] == 0 && x[i] < order[i]
 }
 
+// clamp prines the buffer as indicated in rfc8032 (https://tools.ietf.org/html/rfc8032#section-5.2.5)
+// 1. The two least significant bits of the first octet are cleared,
+// 2. all eight bits the last octet are cleared, and
+// 3. the highest bit of the second to last octet is set.
 func clamp(k []byte) {
 	k[0] &= 252
-	k[Size-2] |= 0x80
 	k[Size-1] = 0x00
+	k[Size-2] |= 0x80
 }
 
 func makeCopy(in *[Size]byte) []byte {
