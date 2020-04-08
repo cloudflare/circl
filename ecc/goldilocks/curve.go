@@ -21,7 +21,7 @@ func (Curve) IsOnCurve(P *Point) bool {
 	fp.Mul(t, &P.ta, &P.tb)  // t = ta*tb
 	fp.Sqr(x2, &P.x)         // x^2
 	fp.Sqr(y2, &P.y)         // y^2
-	fp.Sqr(z2, &P.z)         // y^2
+	fp.Sqr(z2, &P.z)         // z^2
 	fp.Sqr(t2, t)            // t^2
 	fp.Add(lhs, x2, y2)      // x^2 + y^2
 	fp.Mul(rhs, t2, &paramD) // dt^2
