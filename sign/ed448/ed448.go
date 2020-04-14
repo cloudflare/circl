@@ -37,10 +37,10 @@ type PrivateKey []byte
 type KeyPair struct{ private, public [Size]byte }
 
 // GetPrivate returns a copy of the private key.
-func (k *KeyPair) GetPrivate() PrivateKey { return makeCopy(&k.private) }
+func (k *KeyPair) GetPrivate() PrivateKey { z := k.private; return z[:] }
 
-// GetPublic returns the public key corresponding to the private key.
-func (k *KeyPair) GetPublic() PublicKey { return makeCopy(&k.public) }
+// GetPublic returns a copy of the public key.
+func (k *KeyPair) GetPublic() PublicKey { z := k.public; return z[:] }
 
 // Seed returns the private key seed.
 func (k *KeyPair) Seed() []byte { return k.GetPrivate() }
@@ -197,10 +197,4 @@ func isLessThanOrder(x []byte) bool {
 		i--
 	}
 	return x[Size-1] == 0 && x[i] < order[i]
-}
-
-func makeCopy(in *[Size]byte) []byte {
-	out := make([]byte, Size)
-	copy(out, in[:])
-	return out
 }
