@@ -33,3 +33,53 @@ func TestFp(t *testing.T) {
 		}
 	}
 }
+func BenchmarkFp(b *testing.B) {
+	x := randomFp()
+	y := randomFp()
+	z := randomFp()
+	b.Run("Add", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			z.Add(x, y)
+		}
+	})
+	b.Run("Mul", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			z.Mul(x, y)
+		}
+	})
+	b.Run("Sqr", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			z.Sqr(x)
+		}
+	})
+	b.Run("Inv", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			z.Inv(x)
+		}
+	})
+}
+func BenchmarkFp2(b *testing.B) {
+	x := randomFp2()
+	y := randomFp2()
+	z := randomFp2()
+	b.Run("Add", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			z.Add(x, y)
+		}
+	})
+	b.Run("Mul", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			z.Mul(x, y)
+		}
+	})
+	b.Run("Sqr", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			z.Sqr(x)
+		}
+	})
+	b.Run("Inv", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			z.Inv(x)
+		}
+	})
+}
