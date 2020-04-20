@@ -111,20 +111,6 @@ func (g *G1) Add(P, Q *G1) {
 	g.Set(&R)
 }
 
-// oddMultiples calculates the points iP for i={1,3,5,7,..., 2^(n-1)-1},
-// n=len(T), and for 1 < n < 31.
-func (g *G1) oddMultiples(T []G1) {
-	if n := uint(len(T)); n > 1 && n < 31 {
-		T[0] = *g
-		_2P := *g
-		_2P.Double()
-		s := uint(1) << uint(n-1)
-		for i := uint(1); i < s; i++ {
-			T[i].Add(&T[i-1], &_2P)
-		}
-	}
-}
-
 // ScalarMult is
 func (g *G1) ScalarMult(k *Scalar, P *G1) {
 	var Q G1
