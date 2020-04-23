@@ -93,7 +93,7 @@ type vector struct {
 	ctxLen uint
 }
 
-var vectorsed25519 = [...]vector{
+var vectorsEd25519 = [...]vector{
 	{
 		name:   "-----TEST 1",
 		scheme: "Ed25519Pure",
@@ -290,7 +290,7 @@ func (v vector) testPublicKey(t *testing.T) {
 	want := v.pk
 
 	if !bytes.Equal(got, want) {
-		test.ReportError(t, got, want, v.sk)
+		test.ReportError(t, got, want, v.name)
 	}
 }
 
@@ -313,7 +313,7 @@ func (v vector) testVerify(t *testing.T) {
 }
 
 func TestEd25519(t *testing.T) {
-	for _, v := range vectorsed25519 {
+	for _, v := range vectorsEd25519 {
 		got := v.isPure() && v.matchMsgLen() && v.matchCtxLen()
 		want := true
 		if got != want {

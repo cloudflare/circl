@@ -82,7 +82,7 @@ func TestRangeOrder(t *testing.T) {
 	}
 
 	for i := range aboveOrder {
-		got := isLessThan(aboveOrder[i][:], order[:])
+		got := isLessThanOrder(aboveOrder[i][:])
 		want := false
 		if got != want {
 			test.ReportError(t, got, want, i, aboveOrder[i])
