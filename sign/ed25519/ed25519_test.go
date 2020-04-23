@@ -1,16 +1,19 @@
 package ed25519_test
 
 import (
+	"bytes"
+	"crypto"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/test"
-	eddsa "github.com/cloudflare/circl/sign/ed25519"
+	"github.com/cloudflare/circl/sign/ed25519"
 )
 
 func TestWrongPublicKey(t *testing.T) {
-	wrongPublicKeys := [...][eddsa.Size]byte{
+	wrongPublicKeys := [...][ed25519.Size]byte{
 		{ // y = p
 			0xed, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -42,9 +45,9 @@ func TestWrongPublicKey(t *testing.T) {
 			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f | 0x80,
 		},
 	}
-	sig := make([]byte, 2*eddsa.Size)
+	sig := (&[ed25519.SignatureSize]byte{})[:]
 	for _, public := range wrongPublicKeys {
-		got := eddsa.Verify(public[:], []byte(""), sig)
+		got := ed25519.Verify(public[:], []byte(""), sig)
 		want := false
 		if got != want {
 			test.ReportError(t, got, want, public)
@@ -52,28 +55,114 @@ func TestWrongPublicKey(t *testing.T) {
 	}
 }
 
+func TestSigner(t *testing.T) {
+	seed := make(ed25519.PrivateKey, ed25519.Size)
+	_, _ = rand.Read(seed)
+	key := ed25519.NewKeyFromSeed(seed)
+
+	priv := key.GetPrivate()
+	if !bytes.Equal(seed, priv) {
+		got := priv
+		want := seed
+		test.ReportError(t, got, want)
+	}
+	priv = key.Seed()
+	if !bytes.Equal(seed, priv) {
+		got := priv
+		want := seed
+		test.ReportError(t, got, want)
+	}
+
+	signer := crypto.Signer(key)
+	ops := crypto.Hash(0)
+	msg := make([]byte, 16)
+	_, _ = rand.Read(msg)
+	sig, err := signer.Sign(nil, msg, ops)
+	if err != nil {
+		got := err
+		var want error
+		test.ReportError(t, got, want)
+	}
+	if len(sig) != ed25519.SignatureSize {
+		got := len(sig)
+		want := ed25519.SignatureSize
+		test.ReportError(t, got, want)
+	}
+
+	pubKey := key.GetPublic()
+	pubSigner, ok := signer.Public().(ed25519.PublicKey)
+	if !ok {
+		got := ok
+		want := true
+		test.ReportError(t, got, want)
+	}
+	if !bytes.Equal(pubKey, pubSigner) {
+		got := pubSigner
+		want := pubKey
+		test.ReportError(t, got, want)
+	}
+
+	got := ed25519.Verify(pubSigner, msg, sig)
+	want := true
+	if got != want {
+		test.ReportError(t, got, want)
+	}
+}
+
+type badReader struct{}
+
+func (badReader) Read([]byte) (n int, err error) { return 0, errors.New("cannot read") }
+
+func TestErrors(t *testing.T) {
+	t.Run("badHash", func(t *testing.T) {
+		var msg [16]byte
+		ops := crypto.SHA224
+		key, _ := ed25519.GenerateKey(nil)
+		_, got := key.Sign(nil, msg[:], ops)
+		want := errors.New("ed25519: cannot sign hashed message")
+		if got.Error() != want.Error() {
+			test.ReportError(t, got, want)
+		}
+	})
+	t.Run("badReader", func(t *testing.T) {
+		_, got := ed25519.GenerateKey(badReader{})
+		want := errors.New("cannot read")
+		if got.Error() != want.Error() {
+			test.ReportError(t, got, want)
+		}
+	})
+	t.Run("wrongSeedSize", func(t *testing.T) {
+		var seed [256]byte
+		var want error
+		got := test.CheckPanic(func() { ed25519.NewKeyFromSeed(seed[:]) })
+		if got != want {
+			test.ReportError(t, got, want)
+		}
+	})
+}
+
 func BenchmarkEd25519(b *testing.B) {
-	msg := make([]byte, 256)
+	msg := make([]byte, 128)
 	_, _ = rand.Read(msg)
 
 	b.Run("keygen", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			eddsa.GenerateKey(rand.Reader)
+			ed25519.GenerateKey(rand.Reader)
 		}
 	})
 	b.Run("sign", func(b *testing.B) {
-		keys, _ := eddsa.GenerateKey(rand.Reader)
+		key, _ := ed25519.GenerateKey(rand.Reader)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			eddsa.Sign(keys, msg)
+			ed25519.Sign(key, msg)
 		}
 	})
 	b.Run("verify", func(b *testing.B) {
-		keys, _ := eddsa.GenerateKey(rand.Reader)
-		signature := eddsa.Sign(keys, msg)
+		key, _ := ed25519.GenerateKey(rand.Reader)
+		sig := ed25519.Sign(key, msg)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			eddsa.Verify(keys.GetPublic(), msg, signature)
+			ed25519.Verify(key.GetPublic(), msg, sig)
 		}
 	})
 }
@@ -82,17 +171,17 @@ func Example_ed25519() {
 	// import "github.com/cloudflare/circl/sign/ed25519"
 
 	// Generating Alice's key pair
-	keys, err := eddsa.GenerateKey(rand.Reader)
+	keys, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
 		panic("error on generating keys")
 	}
 
 	// Alice signs a message.
 	message := []byte("A message to be signed")
-	signature := eddsa.Sign(keys, message)
+	signature := ed25519.Sign(keys, message)
 
 	// Anyone can verify the signature using Alice's public key.
-	ok := eddsa.Verify(keys.GetPublic(), message, signature)
+	ok := ed25519.Verify(keys.GetPublic(), message, signature)
 	fmt.Println(ok)
 	// Output: true
 }

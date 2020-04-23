@@ -11,7 +11,6 @@ import (
 	"crypto"
 	cryptoRand "crypto/rand"
 	"errors"
-	"fmt"
 	"io"
 
 	"github.com/cloudflare/circl/ecc/goldilocks"
@@ -45,10 +44,12 @@ func (k *KeyPair) GetPublic() PublicKey { z := k.public; return z[:] }
 // Seed returns the private key seed.
 func (k *KeyPair) Seed() []byte { return k.GetPrivate() }
 
-// Public returns a crypto.PublicKey corresponding to the private key.
+// Public returns a crypto.PublicKey.
 func (k *KeyPair) Public() crypto.PublicKey { return k.GetPublic() }
 
 // Sign creates a signature of a message given a key pair.
+// Ed448 performs two passes over messages to be signed and therefore cannot
+// handle pre-hashed messages.
 // The opts.HashFunc() must return zero to indicate the message hasn't been
 // hashed. This can be achieved by passing crypto.Hash(0) as the value for opts.
 // This function signs using as context the empty string.
@@ -59,7 +60,7 @@ func (k *KeyPair) Sign(rand io.Reader, message []byte, opts crypto.SignerOpts) (
 	return Sign(k, message, nil), nil
 }
 
-// GenerateKey produces a pair of public and private keys using entropy from rand.
+// GenerateKey produces public and private keys using entropy from rand.
 // If rand is nil, crypto/rand.Reader will be used.
 func GenerateKey(rand io.Reader) (*KeyPair, error) {
 	if rand == nil {
@@ -95,7 +96,7 @@ func NewKeyFromSeed(seed PrivateKey) *KeyPair {
 // See Section 8.3 of RFC-8032 (https://tools.ietf.org/html/rfc8032#section-8.3).
 func Sign(kp *KeyPair, message, context []byte) []byte {
 	if len(context) > MaxContextLength {
-		panic(fmt.Sprintf("context should be at most %v bytes", MaxContextLength))
+		panic("context should be at most ed448.MaxContextLength bytes")
 	}
 	// 1.  Hash the 57-byte private key using SHAKE256(x, 114).
 	var h [2 * Size]byte
@@ -143,7 +144,7 @@ func Sign(kp *KeyPair, message, context []byte) []byte {
 	var signature [SignatureSize]byte
 	copy(signature[:Size], R[:])
 	copy(signature[Size:], S[:])
-	return signature[:SignatureSize]
+	return signature[:]
 }
 
 // Verify returns true if the signature is valid. Failure cases are invalid
@@ -167,7 +168,7 @@ func Verify(public PublicKey, message, context, signature []byte) bool {
 	_, _ = H.Write(dom4[:])
 	_, _ = H.Write(context)
 	_, _ = H.Write(R)
-	_, _ = H.Write(public[:Size])
+	_, _ = H.Write(public)
 	_, _ = H.Write(message)
 	_, _ = H.Read(hRAM[:])
 
