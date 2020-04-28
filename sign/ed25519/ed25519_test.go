@@ -13,7 +13,7 @@ import (
 )
 
 func TestWrongPublicKey(t *testing.T) {
-	wrongPublicKeys := [...][ed25519.Size]byte{
+	wrongPublicKeys := [...][ed25519.PublicKeySize]byte{
 		{ // y = p
 			0xed, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -56,7 +56,7 @@ func TestWrongPublicKey(t *testing.T) {
 }
 
 func TestSigner(t *testing.T) {
-	seed := make(ed25519.PrivateKey, ed25519.Size)
+	seed := make(ed25519.PrivateKey, ed25519.PrivateKeySize)
 	_, _ = rand.Read(seed)
 	key := ed25519.NewKeyFromSeed(seed)
 
@@ -147,19 +147,19 @@ func BenchmarkEd25519(b *testing.B) {
 
 	b.Run("keygen", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			ed25519.GenerateKey(rand.Reader)
+			_, _ = ed25519.GenerateKey(rand.Reader)
 		}
 	})
 	b.Run("sign", func(b *testing.B) {
 		key, _ := ed25519.GenerateKey(rand.Reader)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			ed25519.Sign(key, msg)
+			_, _ = key.SignPure(msg)
 		}
 	})
 	b.Run("verify", func(b *testing.B) {
 		key, _ := ed25519.GenerateKey(rand.Reader)
-		sig := ed25519.Sign(key, msg)
+		sig, _ := key.SignPure(msg)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			ed25519.Verify(key.GetPublic(), msg, sig)
@@ -178,7 +178,10 @@ func Example_ed25519() {
 
 	// Alice signs a message.
 	message := []byte("A message to be signed")
-	signature := ed25519.Sign(keys, message)
+	signature, err := keys.SignPure(message)
+	if err != nil {
+		panic("error on signing message")
+	}
 
 	// Anyone can verify the signature using Alice's public key.
 	ok := ed25519.Verify(keys.GetPublic(), message, signature)

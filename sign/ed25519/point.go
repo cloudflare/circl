@@ -39,14 +39,14 @@ func (P *pointR1) ToBytes(k []byte) {
 	fp.ToBytes(k[:fp.Size], &P.y)
 	fp.ToBytes(x[:], &P.x)
 	b := x[0] & 1
-	k[Size-1] = k[Size-1] | (b << 7)
+	k[paramB-1] = k[paramB-1] | (b << 7)
 }
 
 func (P *pointR1) FromBytes(k []byte) bool {
-	if len(k) != Size {
+	if len(k) != paramB {
 		panic("wrong size")
 	}
-	signX := k[Size-1] >> 7
+	signX := k[paramB-1] >> 7
 	copy(P.y[:], k[:fp.Size])
 	P.y[fp.Size-1] &= 0x7F
 	p := fp.P()

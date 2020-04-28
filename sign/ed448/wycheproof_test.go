@@ -87,9 +87,9 @@ func (kat *Wycheproof) verify(t *testing.T) {
 				test.ReportError(t, got, want, i, gT.TcID)
 			}
 			if isValid {
-				got := ed448.Sign(keys, msg, ctx)
+				got, err := keys.SignWithContext(msg, ctx)
 				want := sig
-				if !bytes.Equal(got, want) {
+				if !bytes.Equal(got, want) || err != nil {
 					test.ReportError(t, got, want, i, gT.TcID)
 				}
 			}
