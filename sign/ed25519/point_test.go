@@ -9,7 +9,7 @@ import (
 )
 
 func randomPoint(P *pointR1) {
-	k := make([]byte, Size)
+	k := make([]byte, paramB)
 	_, _ = rand.Read(k[:])
 	P.fixedMult(k)
 }
@@ -45,8 +45,8 @@ func TestPoint(t *testing.T) {
 
 	t.Run("fixed", func(t *testing.T) {
 		var P, Q, R pointR1
-		k := make([]byte, Size)
-		l := make([]byte, Size)
+		k := make([]byte, paramB)
+		l := make([]byte, paramB)
 		for i := 0; i < testTimes; i++ {
 			randomPoint(&P)
 			_, _ = rand.Read(k[:])
@@ -71,8 +71,8 @@ func BenchmarkPoint(b *testing.B) {
 		b.SkipNow()
 	}
 
-	k := make([]byte, Size)
-	l := make([]byte, Size)
+	k := make([]byte, paramB)
+	l := make([]byte, paramB)
 	_, _ = rand.Read(k)
 	_, _ = rand.Read(l)
 

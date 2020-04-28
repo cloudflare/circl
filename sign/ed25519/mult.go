@@ -23,7 +23,7 @@ const (
 	fxV        = 2
 	fxW        = 3
 	fx2w1      = 1 << (uint(fxW) - 1)
-	numWords64 = (Size * 8 / 64)
+	numWords64 = (paramB * 8 / 64)
 )
 
 // mLSBRecoding is the odd-only modified LSB-set.
@@ -106,7 +106,7 @@ func div2subY(x []uint64, y int64, l int) {
 }
 
 func (P *pointR1) fixedMult(scalar []byte) {
-	if len(scalar) != Size {
+	if len(scalar) != paramB {
 		panic("wrong scalar size")
 	}
 	const ee = (fxT + fxW*fxV - 1) / (fxW * fxV)

@@ -13,7 +13,7 @@ import (
 )
 
 func TestWrongPublicKey(t *testing.T) {
-	wrongPublicKeys := [...][ed448.Size]byte{
+	wrongPublicKeys := [...][ed448.PublicKeySize]byte{
 		{ // y = p
 			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -71,7 +71,7 @@ func TestWrongPublicKey(t *testing.T) {
 }
 
 func TestSigner(t *testing.T) {
-	seed := make(ed448.PrivateKey, ed448.Size)
+	seed := make(ed448.PrivateKey, ed448.PrivateKeySize)
 	_, _ = rand.Read(seed)
 	key := ed448.NewKeyFromSeed(seed)
 
@@ -157,10 +157,10 @@ func TestErrors(t *testing.T) {
 	t.Run("bigContext", func(t *testing.T) {
 		var msg [16]byte
 		var ctx [256]byte
-		var want error
 		key, _ := ed448.GenerateKey(nil)
-		got := test.CheckPanic(func() { ed448.Sign(key, msg[:], ctx[:]) })
-		if got != want {
+		_, got := key.SignWithContext(msg[:], ctx[:])
+		want := errors.New("context should be at most ed448.MaxContextLength bytes")
+		if got.Error() != want.Error() {
 			test.ReportError(t, got, want)
 		}
 	})
@@ -174,19 +174,19 @@ func BenchmarkEd448(b *testing.B) {
 
 	b.Run("keygen", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			ed448.GenerateKey(rand.Reader)
+			_, _ = ed448.GenerateKey(rand.Reader)
 		}
 	})
 	b.Run("sign", func(b *testing.B) {
 		key, _ := ed448.GenerateKey(rand.Reader)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			ed448.Sign(key, msg, ctx)
+			_, _ = key.SignWithContext(msg, ctx)
 		}
 	})
 	b.Run("verify", func(b *testing.B) {
 		key, _ := ed448.GenerateKey(rand.Reader)
-		sig := ed448.Sign(key, msg, ctx)
+		sig, _ := key.SignWithContext(msg, ctx)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			ed448.Verify(key.GetPublic(), msg, ctx, sig)
@@ -206,7 +206,10 @@ func Example_ed448() {
 	// Alice signs a message.
 	message := []byte("A message to be signed")
 	context := []byte("This is a context string")
-	signature := ed448.Sign(keys, message, context)
+	signature, err := keys.SignWithContext(message, context)
+	if err != nil {
+		panic("error on signing message")
+	}
 
 	// Anyone can verify the signature using Alice's public key.
 	ok := ed448.Verify(keys.GetPublic(), message, context, signature)

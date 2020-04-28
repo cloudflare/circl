@@ -167,9 +167,9 @@ func (v vector) testPublicKey(t *testing.T) {
 
 func (v vector) testSign(t *testing.T) {
 	private := ed448.NewKeyFromSeed(v.sk)
-	got := ed448.Sign(private, v.msg, v.ctx)
+	got, err := private.SignWithContext(v.msg, v.ctx)
 	want := v.sig
-	if !bytes.Equal(got, want) {
+	if !bytes.Equal(got, want) || err != nil {
 		test.ReportError(t, got, want, v.name)
 	}
 }

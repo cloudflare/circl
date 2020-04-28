@@ -10,10 +10,10 @@ import (
 
 func TestCalculateS(t *testing.T) {
 	const testTimes = 1 << 10
-	s := make([]byte, Size)
-	k := make([]byte, Size)
-	r := make([]byte, Size)
-	a := make([]byte, Size)
+	s := make([]byte, paramB)
+	k := make([]byte, paramB)
+	r := make([]byte, paramB)
+	a := make([]byte, paramB)
 	orderBig := conv.BytesLe2BigInt(order[:])
 
 	for i := 0; i < testTimes; i++ {
@@ -38,11 +38,11 @@ func TestCalculateS(t *testing.T) {
 
 func TestReduction(t *testing.T) {
 	const testTimes = 1 << 10
-	var x, y [Size * 2]byte
+	var x, y [paramB * 2]byte
 	orderBig := conv.BytesLe2BigInt(order[:])
 
 	for i := 0; i < testTimes; i++ {
-		for _, j := range []int{Size, 2 * Size} {
+		for _, j := range []int{paramB, 2 * paramB} {
 			_, _ = rand.Read(x[:j])
 			bigX := conv.BytesLe2BigInt(x[:j])
 			copy(y[:j], x[:j])
@@ -60,7 +60,7 @@ func TestReduction(t *testing.T) {
 }
 
 func TestRangeOrder(t *testing.T) {
-	aboveOrder := [...][Size]byte{
+	aboveOrder := [...][paramB]byte{
 		{ // order
 			0xed, 0xd3, 0xf5, 0x5c, 0x1a, 0x63, 0x12, 0x58,
 			0xd6, 0x9c, 0xf7, 0xa2, 0xde, 0xf9, 0xde, 0x14,

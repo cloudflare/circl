@@ -29,8 +29,8 @@ func (v *rfc8032Vector) fetch(line string) {
 	v.public, _ = hex.DecodeString(values[1])
 	v.message, _ = hex.DecodeString(values[2])
 	v.signature, _ = hex.DecodeString(values[3])
-	v.private = v.private[:ed25519.Size]
-	v.signature = v.signature[:2*ed25519.Size]
+	v.private = v.private[:ed25519.PrivateKeySize]
+	v.signature = v.signature[:ed25519.SignatureSize]
 }
 
 func (v *rfc8032Vector) test(t *testing.T, lineNum int) {
@@ -42,9 +42,9 @@ func (v *rfc8032Vector) test(t *testing.T, lineNum int) {
 			test.ReportError(t, got, want, lineNum, v)
 		}
 
-		got = ed25519.Sign(keys, v.message)
+		got, err := keys.SignPure(v.message)
 		want = v.signature
-		if !bytes.Equal(got, want) {
+		if !bytes.Equal(got, want) || err != nil {
 			test.ReportError(t, got, want, lineNum, v)
 		}
 	}
@@ -296,9 +296,9 @@ func (v vector) testPublicKey(t *testing.T) {
 
 func (v vector) testSign(t *testing.T) {
 	private := ed25519.NewKeyFromSeed(v.sk)
-	got := ed25519.Sign(private, v.msg)
+	got, err := private.SignPure(v.msg)
 	want := v.sig
-	if !bytes.Equal(got, want) {
+	if !bytes.Equal(got, want) || err != nil {
 		test.ReportError(t, got, want, v.name)
 	}
 }
