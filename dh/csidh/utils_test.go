@@ -6,7 +6,6 @@ import (
 	mrand "math/rand"
 )
 
-// Commonly used variables
 var (
 	// Number of interations
 	numIter = 10
@@ -43,14 +42,14 @@ func fp2S(v fp) string {
 	return str
 }
 
-// zeroize fp
+// zeroize fp.
 func zero(v *fp) {
 	for i := range *v {
 		v[i] = 0
 	}
 }
 
-// returns random value in a range (0,p)
+// returns random value in a range (0,p).
 func randomFp() fp {
 	var u fp
 	for i := 0; i < 8; i++ {
@@ -59,7 +58,7 @@ func randomFp() fp {
 	return u
 }
 
-// return x==y for fp
+// return x==y for fp.
 func eqFp(l, r *fp) bool {
 	for idx := range l {
 		if l[idx] != r[idx] {
@@ -69,14 +68,14 @@ func eqFp(l, r *fp) bool {
 	return true
 }
 
-// return x==y for point
+// return x==y for point.
 func ceqpoint(l, r *point) bool {
 	return eqFp(&l.x, &r.x) && eqFp(&l.z, &r.z)
 }
 
 // Converts src to big.Int. Function assumes that src is a slice of uint64
 // values encoded in little-endian byte order.
-func intSetU64(dst *big.Int, src []uint64) *big.Int {
+func intSetU64(dst *big.Int, src []uint64) {
 	var tmp big.Int
 
 	dst.SetUint64(0)
@@ -85,7 +84,6 @@ func intSetU64(dst *big.Int, src []uint64) *big.Int {
 		tmp.Lsh(&tmp, uint(i*64))
 		dst.Add(dst, &tmp)
 	}
-	return dst
 }
 
 // Converts src to an array of uint64 values encoded in little-endian
@@ -120,7 +118,7 @@ func toNormX(point *point) big.Int {
 	return bigDnt
 }
 
-// Converts string to fp element in Montgomery domain of cSIDH-512
+// Converts string to fp element in Montgomery domain of cSIDH-512.
 func toFp(num string) fp {
 	var tmp big.Int
 	var ok bool

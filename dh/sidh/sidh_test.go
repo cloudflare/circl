@@ -134,7 +134,7 @@ var tdataSidh = map[uint8]sidhVec{
 /* -------------------------------------------------------------------------
    Helpers
    -------------------------------------------------------------------------*/
-// Converts string to private key
+// Converts string to private key.
 func convToPrv(s string, v KeyVariant, id uint8) *PrivateKey {
 	key := NewPrivateKey(id, v)
 	hex, e := hex.DecodeString(s)
@@ -148,7 +148,7 @@ func convToPrv(s string, v KeyVariant, id uint8) *PrivateKey {
 	return key
 }
 
-// Converts string to public key
+// Converts string to public key.
 func convToPub(s string, v KeyVariant, id uint8) *PublicKey {
 	key := NewPublicKey(id, v)
 	hex, e := hex.DecodeString(s)
@@ -162,9 +162,8 @@ func convToPub(s string, v KeyVariant, id uint8) *PublicKey {
 	return key
 }
 
-/* -------------------------------------------------------------------------
-   Unit tests
-   -------------------------------------------------------------------------*/
+/* Unit tests */
+
 func testKeygen(t *testing.T, v sidhVec) {
 	pubA := NewPublicKey(v.id, KeyVariantSidhA)
 	pubB := NewPublicKey(v.id, KeyVariantSidhB)
@@ -301,7 +300,6 @@ func testPrivateKeyBelowMax(t *testing.T, vec sidhVec) {
 	for variant, keySz := range map[KeyVariant]*common.DomainParams{
 		KeyVariantSidhA: &common.Params(vec.id).A,
 		KeyVariantSidhB: &common.Params(vec.id).B} {
-
 		func(v KeyVariant, dp *common.DomainParams) {
 			var blen = int(dp.SecretByteLen)
 			var prv = NewPrivateKey(vec.id, v)
@@ -364,7 +362,8 @@ func TestKeyAgreementP751_AliceEvenNumber(t *testing.T) {
    Wrappers for 'testing' SIDH
    -------------------------------------------------------------------------*/
 func testSidhVec(t *testing.T, m *map[uint8]sidhVec, f func(t *testing.T, v sidhVec)) {
-	for _, v := range *m {
+	for i := range *m {
+		v := (*m)[i]
 		t.Run(v.name, func(t *testing.T) { f(t, v) })
 	}
 }
@@ -425,49 +424,49 @@ func BenchmarkSidhKeyAgreementP434(b *testing.B) {
 func BenchmarkAliceKeyGenPrvP751(b *testing.B) {
 	prv := NewPrivateKey(Fp751, KeyVariantSidhA)
 	for n := 0; n < b.N; n++ {
-		prv.Generate(rand.Reader)
+		_ = prv.Generate(rand.Reader)
 	}
 }
 
 func BenchmarkAliceKeyGenPrvP503(b *testing.B) {
 	prv := NewPrivateKey(Fp503, KeyVariantSidhA)
 	for n := 0; n < b.N; n++ {
-		prv.Generate(rand.Reader)
+		_ = prv.Generate(rand.Reader)
 	}
 }
 
 func BenchmarkAliceKeyGenPrvP434(b *testing.B) {
 	prv := NewPrivateKey(Fp434, KeyVariantSidhA)
 	for n := 0; n < b.N; n++ {
-		prv.Generate(rand.Reader)
+		_ = prv.Generate(rand.Reader)
 	}
 }
 
 func BenchmarkBobKeyGenPrvP751(b *testing.B) {
 	prv := NewPrivateKey(Fp751, KeyVariantSidhB)
 	for n := 0; n < b.N; n++ {
-		prv.Generate(rand.Reader)
+		_ = prv.Generate(rand.Reader)
 	}
 }
 
 func BenchmarkBobKeyGenPrvP503(b *testing.B) {
 	prv := NewPrivateKey(Fp503, KeyVariantSidhB)
 	for n := 0; n < b.N; n++ {
-		prv.Generate(rand.Reader)
+		_ = prv.Generate(rand.Reader)
 	}
 }
 
 func BenchmarkBobKeyGenPrvP434(b *testing.B) {
 	prv := NewPrivateKey(Fp434, KeyVariantSidhB)
 	for n := 0; n < b.N; n++ {
-		prv.Generate(rand.Reader)
+		_ = prv.Generate(rand.Reader)
 	}
 }
 
 func BenchmarkAliceKeyGenPubP751(b *testing.B) {
 	prv := NewPrivateKey(Fp751, KeyVariantSidhA)
 	pub := NewPublicKey(Fp751, KeyVariantSidhA)
-	prv.Generate(rand.Reader)
+	_ = prv.Generate(rand.Reader)
 	for n := 0; n < b.N; n++ {
 		prv.GeneratePublicKey(pub)
 	}
@@ -476,7 +475,7 @@ func BenchmarkAliceKeyGenPubP751(b *testing.B) {
 func BenchmarkAliceKeyGenPubP503(b *testing.B) {
 	prv := NewPrivateKey(Fp503, KeyVariantSidhA)
 	pub := NewPublicKey(Fp503, KeyVariantSidhA)
-	prv.Generate(rand.Reader)
+	_ = prv.Generate(rand.Reader)
 	for n := 0; n < b.N; n++ {
 		prv.GeneratePublicKey(pub)
 	}
@@ -485,7 +484,7 @@ func BenchmarkAliceKeyGenPubP503(b *testing.B) {
 func BenchmarkAliceKeyGenPubP434(b *testing.B) {
 	prv := NewPrivateKey(Fp434, KeyVariantSidhA)
 	pub := NewPublicKey(Fp434, KeyVariantSidhA)
-	prv.Generate(rand.Reader)
+	_ = prv.Generate(rand.Reader)
 	for n := 0; n < b.N; n++ {
 		prv.GeneratePublicKey(pub)
 	}
@@ -494,7 +493,7 @@ func BenchmarkAliceKeyGenPubP434(b *testing.B) {
 func BenchmarkBobKeyGenPubP751(b *testing.B) {
 	prv := NewPrivateKey(Fp751, KeyVariantSidhB)
 	pub := NewPublicKey(Fp751, KeyVariantSidhB)
-	prv.Generate(rand.Reader)
+	_ = prv.Generate(rand.Reader)
 	for n := 0; n < b.N; n++ {
 		prv.GeneratePublicKey(pub)
 	}
@@ -503,7 +502,7 @@ func BenchmarkBobKeyGenPubP751(b *testing.B) {
 func BenchmarkBobKeyGenPubP503(b *testing.B) {
 	prv := NewPrivateKey(Fp503, KeyVariantSidhB)
 	pub := NewPublicKey(Fp503, KeyVariantSidhB)
-	prv.Generate(rand.Reader)
+	_ = prv.Generate(rand.Reader)
 	for n := 0; n < b.N; n++ {
 		prv.GeneratePublicKey(pub)
 	}
@@ -512,7 +511,7 @@ func BenchmarkBobKeyGenPubP503(b *testing.B) {
 func BenchmarkBobKeyGenPubP434(b *testing.B) {
 	prv := NewPrivateKey(Fp434, KeyVariantSidhB)
 	pub := NewPublicKey(Fp434, KeyVariantSidhB)
-	prv.Generate(rand.Reader)
+	_ = prv.Generate(rand.Reader)
 	for n := 0; n < b.N; n++ {
 		prv.GeneratePublicKey(pub)
 	}
@@ -578,6 +577,8 @@ func BenchmarkSharedSecretBobP434(b *testing.B) {
 // Examples
 
 func ExamplePrivateKey() {
+	// import "github.com/cloudflare/circl/dh/sidh"
+
 	// Allice's key pair
 	prvA := NewPrivateKey(Fp503, KeyVariantSidhA)
 	pubA := NewPublicKey(Fp503, KeyVariantSidhA)
@@ -585,10 +586,16 @@ func ExamplePrivateKey() {
 	prvB := NewPrivateKey(Fp503, KeyVariantSidhB)
 	pubB := NewPublicKey(Fp503, KeyVariantSidhB)
 	// Generate keypair for Allice
-	prvA.Generate(rand.Reader)
+	err := prvA.Generate(rand.Reader)
+	if err != nil {
+		fmt.Print(err)
+	}
 	prvA.GeneratePublicKey(pubA)
 	// Generate keypair for Bob
-	prvB.Generate(rand.Reader)
+	err = prvB.Generate(rand.Reader)
+	if err != nil {
+		fmt.Print(err)
+	}
 	prvB.GeneratePublicKey(pubB)
 	// Buffers storing shared secret
 	ssA := make([]byte, prvA.SharedSecretSize())

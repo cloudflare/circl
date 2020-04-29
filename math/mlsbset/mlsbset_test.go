@@ -31,7 +31,7 @@ func testExp(t *testing.T, m mlsbset.Encoder) {
 	topBits := (byte(1) << (params.T % 8)) - 1
 	k := make([]byte, TBytes)
 	for i := 0; i < testTimes; i++ {
-		rand.Read(k)
+		_, _ = rand.Read(k)
 		k[0] |= 1
 		k[TBytes-1] &= topBits
 
@@ -131,7 +131,7 @@ func BenchmarkEncode(b *testing.B) {
 	topBits := (byte(1) << (params.T % 8)) - 1
 
 	k := make([]byte, TBytes)
-	rand.Read(k)
+	_, _ = rand.Read(k)
 	k[0] |= 1
 	k[TBytes-1] &= topBits
 
@@ -140,7 +140,7 @@ func BenchmarkEncode(b *testing.B) {
 
 	b.Run("Encode", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			m.Encode(k)
+			_, _ = m.Encode(k)
 		}
 	})
 	b.Run("Exp", func(b *testing.B) {

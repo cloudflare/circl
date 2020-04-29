@@ -2,6 +2,7 @@ package fp25519
 
 import (
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"math/big"
 	"testing"
@@ -243,22 +244,21 @@ func TestToBytes(t *testing.T) {
 	var got, want [Size]byte
 	for i := 0; i < numTests; i++ {
 		_, _ = rand.Read(x[:])
-		ToBytes(got[:], &x)
+		err := ToBytes(got[:], &x)
 		conv.BigInt2BytesLe(want[:], conv.BytesLe2BigInt(x[:]))
-
-		if got != want {
+		if got != want || err != nil {
 			test.ReportError(t, got, want, x)
 		}
 	}
-	var small [Size + 1]byte
-	defer func() {
-		if r := recover(); r == nil {
-			got := r
-			want := "should panic!"
+
+	{
+		var small [Size + 1]byte
+		got := ToBytes(small[:], &x)
+		want := errors.New("wrong size")
+		if got.Error() != want.Error() {
 			test.ReportError(t, got, want)
 		}
-	}()
-	ToBytes(small[:], &x)
+	}
 }
 
 func TestString(t *testing.T) {

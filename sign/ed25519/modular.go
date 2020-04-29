@@ -38,11 +38,13 @@ func reduceModOrder(k []byte, is512Bit bool) {
 func red512(x *[8]uint64, full bool) {
 	// Implementation of Algs.(14.47)+(14.52) of Handbook of Applied
 	// Cryptography, by A. Menezes, P. van Oorschot, and S. Vanstone.
-	const ell0 = uint64(0x5812631a5cf5d3ed)
-	const ell1 = uint64(0x14def9dea2f79cd6)
-	const ell160 = uint64(0x812631a5cf5d3ed0)
-	const ell161 = uint64(0x4def9dea2f79cd65)
-	const ell162 = uint64(0x0000000000000001)
+	const (
+		ell0   = uint64(0x5812631a5cf5d3ed)
+		ell1   = uint64(0x14def9dea2f79cd6)
+		ell160 = uint64(0x812631a5cf5d3ed0)
+		ell161 = uint64(0x4def9dea2f79cd65)
+		ell162 = uint64(0x0000000000000001)
+	)
 
 	var c0, c1, c2, c3 uint64
 	r0, r1, r2, r3, r4 := x[0], x[1], x[2], x[3], uint64(0)
@@ -131,7 +133,7 @@ func red512(x *[8]uint64, full bool) {
 	x[0], x[1], x[2], x[3] = r0, r1, r2, r3
 }
 
-// calculateS performs s = r+k*a mod Order of the curve
+// calculateS performs s = r+k*a mod Order of the curve.
 func calculateS(s, r, k, a []byte) {
 	K := [4]uint64{
 		binary.LittleEndian.Uint64(k[0*8 : 1*8]),

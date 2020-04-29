@@ -76,7 +76,7 @@ func FromBytes(in []byte) (*Point, error) {
 	return P, nil
 }
 
-// IsIdentity returns true is P is the identity Point,
+// IsIdentity returns true is P is the identity Point.
 func (P *Point) IsIdentity() bool {
 	return fp.IsZero(&P.x) && !fp.IsZero(&P.y) && !fp.IsZero(&P.z) && P.y == P.z
 }

@@ -60,14 +60,14 @@ func (c curve) IsOnCurve(x, y *big.Int) bool {
 	return *y2 == *x3
 }
 
-// Add returns the sum of (x1,y1) and (x2,y2)
+// Add returns the sum of (x1,y1) and (x2,y2).
 func (c curve) Add(x1, y1, x2, y2 *big.Int) (x, y *big.Int) {
 	P := newAffinePoint(x1, y1).toJacobian()
 	P.mixadd(P, newAffinePoint(x2, y2))
 	return P.toAffine().toInt()
 }
 
-// Double returns 2*(x,y)
+// Double returns 2*(x,y).
 func (c curve) Double(x1, y1 *big.Int) (x, y *big.Int) {
 	P := newAffinePoint(x1, y1).toJacobian()
 	P.double()

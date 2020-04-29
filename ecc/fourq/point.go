@@ -19,7 +19,7 @@ type pointR2 struct {
 	z2 Fq // 2 * z
 }
 
-// subYDiv16 update x = (x - y) / 16
+// subYDiv16 update x = (x - y) / 16.
 func subYDiv16(x *[5]uint64, y int64) {
 	s := uint64(y >> 63)
 	x0, b0 := bits.Sub64((*x)[0], uint64(y), 0)
@@ -34,7 +34,7 @@ func subYDiv16(x *[5]uint64, y int64) {
 	(*x)[4] = (x4 >> 4)
 }
 
-// condAddOrderN updates x = x+order if x is even, otherwise x remains unchanged
+// condAddOrderN updates x = x+order if x is even, otherwise x remains unchanged.
 func condAddOrderN(x *[5]uint64) {
 	var o [4]uint64
 	isOdd := (x[0] & 0x1) - 1
@@ -81,7 +81,7 @@ func (P *pointR1) oddMultiples(T *[8]pointR2) {
 	}
 }
 
-// scalarMult calculates P = k*Q
+// scalarMult calculates P = k*Q.
 func (P *pointR1) ScalarMult(k *[32]byte, Q *pointR1) {
 	var TabQ [8]pointR2
 	var S pointR2
@@ -112,7 +112,7 @@ func absolute(x int32) int32 {
 	return (x + mask) ^ mask
 }
 
-// div2subY update x = (x/2) - y
+// div2subY update x = (x/2) - y.
 func div2subY(x *[5]uint64, y int64) {
 	s := uint64(y >> 63)
 	x0 := (*x)[0]
@@ -139,7 +139,7 @@ func div2subY(x *[5]uint64, y int64) {
 // Reference:
 //  "Efficient and secure algorithms for GLV-based scalar multiplication and
 //   their implementation on GLV–GLS curves" by (Faz-Hernandez et al.)
-//   http://doi.org/10.1007/s13389-014-0085-7
+//   http://doi.org/10.1007/s13389-014-0085-7.
 func mLSBRecoding(L []int8, k []byte) {
 	const e = (fxT + fxW*fxV - 1) / (fxW * fxV)
 	const d = e * fxV

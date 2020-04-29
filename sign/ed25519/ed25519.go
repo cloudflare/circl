@@ -89,7 +89,7 @@ func NewKeyFromSeed(seed PrivateKey) *KeyPair {
 
 	pair := &KeyPair{}
 	copy(pair.private[:], seed)
-	P.ToBytes(pair.public[:])
+	_ = P.ToBytes(pair.public[:])
 	return pair
 }
 
@@ -113,7 +113,7 @@ func (kp *KeyPair) SignPure(message []byte) ([]byte, error) {
 	var P pointR1
 	P.fixedMult(r[:paramB])
 	R := (&[paramB]byte{})[:]
-	P.ToBytes(R)
+	err := P.ToBytes(R)
 
 	// 4.  Compute SHA512(dom2(F, C) || R || A || PH(M)).
 	H.Reset()
@@ -131,7 +131,7 @@ func (kp *KeyPair) SignPure(message []byte) ([]byte, error) {
 	var signature [SignatureSize]byte
 	copy(signature[:paramB], R[:])
 	copy(signature[paramB:], S[:])
-	return signature[:], nil
+	return signature[:], err
 }
 
 // Verify returns true if the signature is valid. Failure cases are invalid
@@ -159,7 +159,7 @@ func Verify(public PublicKey, message, signature []byte) bool {
 	encR := (&[paramB]byte{})[:]
 	P.neg()
 	Q.doubleMult(&P, signature[paramB:], hRAM[:paramB])
-	Q.ToBytes(encR)
+	_ = Q.ToBytes(encR)
 	return bytes.Equal(R, encR)
 }
 

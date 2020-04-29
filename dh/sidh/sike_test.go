@@ -84,7 +84,7 @@ var tdataSike = map[uint8]sikeVec{
 			"AB0A7289852106E40538D3575C500201"},
 }
 
-// Encrypt, Decrypt, check if input/output plaintext is the same
+// Encrypt, Decrypt, check if input/output plaintext is the same.
 func testPKERoundTrip(t *testing.T, v sikeVec) {
 	// Message to be encrypted
 	var pt [common.MaxMsgBsz]byte
@@ -108,7 +108,7 @@ func testPKERoundTrip(t *testing.T, v sikeVec) {
 	CheckNoErr(t, err, "Private key import failed")
 	err = v.kem.encrypt(ct, rand.Reader, pkB, msg[:])
 	CheckNoErr(t, err, "PKE roundtrip - encryption failed")
-	ptLen := v.kem.decrypt(pt[:], skB, ct)
+	ptLen, err := v.kem.decrypt(pt[:], skB, ct)
 	CheckNoErr(t, err, "PKE roundtrip - decription failed")
 
 	if !bytes.Equal(pt[:ptLen], msg[:]) {
@@ -116,7 +116,7 @@ func testPKERoundTrip(t *testing.T, v sikeVec) {
 	}
 }
 
-// Generate key and check if can encrypt
+// Generate key and check if can encrypt.
 func testPKEKeyGeneration(t *testing.T, v sikeVec) {
 	var err error
 	var params = common.Params(v.id)
@@ -137,7 +137,7 @@ func testPKEKeyGeneration(t *testing.T, v sikeVec) {
 
 	err = v.kem.encrypt(ct, rand.Reader, pk, msg[:])
 	CheckNoErr(t, err, "PKE encryption")
-	ptLen := v.kem.decrypt(pt[:], sk, ct)
+	ptLen, err := v.kem.decrypt(pt[:], sk, ct)
 	CheckNoErr(t, err, "PKE key decryption")
 
 	if !bytes.Equal(pt[:ptLen], msg[:]) {
@@ -237,7 +237,7 @@ func testNegativeKEM(t *testing.T, v sikeVec) {
 	v.kem.Reset()
 	CheckNoErr(
 		t,
-		CheckPanic(func() { v.kem.Decapsulate(ssTmp[:ssBsz], sk, pk, ct[:len(ct)-2]) }),
+		CheckPanic(func() { _ = v.kem.Decapsulate(ssTmp[:ssBsz], sk, pk, ct[:len(ct)-2]) }),
 		"Decapsulation must panic if ciphertext is too small")
 
 	ctTmp := make([]byte, len(ct)+1)
@@ -245,7 +245,7 @@ func testNegativeKEM(t *testing.T, v sikeVec) {
 	v.kem.Reset()
 	CheckNoErr(
 		t,
-		CheckPanic(func() { v.kem.Decapsulate(ssTmp[:ssBsz], sk, pk, ctTmp) }),
+		CheckPanic(func() { _ = v.kem.Decapsulate(ssTmp[:ssBsz], sk, pk, ctTmp) }),
 		"Decapsulation must panic if ciphertext is too big")
 
 	// Change ciphertext
@@ -265,14 +265,14 @@ func testNegativeKEM(t *testing.T, v sikeVec) {
 	v.kem.Reset()
 	CheckNoErr(
 		t,
-		CheckPanic(func() { v.kem.Encapsulate(ct, ssE[:], pkSidh) }),
+		CheckPanic(func() { _ = v.kem.Encapsulate(ct, ssE[:], pkSidh) }),
 		"encapsulation accepts SIDH public key")
 
 	// Try decapsulating with SIDH key
 	v.kem.Reset()
 	CheckNoErr(
 		t,
-		CheckPanic(func() { v.kem.Decapsulate(ssD[:ssBsz], prSidh, pk, ct) }),
+		CheckPanic(func() { _ = v.kem.Decapsulate(ssD[:ssBsz], prSidh, pk, ct) }),
 		"encapsulation accepts SIDH public key")
 }
 
@@ -418,8 +418,9 @@ func testKAT(t *testing.T, v sikeVec) {
 /* -------------------------------------------------------------------------
    Wrappers for 'testing' SIDH
    -------------------------------------------------------------------------*/
-func testSike(t *testing.T, m *map[uint8]sikeVec, f func(t *testing.T, v sikeVec)) {
-	for _, v := range *m {
+func testSike(t *testing.T, m *map[uint8]sikeVec, f func(*testing.T, sikeVec)) {
+	for i := range *m {
+		v := (*m)[i]
 		t.Run(v.name, func(t *testing.T) { f(t, v) })
 	}
 }
@@ -449,8 +450,9 @@ func TestKEMRoundTrip(t *testing.T) {
    Benchmarking
    -------------------------------------------------------------------------*/
 
-func benchSike(t *testing.B, m *map[uint8]sikeVec, f func(t *testing.B, v sikeVec)) {
-	for _, v := range *m {
+func benchSike(t *testing.B, m *map[uint8]sikeVec, f func(*testing.B, sikeVec)) {
+	for i := range *m {
+		v := (*m)[i]
 		t.Run(v.name, func(t *testing.B) { f(t, v) })
 	}
 }
@@ -458,8 +460,9 @@ func benchSike(t *testing.B, m *map[uint8]sikeVec, f func(t *testing.B, v sikeVe
 func benchKeygen(b *testing.B, v sikeVec) {
 	pub := NewPublicKey(v.id, KeyVariantSike)
 	prv := NewPrivateKey(v.id, KeyVariantSike)
-	prv.Generate(rand.Reader)
+	_ = prv.Generate(rand.Reader)
 
+	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		prv.GeneratePublicKey(pub)
 	}
@@ -477,9 +480,10 @@ func benchmarkEncaps(b *testing.B, v sikeVec) {
 	var ct [common.MaxCiphertextBsz]byte
 	var ss [common.MaxSharedSecretBsz]byte
 
+	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		v.kem.Reset()
-		v.kem.Encapsulate(ct[:], ss[:], pub)
+		_ = v.kem.Encapsulate(ct[:], ss[:], pub)
 	}
 }
 
@@ -507,9 +511,11 @@ func benchmarkDecaps(b *testing.B, v sikeVec) {
 	}
 
 	ctSlc := ct[:v.kem.CiphertextSize()]
+
+	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
 		v.kem.Reset()
-		v.kem.Decapsulate(ss[:ssBsz], prvA, pkB, ctSlc)
+		_ = v.kem.Decapsulate(ss[:ssBsz], prvA, pkB, ctSlc)
 	}
 }
 
@@ -517,7 +523,6 @@ func BenchmarkKeygen(b *testing.B) { benchSike(b, &tdataSike, benchKeygen) }
 func BenchmarkEncaps(b *testing.B) { benchSike(b, &tdataSike, benchmarkEncaps) }
 func BenchmarkDecaps(b *testing.B) { benchSike(b, &tdataSike, benchmarkDecaps) }
 
-// Examples
 func ExampleKEM() {
 	// Allice's key pair
 	prvA := NewPrivateKey(Fp503, KeyVariantSike)
@@ -526,10 +531,16 @@ func ExampleKEM() {
 	prvB := NewPrivateKey(Fp503, KeyVariantSike)
 	pubB := NewPublicKey(Fp503, KeyVariantSike)
 	// Generate keypair for Allice
-	prvA.Generate(rand.Reader)
+	err := prvA.Generate(rand.Reader)
+	if err != nil {
+		panic(err)
+	}
 	prvA.GeneratePublicKey(pubA)
 	// Generate keypair for Bob
-	prvB.Generate(rand.Reader)
+	err = prvB.Generate(rand.Reader)
+	if err != nil {
+		panic(err)
+	}
 	prvB.GeneratePublicKey(pubB)
 	// Initialize internal KEM structures
 	var kem = NewSike503(rand.Reader)
@@ -539,15 +550,27 @@ func ExampleKEM() {
 	ssE := make([]byte, kem.SharedSecretSize())
 	ssD := make([]byte, kem.SharedSecretSize())
 	// Allice performs encapsulation with Bob's public key
-	kem.Encapsulate(ct, ssE, pubB)
+	err = kem.Encapsulate(ct, ssE, pubB)
+	if err != nil {
+		panic(err)
+	}
 	// Bob performs decapsulation with his key pair
-	kem.Decapsulate(ssD, prvB, pubB, ct)
+	err = kem.Decapsulate(ssD, prvB, pubB, ct)
+	if err != nil {
+		panic(err)
+	}
 	fmt.Printf("%t\n", bytes.Equal(ssE, ssD))
 
 	// Bob performs encapsulation with Allices's public key
-	kem.Encapsulate(ct, ssE, pubA)
+	err = kem.Encapsulate(ct, ssE, pubA)
+	if err != nil {
+		panic(err)
+	}
 	// Allice performs decapsulation with hers key pair
-	kem.Decapsulate(ssD, prvA, pubA, ct)
+	err = kem.Decapsulate(ssD, prvA, pubA, ct)
+	if err != nil {
+		panic(err)
+	}
 	fmt.Printf("%t\n", bytes.Equal(ssE, ssD))
 
 	// Output:

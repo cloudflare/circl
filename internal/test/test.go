@@ -19,7 +19,7 @@ func ReportError(t *testing.T, got, want interface{}, inputs ...interface{}) {
 	t.Fatalf(b.String())
 }
 
-// checkOk fails the test if result == false
+// checkOk fails the test if result == false.
 func CheckOk(result bool, msg string, t testing.TB) {
 	t.Helper()
 
@@ -41,13 +41,13 @@ func checkErr(t testing.TB, err error, mustFail bool, msg string) {
 	}
 }
 
-// CheckNoErr fails if err !=nil. Print msg as an error message
+// CheckNoErr fails if err !=nil. Print msg as an error message.
 func CheckNoErr(t testing.TB, err error, msg string) { t.Helper(); checkErr(t, err, false, msg) }
 
-// CheckIsErr fails if err ==nil. Print msg as an error message
+// CheckIsErr fails if err ==nil. Print msg as an error message.
 func CheckIsErr(t testing.TB, err error, msg string) { t.Helper(); checkErr(t, err, true, msg) }
 
-// CheckPanic returns true if call to function 'f' caused panic
+// CheckPanic returns true if call to function 'f' caused panic.
 func CheckPanic(f func()) error {
 	var hasPanicked = errors.New("no panic detected")
 	defer func() {

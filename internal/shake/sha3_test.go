@@ -53,12 +53,12 @@ type KeccakKats struct {
 func TestIssue89(t *testing.T) {
 	h := NewShake256()
 	var buf [200]byte
-	h.Write(buf[1:])
+	_, _ = h.Write(buf[1:])
 }
 
 // TestKeccakKats tests the SHA-3 and Shake implementations against all the
 // ShortMsgKATs from https://github.com/gvanas/KeccakCodePackage
-// (The testvectors are stored in keccakKats.json.deflate due to their length.)
+// (The testvectors are stored in keccakKats.json.deflate due to their length).
 func TestKeccakKats(t *testing.T) {
 	// Read the KATs.
 	deflated, err := os.Open(katFilename)
@@ -80,9 +80,9 @@ func TestKeccakKats(t *testing.T) {
 			t.Errorf("error decoding KAT: %s", err)
 		}
 
-		d.Write(in[:kat.Length/8])
+		_, _ = d.Write(in[:kat.Length/8])
 		out := make([]byte, len(kat.Digest)/2)
-		d.Read(out)
+		_, _ = d.Read(out)
 		got := strings.ToUpper(hex.EncodeToString(out))
 		if got != kat.Digest {
 			t.Errorf("function=%s, length=%d N:%s\n S:%s\nmessage:\n %s \ngot:\n  %s\nwanted:\n %s",
@@ -110,7 +110,7 @@ func TestKeccak(t *testing.T) {
 
 	for _, u := range tests {
 		h := u.fn()
-		h.Write(u.data)
+		_, _ = h.Write(u.data)
 		got := h.Sum(nil)
 		want := decodeHex(u.want)
 		if !bytes.Equal(got, want) {
@@ -130,8 +130,8 @@ func TestUnalignedWrite(t *testing.T) {
 	d := NewShake256()
 
 	d.Reset()
-	d.Write(buf)
-	d.Read(want)
+	_, _ = d.Write(buf)
+	_, _ = d.Read(want)
 	d.Reset()
 	for i := 0; i < len(buf); {
 		// Cycle through offsets which make a 137 byte sequence.
@@ -141,11 +141,11 @@ func TestUnalignedWrite(t *testing.T) {
 			if v := len(buf) - i; v < j {
 				j = v
 			}
-			d.Write(buf[i : i+j])
+			_, _ = d.Write(buf[i : i+j])
 			i += j
 		}
 	}
-	d.Read(got)
+	_, _ = d.Read(got)
 	if !bytes.Equal(got, want) {
 		t.Errorf("Unaligned writes, alg=SHAKE256\ngot %q, want %q", got, want)
 	}
@@ -155,16 +155,16 @@ func TestUnalignedWrite(t *testing.T) {
 // the same output as repeatedly squeezing the instance.
 func TestSqueezing(t *testing.T) {
 	d0 := NewShake256()
-	d0.Write([]byte(testString))
+	_, _ = d0.Write([]byte(testString))
 	ref := make([]byte, 32)
-	d0.Read(ref)
+	_, _ = d0.Read(ref)
 
 	d1 := NewShake256()
-	d1.Write([]byte(testString))
+	_, _ = d1.Write([]byte(testString))
 	multiple := make([]byte, 0, len(ref))
 	for range ref {
 		one := make([]byte, 1)
-		d1.Read(one)
+		_, _ = d1.Read(one)
 		multiple = append(multiple, one...)
 	}
 	if !bytes.Equal(ref, multiple) {
@@ -187,13 +187,13 @@ func TestReset(t *testing.T) {
 
 	// Calculate hash for the first time
 	c := NewShake256()
-	c.Write(sequentialBytes(0x100))
-	c.Read(out1)
+	_, _ = c.Write(sequentialBytes(0x100))
+	_, _ = c.Read(out1)
 
 	// Calculate hash again
 	c.Reset()
-	c.Write(sequentialBytes(0x100))
-	c.Read(out2)
+	_, _ = c.Write(sequentialBytes(0x100))
+	_, _ = c.Read(out2)
 
 	if !bytes.Equal(out1, out2) {
 		t.Error("\nExpected:\n", out1, "\ngot:\n", out2)
@@ -206,37 +206,36 @@ func TestClone(t *testing.T) {
 	in := sequentialBytes(0x100)
 
 	h1 := NewShake256()
-	h1.Write([]byte{0x01})
+	_, _ = h1.Write([]byte{0x01})
 
 	h2 := h1.Clone()
 
-	h1.Write(in)
-	h1.Read(out1)
+	_, _ = h1.Write(in)
+	_, _ = h1.Read(out1)
 
-	h2.Write(in)
-	h2.Read(out2)
-
+	_, _ = h2.Write(in)
+	_, _ = h2.Read(out2)
 	if !bytes.Equal(out1, out2) {
 		t.Error("\nExpected:\n", hex.EncodeToString(out1), "\ngot:\n", hex.EncodeToString(out2))
 	}
 }
 
-// Checks wether reset works correctly after clone
+// Checks wether reset works correctly after clone.
 func TestCloneAndReset(t *testing.T) {
 	// Shake 256, uses SHA-3 with rate = 136
 	d1 := NewShake256()
 	buf1 := make([]byte, 28)
 	buf2 := make([]byte, 28)
-	d1.Write([]byte{0xcc})
+	_, _ = d1.Write([]byte{0xcc})
 	// Reading x bytes where x<168-136. This makes capability
 	// of the state buffer shorter.
-	d1.Read(buf1)
+	_, _ = d1.Read(buf1)
 	// This will crash if sha-3 code uses cap() instead
 	// of len() when calculating length of state buffer
 	d2 := d1.Clone()
 	d2.Reset()
-	d2.Write([]byte{0xcc})
-	d2.Read(buf2)
+	_, _ = d2.Write([]byte{0xcc})
+	_, _ = d2.Read(buf2)
 
 	if !bytes.Equal(buf1, buf2) {
 		t.Error("Different value when reading after reset")
@@ -267,9 +266,9 @@ func benchmarkShake(b *testing.B, h Shake, size, num int) {
 	for i := 0; i < b.N; i++ {
 		h.Reset()
 		for j := 0; j < num; j++ {
-			h.Write(data)
+			_, _ = h.Write(data)
 		}
-		h.Read(d[:])
+		_, _ = h.Read(d[:])
 	}
 }
 
@@ -289,8 +288,8 @@ func Example_sum() {
 	h := make([]byte, 64)
 	// Compute a 64-byte hash of buf and put it in h.
 	shake := NewShake256()
-	shake.Write(buf)
-	shake.Read(h)
+	_, _ = shake.Write(buf)
+	_, _ = shake.Read(h)
 	fmt.Printf("%x\n", h)
 	// Output: 0f65fe41fc353e52c55667bb9e2b27bfcc8476f2c413e9437d272ee3194a4e3146d05ec04a25d16b8f577c19b82d16b1424c3e022e783d2b4da98de3658d363d
 }
@@ -302,11 +301,11 @@ func Example_mac() {
 	h := make([]byte, 32)
 	d := NewShake256()
 	// Write the key into the hash.
-	d.Write(k)
+	_, _ = d.Write(k)
 	// Now write the data.
-	d.Write(buf)
+	_, _ = d.Write(buf)
 	// Read 32 bytes of output from the hash into h.
-	d.Read(h)
+	_, _ = d.Read(h)
 	fmt.Printf("%x\n", h)
 	// Output: 78de2974bd2711d5549ffd32b753ef0f5fa80a0db2556db60f0987eb8a9218ff
 }
@@ -317,8 +316,8 @@ func ExampleShake() {
 
 	// Example 1: Simple Shake
 	c1 := NewShake256()
-	c1.Write(msg)
-	c1.Read(out)
+	_, _ = c1.Write(msg)
+	_, _ = c1.Read(out)
 	fmt.Println(hex.EncodeToString(out))
 
 	// Output:

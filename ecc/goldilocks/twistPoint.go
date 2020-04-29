@@ -56,7 +56,7 @@ func (P *twistPoint) mixAddZ1(Q *preTwistPointAffine) {
 	P.coreAddition(Q)
 }
 
-// coreAddition calculates P=P+Q for curves with A=-1
+// coreAddition calculates P=P+Q for curves with A=-1.
 func (P *twistPoint) coreAddition(Q *preTwistPointAffine) {
 	// This is the formula following (5) from "Twisted Edwards Curves Revisited" by
 	// Hisil H., Wong K.KH., Carter G., Dawson E. (2008)

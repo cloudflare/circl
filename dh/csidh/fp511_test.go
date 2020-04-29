@@ -39,14 +39,13 @@ func testFp512Mul3Nominal(t *testing.T) {
 }
 
 // Check if mul512 produces result
-// z = x*y mod 2^512
+// z = x*y mod 2^512.
 func TestFp512Mul3_Nominal(t *testing.T) {
 	hasBMI2 = false
 	testFp512Mul3Nominal(t)
 
 	resetCPUFeatures()
 	testFp512Mul3Nominal(t)
-
 }
 
 func TestAddRdcRandom(t *testing.T) {
@@ -306,7 +305,7 @@ func TestModExp(t *testing.T) {
 	}
 }
 
-// Test uses Euler's Criterion
+// Test uses Euler's Criterion.
 func TestIsNonQuadRes(t *testing.T) {
 	var n, nMont big.Int
 	var pm1o2, rawP big.Int

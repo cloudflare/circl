@@ -15,7 +15,7 @@ type Elt [Size]byte
 
 func (e Elt) String() string { return conv.BytesLe2Hex(e[:]) }
 
-// p is the prime modulus 2^448-2^224-1
+// p is the prime modulus 2^448-2^224-1.
 var p = Elt{
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
@@ -29,7 +29,7 @@ var p = Elt{
 // P returns the prime modulus 2^448-2^224-1.
 func P() Elt { return p }
 
-// ToBytes returns the little-endian byte representation of x.
+// ToBytes stores in b the little-endian byte representation of x.
 func ToBytes(b []byte, x *Elt) error {
 	if len(b) != Size {
 		return errors.New("wrong size")
@@ -151,7 +151,7 @@ func Cswap(x, y *Elt, n uint) { cswap(x, y, n) }
 // Add calculates z = x+y mod p.
 func Add(z, x, y *Elt) { add(z, x, y) }
 
-// Sub calculates z = x-y mod p
+// Sub calculates z = x-y mod p.
 func Sub(z, x, y *Elt) { sub(z, x, y) }
 
 // AddSub calculates (x,y) = (x+y mod p, x-y mod p).

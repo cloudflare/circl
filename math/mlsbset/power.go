@@ -41,9 +41,9 @@ func (p *Power) Digit(v, e uint) (sgn, dig int32) {
 
 // bit returns the (w,v,e)-th bit of the code.
 func (p *Power) bit(w, v, e uint) int32 {
-	if !(0 <= w && w < p.set.p.W &&
-		0 <= v && v < p.set.p.V &&
-		0 <= e && e < p.set.p.E) {
+	if !(w < p.set.p.W &&
+		v < p.set.p.V &&
+		e < p.set.p.E) {
 		panic(fmt.Errorf("indexes outside (%v,%v,%v)", w, v, e))
 	}
 	if w == 0 {

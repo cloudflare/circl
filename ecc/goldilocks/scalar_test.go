@@ -37,7 +37,6 @@ func TestReduceModOrder(t *testing.T) {
 func testOp(t *testing.T,
 	f func(z, x, y *goldilocks.Scalar),
 	g func(z, x, y *big.Int)) {
-
 	const testTimes = 1 << 8
 	var x, y, z goldilocks.Scalar
 	order := goldilocks.Curve{}.Order()

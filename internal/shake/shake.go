@@ -34,7 +34,7 @@ func NewShake128() Shake {
 	return Shake{rate: rate128, dsbyte: dsbyteShake}
 }
 
-func (c *Shake) Init128() {
-	c.rate = rate128
-	c.dsbyte = dsbyteShake
+func (d *Shake) Init128() {
+	d.rate = rate128
+	d.dsbyte = dsbyteShake
 }

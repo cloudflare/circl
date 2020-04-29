@@ -1,12 +1,26 @@
 linters:
   enable-all: true
   disable:
-  - gocritic
-  - errcheck
-  - scopelint
-  - gosec
-  - lll
-  - gochecknoglobals
-  - gochecknoinits
-  - dupl
-  - funlen
+    - testpackage # it can be improved
+    - lll         # it can be improved
+    - gocritic    # it can be improved
+    - gocognit    # it can be improved
+    - gochecknoglobals
+    - gochecknoinits
+    - gomnd
+    - dupl
+    - wsl
+
+linters-settings:
+  funlen:
+    lines: 120
+    statements: 80
+  nestif:
+    min-complexity: 6
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+output:
+  format: github-actions

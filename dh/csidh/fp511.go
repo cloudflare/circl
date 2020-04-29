@@ -12,7 +12,7 @@ import (
 // We declare variables not constants, in order to facilitate testing.
 var (
 	// Signals support for BMI2 (MULX)
-	hasBMI2 = cpu.X86.HasBMI2
+	hasBMI2 = cpu.X86.HasBMI2 //nolint
 	// Signals support for ADX and BMI2
 	hasADXandBMI2 = cpu.X86.HasBMI2 && cpu.X86.HasADX
 )
@@ -20,7 +20,7 @@ var (
 // Constant time select.
 // if pick == 0xFF..FF (out = in1)
 // if pick == 0 (out = in2)
-// else out is undefined
+// else out is undefined.
 func ctPick64(which uint64, in1, in2 uint64) uint64 {
 	return (in1 & which) | (in2 & ^which)
 }
@@ -41,7 +41,6 @@ func mulGeneric(r, x, y *fp) {
 	var c, q uint64
 
 	for i := 0; i < numWords-1; i++ {
-
 		q = ((x[i] * y[0]) + s[0]) * pNegInv[0]
 		mul576(&t1, &p, q)
 		mul576(&t2, y, x[i])
@@ -143,7 +142,7 @@ func addRdc(r, x, y *fp) {
 	r[7] = ctPick64(w, r[7], t[7])
 }
 
-// r = x - y
+// r = x - y.
 func sub512(r, x, y *fp) uint64 {
 	var c uint64
 	r[0], c = bits.Sub64(x[0], y[0], 0)
@@ -199,7 +198,7 @@ func modExpRdcCommon(r, b, e *fp, fpBitLen int) {
 	precomp[0] = one // b ^ 0
 	precomp[1] = *b  // b ^ 1
 	for i := 2; i < 16; i = i + 2 {
-		// TODO: implement fast squering. Then interleaving fast squaring
+		// OPTIMIZE: implement fast squering. Then interleaving fast squaring
 		// with multiplication should improve performance.
 		mulRdc(&precomp[i], &precomp[i/2], &precomp[i/2]) // sqr
 		mulRdc(&precomp[i+1], &precomp[i], b)
@@ -234,7 +233,6 @@ func modExpRdcCommon(r, b, e *fp, fpBitLen int) {
 	r[5] = ctPick64(w, r[5], t[5])
 	r[6] = ctPick64(w, r[6], t[6])
 	r[7] = ctPick64(w, r[7], t[7])
-
 }
 
 // modExpRdc does modular exponentation of 512-bit number.
@@ -280,7 +278,7 @@ func (v *fp) isZero() bool {
 	return ctIsNonZero64(r) == 0
 }
 
-// equal checks if v is equal to in. Constant time
+// equal checks if v is equal to in. Constant time.
 func (v *fp) equal(in *fp) bool {
 	var r uint64
 	for i := range v {

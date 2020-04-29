@@ -43,8 +43,7 @@ func fpNeg(c, a *Fp) { fpSub(c, &modulusP, a) }
 //
 //	-1 if x >  (p+1)/2
 //	 0 if x == 0
-//	+1 if x >  (p+1)/2
-//
+//	+1 if x >  (p+1)/2.
 func fpSgn(c *Fp) int {
 	s := 0
 	if !c.isZero() {
@@ -103,7 +102,7 @@ func fpTwo1251(c, a *Fp) {
 	fpMul(c, a, t1)
 }
 
-// fpInv sets z to a^(-1) mod p
+// fpInv sets z to a^(-1) mod p.
 func fpInv(z, a *Fp) {
 	t := &Fp{}
 	fpTwo1251(t, a)

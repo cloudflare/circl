@@ -88,7 +88,6 @@ func TestFp(t *testing.T) {
 	P := elliptic.P384().Params().P
 	x, y, z := &fp384{}, &fp384{}, &fp384{}
 	testTimes := 1 << 12
-
 	var bigR, bigR2, bigRinv big.Int
 	one := big.NewInt(1)
 	bigR.Lsh(one, 384).Mod(&bigR, P)
@@ -99,11 +98,9 @@ func TestFp(t *testing.T) {
 		for i := 0; i < testTimes; i++ {
 			_, _ = rand.Read(x[:])
 			bigX := x.BigInt()
-
 			// fp384
 			montEncode(z, x)
 			got := z.BigInt()
-
 			// big.Int
 			want := bigX.Mul(bigX, &bigR).Mod(bigX, P)
 			if got.Cmp(want) != 0 {
@@ -111,16 +108,13 @@ func TestFp(t *testing.T) {
 			}
 		}
 	})
-
 	t.Run("Decode", func(t *testing.T) {
 		for i := 0; i < testTimes; i++ {
 			_, _ = rand.Read(x[:])
 			bigX := x.BigInt()
-
 			// fp384
 			montDecode(z, x)
 			got := z.BigInt()
-
 			// big.Int
 			want := bigX.Mul(bigX, new(big.Int).ModInverse(&bigR, P)).Mod(bigX, P)
 			if got.Cmp(want) != 0 {
@@ -128,16 +122,13 @@ func TestFp(t *testing.T) {
 			}
 		}
 	})
-
 	t.Run("Neg", func(t *testing.T) {
 		for i := 0; i < testTimes; i++ {
 			_, _ = rand.Read(x[:])
 			bigX := x.BigInt()
-
 			// fp384
 			fp384Neg(z, x)
 			got := z.BigInt()
-
 			// big.Int
 			want := bigX.Neg(bigX).Mod(bigX, P)
 			if got.Cmp(want) != 0 {
@@ -145,18 +136,15 @@ func TestFp(t *testing.T) {
 			}
 		}
 	})
-
 	t.Run("Add", func(t *testing.T) {
 		for i := 0; i < testTimes; i++ {
 			_, _ = rand.Read(x[:])
 			_, _ = rand.Read(y[:])
 			bigX := x.BigInt()
 			bigY := y.BigInt()
-
 			// fp384
 			fp384Add(z, x, y)
 			got := z.BigInt()
-
 			// big.Int
 			want := bigX.Add(bigX, bigY)
 			want = want.Mod(want, P)
@@ -165,18 +153,15 @@ func TestFp(t *testing.T) {
 			}
 		}
 	})
-
 	t.Run("Sub", func(t *testing.T) {
 		for i := 0; i < testTimes; i++ {
 			_, _ = rand.Read(x[:])
 			_, _ = rand.Read(y[:])
 			bigX := x.BigInt()
 			bigY := y.BigInt()
-
 			// fp384
 			fp384Sub(z, x, y)
 			got := z.BigInt()
-
 			// big.Int
 			want := bigX.Sub(bigX, bigY)
 			want = want.Mod(want, P)
@@ -185,18 +170,15 @@ func TestFp(t *testing.T) {
 			}
 		}
 	})
-
 	t.Run("Mul", func(t *testing.T) {
 		for i := 0; i < testTimes; i++ {
 			_, _ = rand.Read(x[:])
 			_, _ = rand.Read(y[:])
 			bigX := x.BigInt()
 			bigY := y.BigInt()
-
 			// fp384
 			fp384Mul(z, x, y)
 			got := z.BigInt()
-
 			// big.Int
 			want := bigX.Mul(bigX, bigY).Mul(bigX, &bigRinv).Mod(bigX, P)
 			if got.Cmp(want) != 0 {
@@ -204,16 +186,13 @@ func TestFp(t *testing.T) {
 			}
 		}
 	})
-
 	t.Run("Inv", func(t *testing.T) {
 		for i := 0; i < testTimes; i++ {
 			_, _ = rand.Read(x[:])
 			bigX := x.BigInt()
-
 			// fp384
 			fp384Inv(z, x)
 			got := z.BigInt()
-
 			// big.Int
 			want := bigX.ModInverse(bigX, P).Mul(bigX, &bigR2).Mod(bigX, P)
 			if got.Cmp(want) != 0 {

@@ -102,7 +102,7 @@ func (P *p2Point) cneg(b int) {
 	fp384Cmov(&P.y, &mY, b)
 }
 
-// cmov sets P to Q if b=1
+// cmov sets P to Q if b=1.
 func (P *p2Point) cmov(Q *p2Point, b int) {
 	fp384Cmov(&P.x, &Q.x, b)
 	fp384Cmov(&P.y, &Q.y, b)

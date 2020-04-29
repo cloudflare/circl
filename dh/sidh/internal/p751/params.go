@@ -48,8 +48,6 @@ var (
 	// P751p1Zeros number of 0 digits in the least significant part of P751+1
 	P751p1Zeros = 5
 
-	params common.SidhParams
-
 	// 1*R mod p
 	one = common.Fp2{
 		A: common.Fp{
@@ -74,9 +72,7 @@ var (
 			0x3714FE4EB8399915, 0xC3A2584753EB43F4, 0xA3151D605C520428,
 			0xC116CF5232C7C978, 0x49A84D4B8EFAF6AA, 0x0000305731E97514},
 	}
-)
 
-func init() {
 	params = common.SidhParams{
 		ID: common.Fp751,
 		// SIDH public key byte size.
@@ -246,6 +242,8 @@ func init() {
 			C: one,
 		},
 	}
+)
 
+func init() {
 	common.Register(common.Fp751, &params)
 }

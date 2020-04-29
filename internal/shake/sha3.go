@@ -119,7 +119,7 @@ func (d *Shake) padAndPermute(dsbyte byte) {
 }
 
 // Write absorbs more data into the hash's state. It produces an error
-// if more data is written to the ShakeHash after writing
+// if more data is written to the ShakeHash after writing.
 func (d *Shake) Write(p []byte) (int, error) {
 	if d.state != spongeAbsorbing {
 		panic("shake: write to sponge after read")
@@ -183,7 +183,7 @@ func (d *Shake) Sum(in []byte) []byte {
 	// and summing.
 	dup := d.Clone()
 	hash := make([]byte, dup.outputLen)
-	dup.Read(hash)
+	_, _ = dup.Read(hash)
 	return append(in, hash...)
 }
 

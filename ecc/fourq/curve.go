@@ -54,7 +54,7 @@ func (P *Point) IsIdentity() bool {
 	return _P.IsIdentity()
 }
 
-// Add calculates a point addition P = Q + R
+// Add calculates a point addition P = Q + R.
 func (P *Point) Add(Q, R *Point) {
 	var _Q, _R pointR1
 	var _R2 pointR2

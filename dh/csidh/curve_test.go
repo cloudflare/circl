@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// Actual test implementation
+// Actual test implementation.
 func TestXAdd(t *testing.T) {
 	var P, Q, PdQ point
 	var PaQ point

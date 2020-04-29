@@ -73,10 +73,6 @@ var (
 			0x30B1E6E3A51520FA, 0xB13BC3BF6FFB3992, 0x8045412EEB3E3DED, 0x0069182E2159DBB8},
 	}
 
-	params common.SidhParams
-)
-
-func init() {
 	params = common.SidhParams{
 		ID: common.Fp503,
 		// SIDH public key byte size.
@@ -200,6 +196,8 @@ func init() {
 			C: one,
 		},
 	}
+)
 
+func init() {
 	common.Register(common.Fp503, &params)
 }

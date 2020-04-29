@@ -3,7 +3,7 @@ package common
 // Constant time select.
 // if pick == 1 (out = in1)
 // if pick == 0 (out = in2)
-// else out is undefined
+// else out is undefined.
 func Cpick(pick int, out, in1, in2 []byte) {
 	var which = byte((int8(pick << 7)) >> 7)
 	for i := range out {

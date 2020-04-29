@@ -10,7 +10,7 @@ import (
 	"github.com/cloudflare/circl/dh/sidh/internal/p751"
 )
 
-// I keep it bool in order to be able to apply logical NOT
+// I keep it bool in order to be able to apply logical NOT.
 type KeyVariant uint
 
 // Base type for public and private key. Used mainly to carry domain
@@ -58,7 +58,7 @@ const (
 	KeyVariantSike = 1<<2 | KeyVariantSidhB
 )
 
-// Accessor to key variant
+// Accessor to key variant.
 func (key *key) Variant() KeyVariant {
 	return key.keyVariant
 }
@@ -125,7 +125,7 @@ func (pub *PublicKey) Export(out []byte) {
 	common.Fp2ToBytes(out[2*ssSz:3*ssSz], &feTmp[2], pub.params.Bytelen)
 }
 
-// Size returns size of the public key in bytes
+// Size returns size of the public key in bytes.
 func (pub *PublicKey) Size() int {
 	return pub.params.PublicKeySize
 }
@@ -152,7 +152,7 @@ func (prv *PrivateKey) Export(out []byte) {
 	copy(out[len(prv.S):], prv.Scalar)
 }
 
-// Size returns size of the private key in bytes
+// Size returns size of the private key in bytes.
 func (prv *PrivateKey) Size() int {
 	tmp := len(prv.Scalar)
 	if prv.Variant() == KeyVariantSike {
@@ -161,7 +161,7 @@ func (prv *PrivateKey) Size() int {
 	return tmp
 }
 
-// Size returns size of the shared secret
+// Size returns size of the shared secret.
 func (prv *PrivateKey) SharedSecretSize() int {
 	return prv.params.SharedSecretSize
 }

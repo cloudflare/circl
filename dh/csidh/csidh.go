@@ -40,7 +40,7 @@ type PrivateKey struct {
 	e [PrivateKeySize]int8
 }
 
-// randFp generates random element from Fp
+// randFp generates random element from Fp.
 func (s *fpRngGen) randFp(v *fp, rng io.Reader) {
 	mask := uint64(1<<(pbits%limbBitSize)) - 1
 	for {
@@ -117,7 +117,7 @@ func cofactorMul(p *point, a *coeff, halfL, halfR int, order *fp) (bool, bool) {
 
 // groupAction evaluates group action of prv.e on a Montgomery
 // curve represented by coefficient pub.A.
-// This is implementation of algorithm 2 from ia.cr/2018/383
+// This is implementation of algorithm 2 from ia.cr/2018/383.
 func groupAction(pub *PublicKey, prv *PrivateKey, rng io.Reader) {
 	var k [2]fp
 	var e [2][primeCount]uint8
@@ -242,14 +242,14 @@ func GeneratePrivateKey(key *PrivateKey, rng io.Reader) error {
 
 // Public key operations
 
-// reset removes key material from PublicKey
+// reset removes key material from PublicKey.
 func (c *PublicKey) reset() {
 	for i := range c.a {
 		c.a[i] = 0
 	}
 }
 
-// Assumes key is in Montgomery domain
+// Assumes key is in Montgomery domain.
 func (c *PublicKey) Import(key []byte) bool {
 	if len(key) != numWords*limbByteSize {
 		return false
@@ -262,7 +262,7 @@ func (c *PublicKey) Import(key []byte) bool {
 	return true
 }
 
-// Assumes key is exported as encoded in Montgomery domain
+// Assumes key is exported as encoded in Montgomery domain.
 func (c *PublicKey) Export(out []byte) bool {
 	if len(out) != numWords*limbByteSize {
 		return false

@@ -59,7 +59,7 @@ func ladderMontgomery(k, xP *Key) {
 func toAffine(k *[fp.Size]byte, x, z *fp.Elt) {
 	fp.Inv(z, z)
 	fp.Mul(x, x, z)
-	fp.ToBytes(k[:], x)
+	_ = fp.ToBytes(k[:], x)
 }
 
 var lowOrderPoints = [5]fp.Elt{

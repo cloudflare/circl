@@ -76,5 +76,5 @@ func (e Curve) CombinedMult(m, n *Scalar, P *Point) *Point {
 	n4 := &Scalar{}
 	m4.divBy4(m)
 	n4.divBy4(n)
-	return e.pull(twistCurve{}.CombinedMult(m4, n4, e.push(P)))
+	return e.pull(twistCurve{}.CombinedMult(m4, n4, twistCurve{}.pull(P)))
 }

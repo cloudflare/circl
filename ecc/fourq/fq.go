@@ -39,7 +39,7 @@ func fqSgn(c *Fq) int {
 func fqCopy(c, a *Fq) { *c = *a }
 func fqNeg(c, a *Fq)  { fpNeg(&c[0], &a[0]); fpNeg(&c[1], &a[1]) }
 
-// fqSqrt calculates c = sqrt(u/v) such that sgn(c)=s
+// fqSqrt calculates c = sqrt(u/v) such that sgn(c)=s.
 func fqSqrt(c, u, v *Fq, s int) {
 	t0, t1, t, r := &Fp{}, &Fp{}, &Fp{}, &Fp{}
 	a, b, g := &Fp{}, &Fp{}, &Fp{}

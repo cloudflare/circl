@@ -63,10 +63,6 @@ var (
 
 	P434p1Zeros = 3
 
-	params common.SidhParams
-)
-
-func init() {
 	params = common.SidhParams{
 		ID: common.Fp434,
 		// SIDH public key byte size.
@@ -194,6 +190,8 @@ func init() {
 		Bytelen:        55,
 		CiphertextSize: 16 + 330,
 	}
+)
 
+func init() {
 	common.Register(common.Fp434, &params)
 }

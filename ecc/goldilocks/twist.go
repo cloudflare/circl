@@ -20,7 +20,7 @@ func (twistCurve) Identity() *twistPoint {
 	}
 }
 
-// subYDiv16 update x = (x - y) / 16
+// subYDiv16 update x = (x - y) / 16.
 func subYDiv16(x *scalar64, y int64) {
 	s := uint64(y >> 63)
 	x0, b0 := bits.Sub64((*x)[0], uint64(y), 0)
@@ -92,7 +92,7 @@ const (
 	omegaVar = 5
 )
 
-// CombinedMult returns mG+nP
+// CombinedMult returns mG+nP.
 func (e twistCurve) CombinedMult(m, n *Scalar, P *twistPoint) *twistPoint {
 	nafFix := math.OmegaNAF(conv.BytesLe2BigInt(m[:]), omegaFix)
 	nafVar := math.OmegaNAF(conv.BytesLe2BigInt(n[:]), omegaVar)

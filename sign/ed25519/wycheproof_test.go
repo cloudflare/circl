@@ -70,7 +70,6 @@ func (kat *Wycheproof) keyPair(t *testing.T) {
 }
 
 func (kat *Wycheproof) verify(t *testing.T) {
-
 	for i, g := range kat.Groups {
 		for _, gT := range g.Tests {
 			isValid := gT.Result == "valid"

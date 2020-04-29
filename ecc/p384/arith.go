@@ -32,81 +32,67 @@ func fp384Inv(z, x *fp384) {
 	fp384Sqr(t4, x)
 	/* alpha_2 */
 	fp384Mul(t4, t4, x)
-
 	/* alpha_3 */
 	fp384Sqr(t0, t4)
 	fp384Mul(t0, t0, x)
-
 	/* alpha_6 */
 	fp384Sqr(t1, t0)
 	fp384Sqr(t1, t1)
 	fp384Sqr(t1, t1)
 	fp384Mul(t1, t1, t0)
-
 	/* alpha_12 */
 	fp384Sqr(t2, t1)
 	for i := 0; i < 5; i++ {
 		fp384Sqr(t2, t2)
 	}
 	fp384Mul(t2, t2, t1)
-
 	/* alpha_15 */
 	for i := 0; i < 3; i++ {
 		fp384Sqr(t2, t2)
 	}
 	fp384Mul(t2, t2, t0)
-
 	/* alpha_30 */
 	fp384Sqr(t1, t2)
 	for i := 0; i < 14; i++ {
 		fp384Sqr(t1, t1)
 	}
 	fp384Mul(t1, t1, t2)
-
 	/* alpha_60 */
 	fp384Sqr(t3, t1)
 	for i := 0; i < 29; i++ {
 		fp384Sqr(t3, t3)
 	}
 	fp384Mul(t3, t3, t1)
-
 	/* T_3 = alpha_30^(2^2) */
 	fp384Sqr(t1, t1)
 	fp384Sqr(t1, t1)
-
 	/* alpha_32 */
 	*t0 = *t1
 	fp384Mul(t0, t0, t4)
-
 	/* T_3 = a^(2^32-3) = (alpha_30)^(2^2)*alpha_1 */
 	fp384Mul(t1, t1, x)
-
 	/* alpha_120 */
 	fp384Sqr(t4, t3)
 	for i := 0; i < 59; i++ {
 		fp384Sqr(t4, t4)
 	}
 	fp384Mul(t4, t4, t3)
-
 	/* alpha_240 */
 	fp384Sqr(t3, t4)
 	for i := 0; i < 119; i++ {
 		fp384Sqr(t3, t3)
 	}
 	fp384Mul(t3, t3, t4)
-
 	/* alpha_255 */
 	for i := 0; i < 15; i++ {
 		fp384Sqr(t3, t3)
 	}
 	fp384Mul(t3, t3, t2)
-
 	/* T_5 = a^(2^288-2^32-1) = (alpha_255)^(2^33)*alpha_32 */
 	for i := 0; i < 33; i++ {
 		fp384Sqr(t3, t3)
 	}
 	fp384Mul(t3, t3, t0)
-
 	/* T_1 = a^(2^384-2^128-2^96+2^32-3) = (T_1)^(2^96)*T_3 */
 	fp384Sqr(t4, t3)
 	for i := 0; i < 95; i++ {

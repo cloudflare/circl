@@ -4,7 +4,7 @@ package csidh
 // curves E(x): x^3 + A*x^2 + x by using x-coordinate only arithmetic.
 //    x(PaQ) = x(P) + x(Q) by using x(P-Q)
 // This algorithms is correctly defined only for cases when
-// P!=inf, Q!=inf, P!=Q and P!=-Q
+// P!=inf, Q!=inf, P!=Q and P!=-Q.
 func xAdd(PaQ, P, Q, PdQ *point) {
 	var t0, t1, t2, t3 fp
 	addRdc(&t0, &P.x, &P.z)
@@ -24,7 +24,7 @@ func xAdd(PaQ, P, Q, PdQ *point) {
 // xDbl implements point doubling on a Montgomery curve
 // E(x): x^3 + A*x^2 + x by using x-coordinate onlyh arithmetic.
 //   x(Q) = [2]*x(P)
-// It is correctly defined for all P != inf
+// It is correctly defined for all P != inf.
 func xDbl(Q, P, A *point) {
 	var t0, t1, t2 fp
 	addRdc(&t0, &P.x, &P.z)
@@ -155,7 +155,7 @@ func xIso(img *point, co *coeff, kern *point, kernOrder uint64) {
 
 	xDbl(&M[1], kern, &point{x: co.a, z: co.c})
 
-	// TODO: Not constant time.
+	// NOTE: Not constant time.
 	for i := uint64(1); i < kernOrder>>1; i++ {
 		if i >= 2 {
 			xAdd(&M[i%3], &M[(i-1)%3], kern, &M[(i-2)%3])
@@ -170,7 +170,6 @@ func xIso(img *point, co *coeff, kern *point, kernOrder uint64) {
 		mulRdc(&Q.x, &Q.x, &t2)
 		subRdc(&t2, &t0, &t1)
 		mulRdc(&Q.z, &Q.z, &t2)
-
 	}
 
 	mulRdc(&Q.x, &Q.x, &Q.x)
@@ -200,7 +199,7 @@ func xIso(img *point, co *coeff, kern *point, kernOrder uint64) {
 	addRdc(&co.a, &co.a, &co.a)
 }
 
-// montEval evaluates x^3 + Ax^2 + x
+// montEval evaluates x^3 + Ax^2 + x.
 func montEval(res, A, x *fp) {
 	var t fp
 
