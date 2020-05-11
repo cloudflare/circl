@@ -1,0 +1,1 @@
+../../mode3/internal/dilithium_test.go

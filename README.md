@@ -41,6 +41,7 @@ Version numbers are [Semvers](https://semver.org/). We release a minor version f
 | Key Exchange | FourQ | One of the fastest elliptic curves at 128-bit security level. | Experimental for key agreement and digital signatures. |
 | Key Exchange / Digital signatures | P-384 | Our optimizations reduce the burden when moving from P-256 to P-384. |  ECDSA and ECDH using Suite B at top secret level. |
 | Digital Signatures | Ed25519, Ed448 | RFC-8032 provides new signature schemes based on Edwards curves. | Digital certificates and authentication. |
+| PQ Digital Signatures | Dilithium | Lattice (Module LWE) based signature scheme | Post-Quantum PKI |
 
 ### Work in Progress
 
