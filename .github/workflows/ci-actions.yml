@@ -26,7 +26,7 @@ jobs:
           go-version: ${{ matrix.GOVER }}
       - name: Verifying Code
         run: |
-         go generate -v ./... && test -z "$(git status --porcelain)"
+         go generate -v ./... && go mod tidy && test -z "$(git status --porcelain)"
          go vet ./...
       - name: Building
         run: go build -v ./...

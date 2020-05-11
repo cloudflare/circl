@@ -43,6 +43,7 @@ cover: clean
 
 generate: clean
 	$(GO) generate -v ./...
+	$(GO) mod tidy
 
 bootstrap:
 	curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(TOOLS_DIR) v1.18.0
