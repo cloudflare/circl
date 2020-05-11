@@ -11,7 +11,7 @@ import "encoding/binary"
 type storageBuf [maxRate]byte
 
 func (b *storageBuf) asBytes() *[maxRate]byte {
-    return (*[maxRate]byte)(b)
+	return (*[maxRate]byte)(b)
 }
 
 // xorInGeneric xors the bytes in buf into the state; it

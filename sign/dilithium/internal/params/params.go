@@ -1,0 +1,31 @@
+package params
+
+// We put these parameters in a separate package so that the Go code,
+// such as ntt_amd64_src.go, that generates assembler can import it.
+
+const (
+	SeedSize = 32
+	N        = 256
+	Q        = 8380417 // 2²³ - 2¹³ + 1
+	QBits    = 23
+	Qinv     = 4236238847 // = -(q^-1) mod 2³²
+	ROver256 = 41978      // = (256)⁻¹ R², where R = q mod 2³²
+	D        = 14
+	Gamma1   = (Q - 1) / 16
+	Gamma2   = Gamma1 / 2 // = Alpha/2
+	Alpha    = 2 * Gamma2 // = Gamma1
+
+	// Size of T1 packed.  (Note that the formula is not valid in general,
+	// but it is for the parameters used in the modes of Dilithium.)
+	PolyT1Size = (N * (QBits - D)) / 8
+
+	// Size of T0 packed.  (Note that the formula is not valid in general,
+	// but it is for the parameters used in the modes of Dilithium.)
+	PolyT0Size = (N * D) / 8
+
+	// Size of a packed polynomial of norm <γ₁.
+	PolyLeGamma1Size = (N * (QBits - 3)) / 8
+
+	// Size of a packed polynomial whose coeffients are in [0,16).
+	PolyLe16Size = N / 2
+)
