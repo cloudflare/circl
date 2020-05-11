@@ -263,3 +263,26 @@ func TestDeriveUniformB60(t *testing.T) {
 		}
 	}
 }
+
+func TestDeriveUniformX4(t *testing.T) {
+	if !PolyDeriveUniformX4Available {
+		t.SkipNow()
+	}
+	var ps [4]common.Poly
+	var p common.Poly
+	var seed [32]byte
+	nonces := [4]uint16{12345, 54321, 13532, 37377}
+
+	for i := 0; i < 32; i++ {
+		seed[i] = byte(i)
+	}
+
+	PolyDeriveUniformX4([4]*common.Poly{&ps[0], &ps[1], &ps[2], &ps[3]}, &seed,
+		nonces)
+	for i := 0; i < 4; i++ {
+		PolyDeriveUniform(&p, &seed, nonces[i])
+		if ps[i] != p {
+			t.Fatal()
+		}
+	}
+}

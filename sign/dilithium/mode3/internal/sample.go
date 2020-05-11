@@ -1,9 +1,91 @@
 package internal
 
 import (
+	"github.com/cloudflare/circl/internal/f1600x4"
 	"github.com/cloudflare/circl/internal/shake"
+
 	common "github.com/cloudflare/circl/sign/dilithium/internal"
+
+	"encoding/binary"
 )
+
+var PolyDeriveUniformX4Available = f1600x4.Available && !UseAES
+
+// For each i, sample ps[i] uniformly from the given seed and nonces[i].
+// If ps[i] may be nil and is ignored in that case.
+//
+// Can only be called when PolyDeriveUniformX4Available is true.
+func PolyDeriveUniformX4(ps [4]*common.Poly, seed *[32]byte, nonces [4]uint16) {
+	var perm f1600x4.State
+	state := perm.Initialize()
+
+	// Absorb the seed in the four states
+	for i := 0; i < 4; i++ {
+		v := binary.LittleEndian.Uint64(seed[8*i : 8*(i+1)])
+		for j := 0; j < 4; j++ {
+			state[i*4+j] = v
+		}
+	}
+
+	// Absorb the nonces, the SHAKE128 domain separator (0b1111), the
+	// start of the padding (0b...001) and the end of the padding 0b100...
+	for j := 0; j < 4; j++ {
+		state[4*4+j] = uint64(nonces[j]) | (0x1f << 16)
+		state[20*4+j] = 0x80 << 56
+	}
+
+	var idx [4]int // indices into p
+	for j := 0; j < 4; j++ {
+		if ps[j] == nil {
+			idx[j] = 256 // mark nil polynomial as completed
+		}
+	}
+
+	for {
+		// Permute
+		perm.Permute()
+
+		done := true
+
+		for j := 0; j < 4; j++ {
+			if idx[j] == 256 {
+				break
+			}
+			done = false
+			for i := 0; i < 7; i++ {
+				var t [8]uint32
+				t[0] = uint32(state[i*3*4+j] & 0x7fffff)
+				t[1] = uint32((state[i*3*4+j] >> 24) & 0x7fffff)
+				t[2] = uint32((state[i*3*4+j] >> 48) |
+					((state[(i*3+1)*4+j] & 0x7f) << 16))
+				t[3] = uint32((state[(i*3+1)*4+j] >> 8) & 0x7fffff)
+				t[4] = uint32((state[(i*3+1)*4+j] >> 32) & 0x7fffff)
+				t[5] = uint32((state[(i*3+1)*4+j] >> 56) |
+					((state[(i*3+2)*4+j] & 0x7fff) << 8))
+				t[6] = uint32((state[(i*3+2)*4+j] >> 16) & 0x7fffff)
+				t[7] = uint32((state[(i*3+2)*4+j] >> 40) & 0x7fffff)
+
+				for k := 0; k < 8; k++ {
+					if t[k] < common.Q {
+						ps[j][idx[j]] = t[k]
+						idx[j] += 1
+						if idx[j] == 256 {
+							break
+						}
+					}
+				}
+				if idx[j] == 256 {
+					break
+				}
+			}
+		}
+
+		if done {
+			break
+		}
+	}
+
+}
 
 // Sample p uniformly from the given seed and nonce.
 //
