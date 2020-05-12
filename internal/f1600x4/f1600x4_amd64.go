@@ -19,15 +19,15 @@ var Available = cpu.X86.HasAVX2
 // Contains state for the fourway permutation including the four
 // interleaved [25]uint64 buffers.  Use
 type State struct {
-	// Go guarantees a to be alligned on 8 bytes, whereas we need it to be
-	// alligned on 32 bytes for bet performance.  Thus we leave some headroom
+	// Go guarantees a to be aligned on 8 bytes, whereas we need it to be
+	// aligned on 32 bytes for bet performance.  Thus we leave some headroom
 	// to be able to move the start of the state.
 
 	// 4 x 25 uint64s for the interleaved states and three uint64s headroom
 	// to fix allignment.
 	a [103]uint64
 
-	// Offset into a that is 32 byte alligned.
+	// Offset into a that is 32 byte aligned.
 	offset int
 }
 
@@ -44,7 +44,7 @@ func (s *State) Initialize() []uint64 {
 		s.offset = 4 - rem
 	}
 
-	// the slice we return will be alligned on 32 byte boundry.
+	// the slice we return will be aligned on 32 byte boundry.
 	return s.a[s.offset : s.offset+100]
 }
 

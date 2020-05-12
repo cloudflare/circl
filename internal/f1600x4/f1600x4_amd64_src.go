@@ -12,7 +12,7 @@ import (
 func main() {
 	ConstraintExpr("amd64")
 
-	// Must be called on 32 byte alligned memory.
+	// Must be called on 32 byte aligned memory.
 	TEXT("f1600x4", NOSPLIT, "func(state *uint64, rc *[24]uint64)")
 
 	Pragma("noescape")
