@@ -9,12 +9,112 @@ import (
 	"encoding/binary"
 )
 
-var PolyDeriveUniformX4Available = f1600x4.Available && !UseAES
+// True if this system supports the quick fourway sampling variants
+// like PolyDeriveUniformX4.
+var DeriveX4Available = f1600x4.Available && !UseAES
+
+// For each i, sample ps[i] uniformly with coefficients of norm less than γ₁
+// using the the given seed and nonces[i].  ps[i] may be nil and is ignored
+// in that case.  ps[i] will not be normalized, but have coefficients in the
+// interval (q-γ₁,q+γ₁).
+//
+// Can only be called when DeriveX4Available is true.
+func PolyDeriveUniformLeGamma1X4(ps [4]*common.Poly, seed *[48]byte,
+	nonces [4]uint16) {
+	var perm f1600x4.State
+	state := perm.Initialize()
+
+	// Absorb the seed in the four states
+	for i := 0; i < 6; i++ {
+		v := binary.LittleEndian.Uint64(seed[8*i : 8*(i+1)])
+		for j := 0; j < 4; j++ {
+			state[i*4+j] = v
+		}
+	}
+
+	// Absorb the nonces, the SHAKE256 domain separator (0b1111), the
+	// start of the padding (0b...001) and the end of the padding 0b100...
+	// Recall that the rate of SHAKE256 is 136 --- i.e. 17 uint64s.
+	for j := 0; j < 4; j++ {
+		state[6*4+j] = uint64(nonces[j]) | (0x1f << 16)
+		state[16*4+j] = 0x80 << 56
+	}
+
+	var idx [4]int // indices into ps
+	for j := 0; j < 4; j++ {
+		if ps[j] == nil {
+			idx[j] = 256 // mark nil polynomial as completed
+		}
+	}
+
+	// Each try requires 15 bits.  15 does not divide into 64, nor in 136,
+	// so we will have to carry some bits from a previous uint64 to the next.
+	var carry [4]uint32
+
+	// Shift is the amount of bits in the carry.
+	var shift [4]uint
+
+	for {
+		// Applies KeccaK-f[1600] to state to get the next 17 uint64s of each
+		// of the four SHAKE256 streams.
+		perm.Permute()
+
+		done := true
+
+		for j := 0; j < 4; j++ {
+			if idx[j] == 256 {
+				continue
+			}
+			done = false
+
+			for i := 0; i < 17; i++ {
+				var t [4]uint32
+				tCount := 3
+
+				// Get the next three or four 20 bit numbers.
+				qw := state[i*4+j]
+				qwl := (qw << shift[j]) | uint64(carry[j])
+				t[0] = uint32(qwl & 0xfffff)
+				t[1] = uint32((qwl >> 20) & 0xfffff)
+				t[2] = uint32((qwl >> 40) & 0xfffff)
+
+				if shift[j] == 16 {
+					t[3] = uint32(qw >> 44)
+					shift[j] = 0
+					carry[j] = 0
+					tCount = 4
+				} else {
+					shift[j] += 4
+					carry[j] = uint32(qw >> (64 - shift[j]))
+				}
+
+				// Check if they're coefficients.
+				for k := 0; k < tCount; k++ {
+					if t[k] <= 2*common.Gamma1-2 {
+						ps[j][idx[j]] = common.Q + common.Gamma1 - 1 - t[k]
+						idx[j] += 1
+						if idx[j] == 256 {
+							break
+						}
+					}
+				}
+
+				if idx[j] == 256 {
+					break
+				}
+			}
+		}
+
+		if done {
+			break
+		}
+	}
+}
 
 // For each i, sample ps[i] uniformly from the given seed and nonces[i].
-// If ps[i] may be nil and is ignored in that case.
+// ps[i] may be nil and is ignored in that case.
 //
-// Can only be called when PolyDeriveUniformX4Available is true.
+// Can only be called when DeriveX4Available is true.
 func PolyDeriveUniformX4(ps [4]*common.Poly, seed *[32]byte, nonces [4]uint16) {
 	var perm f1600x4.State
 	state := perm.Initialize()
@@ -29,12 +129,13 @@ func PolyDeriveUniformX4(ps [4]*common.Poly, seed *[32]byte, nonces [4]uint16) {
 
 	// Absorb the nonces, the SHAKE128 domain separator (0b1111), the
 	// start of the padding (0b...001) and the end of the padding 0b100...
+	// Recall that the rate of SHAKE128 is 168 --- i.e. 21 uint64s.
 	for j := 0; j < 4; j++ {
 		state[4*4+j] = uint64(nonces[j]) | (0x1f << 16)
 		state[20*4+j] = 0x80 << 56
 	}
 
-	var idx [4]int // indices into p
+	var idx [4]int // indices into ps
 	for j := 0; j < 4; j++ {
 		if ps[j] == nil {
 			idx[j] = 256 // mark nil polynomial as completed
@@ -42,14 +143,15 @@ func PolyDeriveUniformX4(ps [4]*common.Poly, seed *[32]byte, nonces [4]uint16) {
 	}
 
 	for {
-		// Permute
+		// Applies KeccaK-f[1600] to state to get the next 21 uint64s of each
+		// of the four SHAKE128 streams.
 		perm.Permute()
 
 		done := true
 
 		for j := 0; j < 4; j++ {
 			if idx[j] == 256 {
-				break
+				continue
 			}
 			done = false
 			for i := 0; i < 7; i++ {
@@ -84,7 +186,6 @@ func PolyDeriveUniformX4(ps [4]*common.Poly, seed *[32]byte, nonces [4]uint16) {
 			break
 		}
 	}
-
 }
 
 // Sample p uniformly from the given seed and nonce.
@@ -204,8 +305,32 @@ func PolyDeriveUniformLeqEta(p *common.Poly, seed *[32]byte, nonce uint16) {
 // v[i] will not be normalized, but have coefficients in the
 // interval (q-γ₁,q+γ₁).
 func VecLDeriveUniformLeGamma1(v *VecL, seed *[48]byte, nonce uint16) {
-	for i := 0; i < L; i++ {
-		PolyDeriveUniformLeGamma1(&v[i], seed, nonce+uint16(i))
+	if !DeriveX4Available {
+		for i := 0; i < L; i++ {
+			PolyDeriveUniformLeGamma1(&v[i], seed, nonce+uint16(i))
+		}
+		return
+	}
+
+	// PolyDeriveUniformLeGamma1X4 is slower than, but not twice as slow as,
+	// PolyDeriveUniformLeGamma.
+	if L == 2 {
+		PolyDeriveUniformLeGamma1X4([4]*common.Poly{&v[0], &v[1], nil, nil},
+			seed, [4]uint16{nonce, nonce + 1, 0, 0})
+	} else if L == 3 {
+		PolyDeriveUniformLeGamma1X4([4]*common.Poly{&v[0], &v[1], &v[L-1], nil},
+			seed, [4]uint16{nonce, nonce + 1, nonce + 2, 0})
+	} else if L == 4 {
+		PolyDeriveUniformLeGamma1X4([4]*common.Poly{&v[0], &v[1], &v[L-2],
+			&v[L-1]}, seed, [4]uint16{nonce, nonce + 1, nonce + 2, nonce + 3})
+	} else if L == 5 {
+		// Note L/2 = 2 and L-2 = 3.  We use this so that the compiler
+		// does not complain about out-of-bounds errors when L ≠ 5.
+		PolyDeriveUniformLeGamma1X4([4]*common.Poly{&v[0], &v[1], &v[L/2],
+			&v[L-2]}, seed, [4]uint16{nonce, nonce + 1, nonce + 2, nonce + 3})
+		PolyDeriveUniformLeGamma1(&v[L-1], seed, nonce+4)
+	} else {
+		panic("VecLDeriveUniformLeGamma1 does not support that L")
 	}
 }
 
@@ -215,7 +340,7 @@ func VecLDeriveUniformLeGamma1(v *VecL, seed *[48]byte, nonce uint16) {
 // p will not be normalized, but have coefficients in the
 // interval (q-γ₁,q+γ₁).
 func PolyDeriveUniformLeGamma1(p *common.Poly, seed *[48]byte, nonce uint16) {
-	// Assumes γ1 is less than 2²⁰.
+	// Assumes γ₁ is less than 2²⁰.
 	var length, i int
 
 	// Fits 10 16B AES blocks, which aligns nicely as we take 5 bytes at

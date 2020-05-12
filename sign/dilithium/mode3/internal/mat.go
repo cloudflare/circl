@@ -11,7 +11,7 @@ type Mat [K]VecL
 //
 // This function is called ExpandA in the specification.
 func (m *Mat) Derive(seed *[32]byte) {
-	if !PolyDeriveUniformX4Available {
+	if !DeriveX4Available {
 		for i := uint16(0); i < K; i++ {
 			for j := uint16(0); j < L; j++ {
 				PolyDeriveUniform(&m[i][j], seed, (i<<8)+j)

@@ -265,7 +265,7 @@ func TestDeriveUniformB60(t *testing.T) {
 }
 
 func TestDeriveUniformX4(t *testing.T) {
-	if !PolyDeriveUniformX4Available {
+	if !DeriveX4Available {
 		t.SkipNow()
 	}
 	var ps [4]common.Poly
@@ -273,7 +273,7 @@ func TestDeriveUniformX4(t *testing.T) {
 	var seed [32]byte
 	nonces := [4]uint16{12345, 54321, 13532, 37377}
 
-	for i := 0; i < 32; i++ {
+	for i := 0; i < len(seed); i++ {
 		seed[i] = byte(i)
 	}
 
@@ -284,5 +284,70 @@ func TestDeriveUniformX4(t *testing.T) {
 		if ps[i] != p {
 			t.Fatal()
 		}
+	}
+}
+
+func TestDeriveUniformLeGamma1X4(t *testing.T) {
+	if !DeriveX4Available {
+		t.SkipNow()
+	}
+	var ps [4]common.Poly
+	var p common.Poly
+	var seed [48]byte
+	nonces := [4]uint16{12345, 54321, 13532, 37377}
+
+	for i := 0; i < len(seed); i++ {
+		seed[i] = byte(i)
+	}
+
+	PolyDeriveUniformLeGamma1X4([4]*common.Poly{&ps[0], &ps[1], &ps[2], &ps[3]},
+		&seed, nonces)
+	for i := 0; i < 4; i++ {
+		PolyDeriveUniformLeGamma1(&p, &seed, nonces[i])
+		if ps[i] != p {
+			t.Fatalf("%d\n%v\n%v", i, p, ps[i])
+		}
+	}
+}
+
+func BenchmarkPolyDeriveUniform(b *testing.B) {
+	var seed [32]byte
+	var p common.Poly
+	for i := 0; i < b.N; i++ {
+		PolyDeriveUniform(&p, &seed, uint16(i))
+	}
+}
+
+func BenchmarkPolyDeriveUniformX4(b *testing.B) {
+	if !DeriveX4Available {
+		b.SkipNow()
+	}
+	var seed [32]byte
+	var p [4]common.Poly
+	for i := 0; i < b.N; i++ {
+		nonce := uint16(4 * i)
+		PolyDeriveUniformX4([4]*common.Poly{&p[0], &p[1], &p[2], &p[3]},
+			&seed, [4]uint16{nonce, nonce + 1, nonce + 2, nonce + 3})
+	}
+}
+
+func BenchmarkPolyDeriveUniformLeGamma1(b *testing.B) {
+	var seed [48]byte
+	var p common.Poly
+	for i := 0; i < b.N; i++ {
+		PolyDeriveUniformLeGamma1(&p, &seed, uint16(i))
+	}
+}
+
+func BenchmarkPolyDeriveUniformLeGamma1X4(b *testing.B) {
+	if !DeriveX4Available {
+		b.SkipNow()
+	}
+	var seed [48]byte
+	var p [4]common.Poly
+	for i := 0; i < b.N; i++ {
+		nonce := uint16(4 * i)
+		PolyDeriveUniformLeGamma1X4([4]*common.Poly{&p[0], &p[1], &p[2], &p[3]},
+			&seed, [4]uint16{nonce, nonce + 1, nonce + 2, nonce + 3})
 	}
 }
