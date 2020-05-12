@@ -97,3 +97,12 @@ func (p *Poly) PackLe16(buf []byte) {
 		p.packLe16Generic(buf)
 	}
 }
+
+// Reduces each of the coefficients to <2q.
+func (p *Poly) ReduceLe2Q() {
+	if cpu.X86.HasAVX2 {
+		reduceLe2QAVX2((*[N]uint32)(p))
+	} else {
+		p.reduceLe2QGeneric()
+	}
+}

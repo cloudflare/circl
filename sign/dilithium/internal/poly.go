@@ -7,7 +7,7 @@ package internal
 type Poly [N]uint32
 
 // Reduces each of the coefficients to <2q.
-func (p *Poly) ReduceLe2Q() {
+func (p *Poly) reduceLe2QGeneric() {
 	for i := uint(0); i < N; i++ {
 		p[i] = reduceLe2Q(p[i])
 	}

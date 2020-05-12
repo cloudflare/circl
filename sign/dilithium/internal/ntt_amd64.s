@@ -7336,13 +7336,13 @@ TEXT ·packLe16AVX2(SB), NOSPLIT, $0-16
 	VPERM2I128  $0x31, Y11, Y3, Y10
 	VPERM2I128  $0x31, Y12, Y5, Y11
 	VPERM2I128  $0x31, Y13, Y7, Y13
-	VPSLLQ      $0x04, Y2, Y2
-	VPSLLQ      $0x08, Y4, Y4
-	VPSLLQ      $0x0c, Y6, Y6
-	VPSLLQ      $0x10, Y8, Y8
-	VPSLLQ      $0x14, Y10, Y10
-	VPSLLQ      $0x18, Y11, Y11
-	VPSLLQ      $0x1c, Y13, Y13
+	VPSLLD      $0x04, Y2, Y2
+	VPSLLD      $0x08, Y4, Y4
+	VPSLLD      $0x0c, Y6, Y6
+	VPSLLD      $0x10, Y8, Y8
+	VPSLLD      $0x14, Y10, Y10
+	VPSLLD      $0x18, Y11, Y11
+	VPSLLD      $0x1c, Y13, Y13
 	VPOR        Y0, Y2, Y2
 	VPOR        Y4, Y6, Y6
 	VPOR        Y8, Y10, Y10
@@ -7383,13 +7383,13 @@ TEXT ·packLe16AVX2(SB), NOSPLIT, $0-16
 	VPERM2I128  $0x31, Y11, Y3, Y10
 	VPERM2I128  $0x31, Y12, Y5, Y11
 	VPERM2I128  $0x31, Y13, Y7, Y13
-	VPSLLQ      $0x04, Y2, Y2
-	VPSLLQ      $0x08, Y4, Y4
-	VPSLLQ      $0x0c, Y6, Y6
-	VPSLLQ      $0x10, Y8, Y8
-	VPSLLQ      $0x14, Y10, Y10
-	VPSLLQ      $0x18, Y11, Y11
-	VPSLLQ      $0x1c, Y13, Y13
+	VPSLLD      $0x04, Y2, Y2
+	VPSLLD      $0x08, Y4, Y4
+	VPSLLD      $0x0c, Y6, Y6
+	VPSLLD      $0x10, Y8, Y8
+	VPSLLD      $0x14, Y10, Y10
+	VPSLLD      $0x18, Y11, Y11
+	VPSLLD      $0x1c, Y13, Y13
 	VPOR        Y0, Y2, Y2
 	VPOR        Y4, Y6, Y6
 	VPOR        Y8, Y10, Y10
@@ -7430,13 +7430,13 @@ TEXT ·packLe16AVX2(SB), NOSPLIT, $0-16
 	VPERM2I128  $0x31, Y11, Y3, Y10
 	VPERM2I128  $0x31, Y12, Y5, Y11
 	VPERM2I128  $0x31, Y13, Y7, Y13
-	VPSLLQ      $0x04, Y2, Y2
-	VPSLLQ      $0x08, Y4, Y4
-	VPSLLQ      $0x0c, Y6, Y6
-	VPSLLQ      $0x10, Y8, Y8
-	VPSLLQ      $0x14, Y10, Y10
-	VPSLLQ      $0x18, Y11, Y11
-	VPSLLQ      $0x1c, Y13, Y13
+	VPSLLD      $0x04, Y2, Y2
+	VPSLLD      $0x08, Y4, Y4
+	VPSLLD      $0x0c, Y6, Y6
+	VPSLLD      $0x10, Y8, Y8
+	VPSLLD      $0x14, Y10, Y10
+	VPSLLD      $0x18, Y11, Y11
+	VPSLLD      $0x1c, Y13, Y13
 	VPOR        Y0, Y2, Y2
 	VPOR        Y4, Y6, Y6
 	VPOR        Y8, Y10, Y10
@@ -7477,13 +7477,13 @@ TEXT ·packLe16AVX2(SB), NOSPLIT, $0-16
 	VPERM2I128  $0x31, Y11, Y3, Y10
 	VPERM2I128  $0x31, Y12, Y5, Y11
 	VPERM2I128  $0x31, Y13, Y7, Y13
-	VPSLLQ      $0x04, Y2, Y2
-	VPSLLQ      $0x08, Y4, Y4
-	VPSLLQ      $0x0c, Y6, Y6
-	VPSLLQ      $0x10, Y8, Y8
-	VPSLLQ      $0x14, Y10, Y10
-	VPSLLQ      $0x18, Y11, Y11
-	VPSLLQ      $0x1c, Y13, Y13
+	VPSLLD      $0x04, Y2, Y2
+	VPSLLD      $0x08, Y4, Y4
+	VPSLLD      $0x0c, Y6, Y6
+	VPSLLD      $0x10, Y8, Y8
+	VPSLLD      $0x14, Y10, Y10
+	VPSLLD      $0x18, Y11, Y11
+	VPSLLD      $0x1c, Y13, Y13
 	VPOR        Y0, Y2, Y2
 	VPOR        Y4, Y6, Y6
 	VPOR        Y8, Y10, Y10
@@ -7492,4 +7492,237 @@ TEXT ·packLe16AVX2(SB), NOSPLIT, $0-16
 	VPOR        Y10, Y13, Y13
 	VPOR        Y6, Y13, Y13
 	VMOVDQU     Y13, 96(CX)
+	RET
+
+// func reduceLe2QAVX2(p *[256]uint32)
+// Requires: AVX, AVX2
+TEXT ·reduceLe2QAVX2(SB), NOSPLIT, $0-8
+	MOVQ         p+0(FP), AX
+	MOVL         $0x007fffff, CX
+	VMOVD        CX, X0
+	VPBROADCASTD X0, Y12
+	VMOVDQU      (AX), Y0
+	VMOVDQU      32(AX), Y3
+	VMOVDQU      64(AX), Y6
+	VMOVDQU      96(AX), Y9
+	VPSRLD       $0x17, Y0, Y1
+	VPSRLD       $0x17, Y3, Y4
+	VPSRLD       $0x17, Y6, Y7
+	VPSRLD       $0x17, Y9, Y10
+	VPAND        Y0, Y12, Y0
+	VPAND        Y3, Y12, Y3
+	VPAND        Y6, Y12, Y6
+	VPAND        Y9, Y12, Y9
+	VPSLLD       $0x0d, Y1, Y2
+	VPSLLD       $0x0d, Y4, Y5
+	VPSLLD       $0x0d, Y7, Y8
+	VPSLLD       $0x0d, Y10, Y11
+	VPSUBD       Y1, Y2, Y2
+	VPSUBD       Y4, Y5, Y5
+	VPSUBD       Y7, Y8, Y8
+	VPSUBD       Y10, Y11, Y11
+	VPADDD       Y0, Y2, Y0
+	VPADDD       Y3, Y5, Y3
+	VPADDD       Y6, Y8, Y6
+	VPADDD       Y9, Y11, Y9
+	VMOVDQU      Y0, (AX)
+	VMOVDQU      Y3, 32(AX)
+	VMOVDQU      Y6, 64(AX)
+	VMOVDQU      Y9, 96(AX)
+	VMOVDQU      128(AX), Y0
+	VMOVDQU      160(AX), Y3
+	VMOVDQU      192(AX), Y6
+	VMOVDQU      224(AX), Y9
+	VPSRLD       $0x17, Y0, Y1
+	VPSRLD       $0x17, Y3, Y4
+	VPSRLD       $0x17, Y6, Y7
+	VPSRLD       $0x17, Y9, Y10
+	VPAND        Y0, Y12, Y0
+	VPAND        Y3, Y12, Y3
+	VPAND        Y6, Y12, Y6
+	VPAND        Y9, Y12, Y9
+	VPSLLD       $0x0d, Y1, Y2
+	VPSLLD       $0x0d, Y4, Y5
+	VPSLLD       $0x0d, Y7, Y8
+	VPSLLD       $0x0d, Y10, Y11
+	VPSUBD       Y1, Y2, Y2
+	VPSUBD       Y4, Y5, Y5
+	VPSUBD       Y7, Y8, Y8
+	VPSUBD       Y10, Y11, Y11
+	VPADDD       Y0, Y2, Y0
+	VPADDD       Y3, Y5, Y3
+	VPADDD       Y6, Y8, Y6
+	VPADDD       Y9, Y11, Y9
+	VMOVDQU      Y0, 128(AX)
+	VMOVDQU      Y3, 160(AX)
+	VMOVDQU      Y6, 192(AX)
+	VMOVDQU      Y9, 224(AX)
+	VMOVDQU      256(AX), Y0
+	VMOVDQU      288(AX), Y3
+	VMOVDQU      320(AX), Y6
+	VMOVDQU      352(AX), Y9
+	VPSRLD       $0x17, Y0, Y1
+	VPSRLD       $0x17, Y3, Y4
+	VPSRLD       $0x17, Y6, Y7
+	VPSRLD       $0x17, Y9, Y10
+	VPAND        Y0, Y12, Y0
+	VPAND        Y3, Y12, Y3
+	VPAND        Y6, Y12, Y6
+	VPAND        Y9, Y12, Y9
+	VPSLLD       $0x0d, Y1, Y2
+	VPSLLD       $0x0d, Y4, Y5
+	VPSLLD       $0x0d, Y7, Y8
+	VPSLLD       $0x0d, Y10, Y11
+	VPSUBD       Y1, Y2, Y2
+	VPSUBD       Y4, Y5, Y5
+	VPSUBD       Y7, Y8, Y8
+	VPSUBD       Y10, Y11, Y11
+	VPADDD       Y0, Y2, Y0
+	VPADDD       Y3, Y5, Y3
+	VPADDD       Y6, Y8, Y6
+	VPADDD       Y9, Y11, Y9
+	VMOVDQU      Y0, 256(AX)
+	VMOVDQU      Y3, 288(AX)
+	VMOVDQU      Y6, 320(AX)
+	VMOVDQU      Y9, 352(AX)
+	VMOVDQU      384(AX), Y0
+	VMOVDQU      416(AX), Y3
+	VMOVDQU      448(AX), Y6
+	VMOVDQU      480(AX), Y9
+	VPSRLD       $0x17, Y0, Y1
+	VPSRLD       $0x17, Y3, Y4
+	VPSRLD       $0x17, Y6, Y7
+	VPSRLD       $0x17, Y9, Y10
+	VPAND        Y0, Y12, Y0
+	VPAND        Y3, Y12, Y3
+	VPAND        Y6, Y12, Y6
+	VPAND        Y9, Y12, Y9
+	VPSLLD       $0x0d, Y1, Y2
+	VPSLLD       $0x0d, Y4, Y5
+	VPSLLD       $0x0d, Y7, Y8
+	VPSLLD       $0x0d, Y10, Y11
+	VPSUBD       Y1, Y2, Y2
+	VPSUBD       Y4, Y5, Y5
+	VPSUBD       Y7, Y8, Y8
+	VPSUBD       Y10, Y11, Y11
+	VPADDD       Y0, Y2, Y0
+	VPADDD       Y3, Y5, Y3
+	VPADDD       Y6, Y8, Y6
+	VPADDD       Y9, Y11, Y9
+	VMOVDQU      Y0, 384(AX)
+	VMOVDQU      Y3, 416(AX)
+	VMOVDQU      Y6, 448(AX)
+	VMOVDQU      Y9, 480(AX)
+	VMOVDQU      512(AX), Y0
+	VMOVDQU      544(AX), Y3
+	VMOVDQU      576(AX), Y6
+	VMOVDQU      608(AX), Y9
+	VPSRLD       $0x17, Y0, Y1
+	VPSRLD       $0x17, Y3, Y4
+	VPSRLD       $0x17, Y6, Y7
+	VPSRLD       $0x17, Y9, Y10
+	VPAND        Y0, Y12, Y0
+	VPAND        Y3, Y12, Y3
+	VPAND        Y6, Y12, Y6
+	VPAND        Y9, Y12, Y9
+	VPSLLD       $0x0d, Y1, Y2
+	VPSLLD       $0x0d, Y4, Y5
+	VPSLLD       $0x0d, Y7, Y8
+	VPSLLD       $0x0d, Y10, Y11
+	VPSUBD       Y1, Y2, Y2
+	VPSUBD       Y4, Y5, Y5
+	VPSUBD       Y7, Y8, Y8
+	VPSUBD       Y10, Y11, Y11
+	VPADDD       Y0, Y2, Y0
+	VPADDD       Y3, Y5, Y3
+	VPADDD       Y6, Y8, Y6
+	VPADDD       Y9, Y11, Y9
+	VMOVDQU      Y0, 512(AX)
+	VMOVDQU      Y3, 544(AX)
+	VMOVDQU      Y6, 576(AX)
+	VMOVDQU      Y9, 608(AX)
+	VMOVDQU      640(AX), Y0
+	VMOVDQU      672(AX), Y3
+	VMOVDQU      704(AX), Y6
+	VMOVDQU      736(AX), Y9
+	VPSRLD       $0x17, Y0, Y1
+	VPSRLD       $0x17, Y3, Y4
+	VPSRLD       $0x17, Y6, Y7
+	VPSRLD       $0x17, Y9, Y10
+	VPAND        Y0, Y12, Y0
+	VPAND        Y3, Y12, Y3
+	VPAND        Y6, Y12, Y6
+	VPAND        Y9, Y12, Y9
+	VPSLLD       $0x0d, Y1, Y2
+	VPSLLD       $0x0d, Y4, Y5
+	VPSLLD       $0x0d, Y7, Y8
+	VPSLLD       $0x0d, Y10, Y11
+	VPSUBD       Y1, Y2, Y2
+	VPSUBD       Y4, Y5, Y5
+	VPSUBD       Y7, Y8, Y8
+	VPSUBD       Y10, Y11, Y11
+	VPADDD       Y0, Y2, Y0
+	VPADDD       Y3, Y5, Y3
+	VPADDD       Y6, Y8, Y6
+	VPADDD       Y9, Y11, Y9
+	VMOVDQU      Y0, 640(AX)
+	VMOVDQU      Y3, 672(AX)
+	VMOVDQU      Y6, 704(AX)
+	VMOVDQU      Y9, 736(AX)
+	VMOVDQU      768(AX), Y0
+	VMOVDQU      800(AX), Y3
+	VMOVDQU      832(AX), Y6
+	VMOVDQU      864(AX), Y9
+	VPSRLD       $0x17, Y0, Y1
+	VPSRLD       $0x17, Y3, Y4
+	VPSRLD       $0x17, Y6, Y7
+	VPSRLD       $0x17, Y9, Y10
+	VPAND        Y0, Y12, Y0
+	VPAND        Y3, Y12, Y3
+	VPAND        Y6, Y12, Y6
+	VPAND        Y9, Y12, Y9
+	VPSLLD       $0x0d, Y1, Y2
+	VPSLLD       $0x0d, Y4, Y5
+	VPSLLD       $0x0d, Y7, Y8
+	VPSLLD       $0x0d, Y10, Y11
+	VPSUBD       Y1, Y2, Y2
+	VPSUBD       Y4, Y5, Y5
+	VPSUBD       Y7, Y8, Y8
+	VPSUBD       Y10, Y11, Y11
+	VPADDD       Y0, Y2, Y0
+	VPADDD       Y3, Y5, Y3
+	VPADDD       Y6, Y8, Y6
+	VPADDD       Y9, Y11, Y9
+	VMOVDQU      Y0, 768(AX)
+	VMOVDQU      Y3, 800(AX)
+	VMOVDQU      Y6, 832(AX)
+	VMOVDQU      Y9, 864(AX)
+	VMOVDQU      896(AX), Y0
+	VMOVDQU      928(AX), Y3
+	VMOVDQU      960(AX), Y6
+	VMOVDQU      992(AX), Y9
+	VPSRLD       $0x17, Y0, Y1
+	VPSRLD       $0x17, Y3, Y4
+	VPSRLD       $0x17, Y6, Y7
+	VPSRLD       $0x17, Y9, Y10
+	VPAND        Y0, Y12, Y0
+	VPAND        Y3, Y12, Y3
+	VPAND        Y6, Y12, Y6
+	VPAND        Y9, Y12, Y9
+	VPSLLD       $0x0d, Y1, Y2
+	VPSLLD       $0x0d, Y4, Y5
+	VPSLLD       $0x0d, Y7, Y8
+	VPSLLD       $0x0d, Y10, Y11
+	VPSUBD       Y1, Y2, Y2
+	VPSUBD       Y4, Y5, Y5
+	VPSUBD       Y7, Y8, Y8
+	VPSUBD       Y10, Y11, Y11
+	VPADDD       Y0, Y2, Y0
+	VPADDD       Y3, Y5, Y3
+	VPADDD       Y6, Y8, Y6
+	VPADDD       Y9, Y11, Y9
+	VMOVDQU      Y0, 896(AX)
+	VMOVDQU      Y3, 928(AX)
+	VMOVDQU      Y6, 960(AX)
+	VMOVDQU      Y9, 992(AX)
 	RET

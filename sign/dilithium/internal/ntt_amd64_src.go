@@ -819,7 +819,7 @@ func packLe16AVX2() {
 		// a[1] ontains p[1], p[9], ..., etc.  We shift a[i] by 4*i to the left
 		// and or them together.
 		for i := 1; i < 8; i++ {
-			VPSLLQ(U8(4*i), a[i], a[i])
+			VPSLLD(U8(4*i), a[i], a[i])
 		}
 
 		VPOR(a[0], a[1], a[1])
@@ -836,6 +836,59 @@ func packLe16AVX2() {
 	RET()
 }
 
+func reduceLe2QAVX2() {
+	TEXT("reduceLe2QAVX2", NOSPLIT, "func(p *[256]uint32)")
+	Pragma("noescape")
+	p_ptr := Load(Param("p"), GP64())
+
+	var a, b, c [4]VecVirtual
+	for i := 0; i < 4; i++ {
+		a[i] = YMM()
+		b[i] = YMM()
+		c[i] = YMM()
+	}
+	twoToThe23MinusOne := YMM()
+	broadcast_imm32((1<<23)-1, twoToThe23MinusOne)
+
+	// We use the same computation as used in reduceLe2Q() for the separate
+	// coefficients.
+	for j := 0; j < 8; j++ {
+		for i := 0; i < 4; i++ {
+			VMOVDQU(Mem{Base: p_ptr, Disp: 32 * (4*j + i)}, a[i])
+		}
+
+		// b = a >> 23
+		for i := 0; i < 4; i++ {
+			VPSRLD(U8(23), a[i], b[i])
+		}
+
+		// a = a & 2^{23}-1
+		for i := 0; i < 4; i++ {
+			VPAND(a[i], twoToThe23MinusOne, a[i])
+		}
+
+		// c = (b << 13) - b
+		for i := 0; i < 4; i++ {
+			VPSLLD(U8(13), b[i], c[i])
+		}
+		for i := 0; i < 4; i++ {
+			VPSUBD(b[i], c[i], c[i])
+		}
+
+		// a = a + c
+		for i := 0; i < 4; i++ {
+			VPADDD(a[i], c[i], a[i])
+		}
+
+		// Write back
+		for i := 0; i < 4; i++ {
+			VMOVDQU(a[i], Mem{Base: p_ptr, Disp: 32 * (4*j + i)})
+		}
+	}
+
+	RET()
+}
+
 func main() {
 	ConstraintExpr("amd64")
 
@@ -845,6 +898,7 @@ func main() {
 	addAVX2()
 	subAVX2()
 	packLe16AVX2()
+	reduceLe2QAVX2()
 
 	Generate()
 }

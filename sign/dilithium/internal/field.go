@@ -3,9 +3,9 @@ package internal
 // Returns a y with y < 2q and y = x mod q.
 // Note that in general *not*: reduceLe2Q(reduceLe2Q(x)) == x.
 func reduceLe2Q(x uint32) uint32 {
-	// Note 2²³ = 2¹³ - 1 mod q. So, writing  x = x1 2²³ + x2 with x2 < 2²³
-	// and x1 < 2⁹, we have x = y (mod q) where
-	// y = x2 + x1 2¹³ - x1 ≤ 2²³ + 2¹³ < 2q.
+	// Note 2²³ = 2¹³ - 1 mod q. So, writing  x = x₁ 2²³ + x₂ with x₂ < 2²³
+	// and x₁ < 2⁹, we have x = y (mod q) where
+	// y = x₂ + x₁ 2¹³ - x₁ ≤ 2²³ + 2¹³ < 2q.
 	x1 := x >> 23
 	x2 := x & 0x7FFFFF // 2²³-1
 	return x2 + (x1 << 13) - x1
