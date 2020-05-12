@@ -81,3 +81,19 @@ func (p *Poly) Sub(a, b *Poly) {
 		p.subGeneric(a, b)
 	}
 }
+
+// Writes p whose coefficients are in [0, 16) to buf, which must be of
+// length N/2.
+func (p *Poly) PackLe16(buf []byte) {
+	if cpu.X86.HasAVX2 {
+		if len(buf) < PolyLe16Size {
+			panic("buf too small")
+		}
+		packLe16AVX2(
+			(*[N]uint32)(p),
+			&buf[0],
+		)
+	} else {
+		p.packLe16Generic(buf)
+	}
+}

@@ -18,3 +18,6 @@ func addAVX2(p *[256]uint32, a *[256]uint32, b *[256]uint32)
 
 //go:noescape
 func subAVX2(p *[256]uint32, a *[256]uint32, b *[256]uint32)
+
+//go:noescape
+func packLe16AVX2(p *[256]uint32, buf *byte)

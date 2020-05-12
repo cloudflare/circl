@@ -130,7 +130,7 @@ func (p *Poly) UnpackLeGamma1(buf []byte) {
 
 // Writes p whose coefficients are in [0, 16) to buf, which must be of
 // length N/2.
-func (p *Poly) PackLe16(buf []byte) {
+func (p *Poly) packLe16Generic(buf []byte) {
 	j := 0
 	for i := 0; i < PolyLe16Size; i++ {
 		buf[i] = byte(p[j]) | byte(p[j+1]<<4)

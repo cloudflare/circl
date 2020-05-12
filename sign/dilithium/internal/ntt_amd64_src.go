@@ -772,6 +772,70 @@ func subAVX2() {
 	RET()
 }
 
+func packLe16AVX2() {
+	TEXT("packLe16AVX2", 0, "func(p *[256]uint32, buf *byte)")
+	Pragma("noescape")
+	p_ptr := Load(Param("p"), GP64())
+	buf_ptr := Load(Param("buf"), GP64())
+
+	var a [8]VecVirtual
+	var b [8]VecVirtual
+	for i := 0; i < 8; i++ {
+		a[i] = YMM()
+		b[i] = YMM()
+	}
+
+	for j := 0; j < 4; j++ {
+		// We load p[0], ..., p[7] into a[0], p[8], ..., p[15] into a[1], etc.,
+		// so we may consider a as a matrix.  We transpose a in the usual way.
+		for i := 0; i < 4; i++ {
+			VMOVDQU(Mem{Base: p_ptr, Disp: 32 * (8*j + 2*i)}, a[2*i])
+			VPUNPCKLDQ(Mem{Base: p_ptr, Disp: 32 * (8*j + 2*i + 1)},
+				a[2*i], a[2*i])
+			VMOVDQU(Mem{Base: p_ptr, Disp: 32 * (8*j + 2*i)}, a[2*i+1])
+			VPUNPCKHDQ(Mem{Base: p_ptr, Disp: 32 * (8*j + 2*i + 1)},
+				a[2*i+1], a[2*i+1])
+		}
+
+		VPUNPCKLQDQ(a[2], a[0], b[0])
+		VPUNPCKHQDQ(a[2], a[0], b[1])
+		VPUNPCKLQDQ(a[3], a[1], b[2])
+		VPUNPCKHQDQ(a[3], a[1], b[3])
+		VPUNPCKLQDQ(a[6], a[4], b[4])
+		VPUNPCKHQDQ(a[6], a[4], b[5])
+		VPUNPCKLQDQ(a[7], a[5], b[6])
+		VPUNPCKHQDQ(a[7], a[5], b[7])
+
+		VPERM2I128(U8(32), b[4], b[0], a[0])
+		VPERM2I128(U8(32), b[5], b[1], a[1])
+		VPERM2I128(U8(32), b[6], b[2], a[2])
+		VPERM2I128(U8(32), b[7], b[3], a[3])
+		VPERM2I128(U8(49), b[4], b[0], a[4])
+		VPERM2I128(U8(49), b[5], b[1], a[5])
+		VPERM2I128(U8(49), b[6], b[2], a[6])
+		VPERM2I128(U8(49), b[7], b[3], a[7])
+
+		// a has been transposed, so a[0] contains p[0], p[8], ... and
+		// a[1] ontains p[1], p[9], ..., etc.  We shift a[i] by 4*i to the left
+		// and or them together.
+		for i := 1; i < 8; i++ {
+			VPSLLQ(U8(4*i), a[i], a[i])
+		}
+
+		VPOR(a[0], a[1], a[1])
+		VPOR(a[2], a[3], a[3])
+		VPOR(a[4], a[5], a[5])
+		VPOR(a[6], a[7], a[7])
+		VPOR(a[1], a[3], a[3])
+		VPOR(a[5], a[7], a[7])
+		VPOR(a[3], a[7], a[7])
+
+		VMOVDQU(a[7], Mem{Base: buf_ptr, Disp: 32 * j})
+	}
+
+	RET()
+}
+
 func main() {
 	ConstraintExpr("amd64")
 
@@ -780,6 +844,7 @@ func main() {
 	mulHatAVX2()
 	addAVX2()
 	subAVX2()
+	packLe16AVX2()
 
 	Generate()
 }
