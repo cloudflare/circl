@@ -733,6 +733,45 @@ func addAVX2() {
 	RET()
 }
 
+func subAVX2() {
+	TEXT("subAVX2", 0, "func(p, a, b *[256]uint32)")
+	Pragma("noescape")
+	p_ptr := Load(Param("p"), GP64())
+	a_ptr := Load(Param("a"), GP64())
+	b_ptr := Load(Param("b"), GP64())
+
+	var a [4]VecVirtual
+	var b [4]VecVirtual
+	for i := 0; i < 4; i++ {
+		a[i] = YMM()
+		b[i] = YMM()
+	}
+
+	doubleQ := YMM()
+	broadcast_imm32(2*params.Q, doubleQ)
+
+	// XXX is unrolling worth it?
+	for j := 0; j < 8; j++ {
+		for i := 0; i < 4; i++ {
+			VMOVDQU(Mem{Base: a_ptr, Disp: 32 * (4*j + i)}, a[i])
+		}
+		for i := 0; i < 4; i++ {
+			VMOVDQU(Mem{Base: b_ptr, Disp: 32 * (4*j + i)}, b[i])
+		}
+		for i := 0; i < 4; i++ {
+			VPSUBD(b[i], doubleQ, b[i])
+		}
+		for i := 0; i < 4; i++ {
+			VPADDQ(a[i], b[i], b[i])
+		}
+		for i := 0; i < 4; i++ {
+			VMOVDQU(b[i], Mem{Base: p_ptr, Disp: 32 * (4*j + i)})
+		}
+	}
+
+	RET()
+}
+
 func main() {
 	ConstraintExpr("amd64")
 
@@ -740,6 +779,7 @@ func main() {
 	invNttAVX2()
 	mulHatAVX2()
 	addAVX2()
+	subAVX2()
 
 	Generate()
 }

@@ -65,3 +65,19 @@ func (p *Poly) Add(a, b *Poly) {
 		p.addGeneric(a, b)
 	}
 }
+
+// Sets p to a - b.
+//
+// Warning: assumes coefficients of b are less than 2q.
+// Sets p to a + b.  Does not normalize polynomials.
+func (p *Poly) Sub(a, b *Poly) {
+	if cpu.X86.HasAVX2 {
+		subAVX2(
+			(*[N]uint32)(p),
+			(*[N]uint32)(a),
+			(*[N]uint32)(b),
+		)
+	} else {
+		p.subGeneric(a, b)
+	}
+}

@@ -7125,3 +7125,174 @@ TEXT ·addAVX2(SB), $0-24
 	VMOVDQU Y13, 960(AX)
 	VMOVDQU Y15, 992(AX)
 	RET
+
+// func subAVX2(p *[256]uint32, a *[256]uint32, b *[256]uint32)
+// Requires: AVX, AVX2
+TEXT ·subAVX2(SB), $0-24
+	MOVQ         p+0(FP), AX
+	MOVQ         a+8(FP), CX
+	MOVQ         b+16(FP), DX
+	MOVL         $0x00ffc002, BX
+	VMOVD        BX, X0
+	VPBROADCASTD X0, Y8
+	VMOVDQU      (CX), Y0
+	VMOVDQU      32(CX), Y2
+	VMOVDQU      64(CX), Y4
+	VMOVDQU      96(CX), Y6
+	VMOVDQU      (DX), Y1
+	VMOVDQU      32(DX), Y3
+	VMOVDQU      64(DX), Y5
+	VMOVDQU      96(DX), Y7
+	VPSUBD       Y1, Y8, Y1
+	VPSUBD       Y3, Y8, Y3
+	VPSUBD       Y5, Y8, Y5
+	VPSUBD       Y7, Y8, Y7
+	VPADDQ       Y0, Y1, Y1
+	VPADDQ       Y2, Y3, Y3
+	VPADDQ       Y4, Y5, Y5
+	VPADDQ       Y6, Y7, Y7
+	VMOVDQU      Y1, (AX)
+	VMOVDQU      Y3, 32(AX)
+	VMOVDQU      Y5, 64(AX)
+	VMOVDQU      Y7, 96(AX)
+	VMOVDQU      128(CX), Y0
+	VMOVDQU      160(CX), Y2
+	VMOVDQU      192(CX), Y4
+	VMOVDQU      224(CX), Y6
+	VMOVDQU      128(DX), Y1
+	VMOVDQU      160(DX), Y3
+	VMOVDQU      192(DX), Y5
+	VMOVDQU      224(DX), Y7
+	VPSUBD       Y1, Y8, Y1
+	VPSUBD       Y3, Y8, Y3
+	VPSUBD       Y5, Y8, Y5
+	VPSUBD       Y7, Y8, Y7
+	VPADDQ       Y0, Y1, Y1
+	VPADDQ       Y2, Y3, Y3
+	VPADDQ       Y4, Y5, Y5
+	VPADDQ       Y6, Y7, Y7
+	VMOVDQU      Y1, 128(AX)
+	VMOVDQU      Y3, 160(AX)
+	VMOVDQU      Y5, 192(AX)
+	VMOVDQU      Y7, 224(AX)
+	VMOVDQU      256(CX), Y0
+	VMOVDQU      288(CX), Y2
+	VMOVDQU      320(CX), Y4
+	VMOVDQU      352(CX), Y6
+	VMOVDQU      256(DX), Y1
+	VMOVDQU      288(DX), Y3
+	VMOVDQU      320(DX), Y5
+	VMOVDQU      352(DX), Y7
+	VPSUBD       Y1, Y8, Y1
+	VPSUBD       Y3, Y8, Y3
+	VPSUBD       Y5, Y8, Y5
+	VPSUBD       Y7, Y8, Y7
+	VPADDQ       Y0, Y1, Y1
+	VPADDQ       Y2, Y3, Y3
+	VPADDQ       Y4, Y5, Y5
+	VPADDQ       Y6, Y7, Y7
+	VMOVDQU      Y1, 256(AX)
+	VMOVDQU      Y3, 288(AX)
+	VMOVDQU      Y5, 320(AX)
+	VMOVDQU      Y7, 352(AX)
+	VMOVDQU      384(CX), Y0
+	VMOVDQU      416(CX), Y2
+	VMOVDQU      448(CX), Y4
+	VMOVDQU      480(CX), Y6
+	VMOVDQU      384(DX), Y1
+	VMOVDQU      416(DX), Y3
+	VMOVDQU      448(DX), Y5
+	VMOVDQU      480(DX), Y7
+	VPSUBD       Y1, Y8, Y1
+	VPSUBD       Y3, Y8, Y3
+	VPSUBD       Y5, Y8, Y5
+	VPSUBD       Y7, Y8, Y7
+	VPADDQ       Y0, Y1, Y1
+	VPADDQ       Y2, Y3, Y3
+	VPADDQ       Y4, Y5, Y5
+	VPADDQ       Y6, Y7, Y7
+	VMOVDQU      Y1, 384(AX)
+	VMOVDQU      Y3, 416(AX)
+	VMOVDQU      Y5, 448(AX)
+	VMOVDQU      Y7, 480(AX)
+	VMOVDQU      512(CX), Y0
+	VMOVDQU      544(CX), Y2
+	VMOVDQU      576(CX), Y4
+	VMOVDQU      608(CX), Y6
+	VMOVDQU      512(DX), Y1
+	VMOVDQU      544(DX), Y3
+	VMOVDQU      576(DX), Y5
+	VMOVDQU      608(DX), Y7
+	VPSUBD       Y1, Y8, Y1
+	VPSUBD       Y3, Y8, Y3
+	VPSUBD       Y5, Y8, Y5
+	VPSUBD       Y7, Y8, Y7
+	VPADDQ       Y0, Y1, Y1
+	VPADDQ       Y2, Y3, Y3
+	VPADDQ       Y4, Y5, Y5
+	VPADDQ       Y6, Y7, Y7
+	VMOVDQU      Y1, 512(AX)
+	VMOVDQU      Y3, 544(AX)
+	VMOVDQU      Y5, 576(AX)
+	VMOVDQU      Y7, 608(AX)
+	VMOVDQU      640(CX), Y0
+	VMOVDQU      672(CX), Y2
+	VMOVDQU      704(CX), Y4
+	VMOVDQU      736(CX), Y6
+	VMOVDQU      640(DX), Y1
+	VMOVDQU      672(DX), Y3
+	VMOVDQU      704(DX), Y5
+	VMOVDQU      736(DX), Y7
+	VPSUBD       Y1, Y8, Y1
+	VPSUBD       Y3, Y8, Y3
+	VPSUBD       Y5, Y8, Y5
+	VPSUBD       Y7, Y8, Y7
+	VPADDQ       Y0, Y1, Y1
+	VPADDQ       Y2, Y3, Y3
+	VPADDQ       Y4, Y5, Y5
+	VPADDQ       Y6, Y7, Y7
+	VMOVDQU      Y1, 640(AX)
+	VMOVDQU      Y3, 672(AX)
+	VMOVDQU      Y5, 704(AX)
+	VMOVDQU      Y7, 736(AX)
+	VMOVDQU      768(CX), Y0
+	VMOVDQU      800(CX), Y2
+	VMOVDQU      832(CX), Y4
+	VMOVDQU      864(CX), Y6
+	VMOVDQU      768(DX), Y1
+	VMOVDQU      800(DX), Y3
+	VMOVDQU      832(DX), Y5
+	VMOVDQU      864(DX), Y7
+	VPSUBD       Y1, Y8, Y1
+	VPSUBD       Y3, Y8, Y3
+	VPSUBD       Y5, Y8, Y5
+	VPSUBD       Y7, Y8, Y7
+	VPADDQ       Y0, Y1, Y1
+	VPADDQ       Y2, Y3, Y3
+	VPADDQ       Y4, Y5, Y5
+	VPADDQ       Y6, Y7, Y7
+	VMOVDQU      Y1, 768(AX)
+	VMOVDQU      Y3, 800(AX)
+	VMOVDQU      Y5, 832(AX)
+	VMOVDQU      Y7, 864(AX)
+	VMOVDQU      896(CX), Y0
+	VMOVDQU      928(CX), Y2
+	VMOVDQU      960(CX), Y4
+	VMOVDQU      992(CX), Y6
+	VMOVDQU      896(DX), Y1
+	VMOVDQU      928(DX), Y3
+	VMOVDQU      960(DX), Y5
+	VMOVDQU      992(DX), Y7
+	VPSUBD       Y1, Y8, Y1
+	VPSUBD       Y3, Y8, Y3
+	VPSUBD       Y5, Y8, Y5
+	VPSUBD       Y7, Y8, Y7
+	VPADDQ       Y0, Y1, Y1
+	VPADDQ       Y2, Y3, Y3
+	VPADDQ       Y4, Y5, Y5
+	VPADDQ       Y6, Y7, Y7
+	VMOVDQU      Y1, 896(AX)
+	VMOVDQU      Y3, 928(AX)
+	VMOVDQU      Y5, 960(AX)
+	VMOVDQU      Y7, 992(AX)
+	RET

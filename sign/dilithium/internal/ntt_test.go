@@ -11,6 +11,19 @@ func (p *Poly) RandLe2Q() {
 	}
 }
 
+func TestSubAgainstGeneric(t *testing.T) {
+	for k := 0; k < 1000; k++ {
+		var p1, p2, a, b Poly
+		a.RandLe2Q()
+		b.RandLe2Q()
+		p1.Sub(&a, &b)
+		p2.subGeneric(&a, &b)
+		if p1 != p2 {
+			t.Fatalf("Sub(%v, %v) =\n%v\n!= %v", a, b, p1, p2)
+		}
+	}
+}
+
 func TestAddAgainstGeneric(t *testing.T) {
 	for k := 0; k < 1000; k++ {
 		var p1, p2, a, b Poly
@@ -107,6 +120,13 @@ func BenchmarkGenericAdd(b *testing.B) {
 	}
 }
 
+func BenchmarkGenericSub(b *testing.B) {
+	var p Poly
+	for i := 0; i < b.N; i++ {
+		p.subGeneric(&p, &p)
+	}
+}
+
 func BenchmarkMulHat(b *testing.B) {
 	var p Poly
 	for i := 0; i < b.N; i++ {
@@ -132,5 +152,12 @@ func BenchmarkAdd(b *testing.B) {
 	var p Poly
 	for i := 0; i < b.N; i++ {
 		p.Add(&p, &p)
+	}
+}
+
+func BenchmarkSub(b *testing.B) {
+	var p Poly
+	for i := 0; i < b.N; i++ {
+		p.Sub(&p, &p)
 	}
 }

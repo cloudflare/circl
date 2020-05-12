@@ -38,7 +38,7 @@ func (p *Poly) addGeneric(a, b *Poly) {
 // Sets p to a - b.
 //
 // Warning: assumes coefficients of b are less than 2q.
-func (p *Poly) Sub(a, b *Poly) {
+func (p *Poly) subGeneric(a, b *Poly) {
 	for i := uint(0); i < N; i++ {
 		p[i] = a[i] + (2*Q - b[i])
 	}

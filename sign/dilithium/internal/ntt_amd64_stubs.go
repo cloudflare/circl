@@ -15,3 +15,6 @@ func mulHatAVX2(p *[256]uint32, a *[256]uint32, b *[256]uint32)
 
 //go:noescape
 func addAVX2(p *[256]uint32, a *[256]uint32, b *[256]uint32)
+
+//go:noescape
+func subAVX2(p *[256]uint32, a *[256]uint32, b *[256]uint32)
