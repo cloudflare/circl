@@ -620,7 +620,7 @@ func invNttAVX2() {
 // XXX Split out into separate file.  To do this we need to figure out how
 //     to share code properly between avo modules.
 func mulHatAVX2() {
-	TEXT("mulHatAVX2", 0, "func(p, a, b *[256]uint32)")
+	TEXT("mulHatAVX2", NOSPLIT, "func(p, a, b *[256]uint32)")
 	Pragma("noescape")
 	p_ptr := Load(Param("p"), GP64())
 	a_ptr := Load(Param("a"), GP64())
@@ -701,7 +701,7 @@ func mulHatAVX2() {
 }
 
 func addAVX2() {
-	TEXT("addAVX2", 0, "func(p, a, b *[256]uint32)")
+	TEXT("addAVX2", NOSPLIT, "func(p, a, b *[256]uint32)")
 	Pragma("noescape")
 	p_ptr := Load(Param("p"), GP64())
 	a_ptr := Load(Param("a"), GP64())
@@ -734,7 +734,7 @@ func addAVX2() {
 }
 
 func subAVX2() {
-	TEXT("subAVX2", 0, "func(p, a, b *[256]uint32)")
+	TEXT("subAVX2", NOSPLIT, "func(p, a, b *[256]uint32)")
 	Pragma("noescape")
 	p_ptr := Load(Param("p"), GP64())
 	a_ptr := Load(Param("a"), GP64())
@@ -773,7 +773,7 @@ func subAVX2() {
 }
 
 func packLe16AVX2() {
-	TEXT("packLe16AVX2", 0, "func(p *[256]uint32, buf *byte)")
+	TEXT("packLe16AVX2", NOSPLIT, "func(p *[256]uint32, buf *byte)")
 	Pragma("noescape")
 	p_ptr := Load(Param("p"), GP64())
 	buf_ptr := Load(Param("buf"), GP64())

@@ -2,6 +2,8 @@
 
 // +build amd64
 
+#include "textflag.h"
+
 // func nttAVX2(p *[256]uint32)
 // Requires: AVX, AVX2
 TEXT ·nttAVX2(SB), $2080-8
@@ -6242,7 +6244,7 @@ TEXT ·invNttAVX2(SB), $2080-8
 
 // func mulHatAVX2(p *[256]uint32, a *[256]uint32, b *[256]uint32)
 // Requires: AVX, AVX2
-TEXT ·mulHatAVX2(SB), $0-24
+TEXT ·mulHatAVX2(SB), NOSPLIT, $0-24
 	MOVQ         p+0(FP), AX
 	MOVQ         a+8(FP), CX
 	MOVQ         b+16(FP), DX
@@ -6992,7 +6994,7 @@ TEXT ·mulHatAVX2(SB), $0-24
 
 // func addAVX2(p *[256]uint32, a *[256]uint32, b *[256]uint32)
 // Requires: AVX, AVX2
-TEXT ·addAVX2(SB), $0-24
+TEXT ·addAVX2(SB), NOSPLIT, $0-24
 	MOVQ    p+0(FP), AX
 	MOVQ    a+8(FP), CX
 	MOVQ    b+16(FP), DX
@@ -7128,7 +7130,7 @@ TEXT ·addAVX2(SB), $0-24
 
 // func subAVX2(p *[256]uint32, a *[256]uint32, b *[256]uint32)
 // Requires: AVX, AVX2
-TEXT ·subAVX2(SB), $0-24
+TEXT ·subAVX2(SB), NOSPLIT, $0-24
 	MOVQ         p+0(FP), AX
 	MOVQ         a+8(FP), CX
 	MOVQ         b+16(FP), DX
@@ -7299,7 +7301,7 @@ TEXT ·subAVX2(SB), $0-24
 
 // func packLe16AVX2(p *[256]uint32, buf *byte)
 // Requires: AVX, AVX2
-TEXT ·packLe16AVX2(SB), $0-16
+TEXT ·packLe16AVX2(SB), NOSPLIT, $0-16
 	MOVQ        p+0(FP), AX
 	MOVQ        buf+8(FP), CX
 	VMOVDQU     (AX), Y0
