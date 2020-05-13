@@ -33,3 +33,22 @@ func (p *Poly) MulHat(a, b *Poly) {
 func (p *Poly) Add(a, b *Poly) {
 	p.addGeneric(a, b)
 }
+
+// Sets p to a - b.
+//
+// Warning: assumes coefficients of b are less than 2q.
+// Sets p to a + b.  Does not normalize polynomials.
+func (p *Poly) Sub(a, b *Poly) {
+	p.subGeneric(a, b)
+}
+
+// Writes p whose coefficients are in [0, 16) to buf, which must be of
+// length N/2.
+func (p *Poly) PackLe16(buf []byte) {
+	p.packLe16Generic(buf)
+}
+
+// Reduces each of the coefficients to <2q.
+func (p *Poly) ReduceLe2Q() {
+	p.reduceLe2QGeneric()
+}
