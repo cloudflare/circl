@@ -1,8 +1,5 @@
 //go:generate go run f1600x4_amd64_src.go -out f1600x4_amd64.s -stubs f1600x4_amd64_stubs.go
 
-// f1600x4 implements a fast fourway KeccaK-f[1600] permutation on platforms
-// that support it.  KeccaK-f[1600] is the permutation underlying KeccaK,
-// SHA3 and SHAKE.
 package f1600x4
 
 import (
