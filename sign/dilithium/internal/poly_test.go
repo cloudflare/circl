@@ -60,31 +60,61 @@ func TestReduceLe2QAgainstGeneric(t *testing.T) {
 	}
 }
 
-func BenchmarkGenericMulHat(b *testing.B) {
+func TestNormalizeAgainstGeneric(t *testing.T) {
+	for k := 0; k < 1000; k++ {
+		var a Poly
+		for j := 0; j < 256; j++ {
+			a[j] = rand.Uint32()
+		}
+		p1 := a
+		p2 := a
+		p1.normalizeGeneric()
+		p2.Normalize()
+		if p1 != p2 {
+			t.Fatalf("%v !=\n%v", p1, p2)
+		}
+	}
+}
+
+func BenchmarkNormalizeGeneric(b *testing.B) {
+	var p Poly
+	for i := 0; i < b.N; i++ {
+		p.normalizeGeneric()
+	}
+}
+
+func BenchmarkMulHatGeneric(b *testing.B) {
 	var p Poly
 	for i := 0; i < b.N; i++ {
 		p.mulHatGeneric(&p, &p)
 	}
 }
 
-func BenchmarkGenericAdd(b *testing.B) {
+func BenchmarkAddGeneric(b *testing.B) {
 	var p Poly
 	for i := 0; i < b.N; i++ {
 		p.addGeneric(&p, &p)
 	}
 }
 
-func BenchmarkGenericSub(b *testing.B) {
+func BenchmarkSubGeneric(b *testing.B) {
 	var p Poly
 	for i := 0; i < b.N; i++ {
 		p.subGeneric(&p, &p)
 	}
 }
 
-func BenchmarkGenericReduceLe2Q(b *testing.B) {
+func BenchmarkReduceLe2QGeneric(b *testing.B) {
 	var p Poly
 	for i := 0; i < b.N; i++ {
 		p.reduceLe2QGeneric()
+	}
+}
+
+func BenchmarkNormalizeAssumingLe2QGeneric(b *testing.B) {
+	var p Poly
+	for i := 0; i < b.N; i++ {
+		p.normalizeAssumingLe2QGeneric()
 	}
 }
 
@@ -113,5 +143,19 @@ func BenchmarkReduceLe2Q(b *testing.B) {
 	var p Poly
 	for i := 0; i < b.N; i++ {
 		p.ReduceLe2Q()
+	}
+}
+
+func BenchmarkNormalize(b *testing.B) {
+	var p Poly
+	for i := 0; i < b.N; i++ {
+		p.Normalize()
+	}
+}
+
+func BenchmarkNormalizeAssumingLe2Q(b *testing.B) {
+	var p Poly
+	for i := 0; i < b.N; i++ {
+		p.NormalizeAssumingLe2Q()
 	}
 }

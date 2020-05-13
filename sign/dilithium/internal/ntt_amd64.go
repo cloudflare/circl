@@ -106,3 +106,23 @@ func (p *Poly) ReduceLe2Q() {
 		p.reduceLe2QGeneric()
 	}
 }
+
+// Reduce each of the coefficients to <q.
+func (p *Poly) Normalize() {
+	if cpu.X86.HasAVX2 {
+		p.ReduceLe2Q()
+		p.NormalizeAssumingLe2Q()
+	} else {
+		p.normalizeGeneric()
+	}
+}
+
+// Normalize the coefficients in this polynomial assuming they are already
+// bounded by 2q.
+func (p *Poly) NormalizeAssumingLe2Q() {
+	if cpu.X86.HasAVX2 {
+		le2qModQAVX2((*[N]uint32)(p))
+	} else {
+		p.normalizeAssumingLe2QGeneric()
+	}
+}

@@ -52,3 +52,14 @@ func (p *Poly) PackLe16(buf []byte) {
 func (p *Poly) ReduceLe2Q() {
 	p.reduceLe2QGeneric()
 }
+
+// Reduce each of the coefficients to <q.
+func (p *Poly) Normalize() {
+	p.normalizeGeneric()
+}
+
+// Normalize the coefficients in this polynomial assuming they are already
+// bounded by 2q.
+func (p *Poly) NormalizeAssumingLe2Q() {
+	p.normalizeAssumingLe2QGeneric()
+}

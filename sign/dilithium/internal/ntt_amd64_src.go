@@ -889,6 +889,54 @@ func reduceLe2QAVX2() {
 	RET()
 }
 
+func le2qModQAVX2() {
+	TEXT("le2qModQAVX2", NOSPLIT, "func(p *[256]uint32)")
+	Pragma("noescape")
+	p_ptr := Load(Param("p"), GP64())
+
+	// We use the same method as le2qModQ().
+	var a, m [4]VecVirtual
+	for i := 0; i < 4; i++ {
+		a[i] = YMM()
+		m[i] = YMM()
+	}
+
+	q := YMM()
+	broadcast_imm32(params.Q, q)
+
+	for j := 0; j < 8; j++ {
+		for i := 0; i < 4; i++ {
+			VMOVDQU(Mem{Base: p_ptr, Disp: 32 * (4*j + i)}, a[i])
+		}
+
+		// a -= Q
+		for i := 0; i < 4; i++ {
+			VPSUBD(q, a[i], a[i])
+		}
+
+		// m = uint32(int32(a) >> 31)
+		for i := 0; i < 4; i++ {
+			VPSRAD(U8(31), a[i], m[i])
+		}
+
+		// m &= q
+		for i := 0; i < 4; i++ {
+			VPAND(m[i], q, m[i])
+		}
+
+		// a += m
+		for i := 0; i < 4; i++ {
+			VPADDD(a[i], m[i], a[i])
+		}
+
+		for i := 0; i < 4; i++ {
+			VMOVDQU(a[i], Mem{Base: p_ptr, Disp: 32 * (4*j + i)})
+		}
+	}
+
+	RET()
+}
+
 func main() {
 	ConstraintExpr("amd64")
 
@@ -899,6 +947,7 @@ func main() {
 	subAVX2()
 	packLe16AVX2()
 	reduceLe2QAVX2()
+	le2qModQAVX2()
 
 	Generate()
 }

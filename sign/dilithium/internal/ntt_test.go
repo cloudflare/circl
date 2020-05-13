@@ -53,14 +53,14 @@ func TestNTT(t *testing.T) {
 	}
 }
 
-func BenchmarkGenericNTT(b *testing.B) {
+func BenchmarkNTTGeneric(b *testing.B) {
 	var p Poly
 	for i := 0; i < b.N; i++ {
 		p.nttGeneric()
 	}
 }
 
-func BenchmarkGenericInvNTT(b *testing.B) {
+func BenchmarkInvNTTGeneric(b *testing.B) {
 	var p Poly
 	for i := 0; i < b.N; i++ {
 		p.invNttGeneric()

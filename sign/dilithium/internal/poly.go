@@ -14,7 +14,7 @@ func (p *Poly) reduceLe2QGeneric() {
 }
 
 // Reduce each of the coefficients to <q.
-func (p *Poly) Normalize() {
+func (p *Poly) normalizeGeneric() {
 	for i := uint(0); i < N; i++ {
 		p[i] = modQ(p[i])
 	}
@@ -22,7 +22,7 @@ func (p *Poly) Normalize() {
 
 // Normalize the coefficients in this polynomial assuming they are already
 // bounded by 2q.
-func (p *Poly) NormalizeAssumingLe2Q() {
+func (p *Poly) normalizeAssumingLe2QGeneric() {
 	for i := 0; i < N; i++ {
 		p[i] = le2qModQ(p[i])
 	}
