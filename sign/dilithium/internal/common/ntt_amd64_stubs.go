@@ -2,7 +2,7 @@
 
 // +build amd64
 
-package internal
+package common
 
 //go:noescape
 func nttAVX2(p *[256]uint32)

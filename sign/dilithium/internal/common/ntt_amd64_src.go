@@ -2,7 +2,6 @@
 
 // AVX2 optimized version of Poly.[Inv]NTT().  See the comments on the generic
 // implementation for details on the maths involved.
-
 package main
 
 import (
@@ -10,7 +9,7 @@ import (
 	. "github.com/mmcloughlin/avo/operand"
 	. "github.com/mmcloughlin/avo/reg"
 
-	"github.com/cloudflare/circl/sign/dilithium/internal/params"
+	"github.com/cloudflare/circl/sign/dilithium/internal/common/params"
 )
 
 // XXX align Poly on 16 bytes such that we can use aligned moves

@@ -1,10 +1,10 @@
 package internal
 
 import (
-	"github.com/cloudflare/circl/internal/f1600x4"
 	"github.com/cloudflare/circl/internal/shake"
+	"github.com/cloudflare/circl/sign/dilithium/internal/f1600x4"
 
-	common "github.com/cloudflare/circl/sign/dilithium/internal"
+	"github.com/cloudflare/circl/sign/dilithium/internal/common"
 
 	"encoding/binary"
 )

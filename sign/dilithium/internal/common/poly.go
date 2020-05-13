@@ -1,4 +1,4 @@
-package internal
+package common
 
 // An element of our base ring R which are polynomials over Z_q modulo
 // the equation X^N = -1, where q=2^23 - 2^13 + 1 and N=256.

@@ -1,4 +1,4 @@
-package internal
+package common
 
 // Sets p to the polynomial whose coefficients are less than 512 encoded
 // into buf (which must be of size PolyT1Size).

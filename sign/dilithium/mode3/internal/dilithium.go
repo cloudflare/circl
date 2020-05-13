@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"github.com/cloudflare/circl/internal/shake"
-	common "github.com/cloudflare/circl/sign/dilithium/internal"
+	"github.com/cloudflare/circl/sign/dilithium/internal/common"
 )
 
 const (

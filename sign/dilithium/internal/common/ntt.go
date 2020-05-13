@@ -1,4 +1,4 @@
-package internal
+package common
 
 // Zetas lists precomputed powers of the root of unity in Montgomery
 // representation used for the NTT:

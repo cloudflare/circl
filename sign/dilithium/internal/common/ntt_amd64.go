@@ -1,6 +1,6 @@
 //go:generate go run ntt_amd64_src.go -out ntt_amd64.s -stubs ntt_amd64_stubs.go
 
-package internal
+package common
 
 import (
 	"golang.org/x/sys/cpu"

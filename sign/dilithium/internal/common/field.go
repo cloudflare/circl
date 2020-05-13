@@ -1,4 +1,4 @@
-package internal
+package common
 
 // Returns a y with y < 2q and y = x mod q.
 // Note that in general *not*: reduceLe2Q(reduceLe2Q(x)) == x.

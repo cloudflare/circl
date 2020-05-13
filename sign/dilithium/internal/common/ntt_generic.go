@@ -1,6 +1,6 @@
 // +build !amd64
 
-package internal
+package common
 
 // Execute an in-place forward NTT on as.
 //
