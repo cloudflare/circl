@@ -63,3 +63,11 @@ func (p *Poly) Normalize() {
 func (p *Poly) NormalizeAssumingLe2Q() {
 	p.normalizeAssumingLe2QGeneric()
 }
+
+// Checks whether the "supnorm" (see sec 2.1 of the spec) of p is equal
+// or greater than the given bound.
+//
+// Requires the coefficients of p to be normalized.
+func (p *Poly) Exceeds(bound uint32) bool {
+	return p.exceedsGeneric(bound)
+}

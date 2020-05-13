@@ -7927,3 +7927,370 @@ TEXT ·le2qModQAVX2(SB), NOSPLIT, $0-8
 	VMOVDQU      Y4, 960(AX)
 	VMOVDQU      Y6, 992(AX)
 	RET
+
+// func exceedsAVX2(p *[256]uint32, bound uint32) uint8
+// Requires: AVX, AVX2
+TEXT ·exceedsAVX2(SB), NOSPLIT, $0-17
+	MOVQ         p+0(FP), AX
+	MOVL         bound+8(FP), CX
+	VMOVD        CX, X0
+	VPBROADCASTD X0, Y8
+	MOVL         $0x003ff000, CX
+	VMOVD        CX, X0
+	VPBROADCASTD X0, Y9
+	MOVL         $0x80000000, CX
+	VMOVD        CX, X0
+	VPBROADCASTD X0, Y10
+	MOVL         $0x88888888, CX
+	VMOVDQU      (AX), Y0
+	VMOVDQU      32(AX), Y2
+	VMOVDQU      64(AX), Y4
+	VMOVDQU      96(AX), Y6
+	VPSUBD       Y0, Y9, Y0
+	VPSUBD       Y2, Y9, Y2
+	VPSUBD       Y4, Y9, Y4
+	VPSUBD       Y6, Y9, Y6
+	VPSRAD       $0x1f, Y0, Y1
+	VPSRAD       $0x1f, Y2, Y3
+	VPSRAD       $0x1f, Y4, Y5
+	VPSRAD       $0x1f, Y6, Y7
+	VPXOR        Y0, Y1, Y0
+	VPXOR        Y2, Y3, Y2
+	VPXOR        Y4, Y5, Y4
+	VPXOR        Y6, Y7, Y6
+	VPSUBD       Y0, Y9, Y0
+	VPSUBD       Y2, Y9, Y2
+	VPSUBD       Y4, Y9, Y4
+	VPSUBD       Y6, Y9, Y6
+	VPSUBD       Y8, Y0, Y0
+	VPSUBD       Y8, Y2, Y2
+	VPSUBD       Y8, Y4, Y4
+	VPSUBD       Y8, Y6, Y6
+	VPAND        Y0, Y10, Y0
+	VPAND        Y2, Y10, Y2
+	VPAND        Y4, Y10, Y4
+	VPAND        Y6, Y10, Y6
+	XORL         DX, DX
+	VPMOVMSKB    Y0, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	VPMOVMSKB    Y2, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	VPMOVMSKB    Y4, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	VPMOVMSKB    Y6, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	TESTL        DX, DX
+	JNZ          exceeded
+	VMOVDQU      128(AX), Y0
+	VMOVDQU      160(AX), Y2
+	VMOVDQU      192(AX), Y4
+	VMOVDQU      224(AX), Y6
+	VPSUBD       Y0, Y9, Y0
+	VPSUBD       Y2, Y9, Y2
+	VPSUBD       Y4, Y9, Y4
+	VPSUBD       Y6, Y9, Y6
+	VPSRAD       $0x1f, Y0, Y1
+	VPSRAD       $0x1f, Y2, Y3
+	VPSRAD       $0x1f, Y4, Y5
+	VPSRAD       $0x1f, Y6, Y7
+	VPXOR        Y0, Y1, Y0
+	VPXOR        Y2, Y3, Y2
+	VPXOR        Y4, Y5, Y4
+	VPXOR        Y6, Y7, Y6
+	VPSUBD       Y0, Y9, Y0
+	VPSUBD       Y2, Y9, Y2
+	VPSUBD       Y4, Y9, Y4
+	VPSUBD       Y6, Y9, Y6
+	VPSUBD       Y8, Y0, Y0
+	VPSUBD       Y8, Y2, Y2
+	VPSUBD       Y8, Y4, Y4
+	VPSUBD       Y8, Y6, Y6
+	VPAND        Y0, Y10, Y0
+	VPAND        Y2, Y10, Y2
+	VPAND        Y4, Y10, Y4
+	VPAND        Y6, Y10, Y6
+	XORL         DX, DX
+	VPMOVMSKB    Y0, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	VPMOVMSKB    Y2, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	VPMOVMSKB    Y4, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	VPMOVMSKB    Y6, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	TESTL        DX, DX
+	JNZ          exceeded
+	VMOVDQU      256(AX), Y0
+	VMOVDQU      288(AX), Y2
+	VMOVDQU      320(AX), Y4
+	VMOVDQU      352(AX), Y6
+	VPSUBD       Y0, Y9, Y0
+	VPSUBD       Y2, Y9, Y2
+	VPSUBD       Y4, Y9, Y4
+	VPSUBD       Y6, Y9, Y6
+	VPSRAD       $0x1f, Y0, Y1
+	VPSRAD       $0x1f, Y2, Y3
+	VPSRAD       $0x1f, Y4, Y5
+	VPSRAD       $0x1f, Y6, Y7
+	VPXOR        Y0, Y1, Y0
+	VPXOR        Y2, Y3, Y2
+	VPXOR        Y4, Y5, Y4
+	VPXOR        Y6, Y7, Y6
+	VPSUBD       Y0, Y9, Y0
+	VPSUBD       Y2, Y9, Y2
+	VPSUBD       Y4, Y9, Y4
+	VPSUBD       Y6, Y9, Y6
+	VPSUBD       Y8, Y0, Y0
+	VPSUBD       Y8, Y2, Y2
+	VPSUBD       Y8, Y4, Y4
+	VPSUBD       Y8, Y6, Y6
+	VPAND        Y0, Y10, Y0
+	VPAND        Y2, Y10, Y2
+	VPAND        Y4, Y10, Y4
+	VPAND        Y6, Y10, Y6
+	XORL         DX, DX
+	VPMOVMSKB    Y0, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	VPMOVMSKB    Y2, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	VPMOVMSKB    Y4, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	VPMOVMSKB    Y6, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	TESTL        DX, DX
+	JNZ          exceeded
+	VMOVDQU      384(AX), Y0
+	VMOVDQU      416(AX), Y2
+	VMOVDQU      448(AX), Y4
+	VMOVDQU      480(AX), Y6
+	VPSUBD       Y0, Y9, Y0
+	VPSUBD       Y2, Y9, Y2
+	VPSUBD       Y4, Y9, Y4
+	VPSUBD       Y6, Y9, Y6
+	VPSRAD       $0x1f, Y0, Y1
+	VPSRAD       $0x1f, Y2, Y3
+	VPSRAD       $0x1f, Y4, Y5
+	VPSRAD       $0x1f, Y6, Y7
+	VPXOR        Y0, Y1, Y0
+	VPXOR        Y2, Y3, Y2
+	VPXOR        Y4, Y5, Y4
+	VPXOR        Y6, Y7, Y6
+	VPSUBD       Y0, Y9, Y0
+	VPSUBD       Y2, Y9, Y2
+	VPSUBD       Y4, Y9, Y4
+	VPSUBD       Y6, Y9, Y6
+	VPSUBD       Y8, Y0, Y0
+	VPSUBD       Y8, Y2, Y2
+	VPSUBD       Y8, Y4, Y4
+	VPSUBD       Y8, Y6, Y6
+	VPAND        Y0, Y10, Y0
+	VPAND        Y2, Y10, Y2
+	VPAND        Y4, Y10, Y4
+	VPAND        Y6, Y10, Y6
+	XORL         DX, DX
+	VPMOVMSKB    Y0, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	VPMOVMSKB    Y2, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	VPMOVMSKB    Y4, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	VPMOVMSKB    Y6, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	TESTL        DX, DX
+	JNZ          exceeded
+	VMOVDQU      512(AX), Y0
+	VMOVDQU      544(AX), Y2
+	VMOVDQU      576(AX), Y4
+	VMOVDQU      608(AX), Y6
+	VPSUBD       Y0, Y9, Y0
+	VPSUBD       Y2, Y9, Y2
+	VPSUBD       Y4, Y9, Y4
+	VPSUBD       Y6, Y9, Y6
+	VPSRAD       $0x1f, Y0, Y1
+	VPSRAD       $0x1f, Y2, Y3
+	VPSRAD       $0x1f, Y4, Y5
+	VPSRAD       $0x1f, Y6, Y7
+	VPXOR        Y0, Y1, Y0
+	VPXOR        Y2, Y3, Y2
+	VPXOR        Y4, Y5, Y4
+	VPXOR        Y6, Y7, Y6
+	VPSUBD       Y0, Y9, Y0
+	VPSUBD       Y2, Y9, Y2
+	VPSUBD       Y4, Y9, Y4
+	VPSUBD       Y6, Y9, Y6
+	VPSUBD       Y8, Y0, Y0
+	VPSUBD       Y8, Y2, Y2
+	VPSUBD       Y8, Y4, Y4
+	VPSUBD       Y8, Y6, Y6
+	VPAND        Y0, Y10, Y0
+	VPAND        Y2, Y10, Y2
+	VPAND        Y4, Y10, Y4
+	VPAND        Y6, Y10, Y6
+	XORL         DX, DX
+	VPMOVMSKB    Y0, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	VPMOVMSKB    Y2, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	VPMOVMSKB    Y4, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	VPMOVMSKB    Y6, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	TESTL        DX, DX
+	JNZ          exceeded
+	VMOVDQU      640(AX), Y0
+	VMOVDQU      672(AX), Y2
+	VMOVDQU      704(AX), Y4
+	VMOVDQU      736(AX), Y6
+	VPSUBD       Y0, Y9, Y0
+	VPSUBD       Y2, Y9, Y2
+	VPSUBD       Y4, Y9, Y4
+	VPSUBD       Y6, Y9, Y6
+	VPSRAD       $0x1f, Y0, Y1
+	VPSRAD       $0x1f, Y2, Y3
+	VPSRAD       $0x1f, Y4, Y5
+	VPSRAD       $0x1f, Y6, Y7
+	VPXOR        Y0, Y1, Y0
+	VPXOR        Y2, Y3, Y2
+	VPXOR        Y4, Y5, Y4
+	VPXOR        Y6, Y7, Y6
+	VPSUBD       Y0, Y9, Y0
+	VPSUBD       Y2, Y9, Y2
+	VPSUBD       Y4, Y9, Y4
+	VPSUBD       Y6, Y9, Y6
+	VPSUBD       Y8, Y0, Y0
+	VPSUBD       Y8, Y2, Y2
+	VPSUBD       Y8, Y4, Y4
+	VPSUBD       Y8, Y6, Y6
+	VPAND        Y0, Y10, Y0
+	VPAND        Y2, Y10, Y2
+	VPAND        Y4, Y10, Y4
+	VPAND        Y6, Y10, Y6
+	XORL         DX, DX
+	VPMOVMSKB    Y0, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	VPMOVMSKB    Y2, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	VPMOVMSKB    Y4, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	VPMOVMSKB    Y6, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	TESTL        DX, DX
+	JNZ          exceeded
+	VMOVDQU      768(AX), Y0
+	VMOVDQU      800(AX), Y2
+	VMOVDQU      832(AX), Y4
+	VMOVDQU      864(AX), Y6
+	VPSUBD       Y0, Y9, Y0
+	VPSUBD       Y2, Y9, Y2
+	VPSUBD       Y4, Y9, Y4
+	VPSUBD       Y6, Y9, Y6
+	VPSRAD       $0x1f, Y0, Y1
+	VPSRAD       $0x1f, Y2, Y3
+	VPSRAD       $0x1f, Y4, Y5
+	VPSRAD       $0x1f, Y6, Y7
+	VPXOR        Y0, Y1, Y0
+	VPXOR        Y2, Y3, Y2
+	VPXOR        Y4, Y5, Y4
+	VPXOR        Y6, Y7, Y6
+	VPSUBD       Y0, Y9, Y0
+	VPSUBD       Y2, Y9, Y2
+	VPSUBD       Y4, Y9, Y4
+	VPSUBD       Y6, Y9, Y6
+	VPSUBD       Y8, Y0, Y0
+	VPSUBD       Y8, Y2, Y2
+	VPSUBD       Y8, Y4, Y4
+	VPSUBD       Y8, Y6, Y6
+	VPAND        Y0, Y10, Y0
+	VPAND        Y2, Y10, Y2
+	VPAND        Y4, Y10, Y4
+	VPAND        Y6, Y10, Y6
+	XORL         DX, DX
+	VPMOVMSKB    Y0, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	VPMOVMSKB    Y2, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	VPMOVMSKB    Y4, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	VPMOVMSKB    Y6, BX
+	XORL         CX, BX
+	ORL          BX, DX
+	TESTL        DX, DX
+	JNZ          exceeded
+	VMOVDQU      896(AX), Y0
+	VMOVDQU      928(AX), Y2
+	VMOVDQU      960(AX), Y4
+	VMOVDQU      992(AX), Y6
+	VPSUBD       Y0, Y9, Y0
+	VPSUBD       Y2, Y9, Y2
+	VPSUBD       Y4, Y9, Y4
+	VPSUBD       Y6, Y9, Y6
+	VPSRAD       $0x1f, Y0, Y1
+	VPSRAD       $0x1f, Y2, Y3
+	VPSRAD       $0x1f, Y4, Y5
+	VPSRAD       $0x1f, Y6, Y7
+	VPXOR        Y0, Y1, Y0
+	VPXOR        Y2, Y3, Y2
+	VPXOR        Y4, Y5, Y4
+	VPXOR        Y6, Y7, Y6
+	VPSUBD       Y0, Y9, Y0
+	VPSUBD       Y2, Y9, Y2
+	VPSUBD       Y4, Y9, Y4
+	VPSUBD       Y6, Y9, Y6
+	VPSUBD       Y8, Y0, Y0
+	VPSUBD       Y8, Y2, Y2
+	VPSUBD       Y8, Y4, Y4
+	VPSUBD       Y8, Y6, Y6
+	VPAND        Y0, Y10, Y0
+	VPAND        Y2, Y10, Y2
+	VPAND        Y4, Y10, Y4
+	VPAND        Y6, Y10, Y6
+	XORL         AX, AX
+	VPMOVMSKB    Y0, DX
+	XORL         CX, DX
+	ORL          DX, AX
+	VPMOVMSKB    Y2, DX
+	XORL         CX, DX
+	ORL          DX, AX
+	VPMOVMSKB    Y4, DX
+	XORL         CX, DX
+	ORL          DX, AX
+	VPMOVMSKB    Y6, DX
+	XORL         CX, DX
+	ORL          DX, AX
+	TESTL        AX, AX
+	JNZ          exceeded
+	XORB         AL, AL
+	MOVB         AL, ret+16(FP)
+	RET
+
+exceeded:
+	MOVB $0x01, AL
+	MOVB AL, ret+16(FP)
+	RET

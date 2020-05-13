@@ -5,6 +5,32 @@ import (
 	"testing"
 )
 
+func TestExceeds(t *testing.T) {
+	for i := 0; i < 256; i++ {
+		var p Poly
+		for v := 0; v < 10; v++ {
+			p[i] = uint32(v)
+			if p.Exceeds(uint32(10)) {
+				t.Fatal()
+			}
+			p[i] = Q - uint32(v)
+			if p.Exceeds(uint32(10)) {
+				t.Fatal()
+			}
+		}
+		for v := 10; v < 20; v++ {
+			p[i] = uint32(v)
+			if !p.Exceeds(uint32(10)) {
+				t.Fatal()
+			}
+			p[i] = Q - uint32(v)
+			if !p.Exceeds(uint32(10)) {
+				t.Fatal()
+			}
+		}
+	}
+}
+
 func TestSubAgainstGeneric(t *testing.T) {
 	for k := 0; k < 1000; k++ {
 		var p1, p2, a, b Poly
@@ -118,6 +144,13 @@ func BenchmarkNormalizeAssumingLe2QGeneric(b *testing.B) {
 	}
 }
 
+func BenchmarkExceedsGeneric(b *testing.B) {
+	var p Poly
+	for i := 0; i < b.N; i++ {
+		p.exceedsGeneric(uint32(10))
+	}
+}
+
 func BenchmarkMulHat(b *testing.B) {
 	var p Poly
 	for i := 0; i < b.N; i++ {
@@ -157,5 +190,12 @@ func BenchmarkNormalizeAssumingLe2Q(b *testing.B) {
 	var p Poly
 	for i := 0; i < b.N; i++ {
 		p.NormalizeAssumingLe2Q()
+	}
+}
+
+func BenchmarkExceeds(b *testing.B) {
+	var p Poly
+	for i := 0; i < b.N; i++ {
+		p.Exceeds(uint32(10))
 	}
 }

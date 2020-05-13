@@ -48,7 +48,7 @@ func (p *Poly) subGeneric(a, b *Poly) {
 // or greater than the given bound.
 //
 // Requires the coefficients of p to be normalized.
-func (p *Poly) Exceeds(bound uint32) bool {
+func (p *Poly) exceedsGeneric(bound uint32) bool {
 	// Note that we are allowed to leak which coefficients break the bound,
 	// but not their sign.
 	for i := 0; i < N; i++ {

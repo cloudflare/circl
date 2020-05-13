@@ -75,9 +75,9 @@ func nttAVX2() {
 	doubleQ := YMM()
 	broadcast_imm32(2*params.Q, doubleQ)
 	qinv := YMM()
-	broadcast_imm32(params.Qinv, qinv) // 4236238847 = -(q^-1) mod 2^32
+	broadcast_imm32(params.Qinv, qinv) // 4236238847 = -(q^-1) mod 2³²
 
-	// Computes 4x4 Cooley--Tukey butterflies (a,b) |-> (a + ζb, a - ζb).
+	// Computes 4x4 Cooley--Tukey butterflies (a,b) ↦ (a + ζb, a - ζb).
 	ctButterfly := func(a1, b1, zeta1, a2, b2, zeta2, a3, b3, zeta3,
 		a4, b4, zeta4 Op) {
 		t := [4]Op{YMM(), YMM(), YMM(), YMM()}
@@ -334,7 +334,7 @@ func invNttAVX2() {
 	// Just like with the generic implementation, we do the operations of
 	// NTT in reverse, except for two things: we hoist out all divisions by
 	// two from the Gentleman-Sande butterflies and accumulate them to one
-	// big division by 2^8 at the end.
+	// big division by 2⁸ at the end.
 	TEXT("invNttAVX2", 0, "func(p *[256]uint32)")
 	Pragma("noescape")
 	p_ptr := Load(Param("p"), GP64())
@@ -355,7 +355,7 @@ func invNttAVX2() {
 	qinv := YMM()
 	broadcast_imm32(params.Qinv, qinv)
 
-	// Computes 4x4 doubled Gentleman--Sande butterflies (a,b) |-> (a+b, ζ(a-b)).
+	// Computes 4x4 doubled Gentleman--Sande butterflies (a,b) ↦ (a+b, ζ(a-b)).
 	gsButterfly := func(a1, b1, zeta1, a2, b2, zeta2, a3, b3, zeta3,
 		a4, b4, zeta4 Op) {
 		t := [4]Op{YMM(), YMM(), YMM(), YMM()}
@@ -543,7 +543,7 @@ func invNttAVX2() {
 			xs[3], xs[7], zs[0],
 		)
 
-		// Finally, we multiply by 41978 = (256)^-1 R^2 ...
+		// Finally, we multiply by 41978 = (256)^-1 R² ...
 		rOver256 := YMM()
 		broadcast_imm32(params.ROver256, rOver256)
 
@@ -862,7 +862,7 @@ func reduceLe2QAVX2() {
 			VPSRLD(U8(23), a[i], b[i])
 		}
 
-		// a = a & 2^{23}-1
+		// a = a & 2²³-1
 		for i := 0; i < 4; i++ {
 			VPAND(a[i], twoToThe23MinusOne, a[i])
 		}
@@ -937,6 +937,95 @@ func le2qModQAVX2() {
 	RET()
 }
 
+func exceedsAVX2() {
+	TEXT("exceedsAVX2", NOSPLIT, "func(p *[256]uint32, bound uint32) uint8")
+	Pragma("noescape")
+	p_ptr := Load(Param("p"), GP64())
+	bound := Load(Param("bound"), GP32())
+
+	// We use the same method as Poly.exceedsGeneric().
+	var a, b [4]VecVirtual
+	for i := 0; i < 4; i++ {
+		a[i] = YMM()
+		b[i] = YMM()
+	}
+
+	boundX4 := XMM()
+	boundX8 := YMM()
+	VMOVD(bound, boundX4)
+	VPBROADCASTD(boundX4, boundX8)
+
+	qMinusOneDiv2 := YMM()
+	broadcast_imm32((params.Q-1)/2, qMinusOneDiv2)
+
+	signMaskX8 := YMM()
+	broadcast_imm32(0x80000000, signMaskX8)
+
+	signsMask := GP32()
+	MOVL(U32(0x88888888), signsMask)
+
+	for j := 0; j < 8; j++ {
+		for i := 0; i < 4; i++ {
+			VMOVDQU(Mem{Base: p_ptr, Disp: 32 * (4*j + i)}, a[i])
+		}
+
+		// a = (Q-1)/2 - a
+		for i := 0; i < 4; i++ {
+			VPSUBD(a[i], qMinusOneDiv2, a[i])
+		}
+
+		// b = a >> 31
+		for i := 0; i < 4; i++ {
+			VPSRAD(U8(31), a[i], b[i])
+		}
+
+		// a = a ^ b
+		for i := 0; i < 4; i++ {
+			VPXOR(a[i], b[i], a[i])
+		}
+
+		// a = (Q-1)/2 - a
+		for i := 0; i < 4; i++ {
+			VPSUBD(a[i], qMinusOneDiv2, a[i])
+		}
+
+		// Here exceedsGeneric() checks if a ⩾ bound.  We'll be more clever.
+		// a ⩾ bound iff a - bound ⩾ 0, so set a = a - bound first.
+		for i := 0; i < 4; i++ {
+			VPSUBD(boundX8, a[i], a[i])
+		}
+
+		// a &= 0x80000000.  Leaves the sign.  Should be zero.
+		for i := 0; i < 4; i++ {
+			VPAND(a[i], signMaskX8, a[i])
+		}
+
+		for i := 0; i < 4; i++ {
+			// Move the high bits, which are all zero except possibly for
+			// the sign bits, into tmp.
+			tmp := GP32()
+			VPMOVMSKB(a[i], tmp)
+
+			// If one of the sign bits is zero, then one of the as is
+			// positive hence the bound is exceeded.
+			XORL(signsMask, tmp) // 0b10001000100010001000100010001000
+			TESTL(tmp, tmp)
+			JNZ(LabelRef("exceeded"))
+		}
+
+	}
+
+	ret := GP8()
+	XORB(ret, ret)
+	Store(ret, ReturnIndex(0))
+	RET()
+
+	Label("exceeded")
+	MOVB(U8(1), ret)
+	Store(ret, ReturnIndex(0))
+	RET()
+}
+
 func main() {
 	ConstraintExpr("amd64")
 
@@ -948,6 +1037,7 @@ func main() {
 	packLe16AVX2()
 	reduceLe2QAVX2()
 	le2qModQAVX2()
+	exceedsAVX2()
 
 	Generate()
 }

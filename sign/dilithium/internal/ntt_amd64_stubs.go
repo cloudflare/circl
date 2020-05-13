@@ -27,3 +27,6 @@ func reduceLe2QAVX2(p *[256]uint32)
 
 //go:noescape
 func le2qModQAVX2(p *[256]uint32)
+
+//go:noescape
+func exceedsAVX2(p *[256]uint32, bound uint32) uint8

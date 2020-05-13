@@ -126,3 +126,15 @@ func (p *Poly) NormalizeAssumingLe2Q() {
 		p.normalizeAssumingLe2QGeneric()
 	}
 }
+
+// Checks whether the "supnorm" (see sec 2.1 of the spec) of p is equal
+// or greater than the given bound.
+//
+// Requires the coefficients of p to be normalized.
+func (p *Poly) Exceeds(bound uint32) bool {
+	if cpu.X86.HasAVX2 {
+		return exceedsAVX2((*[N]uint32)(p), bound) == 1
+	} else {
+		return p.exceedsGeneric(bound)
+	}
+}
