@@ -9,8 +9,8 @@ import (
 	"encoding/binary"
 )
 
-// True if this system supports the quick fourway sampling variants
-// like PolyDeriveUniformX4.
+// DeriveX4Available indicates whether the system supports the quick fourway
+// sampling variants like PolyDeriveUniformX4.
 var DeriveX4Available = f1600x4.Available && !UseAES
 
 // For each i, sample ps[i] uniformly with coefficients of norm less than γ₁
@@ -92,7 +92,7 @@ func PolyDeriveUniformLeGamma1X4(ps [4]*common.Poly, seed *[48]byte,
 				for k := 0; k < tCount; k++ {
 					if t[k] <= 2*common.Gamma1-2 {
 						ps[j][idx[j]] = common.Q + common.Gamma1 - 1 - t[k]
-						idx[j] += 1
+						idx[j]++
 						if idx[j] == 256 {
 							break
 						}
@@ -170,7 +170,7 @@ func PolyDeriveUniformX4(ps [4]*common.Poly, seed *[32]byte, nonces [4]uint16) {
 				for k := 0; k < 8; k++ {
 					if t[k] < common.Q {
 						ps[j][idx[j]] = t[k]
-						idx[j] += 1
+						idx[j]++
 						if idx[j] == 256 {
 							break
 						}
