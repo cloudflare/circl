@@ -134,9 +134,8 @@ func (p *Poly) NormalizeAssumingLe2Q() {
 func (p *Poly) Exceeds(bound uint32) bool {
 	if cpu.X86.HasAVX2 {
 		return exceedsAVX2((*[N]uint32)(p), bound) == 1
-	} else {
-		return p.exceedsGeneric(bound)
 	}
+	return p.exceedsGeneric(bound)
 }
 
 // Splits each of the coefficients using decompose.
