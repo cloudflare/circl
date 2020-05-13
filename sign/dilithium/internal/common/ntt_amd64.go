@@ -40,7 +40,7 @@ func (p *Poly) InvNTT() {
 // of those of a and b.  The coefficients of p are bounded by 2q.
 //
 // Assumes a and b are in Montgomery form and that the pointwise product
-// of each coefficient is below 2^32 q.
+// of each coefficient is below 2³² q.
 func (p *Poly) MulHat(a, b *Poly) {
 	if cpu.X86.HasAVX2 {
 		mulHatAVX2(

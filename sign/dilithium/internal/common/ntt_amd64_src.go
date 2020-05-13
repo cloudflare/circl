@@ -1057,7 +1057,7 @@ func decomposeAVX2() {
 			VMOVDQU(Mem{Base: p_ptr, Disp: 32 * (4*j + i)}, a[i])
 		}
 
-		// t = a & (2^{19}-1)
+		// t = a & (2¹⁹-1)
 		for i := 0; i < 4; i++ {
 			VPAND(a[i], twoToThe19MinOne, t[i])
 		}
@@ -1103,12 +1103,12 @@ func decomposeAVX2() {
 		fifteen := YMM()
 		broadcast_imm32(15, fifteen)
 
-		// a_1 = a - t.  We'll use a to store a_1.
+		// a₁ = a - t.  We'll use a to store a₁.
 		for i := 0; i < 4; i++ {
 			VPSUBD(t[i], a[i], a[i])
 		}
 
-		// u = ((a_1 - 1) >> 31) & 1. We'll use s to store u.
+		// u = ((a₁ - 1) >> 31) & 1. We'll use s to store u.
 		for i := 0; i < 4; i++ {
 			VPSUBD(one, a[i], s[i])
 		}
@@ -1119,7 +1119,7 @@ func decomposeAVX2() {
 			VPAND(one, s[i], s[i])
 		}
 
-		// a_1 = (a_1 >> 19) + 1
+		// a₁ = (a₁ >> 19) + 1
 		for i := 0; i < 4; i++ {
 			VPSRLD(U8(19), a[i], a[i])
 		}
@@ -1127,17 +1127,17 @@ func decomposeAVX2() {
 			VPADDD(one, a[i], a[i])
 		}
 
-		// a_1 -= u.  We're done with u, so s is free.
+		// a₁ -= u.  We're done with u, so s is free.
 		for i := 0; i < 4; i++ {
 			VPSUBD(s[i], a[i], a[i])
 		}
 
-		// a_0 = Q + t.  We'll use t to store a_0.
+		// a₀ = Q + t.  We'll use t to store a₀.
 		for i := 0; i < 4; i++ {
 			VPADDD(q, t[i], t[i])
 		}
 
-		// a_0 -= a_1 >> 4
+		// a₀ -= a₁ >> 4
 		for i := 0; i < 4; i++ {
 			VPSRLD(U8(4), a[i], s[i])
 		}
@@ -1145,7 +1145,7 @@ func decomposeAVX2() {
 			VPSUBD(s[i], t[i], t[i])
 		}
 
-		// a_1 &= 15
+		// a₁ &= 15
 		for i := 0; i < 4; i++ {
 			VPAND(a[i], fifteen, a[i])
 		}

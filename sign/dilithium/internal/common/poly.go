@@ -1,7 +1,7 @@
 package common
 
 // An element of our base ring R which are polynomials over Z_q modulo
-// the equation X^N = -1, where q=2^23 - 2^13 + 1 and N=256.
+// the equation Xᴺ = -1, where q=2²³ - 2¹³ + 1 and N=256.
 //
 // Coefficients aren't always reduced.  See Normalize().
 type Poly [N]uint32
@@ -79,8 +79,8 @@ func (p *Poly) decomposeGeneric(p0PlusQ, p1 *Poly) {
 	}
 }
 
-// Splits p into p1 and p0 such that [i]p1 * 2^D + [i]p0 = [i]p
-// with -2^{D-1} < [i]p0 ≤ 2^{D-1}.  Returns p0 + Q and p1.
+// Splits p into p1 and p0 such that [i]p1 * 2ᴰ + [i]p0 = [i]p
+// with -2ᴰ⁻¹ < [i]p0 ≤ 2ᴰ⁻¹.  Returns p0 + Q and p1.
 //
 // Requires the coefficients of p to be normalized.
 func (p *Poly) Power2Round(p0PlusQ, p1 *Poly) {
@@ -115,16 +115,16 @@ func (p *Poly) UseHint(q, hint *Poly) *Poly {
 // of those of a and b.  The coefficients of p are bounded by 2q.
 //
 // Assumes a and b are in Montgomery form and that the pointwise product
-// of each coefficient is below 2^32 q.
+// of each coefficient is below 2³² q.
 func (p *Poly) mulHatGeneric(a, b *Poly) {
 	for i := 0; i < N; i++ {
 		p[i] = montReduceLe2Q(uint64(a[i]) * uint64(b[i]))
 	}
 }
 
-// Sets p to 2^d q without reducing.
+// Sets p to 2ᵈ q without reducing.
 //
-// So it requires the coefficients of p  to be less than 2^{32-D}.
+// So it requires the coefficients of p  to be less than 2³²⁻ᴰ.
 func (p *Poly) MulBy2toD(q *Poly) {
 	for i := 0; i < N; i++ {
 		p[i] = q[i] << D

@@ -257,7 +257,7 @@ func (v *VecK) Sub(a, b *VecK) {
 	}
 }
 
-// Sets v to 2^d w without reducing.
+// Sets v to 2ᵈ w without reducing.
 func (v *VecK) MulBy2toD(w *VecK) {
 	for i := 0; i < K; i++ {
 		v[i].MulBy2toD(&w[i])

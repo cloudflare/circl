@@ -19,11 +19,11 @@ func (p *Poly) UnpackT1(buf []byte) {
 	}
 }
 
-// Writes p whose coefficients are in (-2^{d-1}, 2^{d-1}] into buf which
+// Writes p whose coefficients are in (-2ᵈ⁻¹, 2ᵈ⁻¹] into buf which
 // has to be of length at least PolyT0Size.
 //
 // Assumes that the coefficients are not normalized, but lie in the
-// range (q-2^{d-1}, q+2^{d-1}].
+// range (q-2ᵈ⁻¹, q+2ᵈ⁻¹].
 func (p *Poly) PackT0(buf []byte) {
 	j := 0
 	for i := 0; i < PolyT0Size; i += 7 {
@@ -46,7 +46,7 @@ func (p *Poly) PackT0(buf []byte) {
 // Sets p to the polynomial packed into buf by PackT0.
 //
 // The coefficients of p will not be normalized, but will lie
-// in (-2^{d-1}, 2^{d-1}].
+// in (-2ᵈ⁻¹, 2ᵈ⁻¹].
 func (p *Poly) UnpackT0(buf []byte) {
 	j := 0
 	for i := 0; i < PolyT0Size; i += 7 {
