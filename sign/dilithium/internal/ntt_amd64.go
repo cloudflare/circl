@@ -138,3 +138,18 @@ func (p *Poly) Exceeds(bound uint32) bool {
 		return p.exceedsGeneric(bound)
 	}
 }
+
+// Splits each of the coefficients using decompose.
+//
+// Requires p to be normalized.
+func (p *Poly) Decompose(p0PlusQ, p1 *Poly) {
+	if cpu.X86.HasAVX2 {
+		decomposeAVX2(
+			(*[N]uint32)(p),
+			(*[N]uint32)(p0PlusQ),
+			(*[N]uint32)(p1),
+		)
+	} else {
+		p.decomposeGeneric(p0PlusQ, p1)
+	}
+}

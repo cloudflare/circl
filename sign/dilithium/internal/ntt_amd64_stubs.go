@@ -30,3 +30,6 @@ func le2qModQAVX2(p *[256]uint32)
 
 //go:noescape
 func exceedsAVX2(p *[256]uint32, bound uint32) uint8
+
+//go:noescape
+func decomposeAVX2(p *[256]uint32, p0PlusQ *[256]uint32, p1 *[256]uint32)

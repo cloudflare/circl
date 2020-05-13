@@ -73,7 +73,7 @@ func (p *Poly) exceedsGeneric(bound uint32) bool {
 // Splits each of the coefficients using decompose.
 //
 // Requires p to be normalized.
-func (p *Poly) Decompose(p0PlusQ, p1 *Poly) {
+func (p *Poly) decomposeGeneric(p0PlusQ, p1 *Poly) {
 	for i := 0; i < N; i++ {
 		p0PlusQ[i], p1[i] = decompose(p[i])
 	}

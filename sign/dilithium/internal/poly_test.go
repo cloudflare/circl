@@ -31,6 +31,19 @@ func TestExceeds(t *testing.T) {
 	}
 }
 
+func TestComposeAgainstGeneric(t *testing.T) {
+	for k := 0; k < 1000; k++ {
+		var p, a0, b0, a1, b1 Poly
+		p.RandLe2Q()
+		p.Normalize()
+		p.Decompose(&a0, &a1)
+		p.decomposeGeneric(&b0, &b1)
+		if a0 != b0 && a1 != b1 {
+			t.Fatal()
+		}
+	}
+}
+
 func TestSubAgainstGeneric(t *testing.T) {
 	for k := 0; k < 1000; k++ {
 		var p1, p2, a, b Poly
@@ -151,6 +164,13 @@ func BenchmarkExceedsGeneric(b *testing.B) {
 	}
 }
 
+func BenchmarkDecomposeGeneric(b *testing.B) {
+	var p, p0, p1 Poly
+	for i := 0; i < b.N; i++ {
+		p.decomposeGeneric(&p0, &p1)
+	}
+}
+
 func BenchmarkMulHat(b *testing.B) {
 	var p Poly
 	for i := 0; i < b.N; i++ {
@@ -197,5 +217,12 @@ func BenchmarkExceeds(b *testing.B) {
 	var p Poly
 	for i := 0; i < b.N; i++ {
 		p.Exceeds(uint32(10))
+	}
+}
+
+func BenchmarkDecompose(b *testing.B) {
+	var p, p0, p1 Poly
+	for i := 0; i < b.N; i++ {
+		p.Decompose(&p0, &p1)
 	}
 }
