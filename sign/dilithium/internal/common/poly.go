@@ -105,9 +105,25 @@ func (p *Poly) MakeHint(p0, p1 *Poly) (pop uint32) {
 // Computes corrections to the high bits of the polynomial q according
 // to the hints in h and sets p to the corrected high bits.  Returns p.
 func (p *Poly) UseHint(q, hint *Poly) *Poly {
+	var q0PlusQ Poly
+
+	// See useHint() and makeHint() for an explanation.  We reimplement it
+	// here so that we can call Poly.Decompose(), which might be way faster
+	// than calling decompose() in a loop (for instance when having AVX2.)
+
+	q.Decompose(&q0PlusQ, p)
+
 	for i := 0; i < N; i++ {
-		p[i] = useHint(q[i], hint[i])
+		if hint[i] == 0 {
+			continue
+		}
+		if q0PlusQ[i] > Q {
+			p[i] = (p[i] + 1) & 15
+		} else {
+			p[i] = (p[i] - 1) & 15
+		}
 	}
+
 	return p
 }
 
