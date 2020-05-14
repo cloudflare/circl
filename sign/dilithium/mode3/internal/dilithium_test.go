@@ -38,12 +38,13 @@ func BenchmarkVerify(b *testing.B) {
 	var msg [8]byte
 	var sig [SignatureSize]byte
 	pk, sk := NewKeyFromSeed(&seed)
+	SignTo(sk, msg[:], sig[:])
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		b.StopTimer()
-		binary.LittleEndian.PutUint64(msg[:], uint64(i))
-		SignTo(sk, msg[:], sig[:])
-		b.StartTimer()
+		// We should generate a new signature for every verify attempt,
+		// as this influences the time a little bit.  This difference, however,
+		// is small and generating a new signature in between creates a lot
+		// pressure on the allocator which makes an accurate measurement hard.
 		Verify(pk, msg[:], sig[:])
 	}
 }
