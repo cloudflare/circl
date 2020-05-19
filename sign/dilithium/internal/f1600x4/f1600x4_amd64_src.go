@@ -136,7 +136,7 @@ func main() {
 	}
 
 	ADDQ(Imm(8*4), rc_ptr)
-	DECQ(superRound)
+	SUBQ(U32(1), superRound)
 	JNZ(LabelRef("loop"))
 
 	RET()

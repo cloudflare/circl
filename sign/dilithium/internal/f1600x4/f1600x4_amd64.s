@@ -889,6 +889,6 @@ loop:
 	VMOVDQA      Y8, 736(AX)
 	VMOVDQA      Y9, 768(AX)
 	ADDQ         $0x20, CX
-	DECQ         DX
+	SUBQ         $0x00000001, DX
 	JNZ          loop
 	RET
