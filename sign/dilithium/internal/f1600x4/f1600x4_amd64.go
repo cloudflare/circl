@@ -35,14 +35,15 @@ type State struct {
 func (s *State) Initialize() []uint64 {
 	rp := unsafe.Pointer(&s.a[0])
 
-	// remainder of address modulo 32
+	// uint64s are always aligned by a multiple of 8.  Compute the remainder
+	// of the address modulo 32 divided by 8.
 	rem := (int(uintptr(rp)&31) >> 3)
 
 	if rem != 0 {
 		s.offset = 4 - rem
 	}
 
-	// the slice we return will be aligned on 32 byte boundary.
+	// The slice we return will be aligned on 32 byte boundary.
 	return s.a[s.offset : s.offset+100]
 }
 

@@ -11,6 +11,7 @@ func TestF1600x4(t *testing.T) {
 	var state State
 	a := state.Initialize()
 
+	// From the KeccaK code package
 	expected := []uint64{
 		0xF1258F7940E1DDE7, 0x84D5CCF933C0478A, 0xD598261EA65AA9EE,
 		0xBD1547306F80494D, 0x8B284E056253D057, 0xFF97A42D7F8E6FD4,

@@ -54,12 +54,14 @@ func PolyDeriveUniformLeGamma1X4(ps [4]*common.Poly, seed *[48]byte,
 	// Shift is the amount of bits in the carry.
 	var shift [4]uint
 
-	for {
+	done := false
+
+	for !done {
 		// Applies KeccaK-f[1600] to state to get the next 17 uint64s of each
 		// of the four SHAKE256 streams.
 		perm.Permute()
 
-		done := true
+		done = true
 
 		for j := 0; j < 4; j++ {
 			if idx[j] == 256 {
@@ -103,10 +105,6 @@ func PolyDeriveUniformLeGamma1X4(ps [4]*common.Poly, seed *[48]byte,
 					break
 				}
 			}
-		}
-
-		if done {
-			break
 		}
 	}
 }
@@ -312,24 +310,18 @@ func VecLDeriveUniformLeGamma1(v *VecL, seed *[48]byte, nonce uint16) {
 		return
 	}
 
+	var ps [4]*common.Poly
+	nonces := [4]uint16{nonce, nonce + 1, nonce + 2, nonce + 3}
+	for i := 0; i < L && i < 4; i++ {
+		ps[i] = &v[i]
+	}
+
 	// PolyDeriveUniformLeGamma1X4 is slower than, but not twice as slow as,
 	// PolyDeriveUniformLeGamma.
-	if L == 2 {
-		PolyDeriveUniformLeGamma1X4([4]*common.Poly{&v[0], &v[1], nil, nil},
-			seed, [4]uint16{nonce, nonce + 1, 0, 0})
-	} else if L == 3 {
-		PolyDeriveUniformLeGamma1X4([4]*common.Poly{&v[0], &v[1], &v[L-1], nil},
-			seed, [4]uint16{nonce, nonce + 1, nonce + 2, 0})
-	} else if L == 4 {
-		PolyDeriveUniformLeGamma1X4([4]*common.Poly{&v[0], &v[1], &v[L-2],
-			&v[L-1]}, seed, [4]uint16{nonce, nonce + 1, nonce + 2, nonce + 3})
-	} else if L == 5 {
-		// Note L/2 = 2 and L-2 = 3.  We use this so that the compiler
-		// does not complain about out-of-bounds errors when L ≠ 5.
-		PolyDeriveUniformLeGamma1X4([4]*common.Poly{&v[0], &v[1], &v[L/2],
-			&v[L-2]}, seed, [4]uint16{nonce, nonce + 1, nonce + 2, nonce + 3})
+	PolyDeriveUniformLeGamma1X4(ps, seed, nonces)
+	if L == 5 {
 		PolyDeriveUniformLeGamma1(&v[L-1], seed, nonce+4)
-	} else {
+	} else if L > 5 || L < 2 {
 		panic("VecLDeriveUniformLeGamma1 does not support that L")
 	}
 }
