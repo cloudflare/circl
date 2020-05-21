@@ -6,7 +6,7 @@ import (
 )
 
 func TestExceeds(t *testing.T) {
-	for i := 0; i < 256; i++ {
+	for i := 0; i < N; i++ {
 		var p Poly
 		for v := 0; v < 10; v++ {
 			p[i] = uint32(v)
@@ -86,7 +86,7 @@ func TestMulHatAgainstGeneric(t *testing.T) {
 func TestReduceLe2QAgainstGeneric(t *testing.T) {
 	for k := 0; k < 1000; k++ {
 		var a Poly
-		for j := 0; j < 256; j++ {
+		for j := 0; j < N; j++ {
 			a[j] = rand.Uint32()
 		}
 		p1 := a
@@ -102,7 +102,7 @@ func TestReduceLe2QAgainstGeneric(t *testing.T) {
 func TestNormalizeAgainstGeneric(t *testing.T) {
 	for k := 0; k < 1000; k++ {
 		var a Poly
-		for j := 0; j < 256; j++ {
+		for j := 0; j < N; j++ {
 			a[j] = rand.Uint32()
 		}
 		p1 := a

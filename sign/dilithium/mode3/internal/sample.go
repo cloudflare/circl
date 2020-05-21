@@ -43,7 +43,7 @@ func PolyDeriveUniformLeGamma1X4(ps [4]*common.Poly, seed *[48]byte,
 	var idx [4]int // indices into ps
 	for j := 0; j < 4; j++ {
 		if ps[j] == nil {
-			idx[j] = 256 // mark nil polynomial as completed
+			idx[j] = common.N // mark nil polynomial as completed
 		}
 	}
 
@@ -64,7 +64,7 @@ func PolyDeriveUniformLeGamma1X4(ps [4]*common.Poly, seed *[48]byte,
 
 	PolyLoop:
 		for j := 0; j < 4; j++ {
-			if idx[j] == 256 {
+			if idx[j] == common.N {
 				continue
 			}
 			done = false
@@ -95,7 +95,7 @@ func PolyDeriveUniformLeGamma1X4(ps [4]*common.Poly, seed *[48]byte,
 					if t[k] <= 2*common.Gamma1-2 {
 						ps[j][idx[j]] = common.Q + common.Gamma1 - 1 - t[k]
 						idx[j]++
-						if idx[j] == 256 {
+						if idx[j] == common.N {
 							continue PolyLoop
 						}
 					}
@@ -132,7 +132,7 @@ func PolyDeriveUniformX4(ps [4]*common.Poly, seed *[32]byte, nonces [4]uint16) {
 	var idx [4]int // indices into ps
 	for j := 0; j < 4; j++ {
 		if ps[j] == nil {
-			idx[j] = 256 // mark nil polynomial as completed
+			idx[j] = common.N // mark nil polynomial as completed
 		}
 	}
 
@@ -146,7 +146,7 @@ func PolyDeriveUniformX4(ps [4]*common.Poly, seed *[32]byte, nonces [4]uint16) {
 
 	PolyLoop:
 		for j := 0; j < 4; j++ {
-			if idx[j] == 256 {
+			if idx[j] == common.N {
 				continue
 			}
 			done = false
@@ -167,7 +167,7 @@ func PolyDeriveUniformX4(ps [4]*common.Poly, seed *[32]byte, nonces [4]uint16) {
 					if t[k] < common.Q {
 						ps[j][idx[j]] = t[k]
 						idx[j]++
-						if idx[j] == 256 {
+						if idx[j] == common.N {
 							continue PolyLoop
 						}
 					}
@@ -410,7 +410,7 @@ func PolyDeriveUniformB60(p *common.Poly, seed *[48]byte, w1 *VecK) {
 	bufOff := 8 // offset into buf
 
 	*p = common.Poly{} // zero p
-	for i := uint16(256 - 60); i < 256; i++ {
+	for i := uint16(common.N - 60); i < common.N; i++ {
 		var b uint16
 
 		// Find location of where to move the new coefficient to using
