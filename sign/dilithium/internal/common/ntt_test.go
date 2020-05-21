@@ -1,4 +1,4 @@
-package internal
+package common
 
 import (
 	"math/rand"
@@ -8,32 +8,6 @@ import (
 func (p *Poly) RandLe2Q() {
 	for i := uint(0); i < N; i++ {
 		p[i] = uint32(rand.Intn(int(2 * Q)))
-	}
-}
-
-func TestAddAgainstGeneric(t *testing.T) {
-	for k := 0; k < 1000; k++ {
-		var p1, p2, a, b Poly
-		a.RandLe2Q()
-		b.RandLe2Q()
-		p1.Add(&a, &b)
-		p2.addGeneric(&a, &b)
-		if p1 != p2 {
-			t.Fatalf("Add(%v, %v) =\n%v\n!= %v", a, b, p1, p2)
-		}
-	}
-}
-
-func TestMulHatAgainstGeneric(t *testing.T) {
-	for k := 0; k < 1000; k++ {
-		var p1, p2, a, b Poly
-		a.RandLe2Q()
-		b.RandLe2Q()
-		p1.MulHat(&a, &b)
-		p2.mulHatGeneric(&a, &b)
-		if p1 != p2 {
-			t.Fatalf("MulHat(%v, %v) =\n%v\n!= %v", a, b, p1, p2)
-		}
 	}
 }
 
@@ -79,38 +53,17 @@ func TestNTT(t *testing.T) {
 	}
 }
 
-func BenchmarkGenericNTT(b *testing.B) {
+func BenchmarkNTTGeneric(b *testing.B) {
 	var p Poly
 	for i := 0; i < b.N; i++ {
 		p.nttGeneric()
 	}
 }
 
-func BenchmarkGenericInvNTT(b *testing.B) {
+func BenchmarkInvNTTGeneric(b *testing.B) {
 	var p Poly
 	for i := 0; i < b.N; i++ {
 		p.invNttGeneric()
-	}
-}
-
-func BenchmarkGenericMulHat(b *testing.B) {
-	var p Poly
-	for i := 0; i < b.N; i++ {
-		p.mulHatGeneric(&p, &p)
-	}
-}
-
-func BenchmarkGenericAdd(b *testing.B) {
-	var p Poly
-	for i := 0; i < b.N; i++ {
-		p.addGeneric(&p, &p)
-	}
-}
-
-func BenchmarkMulHat(b *testing.B) {
-	var p Poly
-	for i := 0; i < b.N; i++ {
-		p.MulHat(&p, &p)
 	}
 }
 
@@ -125,12 +78,5 @@ func BenchmarkInvNTT(b *testing.B) {
 	var p Poly
 	for i := 0; i < b.N; i++ {
 		p.InvNTT()
-	}
-}
-
-func BenchmarkAdd(b *testing.B) {
-	var p Poly
-	for i := 0; i < b.N; i++ {
-		p.Add(&p, &p)
 	}
 }

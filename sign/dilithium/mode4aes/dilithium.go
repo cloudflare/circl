@@ -11,7 +11,7 @@ import (
 	"errors"
 	"io"
 
-	common "github.com/cloudflare/circl/sign/dilithium/internal"
+	"github.com/cloudflare/circl/sign/dilithium/internal/common"
 	"github.com/cloudflare/circl/sign/dilithium/mode4aes/internal"
 )
 

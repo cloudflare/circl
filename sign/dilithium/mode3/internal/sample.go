@@ -2,8 +2,180 @@ package internal
 
 import (
 	"github.com/cloudflare/circl/internal/shake"
-	common "github.com/cloudflare/circl/sign/dilithium/internal"
+	"github.com/cloudflare/circl/sign/dilithium/internal/f1600x4"
+
+	"github.com/cloudflare/circl/sign/dilithium/internal/common"
+
+	"encoding/binary"
 )
+
+// DeriveX4Available indicates whether the system supports the quick fourway
+// sampling variants like PolyDeriveUniformX4.
+var DeriveX4Available = f1600x4.Available && !UseAES
+
+// For each i, sample ps[i] uniformly with coefficients of norm less than γ₁
+// using the the given seed and nonces[i].  ps[i] may be nil and is ignored
+// in that case.  ps[i] will not be normalized, but have coefficients in the
+// interval (q-γ₁,q+γ₁).
+//
+// Can only be called when DeriveX4Available is true.
+func PolyDeriveUniformLeGamma1X4(ps [4]*common.Poly, seed *[48]byte,
+	nonces [4]uint16) {
+	var perm f1600x4.State
+	state := perm.Initialize()
+
+	// Absorb the seed in the four states
+	for i := 0; i < 6; i++ {
+		v := binary.LittleEndian.Uint64(seed[8*i : 8*(i+1)])
+		for j := 0; j < 4; j++ {
+			state[i*4+j] = v
+		}
+	}
+
+	// Absorb the nonces, the SHAKE256 domain separator (0b1111), the
+	// start of the padding (0b...001) and the end of the padding 0b100...
+	// Recall that the rate of SHAKE256 is 136 --- i.e. 17 uint64s.
+	for j := 0; j < 4; j++ {
+		state[6*4+j] = uint64(nonces[j]) | (0x1f << 16)
+		state[16*4+j] = 0x80 << 56
+	}
+
+	var idx [4]int // indices into ps
+	for j := 0; j < 4; j++ {
+		if ps[j] == nil {
+			idx[j] = common.N // mark nil polynomial as completed
+		}
+	}
+
+	// Each try requires 15 bits.  15 does not divide into 64, nor in 136,
+	// so we will have to carry some bits from a previous uint64 to the next.
+	var carry [4]uint32
+
+	// Shift is the amount of bits in the carry.
+	var shift [4]uint
+
+	done := false
+	for !done {
+		// Applies KeccaK-f[1600] to state to get the next 17 uint64s of each
+		// of the four SHAKE256 streams.
+		perm.Permute()
+
+		done = true
+
+	PolyLoop:
+		for j := 0; j < 4; j++ {
+			if idx[j] == common.N {
+				continue
+			}
+			done = false
+
+			for i := 0; i < 17; i++ {
+				var t [4]uint32
+				tCount := 3
+
+				// Get the next three or four 20 bit numbers.
+				qw := state[i*4+j]
+				qwl := (qw << shift[j]) | uint64(carry[j])
+				t[0] = uint32(qwl & 0xfffff)
+				t[1] = uint32((qwl >> 20) & 0xfffff)
+				t[2] = uint32((qwl >> 40) & 0xfffff)
+
+				if shift[j] == 16 {
+					t[3] = uint32(qw >> 44)
+					shift[j] = 0
+					carry[j] = 0
+					tCount = 4
+				} else {
+					shift[j] += 4
+					carry[j] = uint32(qw >> (64 - shift[j]))
+				}
+
+				// Check if they're coefficients.
+				for k := 0; k < tCount; k++ {
+					if t[k] <= 2*common.Gamma1-2 {
+						ps[j][idx[j]] = common.Q + common.Gamma1 - 1 - t[k]
+						idx[j]++
+						if idx[j] == common.N {
+							continue PolyLoop
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+// For each i, sample ps[i] uniformly from the given seed and nonces[i].
+// ps[i] may be nil and is ignored in that case.
+//
+// Can only be called when DeriveX4Available is true.
+func PolyDeriveUniformX4(ps [4]*common.Poly, seed *[32]byte, nonces [4]uint16) {
+	var perm f1600x4.State
+	state := perm.Initialize()
+
+	// Absorb the seed in the four states
+	for i := 0; i < 4; i++ {
+		v := binary.LittleEndian.Uint64(seed[8*i : 8*(i+1)])
+		for j := 0; j < 4; j++ {
+			state[i*4+j] = v
+		}
+	}
+
+	// Absorb the nonces, the SHAKE128 domain separator (0b1111), the
+	// start of the padding (0b...001) and the end of the padding 0b100...
+	// Recall that the rate of SHAKE128 is 168 --- i.e. 21 uint64s.
+	for j := 0; j < 4; j++ {
+		state[4*4+j] = uint64(nonces[j]) | (0x1f << 16)
+		state[20*4+j] = 0x80 << 56
+	}
+
+	var idx [4]int // indices into ps
+	for j := 0; j < 4; j++ {
+		if ps[j] == nil {
+			idx[j] = common.N // mark nil polynomial as completed
+		}
+	}
+
+	done := false
+	for !done {
+		// Applies KeccaK-f[1600] to state to get the next 21 uint64s of each
+		// of the four SHAKE128 streams.
+		perm.Permute()
+
+		done = true
+
+	PolyLoop:
+		for j := 0; j < 4; j++ {
+			if idx[j] == common.N {
+				continue
+			}
+			done = false
+			for i := 0; i < 7; i++ {
+				var t [8]uint32
+				t[0] = uint32(state[i*3*4+j] & 0x7fffff)
+				t[1] = uint32((state[i*3*4+j] >> 24) & 0x7fffff)
+				t[2] = uint32((state[i*3*4+j] >> 48) |
+					((state[(i*3+1)*4+j] & 0x7f) << 16))
+				t[3] = uint32((state[(i*3+1)*4+j] >> 8) & 0x7fffff)
+				t[4] = uint32((state[(i*3+1)*4+j] >> 32) & 0x7fffff)
+				t[5] = uint32((state[(i*3+1)*4+j] >> 56) |
+					((state[(i*3+2)*4+j] & 0x7fff) << 8))
+				t[6] = uint32((state[(i*3+2)*4+j] >> 16) & 0x7fffff)
+				t[7] = uint32((state[(i*3+2)*4+j] >> 40) & 0x7fffff)
+
+				for k := 0; k < 8; k++ {
+					if t[k] < common.Q {
+						ps[j][idx[j]] = t[k]
+						idx[j]++
+						if idx[j] == common.N {
+							continue PolyLoop
+						}
+					}
+				}
+			}
+		}
+	}
+}
 
 // Sample p uniformly from the given seed and nonce.
 //
@@ -122,8 +294,26 @@ func PolyDeriveUniformLeqEta(p *common.Poly, seed *[32]byte, nonce uint16) {
 // v[i] will not be normalized, but have coefficients in the
 // interval (q-γ₁,q+γ₁).
 func VecLDeriveUniformLeGamma1(v *VecL, seed *[48]byte, nonce uint16) {
-	for i := 0; i < L; i++ {
-		PolyDeriveUniformLeGamma1(&v[i], seed, nonce+uint16(i))
+	if !DeriveX4Available {
+		for i := 0; i < L; i++ {
+			PolyDeriveUniformLeGamma1(&v[i], seed, nonce+uint16(i))
+		}
+		return
+	}
+
+	var ps [4]*common.Poly
+	nonces := [4]uint16{nonce, nonce + 1, nonce + 2, nonce + 3}
+	for i := 0; i < L && i < 4; i++ {
+		ps[i] = &v[i]
+	}
+
+	// PolyDeriveUniformLeGamma1X4 is slower than, but not twice as slow as,
+	// PolyDeriveUniformLeGamma.
+	PolyDeriveUniformLeGamma1X4(ps, seed, nonces)
+	if L == 5 {
+		PolyDeriveUniformLeGamma1(&v[L-1], seed, nonce+4)
+	} else if L > 5 || L < 2 {
+		panic("VecLDeriveUniformLeGamma1 does not support that L")
 	}
 }
 
@@ -133,7 +323,7 @@ func VecLDeriveUniformLeGamma1(v *VecL, seed *[48]byte, nonce uint16) {
 // p will not be normalized, but have coefficients in the
 // interval (q-γ₁,q+γ₁).
 func PolyDeriveUniformLeGamma1(p *common.Poly, seed *[48]byte, nonce uint16) {
-	// Assumes γ1 is less than 2²⁰.
+	// Assumes γ₁ is less than 2²⁰.
 	var length, i int
 
 	// Fits 10 16B AES blocks, which aligns nicely as we take 5 bytes at
@@ -220,7 +410,7 @@ func PolyDeriveUniformB60(p *common.Poly, seed *[48]byte, w1 *VecK) {
 	bufOff := 8 // offset into buf
 
 	*p = common.Poly{} // zero p
-	for i := uint16(256 - 60); i < 256; i++ {
+	for i := uint16(common.N - 60); i < common.N; i++ {
 		var b uint16
 
 		// Find location of where to move the new coefficient to using

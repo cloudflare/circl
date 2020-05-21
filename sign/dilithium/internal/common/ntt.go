@@ -1,12 +1,12 @@
-package internal
+package common
 
 // Zetas lists precomputed powers of the root of unity in Montgomery
 // representation used for the NTT:
 //
-//     Zetas[i] = zeta^brv(i) R mod q,
+//     Zetas[i] = zetaᵇʳᵛ⁽ⁱ⁾ R mod q,
 //
 // where zeta = 1753, brv(i) is the bitreversal of a 8-bit number
-// and R=2^32 mod q.
+// and R=2³² mod q.
 //
 // The following Python code generates the Zetas (and InvZetas) lists:
 //
@@ -59,10 +59,10 @@ var Zetas = [N]uint32{
 // InvZetas lists precomputed powers of the inverse root of unity in Montgomery
 // representation used for the inverse NTT:
 //
-//     InvZetas[i] = zeta^{brv(255-i)-256} R mod q,
+//     InvZetas[i] = zetaᵇʳᵛ⁽²⁵⁵⁻ⁱ⁾⁻²⁵⁶ R mod q,
 //
 // where zeta = 1753, brv(i) is the bitreversal of a 8-bit number
-// and R=2^32 mod q.
+// and R=2³² mod q.
 var InvZetas = [N]uint32{
 	6403635, 846154, 6979993, 4442679, 1362209, 48306, 4460757,
 	554416, 3545687, 6767575, 976891, 8196974, 2286327, 420899,
@@ -109,14 +109,14 @@ var InvZetas = [N]uint32{
 // by 2*Q.  The resulting coefficients are again in Montgomery representation,
 // but are only bounded bt 18*Q.
 func (p *Poly) nttGeneric() {
-	// Writing z := zeta for our root of unity zeta := 1753, note z^256=-1
+	// Writing z := zeta for our root of unity zeta := 1753, note z²⁵⁶=-1
 	// (otherwise the order of z wouldn't be 512) and so
 	//
-	//  x^256 + 1 = x^256 - z^256
-	//            = (x^128 - z^128)(x^128 + z^128)
-	//            = (x^64 - z^64)(x^64 + z^64)(x^64 + z^192)(x^64 - z^192)
+	//  x²⁵⁶ + 1 = x²⁵⁶ - z²⁵⁶
+	//           = (x¹²⁸ - z¹²⁸)(x¹²⁸ + z¹²⁸)
+	//           = (x⁶⁴ - z⁶⁴)(x⁶⁴ + z⁶⁴)(x⁶⁴ + z¹⁹²)(x⁶⁴ - z¹⁹²)
 	//          ...
-	//            = (x-z)(x+z)(x - z^129)(x + z^129) ... (x - z^255)(x + z^255)
+	//           = (x-z)(x+z)(x - z¹²⁹)(x + z¹²⁹) ... (x - z²⁵⁵)(x + z²⁵⁵)
 	//
 	// Note that the powers of z that appear (from the second line) are
 	//  in binary
@@ -129,23 +129,23 @@ func (p *Poly) nttGeneric() {
 	// i.e. brv(2), brv(3), brv(4), ... and these powers of z are given by
 	// the Zetas array.
 	//
-	// The polynomials x ± z^i are irreducable and coprime, hence by the
+	// The polynomials x ± zⁱ are irreducable and coprime, hence by the
 	// Chinese Remainder Theorem we know
 	//
-	//  R[x]/(x^256+1) ---> R[x] / (x-z) x ... x R[x] / (x+z^255)
+	//  R[x]/(x²⁵⁶+1) → R[x] / (x-z) x ... x R[x] / (x+z²⁵⁵)
 	//                      ~= ∏_i R
 	//
 	// given by
 	//
-	//  a |---> = ( a mod x-z, ..., a mod x+z^255 )
-	//          ~ ( a(z), a(-z), a(z^129), a(-z^129), ..., a(z^255), a(-z^255) )
+	//  a ↦ ( a mod x-z, ..., a mod x+z²⁵⁵ )
+	//    ~ ( a(z), a(-z), a(z¹²⁹), a(-z¹²⁹), ..., a(z²⁵⁵), a(-z²⁵⁵) )
 	//
 	// is an isomorphism, which is the forward NTT.  It can be computed
 	// efficiently by computing
 	//
-	//  a |---> ( a mod x^128 - z^128, a mod x^128 + z^128 )
-	//    |---> ( a mod x^64 - z^64, a mod x^64 + z^64,
-	//            a mod x^64 - z^192, a mod x^64 + z^192 )
+	//  a ↦ ( a mod x¹²⁸ - z¹²⁸, a mod x¹²⁸ + z¹²⁸ )
+	//    ↦ ( a mod x⁶⁴ - z⁶⁴,  a mod x⁶⁴ + z⁶⁴,
+	//        a mod x⁶⁴ - z¹⁹², a mod x⁶⁴ + z¹⁹² )
 	//       et cetera
 	//
 	// If N was 8 then this can be pictured in the following diagram:
@@ -154,7 +154,7 @@ func (p *Poly) nttGeneric() {
 	//
 	// Each cross is a Cooley--Tukey butterfly: it's the map
 	//
-	//      (a, b) |--> (a + ζ, a - ζ)
+	//      (a, b) ↦ (a + ζ, a - ζ)
 	//
 	// for the appropriate ζ for that column and row group.
 
@@ -193,11 +193,11 @@ func (p *Poly) invNttGeneric() {
 
 	// We basically do the opposite of NTT, but postpone dividing by 2 in the
 	// inverse of the Cooley--Tukey butterfly and accumulate that to a big
-	// division by 2^8 at the end.  See comments in the NTT() function.
+	// division by 2⁸ at the end.  See comments in the NTT() function.
 
 	for l := uint(1); l < N; l <<= 1 {
 		// On the n-th iteration of the l-loop, the coefficients start off
-		// bounded by 2^(n-1)*2*Q, so by 256*Q on the last.
+		// bounded by 2ⁿ⁻¹*2*Q, so by 256*Q on the last.
 		for offset := uint(0); offset < N-l; offset += 2 * l {
 			zeta := uint64(InvZetas[k])
 			k++
@@ -211,7 +211,7 @@ func (p *Poly) invNttGeneric() {
 	}
 
 	for j := uint(0); j < N; j++ {
-		// ROver256 = 41978 = (256)^-1 R^2
+		// ROver256 = 41978 = (256)⁻¹ R²
 		p[j] = montReduceLe2Q(ROver256 * uint64(p[j]))
 	}
 }

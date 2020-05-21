@@ -1,11 +1,11 @@
-package internal
+package common
 
 // Returns a y with y < 2q and y = x mod q.
 // Note that in general *not*: reduceLe2Q(reduceLe2Q(x)) == x.
 func reduceLe2Q(x uint32) uint32 {
-	// Note 2²³ = 2¹³ - 1 mod q. So, writing  x = x1 2²³ + x2 with x2 < 2²³
-	// and x1 < 2⁹, we have x = y (mod q) where
-	// y = x2 + x1 2¹³ - x1 ≤ 2²³ + 2¹³ < 2q.
+	// Note 2²³ = 2¹³ - 1 mod q. So, writing  x = x₁ 2²³ + x₂ with x₂ < 2²³
+	// and x₁ < 2⁹, we have x = y (mod q) where
+	// y = x₂ + x₁ 2¹³ - x₁ ≤ 2²³ + 2¹³ < 2q.
 	x1 := x >> 23
 	x2 := x & 0x7FFFFF // 2²³-1
 	return x2 + (x1 << 13) - x1
@@ -51,9 +51,9 @@ func power2round(a uint32) (a0plusQ, a1 uint32) {
 	return
 }
 
-// Splits 0 ≤ a < Q into a0 and a1 with a = a1*α + a0 with -α/2 < a0 ≤ α/2,
+// Splits 0 ≤ a < Q into a0 and a₁ with a = a₁*α + a₀ with -α/2 < a₀ ≤ α/2,
 // except for when we would have a1 = (Q-1)/α = 16 in which case a1=0 is taken
-// and -α/2 ≤ a0 < 0.  Returns a0 + Q.  Note 0 ≤ a1 ≤ 15.
+// and -α/2 ≤ a₀ < 0.  Returns a₀ + Q.  Note 0 ≤ a₁ ≤ 15.
 // Note α = 2*γ₂ = γ₁ with the chosen parameters of Dilithium.
 func decompose(a uint32) (a0plusQ, a1 uint32) {
 	// Finds 0 ≤ t < 1.5α with t = a mod α.  (Recall α=2¹⁹ - 2⁹.)
@@ -69,20 +69,20 @@ func decompose(a uint32) (a0plusQ, a1 uint32) {
 
 	a1 = a - uint32(t)
 
-	// We want to divide α out of a1 (to get the proper value of a1).
+	// We want to divide α out of a₁ (to get the proper value of a1).
 	// As our values are relatively small and α=2¹⁹-2⁹, we can simply
 	// divide by 2¹⁹ and add one.  There is one corner case we have to deal
-	// with: if a1=0 then 0/α=0≠1=0/2¹⁹+1, so we need to get rid of the +1.
-	u := ((a1 - 1) >> 31) & 1 // u=1 if a1=0
+	// with: if a₁=0 then 0/α=0≠1=0/2¹⁹+1, so we need to get rid of the +1.
+	u := ((a1 - 1) >> 31) & 1 // u=1 if a₁=0
 	a1 = (a1 >> 19) + 1
-	a1 -= u // correct for the case a1=0
+	a1 -= u // correct for the case a₁=0
 
 	a0plusQ = Q + uint32(t)
 
-	// Now deal with the corner case of the definition, if a1=(Q-1)/α,
-	// then we use a1=0.  Note (Q-1)/α=2⁴.
+	// Now deal with the corner case of the definition, if a₁=(Q-1)/α,
+	// then we use a₁=0.  Note (Q-1)/α=2⁴.
 	a0plusQ -= a1 >> 4 // to compensate, we only have to move the -1.
-	a1 &= 15           // set a0=0 if a1=16
+	a1 &= 15           // set a₀=0 if a₁=16
 	return
 }
 

@@ -1,4 +1,4 @@
-package internal
+package common
 
 // Sets p to the polynomial whose coefficients are less than 512 encoded
 // into buf (which must be of size PolyT1Size).
@@ -19,11 +19,11 @@ func (p *Poly) UnpackT1(buf []byte) {
 	}
 }
 
-// Writes p whose coefficients are in (-2^{d-1}, 2^{d-1}] into buf which
+// Writes p whose coefficients are in (-2ᵈ⁻¹, 2ᵈ⁻¹] into buf which
 // has to be of length at least PolyT0Size.
 //
 // Assumes that the coefficients are not normalized, but lie in the
-// range (q-2^{d-1}, q+2^{d-1}].
+// range (q-2ᵈ⁻¹, q+2ᵈ⁻¹].
 func (p *Poly) PackT0(buf []byte) {
 	j := 0
 	for i := 0; i < PolyT0Size; i += 7 {
@@ -46,7 +46,7 @@ func (p *Poly) PackT0(buf []byte) {
 // Sets p to the polynomial packed into buf by PackT0.
 //
 // The coefficients of p will not be normalized, but will lie
-// in (-2^{d-1}, 2^{d-1}].
+// in (-2ᵈ⁻¹, 2ᵈ⁻¹].
 func (p *Poly) UnpackT0(buf []byte) {
 	j := 0
 	for i := 0; i < PolyT0Size; i += 7 {
@@ -130,7 +130,7 @@ func (p *Poly) UnpackLeGamma1(buf []byte) {
 
 // Writes p whose coefficients are in [0, 16) to buf, which must be of
 // length N/2.
-func (p *Poly) PackLe16(buf []byte) {
+func (p *Poly) packLe16Generic(buf []byte) {
 	j := 0
 	for i := 0; i < PolyLe16Size; i++ {
 		buf[i] = byte(p[j]) | byte(p[j+1]<<4)

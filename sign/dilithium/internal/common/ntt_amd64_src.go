@@ -2,7 +2,6 @@
 
 // AVX2 optimized version of Poly.[Inv]NTT().  See the comments on the generic
 // implementation for details on the maths involved.
-
 package main
 
 import (
@@ -10,7 +9,7 @@ import (
 	. "github.com/mmcloughlin/avo/operand"
 	. "github.com/mmcloughlin/avo/reg"
 
-	"github.com/cloudflare/circl/sign/dilithium/internal/params"
+	"github.com/cloudflare/circl/sign/dilithium/internal/common/params"
 )
 
 // XXX align Poly on 16 bytes such that we can use aligned moves
@@ -75,9 +74,9 @@ func nttAVX2() {
 	doubleQ := YMM()
 	broadcast_imm32(2*params.Q, doubleQ)
 	qinv := YMM()
-	broadcast_imm32(params.Qinv, qinv) // 4236238847 = -(q^-1) mod 2^32
+	broadcast_imm32(params.Qinv, qinv) // 4236238847 = -(q^-1) mod 2³²
 
-	// Computes 4x4 Cooley--Tukey butterflies (a,b) |-> (a + ζb, a - ζb).
+	// Computes 4x4 Cooley--Tukey butterflies (a,b) ↦ (a + ζb, a - ζb).
 	ctButterfly := func(a1, b1, zeta1, a2, b2, zeta2, a3, b3, zeta3,
 		a4, b4, zeta4 Op) {
 		t := [4]Op{YMM(), YMM(), YMM(), YMM()}
@@ -334,7 +333,7 @@ func invNttAVX2() {
 	// Just like with the generic implementation, we do the operations of
 	// NTT in reverse, except for two things: we hoist out all divisions by
 	// two from the Gentleman-Sande butterflies and accumulate them to one
-	// big division by 2^8 at the end.
+	// big division by 2⁸ at the end.
 	TEXT("invNttAVX2", 0, "func(p *[256]uint32)")
 	Pragma("noescape")
 	p_ptr := Load(Param("p"), GP64())
@@ -355,7 +354,7 @@ func invNttAVX2() {
 	qinv := YMM()
 	broadcast_imm32(params.Qinv, qinv)
 
-	// Computes 4x4 doubled Gentleman--Sande butterflies (a,b) |-> (a+b, ζ(a-b)).
+	// Computes 4x4 doubled Gentleman--Sande butterflies (a,b) ↦ (a+b, ζ(a-b)).
 	gsButterfly := func(a1, b1, zeta1, a2, b2, zeta2, a3, b3, zeta3,
 		a4, b4, zeta4 Op) {
 		t := [4]Op{YMM(), YMM(), YMM(), YMM()}
@@ -543,7 +542,7 @@ func invNttAVX2() {
 			xs[3], xs[7], zs[0],
 		)
 
-		// Finally, we multiply by 41978 = (256)^-1 R^2 ...
+		// Finally, we multiply by 41978 = (256)^-1 R² ...
 		rOver256 := YMM()
 		broadcast_imm32(params.ROver256, rOver256)
 
@@ -620,7 +619,7 @@ func invNttAVX2() {
 // XXX Split out into separate file.  To do this we need to figure out how
 //     to share code properly between avo modules.
 func mulHatAVX2() {
-	TEXT("mulHatAVX2", 0, "func(p, a, b *[256]uint32)")
+	TEXT("mulHatAVX2", NOSPLIT, "func(p, a, b *[256]uint32)")
 	Pragma("noescape")
 	p_ptr := Load(Param("p"), GP64())
 	a_ptr := Load(Param("a"), GP64())
@@ -701,7 +700,7 @@ func mulHatAVX2() {
 }
 
 func addAVX2() {
-	TEXT("addAVX2", 0, "func(p, a, b *[256]uint32)")
+	TEXT("addAVX2", NOSPLIT, "func(p, a, b *[256]uint32)")
 	Pragma("noescape")
 	p_ptr := Load(Param("p"), GP64())
 	a_ptr := Load(Param("a"), GP64())
@@ -733,6 +732,435 @@ func addAVX2() {
 	RET()
 }
 
+func subAVX2() {
+	TEXT("subAVX2", NOSPLIT, "func(p, a, b *[256]uint32)")
+	Pragma("noescape")
+	p_ptr := Load(Param("p"), GP64())
+	a_ptr := Load(Param("a"), GP64())
+	b_ptr := Load(Param("b"), GP64())
+
+	var a [4]VecVirtual
+	var b [4]VecVirtual
+	for i := 0; i < 4; i++ {
+		a[i] = YMM()
+		b[i] = YMM()
+	}
+
+	doubleQ := YMM()
+	broadcast_imm32(2*params.Q, doubleQ)
+
+	// XXX is unrolling worth it?
+	for j := 0; j < 8; j++ {
+		for i := 0; i < 4; i++ {
+			VMOVDQU(Mem{Base: a_ptr, Disp: 32 * (4*j + i)}, a[i])
+		}
+		for i := 0; i < 4; i++ {
+			VMOVDQU(Mem{Base: b_ptr, Disp: 32 * (4*j + i)}, b[i])
+		}
+		for i := 0; i < 4; i++ {
+			VPSUBD(b[i], doubleQ, b[i])
+		}
+		for i := 0; i < 4; i++ {
+			VPADDQ(a[i], b[i], b[i])
+		}
+		for i := 0; i < 4; i++ {
+			VMOVDQU(b[i], Mem{Base: p_ptr, Disp: 32 * (4*j + i)})
+		}
+	}
+
+	RET()
+}
+
+func packLe16AVX2() {
+	TEXT("packLe16AVX2", NOSPLIT, "func(p *[256]uint32, buf *byte)")
+	Pragma("noescape")
+	p_ptr := Load(Param("p"), GP64())
+	buf_ptr := Load(Param("buf"), GP64())
+
+	var a [8]VecVirtual
+	var b [8]VecVirtual
+	for i := 0; i < 8; i++ {
+		a[i] = YMM()
+		b[i] = YMM()
+	}
+
+	for j := 0; j < 4; j++ {
+		// We load p[0], ..., p[7] into a[0], p[8], ..., p[15] into a[1], etc.,
+		// so we may consider a as a matrix.  We transpose a in the usual way.
+		for i := 0; i < 4; i++ {
+			VMOVDQU(Mem{Base: p_ptr, Disp: 32 * (8*j + 2*i)}, a[2*i])
+			VPUNPCKLDQ(Mem{Base: p_ptr, Disp: 32 * (8*j + 2*i + 1)},
+				a[2*i], a[2*i])
+			VMOVDQU(Mem{Base: p_ptr, Disp: 32 * (8*j + 2*i)}, a[2*i+1])
+			VPUNPCKHDQ(Mem{Base: p_ptr, Disp: 32 * (8*j + 2*i + 1)},
+				a[2*i+1], a[2*i+1])
+		}
+
+		VPUNPCKLQDQ(a[2], a[0], b[0])
+		VPUNPCKHQDQ(a[2], a[0], b[1])
+		VPUNPCKLQDQ(a[3], a[1], b[2])
+		VPUNPCKHQDQ(a[3], a[1], b[3])
+		VPUNPCKLQDQ(a[6], a[4], b[4])
+		VPUNPCKHQDQ(a[6], a[4], b[5])
+		VPUNPCKLQDQ(a[7], a[5], b[6])
+		VPUNPCKHQDQ(a[7], a[5], b[7])
+
+		VPERM2I128(U8(32), b[4], b[0], a[0])
+		VPERM2I128(U8(32), b[5], b[1], a[1])
+		VPERM2I128(U8(32), b[6], b[2], a[2])
+		VPERM2I128(U8(32), b[7], b[3], a[3])
+		VPERM2I128(U8(49), b[4], b[0], a[4])
+		VPERM2I128(U8(49), b[5], b[1], a[5])
+		VPERM2I128(U8(49), b[6], b[2], a[6])
+		VPERM2I128(U8(49), b[7], b[3], a[7])
+
+		// a has been transposed, so a[0] contains p[0], p[8], ... and
+		// a[1] ontains p[1], p[9], ..., etc.  We shift a[i] by 4*i to the left
+		// and or them together.
+		for i := 1; i < 8; i++ {
+			VPSLLD(U8(4*i), a[i], a[i])
+		}
+
+		VPOR(a[0], a[1], a[1])
+		VPOR(a[2], a[3], a[3])
+		VPOR(a[4], a[5], a[5])
+		VPOR(a[6], a[7], a[7])
+		VPOR(a[1], a[3], a[3])
+		VPOR(a[5], a[7], a[7])
+		VPOR(a[3], a[7], a[7])
+
+		VMOVDQU(a[7], Mem{Base: buf_ptr, Disp: 32 * j})
+	}
+
+	RET()
+}
+
+func reduceLe2QAVX2() {
+	TEXT("reduceLe2QAVX2", NOSPLIT, "func(p *[256]uint32)")
+	Pragma("noescape")
+	p_ptr := Load(Param("p"), GP64())
+
+	var a, b, c [4]VecVirtual
+	for i := 0; i < 4; i++ {
+		a[i] = YMM()
+		b[i] = YMM()
+		c[i] = YMM()
+	}
+	twoToThe23MinusOne := YMM()
+	broadcast_imm32((1<<23)-1, twoToThe23MinusOne)
+
+	// We use the same computation as used in reduceLe2Q() for the separate
+	// coefficients.
+	for j := 0; j < 8; j++ {
+		for i := 0; i < 4; i++ {
+			VMOVDQU(Mem{Base: p_ptr, Disp: 32 * (4*j + i)}, a[i])
+		}
+
+		// b = a >> 23
+		for i := 0; i < 4; i++ {
+			VPSRLD(U8(23), a[i], b[i])
+		}
+
+		// a = a & 2²³-1
+		for i := 0; i < 4; i++ {
+			VPAND(a[i], twoToThe23MinusOne, a[i])
+		}
+
+		// c = (b << 13) - b
+		for i := 0; i < 4; i++ {
+			VPSLLD(U8(13), b[i], c[i])
+		}
+		for i := 0; i < 4; i++ {
+			VPSUBD(b[i], c[i], c[i])
+		}
+
+		// a = a + c
+		for i := 0; i < 4; i++ {
+			VPADDD(a[i], c[i], a[i])
+		}
+
+		// Write back
+		for i := 0; i < 4; i++ {
+			VMOVDQU(a[i], Mem{Base: p_ptr, Disp: 32 * (4*j + i)})
+		}
+	}
+
+	RET()
+}
+
+func le2qModQAVX2() {
+	TEXT("le2qModQAVX2", NOSPLIT, "func(p *[256]uint32)")
+	Pragma("noescape")
+	p_ptr := Load(Param("p"), GP64())
+
+	// We use the same method as le2qModQ().
+	var a, m [4]VecVirtual
+	for i := 0; i < 4; i++ {
+		a[i] = YMM()
+		m[i] = YMM()
+	}
+
+	q := YMM()
+	broadcast_imm32(params.Q, q)
+
+	for j := 0; j < 8; j++ {
+		for i := 0; i < 4; i++ {
+			VMOVDQU(Mem{Base: p_ptr, Disp: 32 * (4*j + i)}, a[i])
+		}
+
+		// a -= Q
+		for i := 0; i < 4; i++ {
+			VPSUBD(q, a[i], a[i])
+		}
+
+		// m = uint32(int32(a) >> 31)
+		for i := 0; i < 4; i++ {
+			VPSRAD(U8(31), a[i], m[i])
+		}
+
+		// m &= q
+		for i := 0; i < 4; i++ {
+			VPAND(m[i], q, m[i])
+		}
+
+		// a += m
+		for i := 0; i < 4; i++ {
+			VPADDD(a[i], m[i], a[i])
+		}
+
+		for i := 0; i < 4; i++ {
+			VMOVDQU(a[i], Mem{Base: p_ptr, Disp: 32 * (4*j + i)})
+		}
+	}
+
+	RET()
+}
+
+func exceedsAVX2() {
+	TEXT("exceedsAVX2", NOSPLIT, "func(p *[256]uint32, bound uint32) uint8")
+	Pragma("noescape")
+	p_ptr := Load(Param("p"), GP64())
+	bound := Load(Param("bound"), GP32())
+
+	var a, b [4]VecVirtual
+	for i := 0; i < 4; i++ {
+		a[i] = YMM()
+		b[i] = YMM()
+	}
+
+	boundX4 := XMM()
+	boundX8 := YMM()
+	VMOVD(bound, boundX4)
+	VPBROADCASTD(boundX4, boundX8)
+
+	qMinusOneDiv2 := YMM()
+	broadcast_imm32((params.Q-1)/2, qMinusOneDiv2)
+
+	signMaskX8 := YMM()
+	broadcast_imm32(0x80000000, signMaskX8)
+
+	signsMask := GP32()
+	MOVL(U32(0x88888888), signsMask)
+
+	for j := 0; j < 8; j++ {
+		for i := 0; i < 4; i++ {
+			VMOVDQU(Mem{Base: p_ptr, Disp: 32 * (4*j + i)}, a[i])
+		}
+
+		// We use the same method as Poly.exceedsGeneric().
+
+		// a = (Q-1)/2 - a
+		for i := 0; i < 4; i++ {
+			VPSUBD(a[i], qMinusOneDiv2, a[i])
+		}
+
+		// b = a >> 31
+		for i := 0; i < 4; i++ {
+			VPSRAD(U8(31), a[i], b[i])
+		}
+
+		// a = a ^ b
+		for i := 0; i < 4; i++ {
+			VPXOR(a[i], b[i], a[i])
+		}
+
+		// a = (Q-1)/2 - a
+		for i := 0; i < 4; i++ {
+			VPSUBD(a[i], qMinusOneDiv2, a[i])
+		}
+
+		// Here exceedsGeneric() checks if a ⩾ bound.  We'll be more clever.
+		// a ⩾ bound iff a - bound ⩾ 0, so set a = a - bound first.
+		for i := 0; i < 4; i++ {
+			VPSUBD(boundX8, a[i], a[i])
+		}
+
+		// a &= 0x80000000.  Leaves the sign.  Should be zero.
+		for i := 0; i < 4; i++ {
+			VPAND(a[i], signMaskX8, a[i])
+		}
+
+		for i := 0; i < 4; i++ {
+			// Move the high bits, which are all zero except possibly for
+			// the sign bits, into tmp.
+			tmp := GP32()
+			VPMOVMSKB(a[i], tmp)
+
+			// If one of the sign bits is zero, then one of the as is
+			// positive hence the bound is exceeded.
+			XORL(signsMask, tmp) // 0b10001000100010001000100010001000
+			TESTL(tmp, tmp)
+			JNZ(LabelRef("exceeded"))
+		}
+
+	}
+
+	ret := GP8()
+	XORB(ret, ret)
+	Store(ret, ReturnIndex(0))
+	RET()
+
+	Label("exceeded")
+	MOVB(U8(1), ret)
+	Store(ret, ReturnIndex(0))
+	RET()
+}
+
+func decomposeAVX2() {
+	TEXT("decomposeAVX2", NOSPLIT, "func(p, p0PlusQ, p1 *[256]uint32)")
+	Pragma("noescape")
+	p_ptr := Load(Param("p"), GP64())
+	p0_ptr := Load(Param("p0PlusQ"), GP64())
+	p1_ptr := Load(Param("p1"), GP64())
+
+	var a, s, t [4]VecVirtual
+	for i := 0; i < 4; i++ {
+		a[i] = YMM()
+		t[i] = YMM()
+		s[i] = YMM()
+	}
+
+	alpha := YMM()
+	broadcast_imm32(params.Alpha, alpha)
+
+	one := YMM()
+	broadcast_imm32(1, one)
+
+	q := YMM()
+	broadcast_imm32(params.Q, q)
+
+	for j := 0; j < 8; j++ {
+		twoToThe19MinOne := YMM()
+		broadcast_imm32(0x7ffff, twoToThe19MinOne)
+
+		for i := 0; i < 4; i++ {
+			VMOVDQU(Mem{Base: p_ptr, Disp: 32 * (4*j + i)}, a[i])
+		}
+
+		// t = a & (2¹⁹-1)
+		for i := 0; i < 4; i++ {
+			VPAND(a[i], twoToThe19MinOne, t[i])
+		}
+
+		alphaDivTwoPlusOne := YMM()
+		broadcast_imm32((params.Alpha/2)+1, alphaDivTwoPlusOne)
+
+		// t += (int32(a) >> 19) << 9
+		for i := 0; i < 4; i++ {
+			VPSRAD(U8(19), a[i], s[i])
+		}
+		for i := 0; i < 4; i++ {
+			VPSLLD(U8(9), s[i], s[i])
+		}
+		for i := 0; i < 4; i++ {
+			VPADDD(s[i], t[i], t[i])
+		}
+
+		// t -= α/2+1
+		for i := 0; i < 4; i++ {
+			VPSUBD(alphaDivTwoPlusOne, t[i], t[i])
+		}
+
+		alphaDivTwoMinOne := YMM()
+		broadcast_imm32((params.Alpha/2)-1, alphaDivTwoMinOne)
+
+		// t += (t >> 31) & α
+		for i := 0; i < 4; i++ {
+			VPSRAD(U8(31), t[i], s[i])
+		}
+		for i := 0; i < 4; i++ {
+			VPAND(alpha, s[i], s[i])
+		}
+		for i := 0; i < 4; i++ {
+			VPADDD(t[i], s[i], t[i])
+		}
+
+		// t -= α/2-1
+		for i := 0; i < 4; i++ {
+			VPSUBD(alphaDivTwoMinOne, t[i], t[i])
+		}
+
+		fifteen := YMM()
+		broadcast_imm32(15, fifteen)
+
+		// a₁ = a - t.  We'll use a to store a₁.
+		for i := 0; i < 4; i++ {
+			VPSUBD(t[i], a[i], a[i])
+		}
+
+		// u = ((a₁ - 1) >> 31) & 1. We'll use s to store u.
+		for i := 0; i < 4; i++ {
+			VPSUBD(one, a[i], s[i])
+		}
+		for i := 0; i < 4; i++ {
+			VPSRLD(U8(31), s[i], s[i])
+		}
+		for i := 0; i < 4; i++ {
+			VPAND(one, s[i], s[i])
+		}
+
+		// a₁ = (a₁ >> 19) + 1
+		for i := 0; i < 4; i++ {
+			VPSRLD(U8(19), a[i], a[i])
+		}
+		for i := 0; i < 4; i++ {
+			VPADDD(one, a[i], a[i])
+		}
+
+		// a₁ -= u.  We're done with u, so s is free.
+		for i := 0; i < 4; i++ {
+			VPSUBD(s[i], a[i], a[i])
+		}
+
+		// a₀ = Q + t.  We'll use t to store a₀.
+		for i := 0; i < 4; i++ {
+			VPADDD(q, t[i], t[i])
+		}
+
+		// a₀ -= a₁ >> 4
+		for i := 0; i < 4; i++ {
+			VPSRLD(U8(4), a[i], s[i])
+		}
+		for i := 0; i < 4; i++ {
+			VPSUBD(s[i], t[i], t[i])
+		}
+
+		// a₁ &= 15
+		for i := 0; i < 4; i++ {
+			VPAND(a[i], fifteen, a[i])
+		}
+
+		for i := 0; i < 4; i++ {
+			VMOVDQU(t[i], Mem{Base: p0_ptr, Disp: 32 * (4*j + i)})
+		}
+		for i := 0; i < 4; i++ {
+			VMOVDQU(a[i], Mem{Base: p1_ptr, Disp: 32 * (4*j + i)})
+		}
+	}
+
+	RET()
+}
+
 func main() {
 	ConstraintExpr("amd64")
 
@@ -740,6 +1168,12 @@ func main() {
 	invNttAVX2()
 	mulHatAVX2()
 	addAVX2()
+	subAVX2()
+	packLe16AVX2()
+	reduceLe2QAVX2()
+	le2qModQAVX2()
+	exceedsAVX2()
+	decomposeAVX2()
 
 	Generate()
 }

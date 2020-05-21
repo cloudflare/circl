@@ -1,7 +1,7 @@
 package internal
 
 import (
-	common "github.com/cloudflare/circl/sign/dilithium/internal"
+	"github.com/cloudflare/circl/sign/dilithium/internal/common"
 )
 
 // A k by l matrix of polynomials.
@@ -11,10 +11,34 @@ type Mat [K]VecL
 //
 // This function is called ExpandA in the specification.
 func (m *Mat) Derive(seed *[32]byte) {
+	if !DeriveX4Available {
+		for i := uint16(0); i < K; i++ {
+			for j := uint16(0); j < L; j++ {
+				PolyDeriveUniform(&m[i][j], seed, (i<<8)+j)
+			}
+		}
+		return
+	}
+
+	idx := 0
+	var nonces [4]uint16
+	var ps [4]*common.Poly
 	for i := uint16(0); i < K; i++ {
 		for j := uint16(0); j < L; j++ {
-			PolyDeriveUniform(&m[i][j], seed, (i<<8)+j)
+			nonces[idx] = (i << 8) + j
+			ps[idx] = &m[i][j]
+			idx++
+			if idx == 4 {
+				idx = 0
+				PolyDeriveUniformX4(ps, seed, nonces)
+			}
 		}
+	}
+	if idx != 0 {
+		for i := idx; i < 4; i++ {
+			ps[i] = nil
+		}
+		PolyDeriveUniformX4(ps, seed, nonces)
 	}
 }
 
