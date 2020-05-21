@@ -49,9 +49,10 @@ jobs:
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
           docker run --rm -v `pwd`:`pwd` -w `pwd` arm64v8/golang@$SHA256 go test -v ./...
   coverage_amd64_job:
+    needs: [ amd64_job ]
+    if: github.event_name == 'push'
     runs-on: ubuntu-18.04
     name: amd64/coverage
-    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
     steps:
       - name: Checkout
         uses: actions/checkout@v2
