@@ -55,7 +55,6 @@ func PolyDeriveUniformLeGamma1X4(ps [4]*common.Poly, seed *[48]byte,
 	var shift [4]uint
 
 	done := false
-
 	for !done {
 		// Applies KeccaK-f[1600] to state to get the next 17 uint64s of each
 		// of the four SHAKE256 streams.
@@ -63,6 +62,7 @@ func PolyDeriveUniformLeGamma1X4(ps [4]*common.Poly, seed *[48]byte,
 
 		done = true
 
+	PolyLoop:
 		for j := 0; j < 4; j++ {
 			if idx[j] == 256 {
 				continue
@@ -96,13 +96,9 @@ func PolyDeriveUniformLeGamma1X4(ps [4]*common.Poly, seed *[48]byte,
 						ps[j][idx[j]] = common.Q + common.Gamma1 - 1 - t[k]
 						idx[j]++
 						if idx[j] == 256 {
-							break
+							continue PolyLoop
 						}
 					}
-				}
-
-				if idx[j] == 256 {
-					break
 				}
 			}
 		}
@@ -140,13 +136,15 @@ func PolyDeriveUniformX4(ps [4]*common.Poly, seed *[32]byte, nonces [4]uint16) {
 		}
 	}
 
-	for {
+	done := false
+	for !done {
 		// Applies KeccaK-f[1600] to state to get the next 21 uint64s of each
 		// of the four SHAKE128 streams.
 		perm.Permute()
 
-		done := true
+		done = true
 
+	PolyLoop:
 		for j := 0; j < 4; j++ {
 			if idx[j] == 256 {
 				continue
@@ -170,18 +168,11 @@ func PolyDeriveUniformX4(ps [4]*common.Poly, seed *[32]byte, nonces [4]uint16) {
 						ps[j][idx[j]] = t[k]
 						idx[j]++
 						if idx[j] == 256 {
-							break
+							continue PolyLoop
 						}
 					}
 				}
-				if idx[j] == 256 {
-					break
-				}
 			}
-		}
-
-		if done {
-			break
 		}
 	}
 }
