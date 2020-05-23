@@ -48,6 +48,22 @@ jobs:
         run: |
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
           docker run --rm -v `pwd`:`pwd` -w `pwd` arm64v8/golang@$SHA256 go test -v ./...
+  s390x_job:
+    runs-on: ubuntu-18.04
+    name: s390x/Go-1.14
+    env:
+        GOVER: 1.14
+        SHA256: sha256:213e0cc560e8e93767fdd9d4af890cfc8c11b07b16b34bf1fdf5e548459cb2ad
+    steps:
+      - uses: actions/checkout@v2
+      - name: Pulling Images
+        run: |
+          docker pull -q multiarch/qemu-user-static
+          docker pull -q s390x/golang@$SHA256
+      - name: Testing
+        run: |
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+          docker run --rm -v `pwd`:`pwd` -w `pwd` s390x/golang@$SHA256 go test -v ./...
   coverage_amd64_job:
     needs: [ amd64_job ]
     if: github.event_name == 'push'
