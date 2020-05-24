@@ -1,5 +1,3 @@
-//go:generate go run f1600x4_amd64_src.go -out f1600x4_amd64.s -stubs f1600x4_amd64_stubs.go
-
 package f1600x4
 
 import (

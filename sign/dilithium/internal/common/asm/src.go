@@ -1,13 +1,13 @@
-// +build ignore
+//go:generate go run src.go -out ../amd64.s -stubs ../stubs_amd64.go -pkg common
 
 // AVX2 optimized version of Poly.[Inv]NTT().  See the comments on the generic
 // implementation for details on the maths involved.
 package main
 
 import (
-	. "github.com/mmcloughlin/avo/build"
-	. "github.com/mmcloughlin/avo/operand"
-	. "github.com/mmcloughlin/avo/reg"
+	. "github.com/mmcloughlin/avo/build"   // nolint:golint,stylecheck
+	. "github.com/mmcloughlin/avo/operand" // nolint:golint,stylecheck
+	. "github.com/mmcloughlin/avo/reg"     // nolint:golint,stylecheck
 
 	"github.com/cloudflare/circl/sign/dilithium/internal/common/params"
 )
@@ -15,7 +15,7 @@ import (
 // XXX align Poly on 16 bytes such that we can use aligned moves
 // XXX ensure Zetas and InvZetas are 16 byte aligned.
 
-func broadcast_imm32(c uint32, out Op) {
+func broadcastImm32(c uint32, out Op) {
 	tmp1 := GP32()
 	tmp2 := XMM()
 	MOVL(U32(c), tmp1)
@@ -24,14 +24,14 @@ func broadcast_imm32(c uint32, out Op) {
 }
 
 // Performs AND with an 64b immediate.
-func and_imm64(c uint64, inout Op) {
+func andImm64(c uint64, inout Op) {
 	tmp := GP64()
 	MOVQ(U64(c), tmp)
 	ANDQ(tmp, inout)
 }
 
 // Executes the permutation (a[2] b[0]) (a[3] b[1]) when considering only the
-// even positions of a and b seen as [8]uint32
+// even positions of a and b seen as [8]uint32.
 func swapInner(a, b Op) {
 	tmp := YMM()
 	VPERM2I128(U8(32), b, a, tmp) // 0 + 2*16
@@ -40,7 +40,7 @@ func swapInner(a, b Op) {
 }
 
 // Executes the permutation (a[1] b[0]) (a[3] b[2]) when considering only the
-// even positions of a and b seen as [8]uint32
+// even positions of a and b seen as [8]uint32.
 func oddCrossing(a, b Op) {
 	tmp := YMM()
 	VPUNPCKLQDQ(b, a, tmp)
@@ -48,6 +48,7 @@ func oddCrossing(a, b Op) {
 	VMOVDQA(tmp, a)
 }
 
+// nolint:funlen
 func nttAVX2() {
 	// We perform the same operations as the generic implementation of NTT,
 	// but use AVX2 to perform 16 butterflies at the same time.  For the
@@ -57,24 +58,24 @@ func nttAVX2() {
 
 	TEXT("nttAVX2", 0, "func(p *[256]uint32)")
 	Pragma("noescape")
-	p_ptr := Load(Param("p"), GP64())
-	zetas_ptr := GP64()
-	LEAQ(NewDataAddr(Symbol{Name: "·Zetas"}, 0), zetas_ptr)
+	pPtr := Load(Param("p"), GP64())
+	zetasPtr := GP64()
+	LEAQ(NewDataAddr(Symbol{Name: "·Zetas"}, 0), zetasPtr)
 
 	// We allocate a [256]uint64 on the stack aligned to 32 bytes to hold
 	// "buf" which contains intermediate coefficients like "p" in the generic
 	// algorithm, but then in uint64s instead of uint32s.
-	buf_ptr := GP64()
-	LEAQ(AllocLocal(256*8+32), buf_ptr) // +32 to be able to align
+	bufPtr := GP64()
+	LEAQ(AllocLocal(256*8+32), bufPtr) // +32 to be able to align
 
-	and_imm64(0xffffffffffffffe0, buf_ptr)
+	andImm64(0xffffffffffffffe0, bufPtr)
 
 	q := YMM()
-	broadcast_imm32(params.Q, q)
+	broadcastImm32(params.Q, q)
 	doubleQ := YMM()
-	broadcast_imm32(2*params.Q, doubleQ)
+	broadcastImm32(2*params.Q, doubleQ)
 	qinv := YMM()
-	broadcast_imm32(params.Qinv, qinv) // 4236238847 = -(q^-1) mod 2³²
+	broadcastImm32(params.Qinv, qinv) // 4236238847 = -(q^-1) mod 2³²
 
 	// Computes 4x4 Cooley--Tukey butterflies (a,b) ↦ (a + ζb, a - ζb).
 	ctButterfly := func(a1, b1, zeta1, a2, b2, zeta2, a3, b3, zeta3,
@@ -159,14 +160,14 @@ func nttAVX2() {
 		for i := 0; i < 8; i++ {
 			// Loads 4 32b coefficients at the same time; zeropads them to 64b
 			// and puts them in xs[i].
-			VPMOVZXDQ(Mem{Base: p_ptr, Disp: 4 * (32*i + 4*offset)}, xs[i])
+			VPMOVZXDQ(Mem{Base: pPtr, Disp: 4 * (32*i + 4*offset)}, xs[i])
 		}
 
 		// XXX At the moment we've completely unrolled, so we could, if we want,
 		//     hardcode the Zetas here instead of looking them up from memory.
 		//     Is that worth it?
 
-		VPBROADCASTD(Mem{Base: zetas_ptr, Disp: 1 * 4}, zs[0]) // Zetas[1]
+		VPBROADCASTD(Mem{Base: zetasPtr, Disp: 1 * 4}, zs[0]) // Zetas[1]
 
 		ctButterfly(
 			xs[0], xs[4], zs[0],
@@ -176,8 +177,8 @@ func nttAVX2() {
 		)
 
 		// Second level
-		VPBROADCASTD(Mem{Base: zetas_ptr, Disp: 2 * 4}, zs[0]) // Zetas[2]
-		VPBROADCASTD(Mem{Base: zetas_ptr, Disp: 3 * 4}, zs[1]) // Zetas[3]
+		VPBROADCASTD(Mem{Base: zetasPtr, Disp: 2 * 4}, zs[0]) // Zetas[2]
+		VPBROADCASTD(Mem{Base: zetasPtr, Disp: 3 * 4}, zs[1]) // Zetas[3]
 
 		ctButterfly(
 			xs[0], xs[2], zs[0],
@@ -187,10 +188,10 @@ func nttAVX2() {
 		)
 
 		// Third level
-		VPBROADCASTD(Mem{Base: zetas_ptr, Disp: 4 * 4}, zs[0]) // Zetas[4]
-		VPBROADCASTD(Mem{Base: zetas_ptr, Disp: 5 * 4}, zs[1]) // Zetas[5]
-		VPBROADCASTD(Mem{Base: zetas_ptr, Disp: 6 * 4}, zs[2]) // Zetas[6]
-		VPBROADCASTD(Mem{Base: zetas_ptr, Disp: 7 * 4}, zs[3]) // Zetas[7]
+		VPBROADCASTD(Mem{Base: zetasPtr, Disp: 4 * 4}, zs[0]) // Zetas[4]
+		VPBROADCASTD(Mem{Base: zetasPtr, Disp: 5 * 4}, zs[1]) // Zetas[5]
+		VPBROADCASTD(Mem{Base: zetasPtr, Disp: 6 * 4}, zs[2]) // Zetas[6]
+		VPBROADCASTD(Mem{Base: zetasPtr, Disp: 7 * 4}, zs[3]) // Zetas[7]
 
 		ctButterfly(
 			xs[0], xs[1], zs[0],
@@ -200,7 +201,7 @@ func nttAVX2() {
 		)
 
 		for i := 0; i < 8; i++ {
-			VMOVDQA(xs[i], Mem{Base: buf_ptr, Disp: 8 * (32*i + 4*offset)})
+			VMOVDQA(xs[i], Mem{Base: bufPtr, Disp: 8 * (32*i + 4*offset)})
 		}
 	}
 
@@ -218,14 +219,14 @@ func nttAVX2() {
 
 	// XXX should we really unroll this loop?
 	for offset := 0; offset < 8; offset++ {
-		// Load the first 32 coefficients from level 3.  Recall that buf_ptr
+		// Load the first 32 coefficients from level 3.  Recall that bufPtr
 		// has 64 bits of space for each coefficient.
 		for i := 0; i < 8; i++ {
-			VMOVDQA(Mem{Base: buf_ptr, Disp: 8 * 4 * (8*offset + i)}, xs[i])
+			VMOVDQA(Mem{Base: bufPtr, Disp: 8 * 4 * (8*offset + i)}, xs[i])
 		}
 
 		// Fourth level
-		VPBROADCASTD(Mem{Base: zetas_ptr, Disp: (8 + offset) * 4}, zs[0])
+		VPBROADCASTD(Mem{Base: zetasPtr, Disp: (8 + offset) * 4}, zs[0])
 		ctButterfly(
 			xs[0], xs[4], zs[0],
 			xs[1], xs[5], zs[0],
@@ -234,8 +235,8 @@ func nttAVX2() {
 		)
 
 		// Fifth level
-		VPBROADCASTD(Mem{Base: zetas_ptr, Disp: (16 + offset*2) * 4}, zs[0])
-		VPBROADCASTD(Mem{Base: zetas_ptr, Disp: (16 + offset*2 + 1) * 4}, zs[1])
+		VPBROADCASTD(Mem{Base: zetasPtr, Disp: (16 + offset*2) * 4}, zs[0])
+		VPBROADCASTD(Mem{Base: zetasPtr, Disp: (16 + offset*2 + 1) * 4}, zs[1])
 		ctButterfly(
 			xs[0], xs[2], zs[0],
 			xs[1], xs[3], zs[0],
@@ -245,7 +246,7 @@ func nttAVX2() {
 
 		// Sixth level
 		for i := 0; i < 4; i++ {
-			VPBROADCASTD(Mem{Base: zetas_ptr, Disp: (32 + offset*4 + i) * 4}, zs[i])
+			VPBROADCASTD(Mem{Base: zetasPtr, Disp: (32 + offset*4 + i) * 4}, zs[i])
 		}
 		ctButterfly(
 			xs[0], xs[1], zs[0],
@@ -265,8 +266,8 @@ func nttAVX2() {
 		// XXX optimize?  We might want to add a small extra table for just
 		//     these zetas so that we don't have to blend them.
 		for i := 0; i < 4; i++ {
-			VPBROADCASTD(Mem{Base: zetas_ptr, Disp: (64 + offset*8 + i*2) * 4}, tmp)
-			VPBROADCASTD(Mem{Base: zetas_ptr, Disp: (64 + offset*8 + i*2 + 1) * 4}, zs[i])
+			VPBROADCASTD(Mem{Base: zetasPtr, Disp: (64 + offset*8 + i*2) * 4}, tmp)
+			VPBROADCASTD(Mem{Base: zetasPtr, Disp: (64 + offset*8 + i*2 + 1) * 4}, zs[i])
 			VPBLENDD(U8(240), zs[i], tmp, zs[i])
 		}
 
@@ -293,7 +294,7 @@ func nttAVX2() {
 		oddCrossing(xs[6], xs[7])
 
 		for i := 0; i < 4; i++ {
-			VPMOVZXDQ(Mem{Base: zetas_ptr, Disp: (128 + 4*i + offset*16) * 4}, zs[i])
+			VPMOVZXDQ(Mem{Base: zetasPtr, Disp: (128 + 4*i + offset*16) * 4}, zs[i])
 		}
 
 		ctButterfly(
@@ -322,13 +323,14 @@ func nttAVX2() {
 		VPBLENDD(U8(170), xs[7], xs[6], xs[6])
 
 		for i := 0; i < 4; i++ {
-			VMOVDQU(xs[2*i], Mem{Base: p_ptr, Disp: 8 * 4 * (4*offset + i)})
+			VMOVDQU(xs[2*i], Mem{Base: pPtr, Disp: 8 * 4 * (4*offset + i)})
 		}
 	}
 
 	RET()
 }
 
+// nolint:funlen
 func invNttAVX2() {
 	// Just like with the generic implementation, we do the operations of
 	// NTT in reverse, except for two things: we hoist out all divisions by
@@ -336,23 +338,23 @@ func invNttAVX2() {
 	// big division by 2⁸ at the end.
 	TEXT("invNttAVX2", 0, "func(p *[256]uint32)")
 	Pragma("noescape")
-	p_ptr := Load(Param("p"), GP64())
-	zetas_ptr := GP64()
-	LEAQ(NewDataAddr(Symbol{Name: "·InvZetas"}, 0), zetas_ptr)
+	pPtr := Load(Param("p"), GP64())
+	zetasPtr := GP64()
+	LEAQ(NewDataAddr(Symbol{Name: "·InvZetas"}, 0), zetasPtr)
 
 	// We allocate a [256]uint64 on the stack aligned to 32 bytes to hold
 	// "buf" which contains intermediate coefficients like "p" in the generic
 	// algorithm, but then in uint64s instead of uint32s.
-	buf_ptr := GP64()
-	LEAQ(AllocLocal(256*8+32), buf_ptr) // +32 to be able to align
-	and_imm64(0xffffffffffffffe0, buf_ptr)
+	bufPtr := GP64()
+	LEAQ(AllocLocal(256*8+32), bufPtr) // +32 to be able to align
+	andImm64(0xffffffffffffffe0, bufPtr)
 
 	q := YMM()
-	broadcast_imm32(params.Q, q)
+	broadcastImm32(params.Q, q)
 	q256 := YMM()
-	broadcast_imm32(256*params.Q, q256)
+	broadcastImm32(256*params.Q, q256)
 	qinv := YMM()
-	broadcast_imm32(params.Qinv, qinv)
+	broadcastImm32(params.Qinv, qinv)
 
 	// Computes 4x4 doubled Gentleman--Sande butterflies (a,b) ↦ (a+b, ζ(a-b)).
 	gsButterfly := func(a1, b1, zeta1, a2, b2, zeta2, a3, b3, zeta3,
@@ -365,7 +367,7 @@ func invNttAVX2() {
 		// XXX be more parallel when we have more registers available, when
 		//     we don't use the full four registers for zetas.
 		for i := 0; i < 4; i++ {
-			// Set t = 256Q + a in preparation of substracting b
+			// Set t = 256Q + a in preparation of subtracting b
 			VPADDD(a[i], q256, t[i])
 
 			// Set t = t - b
@@ -414,7 +416,7 @@ func invNttAVX2() {
 	for offset := 0; offset < 8; offset++ {
 		// Load coeffs 0 1 2 3 4 5 6 7 into xs[0], 8 ... 16 into xs[1], etc.
 		for i := 0; i < 4; i++ {
-			VMOVDQU(Mem{Base: p_ptr, Disp: 8 * 4 * (4*offset + i)}, xs[2*i])
+			VMOVDQU(Mem{Base: pPtr, Disp: 8 * 4 * (4*offset + i)}, xs[2*i])
 		}
 
 		// Move odd coeffs of xs[2*i] into xs[2*i+1] and shift down.  Ignoring
@@ -425,7 +427,7 @@ func invNttAVX2() {
 
 		// Eighth level
 		for i := 0; i < 4; i++ {
-			VPMOVZXDQ(Mem{Base: zetas_ptr, Disp: 4 * 4 * (4*offset + i)}, zs[i])
+			VPMOVZXDQ(Mem{Base: zetasPtr, Disp: 4 * 4 * (4*offset + i)}, zs[i])
 		}
 
 		gsButterfly(
@@ -446,8 +448,8 @@ func invNttAVX2() {
 		// XXX optimize?  We might want to add a small extra table for just
 		//     these zetas so that we don't have to blend them.
 		for i := 0; i < 4; i++ {
-			VPBROADCASTD(Mem{Base: zetas_ptr, Disp: (128 + offset*8 + i*2) * 4}, tmp)
-			VPBROADCASTD(Mem{Base: zetas_ptr, Disp: (128 + offset*8 + i*2 + 1) * 4}, zs[i])
+			VPBROADCASTD(Mem{Base: zetasPtr, Disp: (128 + offset*8 + i*2) * 4}, tmp)
+			VPBROADCASTD(Mem{Base: zetasPtr, Disp: (128 + offset*8 + i*2 + 1) * 4}, zs[i])
 			VPBLENDD(U8(240), zs[i], tmp, zs[i])
 		}
 
@@ -466,7 +468,7 @@ func invNttAVX2() {
 
 		// Sixth level
 		for i := 0; i < 4; i++ {
-			VPBROADCASTD(Mem{Base: zetas_ptr, Disp: (192 + offset*4 + i) * 4}, zs[i])
+			VPBROADCASTD(Mem{Base: zetasPtr, Disp: (192 + offset*4 + i) * 4}, zs[i])
 		}
 
 		gsButterfly(
@@ -477,8 +479,8 @@ func invNttAVX2() {
 		)
 
 		// Fifth level
-		VPBROADCASTD(Mem{Base: zetas_ptr, Disp: (224 + offset*2) * 4}, zs[0])
-		VPBROADCASTD(Mem{Base: zetas_ptr, Disp: (224 + offset*2 + 1) * 4}, zs[1])
+		VPBROADCASTD(Mem{Base: zetasPtr, Disp: (224 + offset*2) * 4}, zs[0])
+		VPBROADCASTD(Mem{Base: zetasPtr, Disp: (224 + offset*2 + 1) * 4}, zs[1])
 
 		gsButterfly(
 			xs[0], xs[2], zs[0],
@@ -488,7 +490,7 @@ func invNttAVX2() {
 		)
 
 		// Fourth level
-		VPBROADCASTD(Mem{Base: zetas_ptr, Disp: (240 + offset) * 4}, zs[0])
+		VPBROADCASTD(Mem{Base: zetasPtr, Disp: (240 + offset) * 4}, zs[0])
 
 		gsButterfly(
 			xs[0], xs[4], zs[0],
@@ -498,21 +500,21 @@ func invNttAVX2() {
 		)
 
 		for i := 0; i < 8; i++ {
-			VMOVDQA(xs[i], Mem{Base: buf_ptr, Disp: 8 * 4 * (8*offset + i)})
+			VMOVDQA(xs[i], Mem{Base: bufPtr, Disp: 8 * 4 * (8*offset + i)})
 		}
 	}
 
 	// XXX should we really unroll this loop?
 	for offset := 0; offset < 8; offset++ {
 		for i := 0; i < 8; i++ {
-			VMOVDQA(Mem{Base: buf_ptr, Disp: 8 * (32*i + 4*offset)}, xs[i])
+			VMOVDQA(Mem{Base: bufPtr, Disp: 8 * (32*i + 4*offset)}, xs[i])
 		}
 
 		// Third level
-		VPBROADCASTD(Mem{Base: zetas_ptr, Disp: (248 * 4)}, zs[0])
-		VPBROADCASTD(Mem{Base: zetas_ptr, Disp: (249 * 4)}, zs[1])
-		VPBROADCASTD(Mem{Base: zetas_ptr, Disp: (250 * 4)}, zs[2])
-		VPBROADCASTD(Mem{Base: zetas_ptr, Disp: (251 * 4)}, zs[3])
+		VPBROADCASTD(Mem{Base: zetasPtr, Disp: (248 * 4)}, zs[0])
+		VPBROADCASTD(Mem{Base: zetasPtr, Disp: (249 * 4)}, zs[1])
+		VPBROADCASTD(Mem{Base: zetasPtr, Disp: (250 * 4)}, zs[2])
+		VPBROADCASTD(Mem{Base: zetasPtr, Disp: (251 * 4)}, zs[3])
 
 		gsButterfly(
 			xs[0], xs[1], zs[0],
@@ -522,8 +524,8 @@ func invNttAVX2() {
 		)
 
 		// Second level
-		VPBROADCASTD(Mem{Base: zetas_ptr, Disp: (252 * 4)}, zs[0])
-		VPBROADCASTD(Mem{Base: zetas_ptr, Disp: (253 * 4)}, zs[1])
+		VPBROADCASTD(Mem{Base: zetasPtr, Disp: (252 * 4)}, zs[0])
+		VPBROADCASTD(Mem{Base: zetasPtr, Disp: (253 * 4)}, zs[1])
 
 		gsButterfly(
 			xs[0], xs[2], zs[0],
@@ -533,7 +535,7 @@ func invNttAVX2() {
 		)
 
 		// First level
-		VPBROADCASTD(Mem{Base: zetas_ptr, Disp: (254 * 4)}, zs[0])
+		VPBROADCASTD(Mem{Base: zetasPtr, Disp: (254 * 4)}, zs[0])
 
 		gsButterfly(
 			xs[0], xs[4], zs[0],
@@ -544,7 +546,7 @@ func invNttAVX2() {
 
 		// Finally, we multiply by 41978 = (256)^-1 R² ...
 		rOver256 := YMM()
-		broadcast_imm32(params.ROver256, rOver256)
+		broadcastImm32(params.ROver256, rOver256)
 
 		for i := 0; i < 8; i++ {
 			VPMULUDQ(xs[i], rOver256, xs[i])
@@ -581,7 +583,7 @@ func invNttAVX2() {
 		}
 
 		for i := 0; i < 8; i++ {
-			VMOVDQA(xs[i], Mem{Base: buf_ptr, Disp: 8 * (32*i + 4*offset)})
+			VMOVDQA(xs[i], Mem{Base: bufPtr, Disp: 8 * (32*i + 4*offset)})
 		}
 	}
 
@@ -590,7 +592,7 @@ func invNttAVX2() {
 	// XXX is this the most efficient way?
 	for j := 0; j < 8; j++ {
 		for i := 0; i < 8; i++ {
-			VMOVDQA(Mem{Base: buf_ptr, Disp: 32 * (8*j + i)}, xs[i])
+			VMOVDQA(Mem{Base: bufPtr, Disp: 32 * (8*j + i)}, xs[i])
 		}
 		// Recall that oddCrossing after swapInner will permute the
 		// even coefficients from 0 1 2 3 4 5 6 7 to 0 2 4 6 1 3 5 7 and so
@@ -609,7 +611,7 @@ func invNttAVX2() {
 			VPBLENDD(U8(170), xs[2*i+1], xs[2*i], xs[2*i])
 		}
 		for i := 0; i < 4; i++ {
-			VMOVDQU(xs[2*i], Mem{Base: p_ptr, Disp: 32 * (4*j + i)})
+			VMOVDQU(xs[2*i], Mem{Base: pPtr, Disp: 32 * (4*j + i)})
 		}
 	}
 
@@ -621,14 +623,14 @@ func invNttAVX2() {
 func mulHatAVX2() {
 	TEXT("mulHatAVX2", NOSPLIT, "func(p, a, b *[256]uint32)")
 	Pragma("noescape")
-	p_ptr := Load(Param("p"), GP64())
-	a_ptr := Load(Param("a"), GP64())
-	b_ptr := Load(Param("b"), GP64())
+	pPtr := Load(Param("p"), GP64())
+	aPtr := Load(Param("a"), GP64())
+	bPtr := Load(Param("b"), GP64())
 
 	q := YMM()
-	broadcast_imm32(params.Q, q)
+	broadcastImm32(params.Q, q)
 	qinv := YMM()
-	broadcast_imm32(params.Qinv, qinv)
+	broadcastImm32(params.Qinv, qinv)
 
 	var a [4]VecVirtual
 	var b [4]VecVirtual
@@ -642,10 +644,10 @@ func mulHatAVX2() {
 		// XXX We could use 6 registers each (instead of 4).  Does that make
 		//     it faster?
 		for i := 0; i < 4; i++ {
-			VPMOVZXDQ(Mem{Base: a_ptr, Disp: 16 * (4*j + i)}, a[i])
+			VPMOVZXDQ(Mem{Base: aPtr, Disp: 16 * (4*j + i)}, a[i])
 		}
 		for i := 0; i < 4; i++ {
-			VPMOVZXDQ(Mem{Base: b_ptr, Disp: 16 * (4*j + i)}, b[i])
+			VPMOVZXDQ(Mem{Base: bPtr, Disp: 16 * (4*j + i)}, b[i])
 		}
 		for i := 0; i < 4; i++ {
 			VPMULUDQ(a[i], b[i], b[i])
@@ -692,7 +694,7 @@ func mulHatAVX2() {
 			VPBLENDD(U8(170), b[2*i+1], b[2*i], b[2*i])
 		}
 		for i := 0; i < 2; i++ {
-			VMOVDQU(b[2*i], Mem{Base: p_ptr, Disp: 32 * (2*j + i)})
+			VMOVDQU(b[2*i], Mem{Base: pPtr, Disp: 32 * (2*j + i)})
 		}
 	}
 
@@ -702,9 +704,9 @@ func mulHatAVX2() {
 func addAVX2() {
 	TEXT("addAVX2", NOSPLIT, "func(p, a, b *[256]uint32)")
 	Pragma("noescape")
-	p_ptr := Load(Param("p"), GP64())
-	a_ptr := Load(Param("a"), GP64())
-	b_ptr := Load(Param("b"), GP64())
+	pPtr := Load(Param("p"), GP64())
+	aPtr := Load(Param("a"), GP64())
+	bPtr := Load(Param("b"), GP64())
 
 	var a [8]VecVirtual
 	var b [8]VecVirtual
@@ -716,16 +718,16 @@ func addAVX2() {
 	// XXX is unrolling worth it?
 	for j := 0; j < 4; j++ {
 		for i := 0; i < 8; i++ {
-			VMOVDQU(Mem{Base: a_ptr, Disp: 32 * (8*j + i)}, a[i])
+			VMOVDQU(Mem{Base: aPtr, Disp: 32 * (8*j + i)}, a[i])
 		}
 		for i := 0; i < 8; i++ {
-			VMOVDQU(Mem{Base: b_ptr, Disp: 32 * (8*j + i)}, b[i])
+			VMOVDQU(Mem{Base: bPtr, Disp: 32 * (8*j + i)}, b[i])
 		}
 		for i := 0; i < 8; i++ {
 			VPADDQ(a[i], b[i], b[i])
 		}
 		for i := 0; i < 8; i++ {
-			VMOVDQU(b[i], Mem{Base: p_ptr, Disp: 32 * (8*j + i)})
+			VMOVDQU(b[i], Mem{Base: pPtr, Disp: 32 * (8*j + i)})
 		}
 	}
 
@@ -735,9 +737,9 @@ func addAVX2() {
 func subAVX2() {
 	TEXT("subAVX2", NOSPLIT, "func(p, a, b *[256]uint32)")
 	Pragma("noescape")
-	p_ptr := Load(Param("p"), GP64())
-	a_ptr := Load(Param("a"), GP64())
-	b_ptr := Load(Param("b"), GP64())
+	pPtr := Load(Param("p"), GP64())
+	aPtr := Load(Param("a"), GP64())
+	bPtr := Load(Param("b"), GP64())
 
 	var a [4]VecVirtual
 	var b [4]VecVirtual
@@ -747,15 +749,15 @@ func subAVX2() {
 	}
 
 	doubleQ := YMM()
-	broadcast_imm32(2*params.Q, doubleQ)
+	broadcastImm32(2*params.Q, doubleQ)
 
 	// XXX is unrolling worth it?
 	for j := 0; j < 8; j++ {
 		for i := 0; i < 4; i++ {
-			VMOVDQU(Mem{Base: a_ptr, Disp: 32 * (4*j + i)}, a[i])
+			VMOVDQU(Mem{Base: aPtr, Disp: 32 * (4*j + i)}, a[i])
 		}
 		for i := 0; i < 4; i++ {
-			VMOVDQU(Mem{Base: b_ptr, Disp: 32 * (4*j + i)}, b[i])
+			VMOVDQU(Mem{Base: bPtr, Disp: 32 * (4*j + i)}, b[i])
 		}
 		for i := 0; i < 4; i++ {
 			VPSUBD(b[i], doubleQ, b[i])
@@ -764,7 +766,7 @@ func subAVX2() {
 			VPADDQ(a[i], b[i], b[i])
 		}
 		for i := 0; i < 4; i++ {
-			VMOVDQU(b[i], Mem{Base: p_ptr, Disp: 32 * (4*j + i)})
+			VMOVDQU(b[i], Mem{Base: pPtr, Disp: 32 * (4*j + i)})
 		}
 	}
 
@@ -774,8 +776,8 @@ func subAVX2() {
 func packLe16AVX2() {
 	TEXT("packLe16AVX2", NOSPLIT, "func(p *[256]uint32, buf *byte)")
 	Pragma("noescape")
-	p_ptr := Load(Param("p"), GP64())
-	buf_ptr := Load(Param("buf"), GP64())
+	pPtr := Load(Param("p"), GP64())
+	bufPtr := Load(Param("buf"), GP64())
 
 	var a [8]VecVirtual
 	var b [8]VecVirtual
@@ -788,11 +790,11 @@ func packLe16AVX2() {
 		// We load p[0], ..., p[7] into a[0], p[8], ..., p[15] into a[1], etc.,
 		// so we may consider a as a matrix.  We transpose a in the usual way.
 		for i := 0; i < 4; i++ {
-			VMOVDQU(Mem{Base: p_ptr, Disp: 32 * (8*j + 2*i)}, a[2*i])
-			VPUNPCKLDQ(Mem{Base: p_ptr, Disp: 32 * (8*j + 2*i + 1)},
+			VMOVDQU(Mem{Base: pPtr, Disp: 32 * (8*j + 2*i)}, a[2*i])
+			VPUNPCKLDQ(Mem{Base: pPtr, Disp: 32 * (8*j + 2*i + 1)},
 				a[2*i], a[2*i])
-			VMOVDQU(Mem{Base: p_ptr, Disp: 32 * (8*j + 2*i)}, a[2*i+1])
-			VPUNPCKHDQ(Mem{Base: p_ptr, Disp: 32 * (8*j + 2*i + 1)},
+			VMOVDQU(Mem{Base: pPtr, Disp: 32 * (8*j + 2*i)}, a[2*i+1])
+			VPUNPCKHDQ(Mem{Base: pPtr, Disp: 32 * (8*j + 2*i + 1)},
 				a[2*i+1], a[2*i+1])
 		}
 
@@ -829,7 +831,7 @@ func packLe16AVX2() {
 		VPOR(a[5], a[7], a[7])
 		VPOR(a[3], a[7], a[7])
 
-		VMOVDQU(a[7], Mem{Base: buf_ptr, Disp: 32 * j})
+		VMOVDQU(a[7], Mem{Base: bufPtr, Disp: 32 * j})
 	}
 
 	RET()
@@ -838,7 +840,7 @@ func packLe16AVX2() {
 func reduceLe2QAVX2() {
 	TEXT("reduceLe2QAVX2", NOSPLIT, "func(p *[256]uint32)")
 	Pragma("noescape")
-	p_ptr := Load(Param("p"), GP64())
+	pPtr := Load(Param("p"), GP64())
 
 	var a, b, c [4]VecVirtual
 	for i := 0; i < 4; i++ {
@@ -847,13 +849,13 @@ func reduceLe2QAVX2() {
 		c[i] = YMM()
 	}
 	twoToThe23MinusOne := YMM()
-	broadcast_imm32((1<<23)-1, twoToThe23MinusOne)
+	broadcastImm32((1<<23)-1, twoToThe23MinusOne)
 
 	// We use the same computation as used in reduceLe2Q() for the separate
 	// coefficients.
 	for j := 0; j < 8; j++ {
 		for i := 0; i < 4; i++ {
-			VMOVDQU(Mem{Base: p_ptr, Disp: 32 * (4*j + i)}, a[i])
+			VMOVDQU(Mem{Base: pPtr, Disp: 32 * (4*j + i)}, a[i])
 		}
 
 		// b = a >> 23
@@ -881,7 +883,7 @@ func reduceLe2QAVX2() {
 
 		// Write back
 		for i := 0; i < 4; i++ {
-			VMOVDQU(a[i], Mem{Base: p_ptr, Disp: 32 * (4*j + i)})
+			VMOVDQU(a[i], Mem{Base: pPtr, Disp: 32 * (4*j + i)})
 		}
 	}
 
@@ -891,7 +893,7 @@ func reduceLe2QAVX2() {
 func le2qModQAVX2() {
 	TEXT("le2qModQAVX2", NOSPLIT, "func(p *[256]uint32)")
 	Pragma("noescape")
-	p_ptr := Load(Param("p"), GP64())
+	pPtr := Load(Param("p"), GP64())
 
 	// We use the same method as le2qModQ().
 	var a, m [4]VecVirtual
@@ -901,11 +903,11 @@ func le2qModQAVX2() {
 	}
 
 	q := YMM()
-	broadcast_imm32(params.Q, q)
+	broadcastImm32(params.Q, q)
 
 	for j := 0; j < 8; j++ {
 		for i := 0; i < 4; i++ {
-			VMOVDQU(Mem{Base: p_ptr, Disp: 32 * (4*j + i)}, a[i])
+			VMOVDQU(Mem{Base: pPtr, Disp: 32 * (4*j + i)}, a[i])
 		}
 
 		// a -= Q
@@ -929,7 +931,7 @@ func le2qModQAVX2() {
 		}
 
 		for i := 0; i < 4; i++ {
-			VMOVDQU(a[i], Mem{Base: p_ptr, Disp: 32 * (4*j + i)})
+			VMOVDQU(a[i], Mem{Base: pPtr, Disp: 32 * (4*j + i)})
 		}
 	}
 
@@ -939,7 +941,7 @@ func le2qModQAVX2() {
 func exceedsAVX2() {
 	TEXT("exceedsAVX2", NOSPLIT, "func(p *[256]uint32, bound uint32) uint8")
 	Pragma("noescape")
-	p_ptr := Load(Param("p"), GP64())
+	pPtr := Load(Param("p"), GP64())
 	bound := Load(Param("bound"), GP32())
 
 	var a, b [4]VecVirtual
@@ -954,17 +956,17 @@ func exceedsAVX2() {
 	VPBROADCASTD(boundX4, boundX8)
 
 	qMinusOneDiv2 := YMM()
-	broadcast_imm32((params.Q-1)/2, qMinusOneDiv2)
+	broadcastImm32((params.Q-1)/2, qMinusOneDiv2)
 
 	signMaskX8 := YMM()
-	broadcast_imm32(0x80000000, signMaskX8)
+	broadcastImm32(0x80000000, signMaskX8)
 
 	signsMask := GP32()
 	MOVL(U32(0x88888888), signsMask)
 
 	for j := 0; j < 8; j++ {
 		for i := 0; i < 4; i++ {
-			VMOVDQU(Mem{Base: p_ptr, Disp: 32 * (4*j + i)}, a[i])
+			VMOVDQU(Mem{Base: pPtr, Disp: 32 * (4*j + i)}, a[i])
 		}
 
 		// We use the same method as Poly.exceedsGeneric().
@@ -1012,7 +1014,6 @@ func exceedsAVX2() {
 			TESTL(tmp, tmp)
 			JNZ(LabelRef("exceeded"))
 		}
-
 	}
 
 	ret := GP8()
@@ -1026,12 +1027,13 @@ func exceedsAVX2() {
 	RET()
 }
 
+// nolint:funlen
 func decomposeAVX2() {
 	TEXT("decomposeAVX2", NOSPLIT, "func(p, p0PlusQ, p1 *[256]uint32)")
 	Pragma("noescape")
-	p_ptr := Load(Param("p"), GP64())
-	p0_ptr := Load(Param("p0PlusQ"), GP64())
-	p1_ptr := Load(Param("p1"), GP64())
+	pPtr := Load(Param("p"), GP64())
+	p0Ptr := Load(Param("p0PlusQ"), GP64())
+	p1Ptr := Load(Param("p1"), GP64())
 
 	var a, s, t [4]VecVirtual
 	for i := 0; i < 4; i++ {
@@ -1041,20 +1043,20 @@ func decomposeAVX2() {
 	}
 
 	alpha := YMM()
-	broadcast_imm32(params.Alpha, alpha)
+	broadcastImm32(params.Alpha, alpha)
 
 	one := YMM()
-	broadcast_imm32(1, one)
+	broadcastImm32(1, one)
 
 	q := YMM()
-	broadcast_imm32(params.Q, q)
+	broadcastImm32(params.Q, q)
 
 	for j := 0; j < 8; j++ {
 		twoToThe19MinOne := YMM()
-		broadcast_imm32(0x7ffff, twoToThe19MinOne)
+		broadcastImm32(0x7ffff, twoToThe19MinOne)
 
 		for i := 0; i < 4; i++ {
-			VMOVDQU(Mem{Base: p_ptr, Disp: 32 * (4*j + i)}, a[i])
+			VMOVDQU(Mem{Base: pPtr, Disp: 32 * (4*j + i)}, a[i])
 		}
 
 		// t = a & (2¹⁹-1)
@@ -1063,7 +1065,7 @@ func decomposeAVX2() {
 		}
 
 		alphaDivTwoPlusOne := YMM()
-		broadcast_imm32((params.Alpha/2)+1, alphaDivTwoPlusOne)
+		broadcastImm32((params.Alpha/2)+1, alphaDivTwoPlusOne)
 
 		// t += (int32(a) >> 19) << 9
 		for i := 0; i < 4; i++ {
@@ -1082,7 +1084,7 @@ func decomposeAVX2() {
 		}
 
 		alphaDivTwoMinOne := YMM()
-		broadcast_imm32((params.Alpha/2)-1, alphaDivTwoMinOne)
+		broadcastImm32((params.Alpha/2)-1, alphaDivTwoMinOne)
 
 		// t += (t >> 31) & α
 		for i := 0; i < 4; i++ {
@@ -1101,7 +1103,7 @@ func decomposeAVX2() {
 		}
 
 		fifteen := YMM()
-		broadcast_imm32(15, fifteen)
+		broadcastImm32(15, fifteen)
 
 		// a₁ = a - t.  We'll use a to store a₁.
 		for i := 0; i < 4; i++ {
@@ -1151,10 +1153,10 @@ func decomposeAVX2() {
 		}
 
 		for i := 0; i < 4; i++ {
-			VMOVDQU(t[i], Mem{Base: p0_ptr, Disp: 32 * (4*j + i)})
+			VMOVDQU(t[i], Mem{Base: p0Ptr, Disp: 32 * (4*j + i)})
 		}
 		for i := 0; i < 4; i++ {
-			VMOVDQU(a[i], Mem{Base: p1_ptr, Disp: 32 * (4*j + i)})
+			VMOVDQU(a[i], Mem{Base: p1Ptr, Disp: 32 * (4*j + i)})
 		}
 	}
 

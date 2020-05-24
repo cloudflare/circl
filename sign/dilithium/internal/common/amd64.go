@@ -1,4 +1,4 @@
-//go:generate go run ntt_amd64_src.go -out ntt_amd64.s -stubs ntt_amd64_stubs.go
+// +build amd64
 
 package common
 
