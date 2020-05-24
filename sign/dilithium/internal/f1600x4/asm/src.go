@@ -1,14 +1,15 @@
-// +build ignore
+//go:generate go run src.go -out ../f1600x4_amd64.s -stubs ../f1600x4stubs_amd64.go -pkg f1600x4
 
 // AVX2 fourway parallelized KeccaK-f[1600].
 
 package main
 
 import (
-	. "github.com/mmcloughlin/avo/build"
-	. "github.com/mmcloughlin/avo/operand"
+	. "github.com/mmcloughlin/avo/build"   // nolint:stylecheck,golint
+	. "github.com/mmcloughlin/avo/operand" // nolint:stylecheck,golint
 )
 
+// nolint:funlen
 func main() {
 	ConstraintExpr("amd64")
 
@@ -17,12 +18,12 @@ func main() {
 
 	Pragma("noescape")
 
-	state_ptr := Load(Param("state"), GP64())
+	statePtr := Load(Param("state"), GP64())
 	state := func(offset int) Op {
-		return Mem{Base: state_ptr, Disp: 32 * offset}
+		return Mem{Base: statePtr, Disp: 32 * offset}
 	}
 
-	rc_ptr := Load(Param("rc"), GP64())
+	rcPtr := Load(Param("rc"), GP64())
 
 	// We use the same approach as the normal KeccaK-f[1600] implementation
 	// (in the internal/shake package): we group four rounds together into a
@@ -81,7 +82,7 @@ func main() {
 		}
 
 		// Index into state to use
-		si := func(i, g int) int {
+		si := func(i, g, r int) int {
 			n := []int{6, 16, 11, 1}[r]
 			m := []int{10, 20, 15, 5}[r]
 			return (i*n + m*g) % 25
@@ -92,7 +93,7 @@ func main() {
 
 			// Load the right five words from the state and XOR d into them.
 			for i := 0; i < 5; i++ {
-				VPXOR(state(si(di(i, g), g)), d[di(i, g)], s[i])
+				VPXOR(state(si(di(i, g), g, r)), d[di(i, g)], s[i])
 			}
 
 			// Rotate each s[i] by the appropriate amount
@@ -122,20 +123,20 @@ func main() {
 
 			// Round constant
 			if g == 0 {
-				// Note that we move rc_ptr by 8*4 bytes after each superround.
+				// Note that we move rcPtr by 8*4 bytes after each superround.
 				rc := YMM()
-				VPBROADCASTQ(Mem{Base: rc_ptr, Disp: r * 8}, rc)
+				VPBROADCASTQ(Mem{Base: rcPtr, Disp: r * 8}, rc)
 				VPXOR(rc, t[0], t[0])
 			}
 
 			// Store back into state
 			for i := 0; i < 5; i++ {
-				VMOVDQA(t[i], state(si(i, g)))
+				VMOVDQA(t[i], state(si(i, g, r)))
 			}
 		}
 	}
 
-	ADDQ(Imm(8*4), rc_ptr)
+	ADDQ(Imm(8*4), rcPtr)
 	SUBQ(U32(1), superRound)
 	JNZ(LabelRef("loop"))
 
