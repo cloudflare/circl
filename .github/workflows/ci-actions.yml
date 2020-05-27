@@ -17,9 +17,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Linting
-        uses: ./.github/actions/golangci-lint
+        uses: golangci/golangci-lint-action@v1
         with:
-          args: run --config=.etc/golangci.yml ./...
+          version: v1.25
+          args: --config=./.etc/golangci.yml ./...
       - name: Setup Go-${{ matrix.GOVER }}
         uses: actions/setup-go@v2
         with:
@@ -32,36 +33,26 @@ jobs:
         run: go build -v ./...
       - name: Testing
         run: go test -v ./...
-  arm64_job:
+  exotic_job:
+    name: Go-${{matrix.CFG[2]}}/${{matrix.CFG[0]}}
     runs-on: ubuntu-18.04
-    name: arm64/Go-1.14
-    env:
-        GOVER: 1.14
+    strategy:
+      matrix:
+        CFG: [ [s390x,s390x,1.14], [arm64,arm64v8,1.14] ]
     steps:
       - uses: actions/checkout@v2
+      - name: Enabling Docker Experimental
+        run: |
+          echo $'{\n    "experimental": true\n}' | sudo tee /etc/docker/daemon.json
+          sudo service docker restart
       - name: Pulling Images
         run: |
           docker pull -q multiarch/qemu-user-static
-          docker pull -q arm64v8/golang:$GOVER
+          docker pull -q --platform linux/${{matrix.CFG[0]}} ${{matrix.CFG[1]}}/golang:${{matrix.CFG[2]}}
       - name: Testing
         run: |
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-          docker run --rm -v `pwd`:`pwd` -w `pwd` arm64v8/golang:$GOVER go test -v ./...
-  s390x_job:
-    runs-on: ubuntu-18.04
-    name: s390x/Go-1.14
-    env:
-        GOVER: 1.14
-    steps:
-      - uses: actions/checkout@v2
-      - name: Pulling Images
-        run: |
-          docker pull -q multiarch/qemu-user-static
-          docker pull -q s390x/golang:$GOVER
-      - name: Testing
-        run: |
-          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-          docker run --rm -e "GODEBUG=asyncpreemptoff=1" -v `pwd`:`pwd` -w `pwd` s390x/golang:$GOVER go test -mod=vendor -v ./...
+          docker run --rm -e "GODEBUG=asyncpreemptoff=1" -v `pwd`:`pwd` -w `pwd` ${{matrix.CFG[1]}}/golang:${{matrix.CFG[2]}} go test -v ./...
   coverage_amd64_job:
     needs: [ amd64_job ]
     if: github.event_name == 'push'
