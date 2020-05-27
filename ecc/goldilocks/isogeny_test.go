@@ -8,14 +8,9 @@ import (
 )
 
 func randomPoint() *Point {
-	k := make([]byte, 1)
+	var k Scalar
 	_, _ = rand.Read(k[:])
-	var e Curve
-	P := e.Generator()
-	for i := byte(0); i < k[0]; i++ {
-		P = e.Double(P)
-	}
-	return P
+	return Curve{}.ScalarBaseMult(&k)
 }
 
 func TestIsogeny(t *testing.T) {

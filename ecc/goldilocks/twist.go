@@ -40,10 +40,11 @@ func subYDiv16(x *scalar64, y int64) {
 }
 
 func recodeScalar(d *[113]int8, k *Scalar) {
-	k64 := k.getScalar64()
+	var k64 scalar64
+	k64.fromScalar(k)
 	for i := 0; i < 112; i++ {
 		d[i] = int8((k64[0] & 0x1f) - 16)
-		subYDiv16(k64, int64(d[i]))
+		subYDiv16(&k64, int64(d[i]))
 	}
 	d[112] = int8(k64[0])
 }

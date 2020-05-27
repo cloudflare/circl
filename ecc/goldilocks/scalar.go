@@ -3,7 +3,6 @@ package goldilocks
 import (
 	"encoding/binary"
 	"math/bits"
-	"unsafe"
 )
 
 // ScalarSize is the size (in bytes) of scalars.
@@ -17,7 +16,25 @@ type Scalar [ScalarSize]byte
 
 type scalar64 [_N]uint64
 
-func (z *Scalar) getScalar64() *scalar64 { return (*scalar64)(unsafe.Pointer(z)) }
+func (z *scalar64) fromScalar(x *Scalar) {
+	z[0] = binary.LittleEndian.Uint64(x[0*8 : 1*8])
+	z[1] = binary.LittleEndian.Uint64(x[1*8 : 2*8])
+	z[2] = binary.LittleEndian.Uint64(x[2*8 : 3*8])
+	z[3] = binary.LittleEndian.Uint64(x[3*8 : 4*8])
+	z[4] = binary.LittleEndian.Uint64(x[4*8 : 5*8])
+	z[5] = binary.LittleEndian.Uint64(x[5*8 : 6*8])
+	z[6] = binary.LittleEndian.Uint64(x[6*8 : 7*8])
+}
+
+func (z *scalar64) toScalar(x *Scalar) {
+	binary.LittleEndian.PutUint64(x[0*8:1*8], z[0])
+	binary.LittleEndian.PutUint64(x[1*8:2*8], z[1])
+	binary.LittleEndian.PutUint64(x[2*8:3*8], z[2])
+	binary.LittleEndian.PutUint64(x[3*8:4*8], z[3])
+	binary.LittleEndian.PutUint64(x[4*8:5*8], z[4])
+	binary.LittleEndian.PutUint64(x[5*8:6*8], z[5])
+	binary.LittleEndian.PutUint64(x[6*8:7*8], z[6])
+}
 
 // add calculates z = x + y. Assumes len(z) > max(len(x),len(y)).
 func add(z, x, y []uint64) uint64 {
@@ -96,12 +113,13 @@ func (z *scalar64) reduceOneWord(x uint64) {
 
 // modOrder reduces z mod order.
 func (z *scalar64) modOrder() {
-	x := &scalar64{}
-	o64 := order.getScalar64()[:]
+	var o64, x scalar64
+	o64.fromScalar(&order)
 	// Performs: while (z >= order) { z = z-order }
+	// At most 8 (eight) iterations reduce 3 bits by subtracting.
 	for i := 0; i < 8; i++ {
-		c := sub(x[:], z[:], o64) // (c || x) = z-order
-		z.Cmov(1-c, x)            // if c != 0 { z = x }
+		c := sub(x[:], z[:], o64[:]) // (c || x) = z-order
+		z.Cmov(1-c, &x)              // if c != 0 { z = x }
 	}
 }
 
@@ -117,67 +135,68 @@ func (z *Scalar) FromBytes(x []byte) {
 		return
 	}
 	copy(z[:], x[8*(nCeil-_N):])
-	z64 := z.getScalar64()
+	var z64 scalar64
+	z64.fromScalar(z)
 	for i := nCeil - _N - 1; i >= 0; i-- {
 		low := binary.LittleEndian.Uint64(x[8*i:])
 		high := z64.leftShift(low)
 		z64.reduceOneWord(high)
 	}
 	z64.modOrder()
+	z64.toScalar(z)
 }
 
 // divBy4 calculates z = x/4 mod order.
 func (z *Scalar) divBy4(x *Scalar) { z.Mul(x, &invFour) }
 
 // Red reduces z mod order.
-func (z *Scalar) Red() { z.getScalar64().modOrder() }
+func (z *Scalar) Red() { var t scalar64; t.fromScalar(z); t.modOrder(); t.toScalar(z) }
 
 // Neg calculates z = -z mod order.
 func (z *Scalar) Neg() { z.Sub(&order, z) }
 
 // Add calculates z = x+y mod order.
 func (z *Scalar) Add(x, y *Scalar) {
-	t := &scalar64{}
-	x64 := x.getScalar64()[:]
-	y64 := y.getScalar64()[:]
-	z64 := z.getScalar64()
-	c := add(z64[:], x64, y64)
+	var z64, x64, y64, t scalar64
+	x64.fromScalar(x)
+	y64.fromScalar(y)
+	c := add(z64[:], x64[:], y64[:])
 	add(t[:], z64[:], residue448[:])
-	z64.Cmov(c, t)
+	z64.Cmov(c, &t)
 	z64.modOrder()
+	z64.toScalar(z)
 }
 
 // Sub calculates z = x-y mod order.
 func (z *Scalar) Sub(x, y *Scalar) {
-	t := &scalar64{}
-	x64 := x.getScalar64()[:]
-	y64 := y.getScalar64()[:]
-	z64 := z.getScalar64()
-	c := sub(z64[:], x64, y64)
+	var z64, x64, y64, t scalar64
+	x64.fromScalar(x)
+	y64.fromScalar(y)
+	c := sub(z64[:], x64[:], y64[:])
 	sub(t[:], z64[:], residue448[:])
-	z64.Cmov(c, t)
+	z64.Cmov(c, &t)
 	z64.modOrder()
+	z64.toScalar(z)
 }
 
 // Mul calculates z = x*y mod order.
 func (z *Scalar) Mul(x, y *Scalar) {
-	t := &scalar64{}
+	var z64, x64, y64 scalar64
 	prod := (&[_N + 1]uint64{})[:]
-	x64 := x.getScalar64()[:]
-	y64 := y.getScalar64()[:]
-	z64 := z.getScalar64()
-	mulWord(prod, x64, y64[_N-1])
-	copy(t[:], prod[:_N])
-	t.reduceOneWord(prod[_N])
+	x64.fromScalar(x)
+	y64.fromScalar(y)
+	mulWord(prod, x64[:], y64[_N-1])
+	copy(z64[:], prod[:_N])
+	z64.reduceOneWord(prod[_N])
 	for i := _N - 2; i >= 0; i-- {
-		h := t.leftShift(0)
-		t.reduceOneWord(h)
-		mulWord(prod, x64, y64[i])
-		c := add(t[:], t[:], prod[:_N])
-		t.reduceOneWord(prod[_N] + c)
+		h := z64.leftShift(0)
+		z64.reduceOneWord(h)
+		mulWord(prod, x64[:], y64[i])
+		c := add(z64[:], z64[:], prod[:_N])
+		z64.reduceOneWord(prod[_N] + c)
 	}
-	t.modOrder()
-	*z64 = *t
+	z64.modOrder()
+	z64.toScalar(z)
 }
 
 // IsZero returns true if z=0.

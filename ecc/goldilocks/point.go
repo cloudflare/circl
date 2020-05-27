@@ -10,7 +10,7 @@ import (
 // Point is a point on the Goldilocks Curve.
 type Point struct{ x, y, z, ta, tb fp.Elt }
 
-func (P *Point) String() string {
+func (P Point) String() string {
 	return fmt.Sprintf("x: %v\ny: %v\nz: %v\nta: %v\ntb: %v", P.x, P.y, P.z, P.ta, P.tb)
 }
 
