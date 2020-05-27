@@ -152,27 +152,32 @@ func TestFp512Sub3_ReturnsCarry(t *testing.T) {
 	}
 }
 
-func TestCswap(t *testing.T) {
+func testCswap(t *testing.T, f func(*fp, *fp, uint8)) {
 	arg1 := randomFp()
 	arg2 := randomFp()
 
 	arg1cpy := arg1
-	cswap512(&arg1, &arg2, 0)
+	f(&arg1, &arg2, 0)
 	if !eqFp(&arg1, &arg1cpy) {
 		t.Error("cswap swapped")
 	}
 
 	arg1cpy = arg1
-	cswap512(&arg1, &arg2, 1)
+	f(&arg1, &arg2, 1)
 	if eqFp(&arg1, &arg1cpy) {
 		t.Error("cswap didn't swapped")
 	}
 
 	arg1cpy = arg1
-	cswap512(&arg1, &arg2, 0xF2)
+	f(&arg1, &arg2, 0xF2)
 	if eqFp(&arg1, &arg1cpy) {
 		t.Error("cswap didn't swapped")
 	}
+}
+
+func TestCswap(t *testing.T) {
+	testCswap(t, cswap512Generic)
+	testCswap(t, cswap512)
 }
 
 func TestSubRdc(t *testing.T) {

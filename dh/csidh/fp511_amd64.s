@@ -42,32 +42,6 @@ mul512_mulx:
     MULXQ   56(SI), AX, R11; ADCQ R10, AX; MOVQ AX, 56(DI) // x[7]
     RET
 
-// Multipies 512-bit value by 64-bit value and returns 576-bit result. Uses MULQ instruction to
-// multiply 2 64-bit values. Returns 576-bit result.
-//
-// Result: x = (y * z)
-//
-// Registers used: AX, CX, DX, SI, DI, R8
-//
-// func mul576Amd64(a, b *Fp, c uint64)
-TEXT ·mul576Amd64(SB), NOSPLIT, $0-24
-    MOVQ    a+0(FP), DI    // result
-    MOVQ    b+8(FP), SI    // multiplicand
-
-    MOVQ c+16(FP), R10  // 64 bit multiplier, used by MULQ
-    MOVQ R10, AX; MULQ  0(SI);                            MOVQ DX, R11; MOVQ AX,  0(DI) //x[0]
-    MOVQ R10, AX; MULQ  8(SI); ADDQ R11, AX; ADCQ $0, DX; MOVQ DX, R11; MOVQ AX,  8(DI) //x[1]
-    MOVQ R10, AX; MULQ 16(SI); ADDQ R11, AX; ADCQ $0, DX; MOVQ DX, R11; MOVQ AX, 16(DI) //x[2]
-    MOVQ R10, AX; MULQ 24(SI); ADDQ R11, AX; ADCQ $0, DX; MOVQ DX, R11; MOVQ AX, 24(DI) //x[3]
-    MOVQ R10, AX; MULQ 32(SI); ADDQ R11, AX; ADCQ $0, DX; MOVQ DX, R11; MOVQ AX, 32(DI) //x[4]
-    MOVQ R10, AX; MULQ 40(SI); ADDQ R11, AX; ADCQ $0, DX; MOVQ DX, R11; MOVQ AX, 40(DI) //x[5]
-    MOVQ R10, AX; MULQ 48(SI); ADDQ R11, AX; ADCQ $0, DX; MOVQ DX, R11; MOVQ AX, 48(DI) //x[6]
-    MOVQ R10, AX; MULQ 56(SI); ADDQ R11, AX; ADCQ $0, DX;               MOVQ AX, 56(DI) //x[7]
-    MOVQ DX, 64(DI)                                                                     //x[8]
-
-    RET
-
-
 TEXT ·cswap512Amd64(SB),NOSPLIT,$0-17
     MOVQ    x+0(FP), DI
     MOVQ    y+8(FP), SI

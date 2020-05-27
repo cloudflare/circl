@@ -37,33 +37,31 @@ jobs:
     name: arm64/Go-1.14
     env:
         GOVER: 1.14
-        SHA256: sha256:943fa6421fe7ca2b9fa40db22a5c14f99ed95afd0c18f9b7dec1e05b9ffce804
     steps:
       - uses: actions/checkout@v2
       - name: Pulling Images
         run: |
           docker pull -q multiarch/qemu-user-static
-          docker pull -q arm64v8/golang@$SHA256
+          docker pull -q arm64v8/golang:$GOVER
       - name: Testing
         run: |
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-          docker run --rm -v `pwd`:`pwd` -w `pwd` arm64v8/golang@$SHA256 go test -v ./...
+          docker run --rm -v `pwd`:`pwd` -w `pwd` arm64v8/golang:$GOVER go test -v ./...
   s390x_job:
     runs-on: ubuntu-18.04
     name: s390x/Go-1.14
     env:
         GOVER: 1.14
-        SHA256: sha256:213e0cc560e8e93767fdd9d4af890cfc8c11b07b16b34bf1fdf5e548459cb2ad
     steps:
       - uses: actions/checkout@v2
       - name: Pulling Images
         run: |
           docker pull -q multiarch/qemu-user-static
-          docker pull -q s390x/golang@$SHA256
+          docker pull -q s390x/golang:$GOVER
       - name: Testing
         run: |
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-          docker run --rm -e "GODEBUG=asyncpreemptoff=1" -v `pwd`:`pwd` -w `pwd` s390x/golang@$SHA256 go test -mod=vendor -v ./...
+          docker run --rm -e "GODEBUG=asyncpreemptoff=1" -v `pwd`:`pwd` -w `pwd` s390x/golang:$GOVER go test -mod=vendor -v ./...
   coverage_amd64_job:
     needs: [ amd64_job ]
     if: github.event_name == 'push'
