@@ -1,6 +1,7 @@
 package fp25519
 
 import (
+	"encoding/binary"
 	"math/bits"
 	"unsafe"
 )
@@ -34,37 +35,59 @@ func cswapGeneric(x, y *Elt, n uint) {
 }
 
 func addGeneric(z, x, y *Elt) {
-	zz := (*elt64)(unsafe.Pointer(z))
-	xx := (*elt64)(unsafe.Pointer(x))
-	yy := (*elt64)(unsafe.Pointer(y))
+	x0 := binary.LittleEndian.Uint64(x[0*8 : 1*8])
+	x1 := binary.LittleEndian.Uint64(x[1*8 : 2*8])
+	x2 := binary.LittleEndian.Uint64(x[2*8 : 3*8])
+	x3 := binary.LittleEndian.Uint64(x[3*8 : 4*8])
 
-	z0, c0 := bits.Add64(xx[0], yy[0], 0)
-	z1, c1 := bits.Add64(xx[1], yy[1], c0)
-	z2, c2 := bits.Add64(xx[2], yy[2], c1)
-	z3, c3 := bits.Add64(xx[3], yy[3], c2)
+	y0 := binary.LittleEndian.Uint64(y[0*8 : 1*8])
+	y1 := binary.LittleEndian.Uint64(y[1*8 : 2*8])
+	y2 := binary.LittleEndian.Uint64(y[2*8 : 3*8])
+	y3 := binary.LittleEndian.Uint64(y[3*8 : 4*8])
+
+	z0, c0 := bits.Add64(x0, y0, 0)
+	z1, c1 := bits.Add64(x1, y1, c0)
+	z2, c2 := bits.Add64(x2, y2, c1)
+	z3, c3 := bits.Add64(x3, y3, c2)
 
 	z0, c0 = bits.Add64(z0, (-c3)&38, 0)
-	zz[1], c1 = bits.Add64(z1, 0, c0)
-	zz[2], c2 = bits.Add64(z2, 0, c1)
-	zz[3], c3 = bits.Add64(z3, 0, c2)
-	zz[0], _ = bits.Add64(z0, (-c3)&38, 0)
+	z1, c1 = bits.Add64(z1, 0, c0)
+	z2, c2 = bits.Add64(z2, 0, c1)
+	z3, c3 = bits.Add64(z3, 0, c2)
+	z0, _ = bits.Add64(z0, (-c3)&38, 0)
+
+	binary.LittleEndian.PutUint64(z[0*8:1*8], z0)
+	binary.LittleEndian.PutUint64(z[1*8:2*8], z1)
+	binary.LittleEndian.PutUint64(z[2*8:3*8], z2)
+	binary.LittleEndian.PutUint64(z[3*8:4*8], z3)
 }
 
 func subGeneric(z, x, y *Elt) {
-	zz := (*elt64)(unsafe.Pointer(z))
-	xx := (*elt64)(unsafe.Pointer(x))
-	yy := (*elt64)(unsafe.Pointer(y))
+	x0 := binary.LittleEndian.Uint64(x[0*8 : 1*8])
+	x1 := binary.LittleEndian.Uint64(x[1*8 : 2*8])
+	x2 := binary.LittleEndian.Uint64(x[2*8 : 3*8])
+	x3 := binary.LittleEndian.Uint64(x[3*8 : 4*8])
 
-	z0, c0 := bits.Sub64(xx[0], yy[0], 0)
-	z1, c1 := bits.Sub64(xx[1], yy[1], c0)
-	z2, c2 := bits.Sub64(xx[2], yy[2], c1)
-	z3, c3 := bits.Sub64(xx[3], yy[3], c2)
+	y0 := binary.LittleEndian.Uint64(y[0*8 : 1*8])
+	y1 := binary.LittleEndian.Uint64(y[1*8 : 2*8])
+	y2 := binary.LittleEndian.Uint64(y[2*8 : 3*8])
+	y3 := binary.LittleEndian.Uint64(y[3*8 : 4*8])
+
+	z0, c0 := bits.Sub64(x0, y0, 0)
+	z1, c1 := bits.Sub64(x1, y1, c0)
+	z2, c2 := bits.Sub64(x2, y2, c1)
+	z3, c3 := bits.Sub64(x3, y3, c2)
 
 	z0, c0 = bits.Sub64(z0, (-c3)&38, 0)
-	zz[1], c1 = bits.Sub64(z1, 0, c0)
-	zz[2], c2 = bits.Sub64(z2, 0, c1)
-	zz[3], c3 = bits.Sub64(z3, 0, c2)
-	zz[0], _ = bits.Sub64(z0, (-c3)&38, 0)
+	z1, c1 = bits.Sub64(z1, 0, c0)
+	z2, c2 = bits.Sub64(z2, 0, c1)
+	z3, c3 = bits.Sub64(z3, 0, c2)
+	z0, _ = bits.Sub64(z0, (-c3)&38, 0)
+
+	binary.LittleEndian.PutUint64(z[0*8:1*8], z0)
+	binary.LittleEndian.PutUint64(z[1*8:2*8], z1)
+	binary.LittleEndian.PutUint64(z[2*8:3*8], z2)
+	binary.LittleEndian.PutUint64(z[3*8:4*8], z3)
 }
 
 func addsubGeneric(x, y *Elt) {
@@ -75,30 +98,35 @@ func addsubGeneric(x, y *Elt) {
 }
 
 func mulGeneric(z, x, y *Elt) {
-	zz := (*elt64)(unsafe.Pointer(z))
-	xx := (*elt64)(unsafe.Pointer(x))
-	yy := (*elt64)(unsafe.Pointer(y))
+	x0 := binary.LittleEndian.Uint64(x[0*8 : 1*8])
+	x1 := binary.LittleEndian.Uint64(x[1*8 : 2*8])
+	x2 := binary.LittleEndian.Uint64(x[2*8 : 3*8])
+	x3 := binary.LittleEndian.Uint64(x[3*8 : 4*8])
 
-	x0, x1, x2, x3 := xx[0], xx[1], xx[2], xx[3]
-	yi := yy[0]
+	y0 := binary.LittleEndian.Uint64(y[0*8 : 1*8])
+	y1 := binary.LittleEndian.Uint64(y[1*8 : 2*8])
+	y2 := binary.LittleEndian.Uint64(y[2*8 : 3*8])
+	y3 := binary.LittleEndian.Uint64(y[3*8 : 4*8])
+
+	yi := y0
 	h0, l0 := bits.Mul64(x0, yi)
 	h1, l1 := bits.Mul64(x1, yi)
 	h2, l2 := bits.Mul64(x2, yi)
 	h3, l3 := bits.Mul64(x3, yi)
 
-	zz[0] = l0
+	z0 := l0
 	a0, c0 := bits.Add64(h0, l1, 0)
 	a1, c1 := bits.Add64(h1, l2, c0)
 	a2, c2 := bits.Add64(h2, l3, c1)
 	a3, _ := bits.Add64(h3, 0, c2)
 
-	yi = yy[1]
+	yi = y1
 	h0, l0 = bits.Mul64(x0, yi)
 	h1, l1 = bits.Mul64(x1, yi)
 	h2, l2 = bits.Mul64(x2, yi)
 	h3, l3 = bits.Mul64(x3, yi)
 
-	zz[1], c0 = bits.Add64(a0, l0, 0)
+	z1, c0 := bits.Add64(a0, l0, 0)
 	h0, c1 = bits.Add64(h0, l1, c0)
 	h1, c2 = bits.Add64(h1, l2, c1)
 	h2, c3 := bits.Add64(h2, l3, c2)
@@ -109,13 +137,13 @@ func mulGeneric(z, x, y *Elt) {
 	a2, c2 = bits.Add64(a3, h2, c1)
 	a3, _ = bits.Add64(0, h3, c2)
 
-	yi = yy[2]
+	yi = y2
 	h0, l0 = bits.Mul64(x0, yi)
 	h1, l1 = bits.Mul64(x1, yi)
 	h2, l2 = bits.Mul64(x2, yi)
 	h3, l3 = bits.Mul64(x3, yi)
 
-	zz[2], c0 = bits.Add64(a0, l0, 0)
+	z2, c0 := bits.Add64(a0, l0, 0)
 	h0, c1 = bits.Add64(h0, l1, c0)
 	h1, c2 = bits.Add64(h1, l2, c1)
 	h2, c3 = bits.Add64(h2, l3, c2)
@@ -126,31 +154,32 @@ func mulGeneric(z, x, y *Elt) {
 	a2, c2 = bits.Add64(a3, h2, c1)
 	a3, _ = bits.Add64(0, h3, c2)
 
-	yi = yy[3]
+	yi = y3
 	h0, l0 = bits.Mul64(x0, yi)
 	h1, l1 = bits.Mul64(x1, yi)
 	h2, l2 = bits.Mul64(x2, yi)
 	h3, l3 = bits.Mul64(x3, yi)
 
-	zz[3], c0 = bits.Add64(a0, l0, 0)
+	z3, c0 := bits.Add64(a0, l0, 0)
 	h0, c1 = bits.Add64(h0, l1, c0)
 	h1, c2 = bits.Add64(h1, l2, c1)
 	h2, c3 = bits.Add64(h2, l3, c2)
 	h3, _ = bits.Add64(h3, 0, c3)
 
-	b4, c0 := bits.Add64(a1, h0, 0)
-	b5, c1 := bits.Add64(a2, h1, c0)
-	b6, c2 := bits.Add64(a3, h2, c1)
-	b7, _ := bits.Add64(0, h3, c2)
+	z4, c0 := bits.Add64(a1, h0, 0)
+	z5, c1 := bits.Add64(a2, h1, c0)
+	z6, c2 := bits.Add64(a3, h2, c1)
+	z7, _ := bits.Add64(0, h3, c2)
 
-	red64(zz, &elt64{b4, b5, b6, b7})
+	red64(z, z0, z1, z2, z3, z4, z5, z6, z7)
 }
 
 func sqrGeneric(z, x *Elt) {
-	zz := (*elt64)(unsafe.Pointer(z))
-	xx := (*elt64)(unsafe.Pointer(x))
+	x0 := binary.LittleEndian.Uint64(x[0*8 : 1*8])
+	x1 := binary.LittleEndian.Uint64(x[1*8 : 2*8])
+	x2 := binary.LittleEndian.Uint64(x[2*8 : 3*8])
+	x3 := binary.LittleEndian.Uint64(x[3*8 : 4*8])
 
-	x0, x1, x2, x3 := xx[0], xx[1], xx[2], xx[3]
 	h0, a0 := bits.Mul64(x0, x1)
 	h1, l1 := bits.Mul64(x0, x2)
 	h2, l2 := bits.Mul64(x0, x3)
@@ -190,24 +219,24 @@ func sqrGeneric(z, x *Elt) {
 	b5, c4 = bits.Add64(b5, a4, c3)
 	b6, c5 = bits.Add64(b6, a5, c4)
 	b7, _ = bits.Add64(b7, a6, c5)
-	zz[0] = b0
-	zz[1] = b1
-	zz[2] = b2
-	zz[3] = b3
-	red64(zz, &elt64{b4, b5, b6, b7})
+
+	red64(z, b0, b1, b2, b3, b4, b5, b6, b7)
 }
 
 func modpGeneric(x *Elt) {
-	xx := (*elt64)(unsafe.Pointer(x))
-	x3 := xx[3]
+	x0 := binary.LittleEndian.Uint64(x[0*8 : 1*8])
+	x1 := binary.LittleEndian.Uint64(x[1*8 : 2*8])
+	x2 := binary.LittleEndian.Uint64(x[2*8 : 3*8])
+	x3 := binary.LittleEndian.Uint64(x[3*8 : 4*8])
+
 	// CX = C[255] ? 38 : 19
 	cx := uint64(19) << (x3 >> 63)
 	// PUT BIT 255 IN CARRY FLAG AND CLEAR
 	x3 &^= 1 << 63
 
-	x0, c0 := bits.Add64(xx[0], cx, 0)
-	x1, c1 := bits.Add64(xx[1], 0, c0)
-	x2, c2 := bits.Add64(xx[2], 0, c1)
+	x0, c0 := bits.Add64(x0, cx, 0)
+	x1, c1 := bits.Add64(x1, 0, c0)
+	x2, c2 := bits.Add64(x2, 0, c1)
 	x3, _ = bits.Add64(x3, 0, c2)
 
 	// TEST FOR BIT 255 AGAIN; ONLY TRIGGERED ON OVERFLOW MODULO 2^255-19
@@ -216,33 +245,43 @@ func modpGeneric(x *Elt) {
 	// CLEAR BIT 255
 	x3 &^= 1 << 63
 
-	xx[0], c0 = bits.Sub64(x0, cx, 0)
-	xx[1], c1 = bits.Sub64(x1, 0, c0)
-	xx[2], c2 = bits.Sub64(x2, 0, c1)
-	xx[3], _ = bits.Sub64(x3, 0, c2)
+	x0, c0 = bits.Sub64(x0, cx, 0)
+	x1, c1 = bits.Sub64(x1, 0, c0)
+	x2, c2 = bits.Sub64(x2, 0, c1)
+	x3, _ = bits.Sub64(x3, 0, c2)
+
+	binary.LittleEndian.PutUint64(x[0*8:1*8], x0)
+	binary.LittleEndian.PutUint64(x[1*8:2*8], x1)
+	binary.LittleEndian.PutUint64(x[2*8:3*8], x2)
+	binary.LittleEndian.PutUint64(x[3*8:4*8], x3)
 }
 
-func red64(z, h *elt64) {
-	h0, l0 := bits.Mul64(h[0], 38)
-	h1, l1 := bits.Mul64(h[1], 38)
-	h2, l2 := bits.Mul64(h[2], 38)
-	h3, l3 := bits.Mul64(h[3], 38)
+func red64(z *Elt, x0, x1, x2, x3, x4, x5, x6, x7 uint64) {
+	h0, l0 := bits.Mul64(x4, 38)
+	h1, l1 := bits.Mul64(x5, 38)
+	h2, l2 := bits.Mul64(x6, 38)
+	h3, l3 := bits.Mul64(x7, 38)
 
 	l1, c0 := bits.Add64(h0, l1, 0)
 	l2, c1 := bits.Add64(h1, l2, c0)
 	l3, c2 := bits.Add64(h2, l3, c1)
 	l4, _ := bits.Add64(h3, 0, c2)
 
-	l0, c0 = bits.Add64(l0, z[0], 0)
-	l1, c1 = bits.Add64(l1, z[1], c0)
-	l2, c2 = bits.Add64(l2, z[2], c1)
-	l3, c3 := bits.Add64(l3, z[3], c2)
+	l0, c0 = bits.Add64(l0, x0, 0)
+	l1, c1 = bits.Add64(l1, x1, c0)
+	l2, c2 = bits.Add64(l2, x2, c1)
+	l3, c3 := bits.Add64(l3, x3, c2)
 	l4, _ = bits.Add64(l4, 0, c3)
 
 	_, l4 = bits.Mul64(l4, 38)
 	l0, c0 = bits.Add64(l0, l4, 0)
-	z[1], c1 = bits.Add64(l1, 0, c0)
-	z[2], c2 = bits.Add64(l2, 0, c1)
-	z[3], c3 = bits.Add64(l3, 0, c2)
-	z[0], _ = bits.Add64(l0, (-c3)&38, 0)
+	z1, c1 := bits.Add64(l1, 0, c0)
+	z2, c2 := bits.Add64(l2, 0, c1)
+	z3, c3 := bits.Add64(l3, 0, c2)
+	z0, _ := bits.Add64(l0, (-c3)&38, 0)
+
+	binary.LittleEndian.PutUint64(z[0*8:1*8], z0)
+	binary.LittleEndian.PutUint64(z[1*8:2*8], z1)
+	binary.LittleEndian.PutUint64(z[2*8:3*8], z2)
+	binary.LittleEndian.PutUint64(z[3*8:4*8], z3)
 }

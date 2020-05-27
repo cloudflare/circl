@@ -1,9 +1,9 @@
 package fp448
 
 import (
+	"encoding/binary"
 	"math/big"
 	"testing"
-	"unsafe"
 
 	"github.com/cloudflare/circl/internal/conv"
 	"github.com/cloudflare/circl/internal/test"
@@ -73,11 +73,15 @@ func ecRed64(t *testing.T) {
 	two224plus1.Add(two224plus1, big.NewInt(1)) // 2^224+1
 
 	var got, want Elt
+	var lo, hi elt64
 	for _, c := range cases {
-		var lo = *(*elt64)(unsafe.Pointer(&c[0*Size]))
-		var hi = *(*elt64)(unsafe.Pointer(&c[1*Size]))
-		red64(&lo, &hi)
-		got = *(*Elt)(unsafe.Pointer(&lo))
+		cLo := c[0*Size:]
+		cHi := c[1*Size:]
+		for i := range lo {
+			lo[i] = binary.LittleEndian.Uint64(cLo[i*8 : (i+1)*8])
+			hi[i] = binary.LittleEndian.Uint64(cHi[i*8 : (i+1)*8])
+		}
+		red64(&got, &lo, &hi)
 
 		tt := conv.BytesLe2BigInt(c[:2*Size])
 
