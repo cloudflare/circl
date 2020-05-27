@@ -1,4 +1,4 @@
-// +build amd64,!noasm
+// +build amd64
 
 #include "textflag.h"
 
@@ -9,8 +9,8 @@
 //
 // Registers used: AX, CX, DX, SI, DI, R8
 //
-// func mul512(a, b *Fp, c uint64)
-TEXT ·mul512(SB), NOSPLIT, $0-24
+// func mul512Amd64(a, b *Fp, c uint64)
+TEXT ·mul512Amd64(SB), NOSPLIT, $0-24
     MOVQ    a+0(FP), DI    // result
     MOVQ    b+8(FP), SI    // multiplicand
 
@@ -49,8 +49,8 @@ mul512_mulx:
 //
 // Registers used: AX, CX, DX, SI, DI, R8
 //
-// func mul576(a, b *Fp, c uint64)
-TEXT ·mul576(SB), NOSPLIT, $0-24
+// func mul576Amd64(a, b *Fp, c uint64)
+TEXT ·mul576Amd64(SB), NOSPLIT, $0-24
     MOVQ    a+0(FP), DI    // result
     MOVQ    b+8(FP), SI    // multiplicand
 
@@ -68,7 +68,7 @@ TEXT ·mul576(SB), NOSPLIT, $0-24
     RET
 
 
-TEXT ·cswap512(SB),NOSPLIT,$0-17
+TEXT ·cswap512Amd64(SB),NOSPLIT,$0-17
     MOVQ    x+0(FP), DI
     MOVQ    y+8(FP), SI
     MOVBLZX choice+16(FP), AX       // AL = 0 or 1

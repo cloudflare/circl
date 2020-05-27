@@ -1,35 +1,29 @@
 package csidh
 
 import (
+	"crypto/rand"
 	"math/big"
-	"math/rand"
 	"testing"
-
-	"golang.org/x/sys/cpu"
 )
 
-func resetCPUFeatures() {
-	hasBMI2 = cpu.X86.HasBMI2
-	hasADXandBMI2 = cpu.X86.HasBMI2 && cpu.X86.HasADX
-}
-
-func testFp512Mul3Nominal(t *testing.T) {
-	var multiplier64 uint64
-	var mod big.Int
+func testFp512Mul3Nominal(t *testing.T, f func(*fp, *fp, uint64)) {
+	var mod, two64 big.Int
 
 	// modulus: 2^512
 	mod.SetUint64(1).Lsh(&mod, 512)
+	two64.SetUint64(1).Lsh(&two64, 64)
 
 	for i := 0; i < numIter; i++ {
-		multiplier64 = rand.Uint64()
+		multiplier64, _ := rand.Int(rand.Reader, &two64)
+		mul64 := multiplier64.Uint64()
 
 		fV := randomFp()
 		exp, _ := new(big.Int).SetString(fp2S(fV), 16)
-		exp.Mul(exp, new(big.Int).SetUint64(multiplier64))
+		exp.Mul(exp, multiplier64)
 		// Truncate to 512 bits
 		exp.Mod(exp, &mod)
 
-		mul512(&fV, &fV, multiplier64)
+		f(&fV, &fV, mul64)
 		res, _ := new(big.Int).SetString(fp2S(fV), 16)
 
 		if exp.Cmp(res) != 0 {
@@ -41,11 +35,8 @@ func testFp512Mul3Nominal(t *testing.T) {
 // Check if mul512 produces result
 // z = x*y mod 2^512.
 func TestFp512Mul3_Nominal(t *testing.T) {
-	hasBMI2 = false
-	testFp512Mul3Nominal(t)
-
-	resetCPUFeatures()
-	testFp512Mul3Nominal(t)
+	testFp512Mul3Nominal(t, mul512)
+	testFp512Mul3Nominal(t, mul512Generic)
 }
 
 func TestAddRdcRandom(t *testing.T) {
@@ -220,7 +211,7 @@ func TestSubRdc(t *testing.T) {
 	}
 }
 
-func testMulRdc(t *testing.T) {
+func testMulRdc(t *testing.T, f func(*fp, *fp, *fp)) {
 	var res fp
 	var m1 = fp{
 		0x85E2579C786882D0, 0x4E3433657E18DA95,
@@ -243,39 +234,36 @@ func testMulRdc(t *testing.T) {
 
 	// 0*0
 	tmp := zeroFp512
-	mulRdc(&res, &tmp, &tmp)
+	f(&res, &tmp, &tmp)
 	if !eqFp(&res, &tmp) {
 		t.Errorf("Wrong value\n%X", res)
 	}
 
 	// 1*m1 == m1
 	zero(&res)
-	mulRdc(&res, &m1, &one)
+	f(&res, &m1, &one)
 	if !eqFp(&res, &m1) {
 		t.Errorf("Wrong value\n%X", res)
 	}
 
 	// m1*m2 < p
 	zero(&res)
-	mulRdc(&res, &m1, &m2)
+	f(&res, &m1, &m2)
 	if !eqFp(&res, &m1m2) {
 		t.Errorf("Wrong value\n%X", res)
 	}
 
 	// m1*m1 > p
 	zero(&res)
-	mulRdc(&res, &m1, &m1)
+	f(&res, &m1, &m1)
 	if !eqFp(&res, &m1m1) {
 		t.Errorf("Wrong value\n%X", res)
 	}
 }
 
 func TestMulRdc(t *testing.T) {
-	hasADXandBMI2 = false
-	testMulRdc(t)
-
-	resetCPUFeatures()
-	testMulRdc(t)
+	testMulRdc(t, mulRdcGeneric)
+	testMulRdc(t, mulRdc)
 }
 
 func TestModExp(t *testing.T) {
@@ -359,84 +347,46 @@ func TestCheckSmaller(t *testing.T) {
 	}
 }
 
-func BenchmarkFp512Sub(b *testing.B) {
-	var arg1 fp
+func BenchmarkFp(b *testing.B) {
+	var res, arg1 fp
+	var two64 big.Int
+	two64.SetUint64(1).Lsh(&two64, 64)
+	n, _ := rand.Int(rand.Reader, &two64)
+	u64 := n.Uint64()
 	arg2, arg3 := randomFp(), randomFp()
-	for n := 0; n < b.N; n++ {
-		sub512(&arg1, &arg2, &arg3)
-	}
-}
-
-func BenchmarkFp512Mul(b *testing.B) {
-	var arg1 = rand.Uint64()
-	arg2, arg3 := randomFp(), randomFp()
-	for n := 0; n < b.N; n++ {
-		mul512(&arg2, &arg3, arg1)
-	}
-}
-
-func BenchmarkCSwap(b *testing.B) {
-	arg1 := randomFp()
-	arg2 := randomFp()
-	for n := 0; n < b.N; n++ {
-		cswap512(&arg1, &arg2, uint8(n%2))
-	}
-}
-
-func BenchmarkAddRdc(b *testing.B) {
-	var res fp
-	arg1 := randomFp()
-	arg2 := randomFp()
-
-	for n := 0; n < b.N; n++ {
-		addRdc(&res, &arg1, &arg2)
-	}
-}
-
-func BenchmarkSubRdc(b *testing.B) {
-	arg1 := randomFp()
-	arg2 := randomFp()
-	var res fp
-	for n := 0; n < b.N; n++ {
-		subRdc(&res, &arg1, &arg2)
-	}
-}
-
-func BenchmarkModExpRdc(b *testing.B) {
-	arg1 := randomFp()
-	arg2 := randomFp()
-	var res fp
-	for n := 0; n < b.N; n++ {
-		modExpRdc512(&res, &arg1, &arg2)
-	}
-}
-
-func BenchmarkMulGeneric(b *testing.B) {
-	arg1 := randomFp()
-	arg2 := randomFp()
-	var res fp
-	for n := 0; n < b.N; n++ {
-		mulGeneric(&res, &arg1, &arg2)
-	}
-}
-
-func BenchmarkMulBmiAsm(b *testing.B) {
-	arg1 := randomFp()
-	arg2 := randomFp()
-	var res fp
-	for n := 0; n < b.N; n++ {
-		mulRdc(&res, &arg1, &arg2)
-	}
-}
-
-func BenchmarkMulGenAsm(b *testing.B) {
-	arg1 := randomFp()
-	arg2 := randomFp()
-	var res fp
-	hasADXandBMI2 = false
-	for n := 0; n < b.N; n++ {
-		mulRdc(&res, &arg1, &arg2)
-	}
-
-	resetCPUFeatures()
+	b.Run("sub512", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			sub512(&arg1, &arg2, &arg3)
+		}
+	})
+	b.Run("mul", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			mul512(&arg2, &arg3, u64)
+		}
+	})
+	b.Run("cswap", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			cswap512(&arg1, &arg2, uint8(n%2))
+		}
+	})
+	b.Run("add", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			addRdc(&res, &arg1, &arg2)
+		}
+	})
+	b.Run("sub", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			subRdc(&res, &arg1, &arg2)
+		}
+	})
+	b.Run("mul", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			mulRdc(&res, &arg1, &arg2)
+		}
+	})
+	b.Run("exp", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			modExpRdc512(&res, &arg1, &arg2)
+		}
+	})
 }

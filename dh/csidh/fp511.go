@@ -2,19 +2,6 @@ package csidh
 
 import (
 	"math/bits"
-
-	"golang.org/x/sys/cpu"
-)
-
-// CPU Capabilities. Those flags are referred by assembly code. According to
-// https://github.com/golang/go/issues/28230, variables referred from the
-// assembly must be in the same package.
-// We declare variables not constants, in order to facilitate testing.
-var (
-	// Signals support for BMI2 (MULX)
-	hasBMI2 = cpu.X86.HasBMI2 //nolint
-	// Signals support for ADX and BMI2
-	hasADXandBMI2 = cpu.X86.HasBMI2 && cpu.X86.HasADX
 )
 
 // Constant time select.

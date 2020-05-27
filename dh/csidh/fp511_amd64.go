@@ -2,23 +2,39 @@
 
 package csidh
 
-import "math/bits"
+import (
+	"math/bits"
+
+	"golang.org/x/sys/cpu"
+)
+
+var (
+	// Signals support for BMI2 (MULX)
+	hasBMI2 = cpu.X86.HasBMI2
+	// Signals support for ADX and BMI2
+	hasADXandBMI2 = cpu.X86.HasBMI2 && cpu.X86.HasADX
+)
+
+func mul512(r, m1 *fp, m2 uint64)            { mul512Amd64(r, m1, m2) }
+func mul576(r *[9]uint64, m1 *fp, m2 uint64) { mul576Amd64(r, m1, m2) }
+func cswap512(x, y *fp, choice uint8)        { cswap512Amd64(x, y, choice) }
+func mulRdc(r, x, y *fp)                     { mulRdcAmd64(r, x, y) }
 
 //go:noescape
-func mul512(a, b *fp, c uint64)
+func mul512Amd64(a, b *fp, c uint64)
 
 //go:noescape
-func mul576(a *[9]uint64, b *fp, c uint64)
+func mul576Amd64(a *[9]uint64, b *fp, c uint64)
 
 //go:noescape
-func cswap512(x, y *fp, choice uint8)
+func cswap512Amd64(x, y *fp, choice uint8)
 
 //go:noescape
 func mulBmiAsm(res, x, y *fp)
 
 // mulRdc performs montgomery multiplication r = x * y mod P.
 // Returned result r is already reduced and in Montgomery domain.
-func mulRdc(r, x, y *fp) {
+func mulRdcAmd64(r, x, y *fp) {
 	var t fp
 	var c uint64
 

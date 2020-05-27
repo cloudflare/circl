@@ -16,7 +16,7 @@ var (
 	// One in fp
 	oneFp512 = fp{1, 0, 0, 0, 0, 0, 0, 0}
 	// file with KAT vectors
-	katFile = "testdata/csidh_testvectors.dat"
+	katFile = "testdata/csidh_testvectors.json"
 )
 
 // Converts dst to Montgomery if "toMont==true" or from Montgomery domain otherwise.
