@@ -3,6 +3,7 @@ package csidh
 import (
 	"bytes"
 	"crypto/rand"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"os"
@@ -246,14 +247,14 @@ func TestKAT(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	// Loop over all test cases
-	for i := range tests.Vectors {
-		if !hasADXandBMI2 && i >= numIter {
-			// The algorithm is relatively slow, so on slow systems test
-			// against smaller number of test vectors (otherwise CI may break)
-			return
-		}
-		test := tests.Vectors[i]
+	// Loop over numIter test cases
+	// The algorithm is relatively slow, so it tests a smaller number.
+	N := len(tests.Vectors)
+	var buf [2]byte
+	for i := 0; i < numIter; i++ {
+		_, _ = rand.Read(buf[:])
+		idx := binary.LittleEndian.Uint16(buf[:]) % uint16(N)
+		test := tests.Vectors[idx]
 		switch test.Status {
 		case StatusValues[Valid]:
 			checkSharedSecret(&test, t, Valid)
