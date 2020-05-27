@@ -1,5 +1,7 @@
 package common
 
+import "encoding/binary"
+
 // Constant time select.
 // if pick == 1 (out = in1)
 // if pick == 0 (out = in2)
@@ -18,12 +20,14 @@ func BytesToFp2(fp2 *Fp2, input []byte, bytelen int) {
 	if len(input) < 2*bytelen {
 		panic("input byte slice too short")
 	}
-
-	for i := 0; i < bytelen; i++ {
-		j := i / 8
-		k := uint64(i % 8)
-		fp2.A[j] |= uint64(input[i]) << (8 * k)
-		fp2.B[j] |= uint64(input[i+bytelen]) << (8 * k)
+	numW64 := (bytelen*8 + 63) / 64
+	a := make([]byte, 8*numW64)
+	b := make([]byte, 8*numW64)
+	copy(a[:bytelen], input[:bytelen])
+	copy(b[:bytelen], input[bytelen:])
+	for i := 0; i < numW64; i++ {
+		fp2.A[i] = binary.LittleEndian.Uint64(a[i*8 : (i+1)*8])
+		fp2.B[i] = binary.LittleEndian.Uint64(b[i*8 : (i+1)*8])
 	}
 }
 
@@ -34,13 +38,13 @@ func Fp2ToBytes(output []byte, fp2 *Fp2, bytelen int) {
 	if len(output) < 2*bytelen {
 		panic("output byte slice too short")
 	}
-
-	// convert to bytes in little endian form
-	for i := 0; i < bytelen; i++ {
-		// set i = j*8 + k
-		tmp := i / 8
-		k := uint64(i % 8)
-		output[i] = byte(fp2.A[tmp] >> (8 * k))
-		output[i+bytelen] = byte(fp2.B[tmp] >> (8 * k))
+	numW64 := (bytelen*8 + 63) / 64
+	a := make([]byte, 8*numW64)
+	b := make([]byte, 8*numW64)
+	for i := 0; i < numW64; i++ {
+		binary.LittleEndian.PutUint64(a[i*8:(i+1)*8], fp2.A[i])
+		binary.LittleEndian.PutUint64(b[i*8:(i+1)*8], fp2.B[i])
 	}
+	copy(output[:bytelen], a[:bytelen])
+	copy(output[bytelen:], b[:bytelen])
 }
