@@ -7,8 +7,6 @@ import (
 	"math/bits"
 )
 
-type elt64 = [2]uint64
-
 func fpModGeneric(c *Fp) { fpSubGeneric(c, c, &modulusP) }
 
 func fpAddGeneric(c, a, b *Fp) {

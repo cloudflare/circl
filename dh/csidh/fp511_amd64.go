@@ -15,16 +15,14 @@ var (
 	hasADXandBMI2 = cpu.X86.HasBMI2 && cpu.X86.HasADX
 )
 
-func mul512(r, m1 *fp, m2 uint64)            { mul512Amd64(r, m1, m2) }
-func mul576(r *[9]uint64, m1 *fp, m2 uint64) { mul576Amd64(r, m1, m2) }
-func cswap512(x, y *fp, choice uint8)        { cswap512Amd64(x, y, choice) }
-func mulRdc(r, x, y *fp)                     { mulRdcAmd64(r, x, y) }
+var _ = hasBMI2
+
+func mul512(r, m1 *fp, m2 uint64)     { mul512Amd64(r, m1, m2) }
+func cswap512(x, y *fp, choice uint8) { cswap512Amd64(x, y, choice) }
+func mulRdc(r, x, y *fp)              { mulRdcAmd64(r, x, y) }
 
 //go:noescape
 func mul512Amd64(a, b *fp, c uint64)
-
-//go:noescape
-func mul576Amd64(a *[9]uint64, b *fp, c uint64)
 
 //go:noescape
 func cswap512Amd64(x, y *fp, choice uint8)

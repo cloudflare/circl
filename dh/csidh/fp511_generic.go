@@ -4,7 +4,7 @@ import "math/bits"
 
 // mul576 implements schoolbook multiplication of
 // 64x512-bit integer. Returns result modulo 2^512.
-// r = m1*m2
+// r = m1*m2.
 func mul512Generic(r, m1 *fp, m2 uint64) {
 	var c, h, l uint64
 
@@ -41,7 +41,7 @@ func mul512Generic(r, m1 *fp, m2 uint64) {
 // mul576 implements schoolbook multiplication of
 // 64x512-bit integer. Returns 576-bit result of
 // multiplication.
-// r = m1*m2
+// r = m1*m2.
 func mul576Generic(r *[9]uint64, m1 *fp, m2 uint64) {
 	var c, h, l uint64
 
@@ -109,7 +109,7 @@ func mulRdcGeneric(r, x, y *fp) {
 	t[6], c = bits.Sub64(r[6], p[6], c)
 	t[7], c = bits.Sub64(r[7], p[7], c)
 
-	var w = uint64(0 - uint64(c))
+	w := 0 - c
 	r[0] = ctPick64(w, r[0], t[0])
 	r[1] = ctPick64(w, r[1], t[1])
 	r[2] = ctPick64(w, r[2], t[2])
@@ -118,4 +118,63 @@ func mulRdcGeneric(r, x, y *fp) {
 	r[5] = ctPick64(w, r[5], t[5])
 	r[6] = ctPick64(w, r[6], t[6])
 	r[7] = ctPick64(w, r[7], t[7])
+}
+
+func mulGeneric(r, x, y *fp) {
+	var s fp // keeps intermediate results
+	var t1, t2 [9]uint64
+	var c, q uint64
+
+	for i := 0; i < numWords-1; i++ {
+		q = ((x[i] * y[0]) + s[0]) * pNegInv[0]
+		mul576Generic(&t1, &p, q)
+		mul576Generic(&t2, y, x[i])
+
+		// x[i]*y + q_i*p
+		t1[0], c = bits.Add64(t1[0], t2[0], 0)
+		t1[1], c = bits.Add64(t1[1], t2[1], c)
+		t1[2], c = bits.Add64(t1[2], t2[2], c)
+		t1[3], c = bits.Add64(t1[3], t2[3], c)
+		t1[4], c = bits.Add64(t1[4], t2[4], c)
+		t1[5], c = bits.Add64(t1[5], t2[5], c)
+		t1[6], c = bits.Add64(t1[6], t2[6], c)
+		t1[7], c = bits.Add64(t1[7], t2[7], c)
+		t1[8], _ = bits.Add64(t1[8], t2[8], c)
+
+		// s = (s + x[i]*y + q_i * p) / R
+		_, c = bits.Add64(t1[0], s[0], 0)
+		s[0], c = bits.Add64(t1[1], s[1], c)
+		s[1], c = bits.Add64(t1[2], s[2], c)
+		s[2], c = bits.Add64(t1[3], s[3], c)
+		s[3], c = bits.Add64(t1[4], s[4], c)
+		s[4], c = bits.Add64(t1[5], s[5], c)
+		s[5], c = bits.Add64(t1[6], s[6], c)
+		s[6], c = bits.Add64(t1[7], s[7], c)
+		s[7], _ = bits.Add64(t1[8], 0, c)
+	}
+
+	// last iteration stores result in r
+	q = ((x[numWords-1] * y[0]) + s[0]) * pNegInv[0]
+	mul576Generic(&t1, &p, q)
+	mul576Generic(&t2, y, x[numWords-1])
+
+	t1[0], c = bits.Add64(t1[0], t2[0], c)
+	t1[1], c = bits.Add64(t1[1], t2[1], c)
+	t1[2], c = bits.Add64(t1[2], t2[2], c)
+	t1[3], c = bits.Add64(t1[3], t2[3], c)
+	t1[4], c = bits.Add64(t1[4], t2[4], c)
+	t1[5], c = bits.Add64(t1[5], t2[5], c)
+	t1[6], c = bits.Add64(t1[6], t2[6], c)
+	t1[7], c = bits.Add64(t1[7], t2[7], c)
+	t1[8], _ = bits.Add64(t1[8], t2[8], c)
+
+	_, c = bits.Add64(t1[0], s[0], 0)
+	r[0], c = bits.Add64(t1[1], s[1], c)
+	r[1], c = bits.Add64(t1[2], s[2], c)
+	r[2], c = bits.Add64(t1[3], s[3], c)
+	r[3], c = bits.Add64(t1[4], s[4], c)
+	r[4], c = bits.Add64(t1[5], s[5], c)
+	r[5], c = bits.Add64(t1[6], s[6], c)
+	r[6], c = bits.Add64(t1[7], s[7], c)
+	r[7], _ = bits.Add64(t1[8], 0, c)
 }
