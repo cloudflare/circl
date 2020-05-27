@@ -15,6 +15,8 @@ var (
 	hasADXandBMI2 = cpu.X86.HasBMI2 && cpu.X86.HasADX
 )
 
+var _ = hasBMI2
+
 func mul512(r, m1 *fp, m2 uint64)     { mul512Amd64(r, m1, m2) }
 func cswap512(x, y *fp, choice uint8) { cswap512Amd64(x, y, choice) }
 func mulRdc(r, x, y *fp)              { mulRdcAmd64(r, x, y) }

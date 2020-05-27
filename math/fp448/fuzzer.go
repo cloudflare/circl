@@ -1,16 +1,17 @@
 // +build gofuzz
 
 // How to run the fuzzer:
-//  $ go get github.com/dvyukov/go-fuzz
+//  $ go get -u github.com/dvyukov/go-fuzz/go-fuzz
+//  $ go get -u github.com/dvyukov/go-fuzz/go-fuzz-build
 //  $ go-fuzz-build -libfuzzer -func FuzzReduction -o lib.a
 //  $ clang -fsanitize=fuzzer lib.a -o fu.exe
 //  $ ./fu.exe
 package fp448
 
 import (
+	"encoding/binary"
 	"fmt"
 	"math/big"
-	"unsafe"
 
 	"github.com/cloudflare/circl/internal/conv"
 )
@@ -22,11 +23,26 @@ func FuzzReduction(data []byte) int {
 		return -1
 	}
 	var got, want Elt
+	var lo, hi [7]uint64
+	a := data[:Size]
+	b := data[Size:]
+	lo[0] = binary.LittleEndian.Uint64(a[0*8 : 1*8])
+	lo[1] = binary.LittleEndian.Uint64(a[1*8 : 2*8])
+	lo[2] = binary.LittleEndian.Uint64(a[2*8 : 3*8])
+	lo[3] = binary.LittleEndian.Uint64(a[3*8 : 4*8])
+	lo[4] = binary.LittleEndian.Uint64(a[4*8 : 5*8])
+	lo[5] = binary.LittleEndian.Uint64(a[5*8 : 6*8])
+	lo[6] = binary.LittleEndian.Uint64(a[6*8 : 7*8])
 
-	var lo = *(*elt64)(unsafe.Pointer(&data[0*Size]))
-	var hi = *(*elt64)(unsafe.Pointer(&data[1*Size]))
-	red64(&lo, &hi)
-	got = *(*Elt)(unsafe.Pointer(&lo))
+	hi[0] = binary.LittleEndian.Uint64(b[0*8 : 1*8])
+	hi[1] = binary.LittleEndian.Uint64(b[1*8 : 2*8])
+	hi[2] = binary.LittleEndian.Uint64(b[2*8 : 3*8])
+	hi[3] = binary.LittleEndian.Uint64(b[3*8 : 4*8])
+	hi[4] = binary.LittleEndian.Uint64(b[4*8 : 5*8])
+	hi[5] = binary.LittleEndian.Uint64(b[5*8 : 6*8])
+	hi[6] = binary.LittleEndian.Uint64(b[6*8 : 7*8])
+
+	red64(&got, &lo, &hi)
 
 	t := conv.BytesLe2BigInt(data[:2*Size])
 
