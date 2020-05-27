@@ -73,7 +73,7 @@ func ecRed64(t *testing.T) {
 	two224plus1.Add(two224plus1, big.NewInt(1)) // 2^224+1
 
 	var got, want Elt
-	var lo, hi elt64
+	var lo, hi [7]uint64
 	for _, c := range cases {
 		cLo := c[0*Size:]
 		cHi := c[1*Size:]

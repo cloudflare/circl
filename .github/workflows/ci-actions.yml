@@ -8,7 +8,7 @@ on:
       - master
 jobs:
   amd64_job:
-    name: amd64/Go-${{matrix.GOVER}}
+    name: Go-${{matrix.GOVER}}/amd64
     runs-on: ubuntu-18.04
     strategy:
       matrix:
@@ -49,9 +49,9 @@ jobs:
         run: |
           docker pull -q multiarch/qemu-user-static
           docker pull -q --platform linux/${{matrix.CFG[0]}} ${{matrix.CFG[1]}}/golang:${{matrix.CFG[2]}}
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
       - name: Testing
         run: |
-          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
           docker run --rm -e "GODEBUG=asyncpreemptoff=1" -v `pwd`:`pwd` -w `pwd` ${{matrix.CFG[1]}}/golang:${{matrix.CFG[2]}} go test -v ./...
   coverage_amd64_job:
     needs: [ amd64_job ]

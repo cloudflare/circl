@@ -3,35 +3,22 @@ package fp25519
 import (
 	"encoding/binary"
 	"math/bits"
-	"unsafe"
 )
 
-type elt64 [4]uint64
-
 func cmovGeneric(x, y *Elt, n uint) {
-	xx, yy := (*elt64)(unsafe.Pointer(x)), (*elt64)(unsafe.Pointer(y))
-	m := -uint64(n & 0x1)
-	xx[0] = (xx[0] &^ m) | (yy[0] & m)
-	xx[1] = (xx[1] &^ m) | (yy[1] & m)
-	xx[2] = (xx[2] &^ m) | (yy[2] & m)
-	xx[3] = (xx[3] &^ m) | (yy[3] & m)
+	m := -byte(n & 0x1)
+	for i := range x {
+		x[i] = (x[i] &^ m) | (y[i] & m)
+	}
 }
 
 func cswapGeneric(x, y *Elt, n uint) {
-	xx, yy := (*elt64)(unsafe.Pointer(x)), (*elt64)(unsafe.Pointer(y))
-	m := -uint64(n & 0x1)
-	t0 := m & (xx[0] ^ yy[0])
-	t1 := m & (xx[1] ^ yy[1])
-	t2 := m & (xx[2] ^ yy[2])
-	t3 := m & (xx[3] ^ yy[3])
-	xx[0] ^= t0
-	xx[1] ^= t1
-	xx[2] ^= t2
-	xx[3] ^= t3
-	yy[0] ^= t0
-	yy[1] ^= t1
-	yy[2] ^= t2
-	yy[3] ^= t3
+	m := -byte(n & 0x1)
+	for i := range x {
+		t := m & (x[i] ^ y[i])
+		x[i] ^= t
+		y[i] ^= t
+	}
 }
 
 func addGeneric(z, x, y *Elt) {
