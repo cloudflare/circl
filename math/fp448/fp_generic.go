@@ -6,19 +6,95 @@ import (
 )
 
 func cmovGeneric(x, y *Elt, n uint) {
-	m := -byte(n & 0x1)
-	for i := range x {
-		x[i] = (x[i] &^ m) | (y[i] & m)
-	}
+	m := -uint64(n & 0x1)
+	x0 := binary.LittleEndian.Uint64(x[0*8 : 1*8])
+	x1 := binary.LittleEndian.Uint64(x[1*8 : 2*8])
+	x2 := binary.LittleEndian.Uint64(x[2*8 : 3*8])
+	x3 := binary.LittleEndian.Uint64(x[3*8 : 4*8])
+	x4 := binary.LittleEndian.Uint64(x[4*8 : 5*8])
+	x5 := binary.LittleEndian.Uint64(x[5*8 : 6*8])
+	x6 := binary.LittleEndian.Uint64(x[6*8 : 7*8])
+
+	y0 := binary.LittleEndian.Uint64(y[0*8 : 1*8])
+	y1 := binary.LittleEndian.Uint64(y[1*8 : 2*8])
+	y2 := binary.LittleEndian.Uint64(y[2*8 : 3*8])
+	y3 := binary.LittleEndian.Uint64(y[3*8 : 4*8])
+	y4 := binary.LittleEndian.Uint64(y[4*8 : 5*8])
+	y5 := binary.LittleEndian.Uint64(y[5*8 : 6*8])
+	y6 := binary.LittleEndian.Uint64(y[6*8 : 7*8])
+
+	x0 = (x0 &^ m) | (y0 & m)
+	x1 = (x1 &^ m) | (y1 & m)
+	x2 = (x2 &^ m) | (y2 & m)
+	x3 = (x3 &^ m) | (y3 & m)
+	x4 = (x4 &^ m) | (y4 & m)
+	x5 = (x5 &^ m) | (y5 & m)
+	x6 = (x6 &^ m) | (y6 & m)
+
+	binary.LittleEndian.PutUint64(x[0*8:1*8], x0)
+	binary.LittleEndian.PutUint64(x[1*8:2*8], x1)
+	binary.LittleEndian.PutUint64(x[2*8:3*8], x2)
+	binary.LittleEndian.PutUint64(x[3*8:4*8], x3)
+	binary.LittleEndian.PutUint64(x[4*8:5*8], x4)
+	binary.LittleEndian.PutUint64(x[5*8:6*8], x5)
+	binary.LittleEndian.PutUint64(x[6*8:7*8], x6)
 }
 
 func cswapGeneric(x, y *Elt, n uint) {
-	m := -byte(n & 0x1)
-	for i := range x {
-		t := m & (x[i] ^ y[i])
-		x[i] ^= t
-		y[i] ^= t
-	}
+	m := -uint64(n & 0x1)
+	x0 := binary.LittleEndian.Uint64(x[0*8 : 1*8])
+	x1 := binary.LittleEndian.Uint64(x[1*8 : 2*8])
+	x2 := binary.LittleEndian.Uint64(x[2*8 : 3*8])
+	x3 := binary.LittleEndian.Uint64(x[3*8 : 4*8])
+	x4 := binary.LittleEndian.Uint64(x[4*8 : 5*8])
+	x5 := binary.LittleEndian.Uint64(x[5*8 : 6*8])
+	x6 := binary.LittleEndian.Uint64(x[6*8 : 7*8])
+
+	y0 := binary.LittleEndian.Uint64(y[0*8 : 1*8])
+	y1 := binary.LittleEndian.Uint64(y[1*8 : 2*8])
+	y2 := binary.LittleEndian.Uint64(y[2*8 : 3*8])
+	y3 := binary.LittleEndian.Uint64(y[3*8 : 4*8])
+	y4 := binary.LittleEndian.Uint64(y[4*8 : 5*8])
+	y5 := binary.LittleEndian.Uint64(y[5*8 : 6*8])
+	y6 := binary.LittleEndian.Uint64(y[6*8 : 7*8])
+
+	t0 := m & (x0 ^ y0)
+	t1 := m & (x1 ^ y1)
+	t2 := m & (x2 ^ y2)
+	t3 := m & (x3 ^ y3)
+	t4 := m & (x4 ^ y4)
+	t5 := m & (x5 ^ y5)
+	t6 := m & (x6 ^ y6)
+	x0 ^= t0
+	x1 ^= t1
+	x2 ^= t2
+	x3 ^= t3
+	x4 ^= t4
+	x5 ^= t5
+	x6 ^= t6
+	y0 ^= t0
+	y1 ^= t1
+	y2 ^= t2
+	y3 ^= t3
+	y4 ^= t4
+	y5 ^= t5
+	y6 ^= t6
+
+	binary.LittleEndian.PutUint64(x[0*8:1*8], x0)
+	binary.LittleEndian.PutUint64(x[1*8:2*8], x1)
+	binary.LittleEndian.PutUint64(x[2*8:3*8], x2)
+	binary.LittleEndian.PutUint64(x[3*8:4*8], x3)
+	binary.LittleEndian.PutUint64(x[4*8:5*8], x4)
+	binary.LittleEndian.PutUint64(x[5*8:6*8], x5)
+	binary.LittleEndian.PutUint64(x[6*8:7*8], x6)
+
+	binary.LittleEndian.PutUint64(y[0*8:1*8], y0)
+	binary.LittleEndian.PutUint64(y[1*8:2*8], y1)
+	binary.LittleEndian.PutUint64(y[2*8:3*8], y2)
+	binary.LittleEndian.PutUint64(y[3*8:4*8], y3)
+	binary.LittleEndian.PutUint64(y[4*8:5*8], y4)
+	binary.LittleEndian.PutUint64(y[5*8:6*8], y5)
+	binary.LittleEndian.PutUint64(y[6*8:7*8], y6)
 }
 
 func addGeneric(z, x, y *Elt) {
