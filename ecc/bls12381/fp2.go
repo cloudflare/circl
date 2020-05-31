@@ -4,13 +4,13 @@ import "fmt"
 
 type fp2 [2]fp
 
-func (z fp2) String() string       { return fmt.Sprintf("%v\n+i*%v", z[0], z[1]) }
+func (z fp2) String() string       { return fmt.Sprintf("0: %v\n   1: %v", z[0], z[1]) }
 func (z *fp2) Set(x *fp2)          { z[0].Set(&x[0]); z[1].Set(&x[1]) }
 func (z *fp2) SetZero()            { z[0].SetZero(); z[1].SetZero() }
 func (z *fp2) SetOne()             { z[0].SetOne(); z[1].SetZero() }
 func (z *fp2) IsZero() bool        { return z[0].IsZero() && z[1].IsZero() }
 func (z *fp2) IsEqual(x *fp2) bool { return z[0].IsEqual(&x[0]) && z[1].IsEqual(&x[1]) }
-func (z *fp2) MulBeta()            { t := z[0]; z[0].Sub(&z[0], &z[1]); z[1].Add(&t, &z[1]) }
+func (z *fp2) MulBeta()            { var t fp; t.Set(&z[0]); z[0].Sub(&z[0], &z[1]); z[1].Add(&t, &z[1]) }
 func (z *fp2) Frob()               { z.Cjg() }
 func (z *fp2) Cjg()                { z[1].Neg() }
 func (z *fp2) Neg()                { z[0].Neg(); z[1].Neg() }
