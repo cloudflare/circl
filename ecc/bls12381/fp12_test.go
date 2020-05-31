@@ -1,26 +1,25 @@
 package bls12381
 
 import (
-	"crypto/rand"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/test"
 )
 
-func randomFp() *fp {
-	var x fp
-	n, _ := rand.Int(rand.Reader, blsPrime)
-	x.i.Set(n)
-	return &x
+func randomFp12() *fp12 {
+	return &fp12{
+		*randomFp6(),
+		*randomFp6(),
+	}
 }
 
-func TestFp(t *testing.T) {
+func TestFp12(t *testing.T) {
 	const testTimes = 1 << 6
 	t.Run("mul_inv", func(t *testing.T) {
-		var z fp
+		var z fp12
 		for i := 0; i < testTimes; i++ {
-			x := randomFp()
-			y := randomFp()
+			x := randomFp12()
+			y := randomFp12()
 
 			// x*y*x^1 - y = 0
 			z.Inv(x)
@@ -35,10 +34,10 @@ func TestFp(t *testing.T) {
 		}
 	})
 	t.Run("mul_sqr", func(t *testing.T) {
-		var l0, l1, r0, r1 fp
+		var l0, l1, r0, r1 fp12
 		for i := 0; i < testTimes; i++ {
-			x := randomFp()
-			y := randomFp()
+			x := randomFp12()
+			y := randomFp12()
 
 			// (x+y)(x-y) = (x^2-y^2)
 			l0.Add(x, y)
@@ -56,10 +55,10 @@ func TestFp(t *testing.T) {
 	})
 }
 
-func BenchmarkFp(b *testing.B) {
-	x := randomFp()
-	y := randomFp()
-	z := randomFp()
+func BenchmarkFp12(b *testing.B) {
+	x := randomFp12()
+	y := randomFp12()
+	z := randomFp12()
 	b.Run("Add", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			z.Add(x, y)

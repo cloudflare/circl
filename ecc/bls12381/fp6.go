@@ -4,7 +4,7 @@ import "fmt"
 
 type fp6 [3]fp2
 
-func (z fp6) String() string { return fmt.Sprintf("%v\n+v*%v\n+v^2*%v", z[0], z[1], z[2]) }
+func (z fp6) String() string { return fmt.Sprintf("\n0: %v\n1: %v\n2: %v", z[0], z[1], z[2]) }
 func (z *fp6) Set(x *fp6)    { z[0].Set(&x[0]); z[1].Set(&x[1]); z[2].Set(&x[2]) }
 func (z *fp6) SetZero()      { z[0].SetZero(); z[1].SetZero(); z[2].SetZero() }
 func (z *fp6) SetOne()       { z[0].SetOne(); z[1].SetZero(); z[2].SetZero() }
@@ -40,7 +40,7 @@ func (z *fp6) Mul(x, y *fp6) {
 	bLH.Add(bL, bH)
 	bMH.Add(bM, bH)
 
-	c0, c1, c2 := aLM, aLH, aMH
+	c0, c1, c2 := &fp2{}, &fp2{}, &fp2{}
 	c5, c3, c4 := &z[0], &z[1], &z[2]
 	c0.Mul(aL, bL)
 	c1.Mul(aM, bM)
@@ -91,7 +91,7 @@ func (z *fp6) Sqr(x *fp6) {
 }
 func (z *fp6) Inv(x *fp6) {
 	aL, aM, aH := &x[0], &x[1], &x[2]
-	c0, c1, c2 := &z[0], &z[1], &z[2]
+	c0, c1, c2 := &fp2{}, &fp2{}, &fp2{}
 	t0, t1, t2 := &fp2{}, &fp2{}, &fp2{}
 	c0.Sqr(aL)
 	c1.Sqr(aH)
@@ -99,11 +99,11 @@ func (z *fp6) Inv(x *fp6) {
 	t0.Mul(aM, aH)
 	t1.Mul(aL, aM)
 	t2.Mul(aL, aH)
-	t2.MulBeta()
-	c0.Sub(c0, t0)
+	t0.MulBeta()
+	c0.Sub(c0, t0) // c0 = aL^2 - B(aM*AH)
 	c1.MulBeta()
-	c1.Sub(c1, t1)
-	c2.Sub(c2, t2)
+	c1.Sub(c1, t1) // c1 = B(aH^2) - aL*AM
+	c2.Sub(c2, t2) // c1 = aM^2 - aL*AH
 
 	t0.Mul(aM, c2)
 	t1.Mul(aH, c1)
@@ -111,10 +111,10 @@ func (z *fp6) Inv(x *fp6) {
 	t0.Add(t0, t1)
 	t0.MulBeta()
 	t0.Add(t0, t2)
-	t0.Inv(t0)
-	z[0].Mul(c0, t0)
-	z[1].Mul(c1, t0)
-	z[2].Mul(c2, t0)
+	t0.Inv(t0)       // den = B(aL*c2 + aM*c1) + aLc0
+	z[0].Mul(c0, t0) // z0 = c0/den
+	z[1].Mul(c1, t0) // z1 = c1/den
+	z[2].Mul(c2, t0) // z2 = c2/den
 }
 func (z *fp6) Frob() {
 	z[0].Frob()
