@@ -319,8 +319,8 @@
 	MOVQ rDi, _si(oState); \
 	MOVQ rDo, _so(oState)  \
 
-// func keccakF1600(a *[25]uint64)
-TEXT ·keccakF1600(SB), 0, $200-8
+// func KeccakF1600(a *[25]uint64)
+TEXT ·KeccakF1600(SB), 0, $200-8
 	MOVQ a+0(FP), rpState
 
 	// Convert the user state into an internal state

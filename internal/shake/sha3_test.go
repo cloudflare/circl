@@ -248,7 +248,7 @@ func BenchmarkPermutationFunction(b *testing.B) {
 	b.SetBytes(int64(200))
 	var lanes [25]uint64
 	for i := 0; i < b.N; i++ {
-		keccakF1600(&lanes)
+		KeccakF1600(&lanes)
 	}
 }
 

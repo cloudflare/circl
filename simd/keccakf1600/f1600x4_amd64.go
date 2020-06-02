@@ -1,4 +1,4 @@
-package f1600x4
+package keccakf1600
 
 import (
 	"github.com/cloudflare/circl/internal/shake"
@@ -8,13 +8,13 @@ import (
 	"unsafe"
 )
 
-// Available is true when this system supports a fast fourway KeccaK-f[1600].
-var Available = cpu.X86.HasAVX2
+// AvailableX4 is true when this system supports a fast fourway Keccak-f[1600].
+var AvailableX4 = cpu.X86.HasAVX2
 
 // Contains state for the fourway permutation including the four
 // interleaved [25]uint64 buffers.  Call Initialize() before use to initialize
 // and get a pointer to the interleaved buffer.
-type State struct {
+type StateX4 struct {
 	// Go guarantees a to be aligned on 8 bytes, whereas we need it to be
 	// aligned on 32 bytes for bet performance.  Thus we leave some headroom
 	// to be able to move the start of the state.
@@ -30,7 +30,7 @@ type State struct {
 // Initialize the state and returns the buffer on which the four permutations
 // will act: a uint64 slice of length 100.  The first permutation will act
 // on {a[0], a[4], ..., a[96]}, the second on {a[1], a[5], ..., a[97]}, etc.
-func (s *State) Initialize() []uint64 {
+func (s *StateX4) Initialize() []uint64 {
 	rp := unsafe.Pointer(&s.a[0])
 
 	// uint64s are always aligned by a multiple of 8.  Compute the remainder
@@ -45,8 +45,15 @@ func (s *State) Initialize() []uint64 {
 	return s.a[s.offset : s.offset+100]
 }
 
-// Perform the four parallel KeccaK-f[1600]s interleaved on the slice returned
+// Perform the four parallel Keccak-f[1600]s interleaved on the slice returned
 // from Initialize().
-func (s *State) Permute() {
-	f1600x4(&s.a[s.offset], &shake.RC)
+func (s *StateX4) Permute() {
+	if AvailableX4 {
+		f1600x4(&s.a[s.offset], &shake.RC)
+	} else {
+		// This function should not have been called if AvailableX4 is false.
+		// We could panic(), but use a slower generic implementation.
+		// We don't guarantee that this function won't panic in the future!
+		genericF1600x4(s.a[s.offset:])
+	}
 }

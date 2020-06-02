@@ -1,6 +1,6 @@
-//go:generate go run src.go -out ../f1600x4_amd64.s -stubs ../f1600x4stubs_amd64.go -pkg f1600x4
+//go:generate go run src.go -out ../../f1600x4_amd64.s -stubs ../../f1600x4stubs_amd64.go -pkg keccakf1600
 
-// AVX2 fourway parallelized KeccaK-f[1600].
+// AVX2 fourway parallelized Keccak-f[1600].
 
 package main
 
@@ -25,7 +25,7 @@ func main() {
 
 	rcPtr := Load(Param("rc"), GP64())
 
-	// We use the same approach as the normal KeccaK-f[1600] implementation
+	// We use the same approach as the normal Keccak-f[1600] implementation
 	// (in the internal/shake package): we group four rounds together into a
 	// super round.  Thus we have six super rounds.
 	superRound := GP64()

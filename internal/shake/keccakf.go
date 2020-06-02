@@ -6,9 +6,9 @@
 
 package shake
 
-// keccakF1600 applies the Keccak permutation to a 1600b-wide
+// KeccakF1600 applies the Keccak permutation to a 1600b-wide
 // state represented as a slice of 25 uint64s.
-func keccakF1600(a *[25]uint64) {
+func KeccakF1600(a *[25]uint64) {
 	// Implementation translated from Keccak-inplace.c
 	// in the keccak reference code.
 	var t, bc0, bc1, bc2, bc3, bc4, d0, d1, d2, d3, d4 uint64
