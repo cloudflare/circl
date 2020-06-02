@@ -9,6 +9,7 @@ on:
 jobs:
   amd64_job:
     name: Go-${{matrix.GOVER}}/amd64
+    if: 1==0
     runs-on: ubuntu-18.04
     strategy:
       matrix:
@@ -38,7 +39,7 @@ jobs:
     runs-on: ubuntu-18.04
     strategy:
       matrix:
-        CFG: [ [s390x,s390x,1.13], [arm64,arm64v8,1.14] ]
+        CFG: [ [s390x,s390x,1.13.0], [s390x,s390x,1.14.0] ]
     steps:
       - uses: actions/checkout@v2
       - name: Enabling Docker Experimental
@@ -52,7 +53,10 @@ jobs:
           docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
       - name: Testing
         run: |
-          docker run --rm -v `pwd`:`pwd` -w `pwd` ${{matrix.CFG[1]}}/golang:${{matrix.CFG[2]}} go test -v ./...
+          docker run --rm -v `pwd`:`pwd` -w `pwd` ${{matrix.CFG[1]}}/golang:${{matrix.CFG[2]}} bash
+          go get -d -v ./...
+          go build -v ./sign/...
+          go test -v ./sign/...
   coverage_amd64_job:
     needs: [ amd64_job ]
     if: github.event_name == 'push'
