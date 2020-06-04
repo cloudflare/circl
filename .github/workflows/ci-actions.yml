@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-18.04
     strategy:
       matrix:
-        CFG: [ [s390x,s390x,1.13], [arm64,arm64v8,1.14] ]
+        CFG: [ [arm64,arm64v8,1.14] ]
     steps:
       - uses: actions/checkout@v2
       - name: Enabling Docker Experimental
