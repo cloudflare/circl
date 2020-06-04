@@ -395,6 +395,5 @@ func TestEd25519(t *testing.T) {
 		} else {
 			t.Fatal("Suite not supported")
 		}
-
 	}
 }
