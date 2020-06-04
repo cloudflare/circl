@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/rand"
+	"crypto/sha512"
 	"errors"
 	"fmt"
 	"testing"
@@ -107,6 +108,41 @@ func TestSigner(t *testing.T) {
 	if got != want {
 		test.ReportError(t, got, want)
 	}
+
+	// TODO: might be nice to actually hash the message just to show how it looks
+	ops = crypto.SHA512
+	msg2 := make([]byte, 64)
+	_, _ = rand.Read(msg)
+	sig, err = signer.Sign(nil, msg2, ops)
+	if err != nil {
+		got := err
+		var want error
+		test.ReportError(t, got, want)
+	}
+	if len(sig) != ed25519.SignatureSize {
+		got := len(sig)
+		want := ed25519.SignatureSize
+		test.ReportError(t, got, want)
+	}
+
+	pubKey = key.GetPublic()
+	pubSigner, ok = signer.Public().(ed25519.PublicKey)
+	if !ok {
+		got := ok
+		want := true
+		test.ReportError(t, got, want)
+	}
+	if !bytes.Equal(pubKey, pubSigner) {
+		got := pubSigner
+		want := pubKey
+		test.ReportError(t, got, want)
+	}
+
+	got = ed25519.VerifyPh(pubSigner, msg2, sig, ops)
+	want = true
+	if got != want {
+		test.ReportError(t, got, want)
+	}
 }
 
 type badReader struct{}
@@ -165,6 +201,22 @@ func BenchmarkEd25519(b *testing.B) {
 			ed25519.Verify(key.GetPublic(), msg, sig)
 		}
 	})
+	b.Run("signPh", func(b *testing.B) {
+		key, _ := ed25519.GenerateKey(rand.Reader)
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = key.SignPure(msg, false)
+		}
+	})
+	b.Run("verifyPh", func(b *testing.B) {
+		key, _ := ed25519.GenerateKey(rand.Reader)
+		ops := crypto.SHA512
+		sig, _ := key.SignPure(msg, false)
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			ed25519.VerifyPh(key.GetPublic(), msg, sig, ops)
+		}
+	})
 }
 
 func Example_ed25519() {
@@ -185,6 +237,33 @@ func Example_ed25519() {
 
 	// Anyone can verify the signature using Alice's public key.
 	ok := ed25519.Verify(keys.GetPublic(), message, signature)
+	fmt.Println(ok)
+	// Output: true
+}
+
+func Example_ed25519Ph() {
+	// import "github.com/cloudflare/circl/sign/ed25519"
+
+	// Generating Alice's key pair
+	keys, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		panic("error on generating keys")
+	}
+
+	// Alice signs a message.
+	message := []byte("A message to be signed")
+	h := sha512.New()
+	_, _ = h.Write(message)
+	d := h.Sum(nil)
+
+	signature, err := keys.SignPure(d, true)
+	if err != nil {
+		panic("error on signing message")
+	}
+
+	// Anyone can verify the signature using Alice's public key.
+	ops := crypto.SHA512
+	ok := ed25519.VerifyPh(keys.GetPublic(), d, signature, ops)
 	fmt.Println(ok)
 	// Output: true
 }
