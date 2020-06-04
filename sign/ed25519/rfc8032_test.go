@@ -383,6 +383,12 @@ func TestEd25519(t *testing.T) {
 			v.testSign(t, false)
 			v.testVerify(t, false)
 		} else if v.isPreHashed() {
+			got := v.ph
+			want := true
+			if got != want {
+				test.ReportError(t, got, want, v.sk)
+			}
+
 			v.testPublicKey(t)
 			v.testSign(t, true)
 			v.testVerify(t, true)
