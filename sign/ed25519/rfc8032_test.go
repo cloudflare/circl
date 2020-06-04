@@ -42,7 +42,7 @@ func (v *rfc8032Vector) test(t *testing.T, lineNum int) {
 			test.ReportError(t, got, want, lineNum, v)
 		}
 
-		got, err := keys.SignPure(v.message)
+		got, err := keys.SignPure(v.message, false)
 		want = v.signature
 		if !bytes.Equal(got, want) || err != nil {
 			test.ReportError(t, got, want, lineNum, v)
@@ -296,7 +296,7 @@ func (v vector) testPublicKey(t *testing.T) {
 
 func (v vector) testSign(t *testing.T) {
 	private := ed25519.NewKeyFromSeed(v.sk)
-	got, err := private.SignPure(v.msg)
+	got, err := private.SignPure(v.msg, false)
 	want := v.sig
 	if !bytes.Equal(got, want) || err != nil {
 		test.ReportError(t, got, want, v.name)

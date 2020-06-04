@@ -57,10 +57,17 @@ func (kp *KeyPair) Public() crypto.PublicKey { return kp.GetPublic() }
 // The opts.HashFunc() must return zero to indicate the message hasn't been
 // hashed. This can be achieved by passing crypto.Hash(0) as the value for opts.
 func (kp *KeyPair) Sign(rand io.Reader, message []byte, opts crypto.SignerOpts) ([]byte, error) {
-	if opts.HashFunc() != crypto.Hash(0) {
-		return nil, errors.New("ed25519: cannot sign hashed message")
+	switch opts.HashFunc() {
+	case crypto.SHA512:
+		if l := len(message); l != sha512.Size {
+			return nil, errors.New("ed25519: incorrect message lenght")
+		}
+		return kp.SignPure(message, true)
+	case crypto.Hash(0):
+		return kp.SignPure(message, false)
+	default:
+		return nil, errors.New("ed25519: expected unhashed message or message hashed with SHA-512")
 	}
-	return kp.SignPure(message)
 }
 
 // GenerateKey produces public and private keys using entropy from rand.
@@ -94,7 +101,7 @@ func NewKeyFromSeed(seed PrivateKey) *KeyPair {
 }
 
 // SignPure creates a signature of a message.
-func (kp *KeyPair) SignPure(message []byte) ([]byte, error) {
+func (kp *KeyPair) SignPure(message []byte, preHash bool) ([]byte, error) {
 	// 1.  Hash the 32-byte private key using SHA-512.
 	H := sha512.New()
 	_, _ = H.Write(kp.private[:])
@@ -104,6 +111,11 @@ func (kp *KeyPair) SignPure(message []byte) ([]byte, error) {
 
 	// 2.  Compute SHA-512(dom2(F, C) || prefix || PH(M))
 	H.Reset()
+
+	if preHash {
+		dom2 := "SigEd25519 no Ed25519 collisions\x01\x00"
+		_, _ = H.Write([]byte(dom2))
+	}
 	_, _ = H.Write(prefix)
 	_, _ = H.Write(message)
 	r := H.Sum(nil)
@@ -117,12 +129,18 @@ func (kp *KeyPair) SignPure(message []byte) ([]byte, error) {
 
 	// 4.  Compute SHA512(dom2(F, C) || R || A || PH(M)).
 	H.Reset()
+
+	if preHash {
+		dom2 := "SigEd25519 no Ed25519 collisions\x01\x00"
+		_, _ = H.Write([]byte(dom2))
+	}
 	_, _ = H.Write(R)
 	_, _ = H.Write(kp.public[:])
 	_, _ = H.Write(message)
 	hRAM := H.Sum(nil)
 
 	reduceModOrder(hRAM[:], true)
+
 	// 5.  Compute S = (r + k * s) mod order.
 	S := (&[paramB]byte{})[:]
 	calculateS(S, r[:paramB], hRAM[:paramB], s)
@@ -131,6 +149,7 @@ func (kp *KeyPair) SignPure(message []byte) ([]byte, error) {
 	var signature [SignatureSize]byte
 	copy(signature[:paramB], R[:])
 	copy(signature[paramB:], S[:])
+
 	return signature[:], err
 }
 

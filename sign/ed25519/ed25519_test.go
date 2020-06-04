@@ -119,7 +119,7 @@ func TestErrors(t *testing.T) {
 		ops := crypto.SHA224
 		key, _ := ed25519.GenerateKey(nil)
 		_, got := key.Sign(nil, msg[:], ops)
-		want := errors.New("ed25519: cannot sign hashed message")
+		want := errors.New("ed25519: expected unhashed message or message hashed with SHA-512")
 		if got.Error() != want.Error() {
 			test.ReportError(t, got, want)
 		}
@@ -154,12 +154,12 @@ func BenchmarkEd25519(b *testing.B) {
 		key, _ := ed25519.GenerateKey(rand.Reader)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			_, _ = key.SignPure(msg)
+			_, _ = key.SignPure(msg, false)
 		}
 	})
 	b.Run("verify", func(b *testing.B) {
 		key, _ := ed25519.GenerateKey(rand.Reader)
-		sig, _ := key.SignPure(msg)
+		sig, _ := key.SignPure(msg, false)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			ed25519.Verify(key.GetPublic(), msg, sig)
@@ -178,7 +178,7 @@ func Example_ed25519() {
 
 	// Alice signs a message.
 	message := []byte("A message to be signed")
-	signature, err := keys.SignPure(message)
+	signature, err := keys.SignPure(message, false)
 	if err != nil {
 		panic("error on signing message")
 	}
