@@ -109,7 +109,6 @@ func TestSigner(t *testing.T) {
 		test.ReportError(t, got, want)
 	}
 
-	// TODO: might be nice to actually hash the message just to show how it looks
 	ops = crypto.SHA512
 	msg2 := make([]byte, 64)
 	_, _ = rand.Read(msg)

@@ -64,7 +64,7 @@ func (kp *KeyPair) Sign(rand io.Reader, message []byte, opts crypto.SignerOpts) 
 	switch opts.HashFunc() {
 	case crypto.SHA512:
 		if len(message) != sha512.Size {
-			return nil, errors.New("ed25519: incorrect message lenght")
+			return nil, errors.New("ed25519: incorrect message length")
 		}
 		return kp.SignPure(message, true)
 	case crypto.Hash(0):
@@ -104,6 +104,8 @@ func NewKeyFromSeed(seed PrivateKey) *KeyPair {
 	return pair
 }
 
+const dom2 = "SigEd25519 no Ed25519 collisions\x01\x00"
+
 // SignPure creates a signature of a message.
 func (kp *KeyPair) SignPure(message []byte, preHash bool) ([]byte, error) {
 	// 1.  Hash the 32-byte private key using SHA-512.
@@ -117,7 +119,6 @@ func (kp *KeyPair) SignPure(message []byte, preHash bool) ([]byte, error) {
 	H.Reset()
 
 	if preHash {
-		dom2 := "SigEd25519 no Ed25519 collisions\x01\x00"
 		_, _ = H.Write([]byte(dom2))
 	}
 	_, _ = H.Write(prefix)
@@ -135,7 +136,6 @@ func (kp *KeyPair) SignPure(message []byte, preHash bool) ([]byte, error) {
 	H.Reset()
 
 	if preHash {
-		dom2 := "SigEd25519 no Ed25519 collisions\x01\x00"
 		_, _ = H.Write([]byte(dom2))
 	}
 	_, _ = H.Write(R)
@@ -167,7 +167,6 @@ func verify(public PublicKey, message, signature []byte, preHash bool) bool {
 	H := sha512.New()
 
 	if preHash {
-		dom2 := "SigEd25519 no Ed25519 collisions\x01\x00"
 		_, _ = H.Write([]byte(dom2))
 	}
 	_, _ = H.Write(R)
