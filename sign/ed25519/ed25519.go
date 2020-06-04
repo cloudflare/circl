@@ -52,14 +52,18 @@ func (kp *KeyPair) Seed() []byte { return kp.GetPrivate() }
 func (kp *KeyPair) Public() crypto.PublicKey { return kp.GetPublic() }
 
 // Sign creates a signature of a message given a key pair.
-// Ed25519 performs two passes over messages to be signed and therefore cannot
-// handle pre-hashed messages.
+// This function can handle unhashed messages or messages that have been
+// prehashed with SHA512, but does not handle context.
 // The opts.HashFunc() must return zero to indicate the message hasn't been
 // hashed. This can be achieved by passing crypto.Hash(0) as the value for opts.
+// The opts.HashFunc() must return SHA512 to indicate the message has been
+// hashed with SHA512. This can be achieved by passing crypto.SHA512 as the value
+// for opts.
+// Messages prehashed with other algorithms are not handled.
 func (kp *KeyPair) Sign(rand io.Reader, message []byte, opts crypto.SignerOpts) ([]byte, error) {
 	switch opts.HashFunc() {
 	case crypto.SHA512:
-		if l := len(message); l != sha512.Size {
+		if len(message) != sha512.Size {
 			return nil, errors.New("ed25519: incorrect message lenght")
 		}
 		return kp.SignPure(message, true)
@@ -153,14 +157,7 @@ func (kp *KeyPair) SignPure(message []byte, preHash bool) ([]byte, error) {
 	return signature[:], err
 }
 
-// Verify returns true if the signature is valid. Failure cases are invalid
-// signature, or when the public key cannot be decoded.
-func Verify(public PublicKey, message, signature []byte) bool {
-	if len(public) != PublicKeySize ||
-		len(signature) != SignatureSize ||
-		!isLessThanOrder(signature[paramB:]) {
-		return false
-	}
+func verify(public PublicKey, message, signature []byte, preHash bool) bool {
 	var P pointR1
 	if ok := P.FromBytes(public); !ok {
 		return false
@@ -168,6 +165,11 @@ func Verify(public PublicKey, message, signature []byte) bool {
 
 	R := signature[:paramB]
 	H := sha512.New()
+
+	if preHash {
+		dom2 := "SigEd25519 no Ed25519 collisions\x01\x00"
+		_, _ = H.Write([]byte(dom2))
+	}
 	_, _ = H.Write(R)
 	_, _ = H.Write(public)
 	_, _ = H.Write(message)
@@ -180,6 +182,36 @@ func Verify(public PublicKey, message, signature []byte) bool {
 	Q.doubleMult(&P, signature[paramB:], hRAM[:paramB])
 	_ = Q.ToBytes(encR)
 	return bytes.Equal(R, encR)
+}
+
+// Verify returns true if the signature is valid. Failure cases are invalid
+// signature, or when the public key cannot be decoded.
+// This function does not handle prehashed messages.
+func Verify(public PublicKey, message, signature []byte) bool {
+	if len(public) != PublicKeySize ||
+		len(signature) != SignatureSize ||
+		!isLessThanOrder(signature[paramB:]) {
+		return false
+	}
+
+	return verify(public, message, signature, false)
+}
+
+// VerifyPh returns true if the signature is valid. Failure cases are invalid
+// signature, or when the public key cannot be decoded.
+// This function handle prehashed messages with SHA512.
+func VerifyPh(public PublicKey, message, signature []byte, opts crypto.SignerOpts) bool {
+	if len(public) != PublicKeySize ||
+		len(signature) != SignatureSize ||
+		!isLessThanOrder(signature[paramB:]) {
+		return false
+	}
+
+	if opts.HashFunc() != crypto.SHA512 || len(message) != sha512.Size {
+		return false
+	}
+
+	return verify(public, message, signature, true)
 }
 
 func clamp(k []byte) {
