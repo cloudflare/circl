@@ -44,7 +44,8 @@ func (v *rfc8032Vector) test(t *testing.T, lineNum int) {
 			test.ReportError(t, got, want, lineNum, v)
 		}
 
-		got, err := keys.SignPure(v.message, false)
+		opts := crypto.Hash(0)
+		got, err := keys.SignPure(v.message, opts)
 		want = v.signature
 		if !bytes.Equal(got, want) || err != nil {
 			test.ReportError(t, got, want, lineNum, v)
@@ -339,9 +340,11 @@ func (v vector) testSign(t *testing.T, preHash bool) {
 		_, _ = h.Write(v.msg)
 		d := h.Sum(nil)
 
-		got, err = private.SignPure(d, true)
+		opts := crypto.SHA512
+		got, err = private.SignPh(d, opts)
 	} else {
-		got, err = private.SignPure(v.msg, false)
+		opts := crypto.Hash(0)
+		got, err = private.SignPure(v.msg, opts)
 	}
 
 	want := v.sig
@@ -353,12 +356,12 @@ func (v vector) testSign(t *testing.T, preHash bool) {
 func (v vector) testVerify(t *testing.T, preHash bool) {
 	var got bool
 	if preHash {
-		ops := crypto.SHA512
+		opts := crypto.SHA512
 		h := sha512.New()
 		_, _ = h.Write(v.msg)
 		d := h.Sum(nil)
 
-		got = ed25519.VerifyPh(v.pk, d, v.sig, ops)
+		got = ed25519.VerifyPh(v.pk, d, v.sig, opts)
 	} else {
 		got = ed25519.Verify(v.pk, v.msg, v.sig)
 	}

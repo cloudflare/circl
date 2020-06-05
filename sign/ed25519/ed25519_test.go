@@ -187,14 +187,16 @@ func BenchmarkEd25519(b *testing.B) {
 	})
 	b.Run("sign", func(b *testing.B) {
 		key, _ := ed25519.GenerateKey(rand.Reader)
+		opts := crypto.Hash(0)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			_, _ = key.SignPure(msg, false)
+			_, _ = key.SignPure(msg, opts)
 		}
 	})
 	b.Run("verify", func(b *testing.B) {
 		key, _ := ed25519.GenerateKey(rand.Reader)
-		sig, _ := key.SignPure(msg, false)
+		opts := crypto.Hash(0)
+		sig, _ := key.SignPure(msg, opts)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			ed25519.Verify(key.GetPublic(), msg, sig)
@@ -202,18 +204,19 @@ func BenchmarkEd25519(b *testing.B) {
 	})
 	b.Run("signPh", func(b *testing.B) {
 		key, _ := ed25519.GenerateKey(rand.Reader)
+		opts := crypto.SHA512
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			_, _ = key.SignPure(msg, false)
+			_, _ = key.SignPh(msg, opts)
 		}
 	})
 	b.Run("verifyPh", func(b *testing.B) {
 		key, _ := ed25519.GenerateKey(rand.Reader)
-		ops := crypto.SHA512
-		sig, _ := key.SignPure(msg, false)
+		opts := crypto.SHA512
+		sig, _ := key.SignPh(msg, opts)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			ed25519.VerifyPh(key.GetPublic(), msg, sig, ops)
+			ed25519.VerifyPh(key.GetPublic(), msg, sig, opts)
 		}
 	})
 }
@@ -229,7 +232,8 @@ func Example_ed25519() {
 
 	// Alice signs a message.
 	message := []byte("A message to be signed")
-	signature, err := keys.SignPure(message, false)
+	opts := crypto.Hash(0)
+	signature, err := keys.SignPure(message, opts)
 	if err != nil {
 		panic("error on signing message")
 	}
@@ -251,18 +255,18 @@ func Example_ed25519Ph() {
 
 	// Alice signs a message.
 	message := []byte("A message to be signed")
+	opts := crypto.SHA512
 	h := sha512.New()
 	_, _ = h.Write(message)
 	d := h.Sum(nil)
 
-	signature, err := keys.SignPure(d, true)
+	signature, err := keys.SignPh(d, opts)
 	if err != nil {
 		panic("error on signing message")
 	}
 
 	// Anyone can verify the signature using Alice's public key.
-	ops := crypto.SHA512
-	ok := ed25519.VerifyPh(keys.GetPublic(), d, signature, ops)
+	ok := ed25519.VerifyPh(keys.GetPublic(), d, signature, opts)
 	fmt.Println(ok)
 	// Output: true
 }

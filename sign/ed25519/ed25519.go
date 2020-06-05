@@ -66,9 +66,9 @@ func (kp *KeyPair) Sign(rand io.Reader, message []byte, opts crypto.SignerOpts) 
 		if len(message) != sha512.Size {
 			return nil, errors.New("ed25519: incorrect message length")
 		}
-		return kp.SignPure(message, true)
+		return kp.SignPh(message, opts)
 	case crypto.Hash(0):
-		return kp.SignPure(message, false)
+		return kp.SignPure(message, opts)
 	default:
 		return nil, errors.New("ed25519: expected unhashed message or message hashed with SHA-512")
 	}
@@ -106,8 +106,7 @@ func NewKeyFromSeed(seed PrivateKey) *KeyPair {
 
 const dom2 = "SigEd25519 no Ed25519 collisions\x01\x00"
 
-// SignPure creates a signature of a message.
-func (kp *KeyPair) SignPure(message []byte, preHash bool) ([]byte, error) {
+func sign(kp *KeyPair, message []byte, preHash bool) ([]byte, error) {
 	// 1.  Hash the 32-byte private key using SHA-512.
 	H := sha512.New()
 	_, _ = H.Write(kp.private[:])
@@ -155,6 +154,32 @@ func (kp *KeyPair) SignPure(message []byte, preHash bool) ([]byte, error) {
 	copy(signature[paramB:], S[:])
 
 	return signature[:], err
+}
+
+// SignPure creates a signature of a message given a keypair
+// This function handles unhashed messages.
+// The opts.HashFunc() must return zero to indicate the message hasn't been
+// hashed. This can be achieved by passing crypto.Hash(0) as the value for opts.
+func (kp *KeyPair) SignPure(message []byte, opts crypto.SignerOpts) ([]byte, error) {
+	if opts != crypto.Hash(0) {
+		return nil, errors.New("ed25519: incorrect message for non prehashed signing")
+	}
+
+	return sign(kp, message, false)
+}
+
+// SignPh creates a signature of a message.
+// This function handles prehashed messages.
+// The opts.HashFunc() must return SHA512 to indicate the message has been
+// hashed with SHA512. This can be achieved by passing crypto.SHA512 as the value
+// for opts.
+// Messages prehashed with other algorithms are not handled.
+func (kp *KeyPair) SignPh(message []byte, opts crypto.SignerOpts) ([]byte, error) {
+	if opts != crypto.SHA512 && len(message) != sha512.Size {
+		return nil, errors.New("ed25519: incorrect message for prehashed signing")
+	}
+
+	return sign(kp, message, true)
 }
 
 func verify(public PublicKey, message, signature []byte, preHash bool) bool {
