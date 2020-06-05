@@ -13,6 +13,7 @@ import (
 	"crypto/sha512"
 	"errors"
 	"io"
+	"strconv"
 )
 
 const (
@@ -22,6 +23,9 @@ const (
 	PrivateKeySize = 32
 	// SignatureSize is the length in bytes of signatures.
 	SignatureSize = 64
+
+	// ContextMaxSize is the maximum allowed context length.
+	ContextMaxSize = 255
 )
 const (
 	paramB = 256 / 8 // Size of keys in bytes.
@@ -104,9 +108,9 @@ func NewKeyFromSeed(seed PrivateKey) *KeyPair {
 	return pair
 }
 
-const dom2 = "SigEd25519 no Ed25519 collisions\x01\x00"
+const dom2 = "SigEd25519 no Ed25519 collisions"
 
-func sign(kp *KeyPair, message []byte, preHash bool) ([]byte, error) {
+func sign(kp *KeyPair, message []byte, preHash bool, ctx []byte) ([]byte, error) {
 	// 1.  Hash the 32-byte private key using SHA-512.
 	H := sha512.New()
 	_, _ = H.Write(kp.private[:])
@@ -117,9 +121,24 @@ func sign(kp *KeyPair, message []byte, preHash bool) ([]byte, error) {
 	// 2.  Compute SHA-512(dom2(F, C) || prefix || PH(M))
 	H.Reset()
 
-	if preHash {
-		_, _ = H.Write([]byte(dom2))
+	// extract into a separate function and refactor
+	if len(ctx) > 0 {
+		if preHash {
+			_, _ = H.Write([]byte(dom2))
+			_, _ = H.Write([]byte{byte(0x01), byte(len(ctx))})
+			_, _ = H.Write(ctx)
+		} else {
+			_, _ = H.Write([]byte(dom2))
+			_, _ = H.Write([]byte{byte(0x00), byte(len(ctx))})
+			_, _ = H.Write(ctx)
+		}
+	} else {
+		if preHash {
+			_, _ = H.Write([]byte(dom2))
+			_, _ = H.Write([]byte{0x01, 0x00})
+		}
 	}
+
 	_, _ = H.Write(prefix)
 	_, _ = H.Write(message)
 	r := H.Sum(nil)
@@ -134,9 +153,23 @@ func sign(kp *KeyPair, message []byte, preHash bool) ([]byte, error) {
 	// 4.  Compute SHA512(dom2(F, C) || R || A || PH(M)).
 	H.Reset()
 
-	if preHash {
-		_, _ = H.Write([]byte(dom2))
+	if len(ctx) > 0 {
+		if preHash {
+			_, _ = H.Write([]byte(dom2))
+			_, _ = H.Write([]byte{byte(0x01), byte(len(ctx))})
+			_, _ = H.Write(ctx)
+		} else {
+			_, _ = H.Write([]byte(dom2))
+			_, _ = H.Write([]byte{byte(0x00), byte(len(ctx))})
+			_, _ = H.Write(ctx)
+		}
+	} else {
+		if preHash {
+			_, _ = H.Write([]byte(dom2))
+			_, _ = H.Write([]byte{0x01, 0x00})
+		}
 	}
+
 	_, _ = H.Write(R)
 	_, _ = H.Write(kp.public[:])
 	_, _ = H.Write(message)
@@ -156,6 +189,46 @@ func sign(kp *KeyPair, message []byte, preHash bool) ([]byte, error) {
 	return signature[:], err
 }
 
+// SignCtx creates a signature of a message given a key pair.
+// This function can handle unhashed messages or messages that have been
+// prehashed with SHA512. It handles context with a maximum of 255 bytes.
+// The opts.HashFunc() must return zero to indicate the message hasn't been
+// hashed. This can be achieved by passing crypto.Hash(0) as the value for opts.
+// The opts.HashFunc() must return SHA512 to indicate the message has been
+// hashed with SHA512. This can be achieved by passing crypto.SHA512 as the value
+// for opts.
+// Messages prehashed with other algorithms are not handled.
+func (kp *KeyPair) SignCtx(message []byte, opts crypto.SignerOpts, ctx string) ([]byte, error) {
+	if l := len(ctx); l > 0 {
+		if l > ContextMaxSize {
+			return nil, errors.New("ed25519: bad context length: " + strconv.Itoa(l))
+		}
+
+		switch opts.HashFunc() {
+		case crypto.SHA512:
+			if len(message) != sha512.Size {
+				return nil, errors.New("ed25519: incorrect message length")
+			}
+			return kp.SignPhCtx(message, opts, ctx)
+		case crypto.Hash(0):
+			return kp.SignPureCtx(message, opts, ctx)
+		default:
+			return nil, errors.New("ed25519: expected unhashed message or message hashed with SHA-512")
+		}
+	}
+
+	// needs some refactoring
+	if (len(ctx) == 0) && (opts == crypto.Hash(0)) {
+		return kp.SignPure(message, opts)
+	}
+
+	if (len(ctx) == 0) && (opts == crypto.SHA512) {
+		return kp.SignPh(message, opts)
+	}
+
+	return nil, errors.New("ed25519: option not valid")
+}
+
 // SignPure creates a signature of a message given a keypair
 // This function handles unhashed messages.
 // The opts.HashFunc() must return zero to indicate the message hasn't been
@@ -165,7 +238,8 @@ func (kp *KeyPair) SignPure(message []byte, opts crypto.SignerOpts) ([]byte, err
 		return nil, errors.New("ed25519: incorrect message for non prehashed signing")
 	}
 
-	return sign(kp, message, false)
+	ctx := ""
+	return sign(kp, message, false, []byte(ctx))
 }
 
 // SignPh creates a signature of a message.
@@ -179,8 +253,46 @@ func (kp *KeyPair) SignPh(message []byte, opts crypto.SignerOpts) ([]byte, error
 		return nil, errors.New("ed25519: incorrect message for prehashed signing")
 	}
 
-	return sign(kp, message, true)
+	ctx := ""
+	return sign(kp, message, true, []byte(ctx))
 }
+
+// SignPureCtx creates a signature of a message given a keypair.
+// This function handles unhashed messages with context
+// The opts.HashFunc() must return zero to indicate the message hasn't been
+// hashed. This can be achieved by passing crypto.Hash(0) as the value for opts.
+func (kp *KeyPair) SignPureCtx(message []byte, opts crypto.SignerOpts, ctx string) ([]byte, error) {
+	if opts != crypto.Hash(0) {
+		return nil, errors.New("ed25519: incorrect message for non prehashed signing")
+	}
+
+	if len(ctx) <= 0 || len(ctx) > ContextMaxSize {
+		return nil, errors.New("ed25519: bad context length: " + strconv.Itoa(len(ctx)))
+	}
+
+	return sign(kp, message, false, []byte(ctx))
+}
+
+// SignPhCtx creates a signature of a message given a keypair.
+// This function handles prehashed messages with context.
+// The opts.HashFunc() must return SHA512 to indicate the message has been
+// hashed with SHA512. This can be achieved by passing crypto.SHA512 as the value
+// for opts.
+// Messages prehashed with other algorithms are not handled.
+func (kp *KeyPair) SignPhCtx(message []byte, opts crypto.SignerOpts, ctx string) ([]byte, error) {
+	if opts != crypto.SHA512 && len(message) != sha512.Size {
+		return nil, errors.New("ed25519: incorrect message for prehashed signing")
+	}
+
+	if len(ctx) <= 0 || len(ctx) > ContextMaxSize {
+		return nil, errors.New("ed25519: bad context length: " + strconv.Itoa(len(ctx)))
+	}
+
+	return sign(kp, message, true, []byte(ctx))
+}
+
+// for the moment, to make tests pass
+const domX = "SigEd25519 no Ed25519 collisions\x01\x00"
 
 func verify(public PublicKey, message, signature []byte, preHash bool) bool {
 	var P pointR1
@@ -192,7 +304,7 @@ func verify(public PublicKey, message, signature []byte, preHash bool) bool {
 	H := sha512.New()
 
 	if preHash {
-		_, _ = H.Write([]byte(dom2))
+		_, _ = H.Write([]byte(domX))
 	}
 	_, _ = H.Write(R)
 	_, _ = H.Write(public)
