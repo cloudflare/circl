@@ -1,34 +1,34 @@
 package bls12381
 
-import "math/big"
+import "github.com/cloudflare/circl/ecc/bls12381/ff"
 
 var (
-	g1ParamB  = fp{ /*4*/ }  // 4
-	g1Param3B = fp{ /*12*/ } // 3*G1ParamB
-	g1GenX    = fp{
+	g1ParamB  = ff.Fp{ /*4*/ }  // 4
+	g1Param3B = ff.Fp{ /*12*/ } // 3*G1ParamB
+	g1GenX    = ff.Fp{
 		// 0xfb3af00adb22c6bb, 0x6c55e83ff97a1aef, 0xa14e3a3f171bac58,
 		// 0xc3688c4f9774b905, 0x2695638c4fa9ac0f, 0x17f1d3a73197d794,
 	}
-	g1GenY = fp{
+	g1GenY = ff.Fp{
 		// 0xcaa232946c5e7e1, 0xd03cc744a2888ae4, 0xdb18cb2c04b3ed,
 		// 0xfcf5e095d5d00af6, 0xa09e30ed741d8ae4, 0x8b3f481e3aaa0f1,
 	}
-	g2ParamB   = fp2{}
-	g2Param3B  = fp2{}
-	g2GenX     = fp2{}
-	g2GenY     = fp2{}
+	g2ParamB   = ff.Fp2{}
+	g2Param3B  = ff.Fp2{}
+	g2GenX     = ff.Fp2{}
+	g2GenY     = ff.Fp2{}
 	primeOrder = Scalar{
 		0x01, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff,
 		0xfe, 0x5b, 0xfe, 0xff, 0x02, 0xa4, 0xbd, 0x53,
 		0x05, 0xd8, 0xa1, 0x09, 0x08, 0xd8, 0x39, 0x33,
 		0x48, 0x7d, 0x9d, 0x29, 0x53, 0xa7, 0xed, 0x73,
 	}
-	blsPrime *big.Int
+	paramX = [lenX]byte{}
 )
 
+const lenX = 64
+
 func init() {
-	blsPrime = new(big.Int)
-	blsPrime.SetString("0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab", 0)
 	g1ParamB.SetUint64(4)
 	g1Param3B.SetUint64(12)
 	g1GenX.SetString("0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb")

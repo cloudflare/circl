@@ -1,4 +1,4 @@
-package bls12381
+package ff
 
 import (
 	"testing"
@@ -6,17 +6,17 @@ import (
 	"github.com/cloudflare/circl/internal/test"
 )
 
-func randomFp2() *fp2 {
-	return &fp2{
+func randomFp2() *Fp2 {
+	return &Fp2{
 		*randomFp(),
 		*randomFp(),
 	}
 }
 
 func TestFp2(t *testing.T) {
-	const testTimes = 1 << 6
+	const testTimes = 1 << 10
 	t.Run("mul_inv", func(t *testing.T) {
-		var z fp2
+		var z Fp2
 		for i := 0; i < testTimes; i++ {
 			x := randomFp2()
 			y := randomFp2()
@@ -34,7 +34,7 @@ func TestFp2(t *testing.T) {
 		}
 	})
 	t.Run("mul_sqr", func(t *testing.T) {
-		var l0, l1, r0, r1 fp2
+		var l0, l1, r0, r1 Fp2
 		for i := 0; i < testTimes; i++ {
 			x := randomFp2()
 			y := randomFp2()
