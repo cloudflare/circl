@@ -64,41 +64,71 @@ func addAndLine(PQ, P, Q *G2, l *line) {
 	X3, Y3, Z3 := &R.x, &R.y, &R.z
 	_3B := &g2Param3B
 	isAddLine := l != nil
-	var f0, f1, f2, f3, f4 ff.Fp2
-	t0, t1, t2, t3, t4 := &f0, &f1, &f2, &f3, &f4
-	t0.Mul(X1, X2)  // 1.  t0 = X1 * X2
-	t1.Mul(Y1, Y2)  // 2.  t1 = Y1 * Y2
-	t2.Mul(Z1, Z2)  // 3.  t2 = Z1 * Z2
-	t3.Add(X1, Y1)  // 4.  t3 = X1 + Y1
-	t4.Add(X2, Y2)  // 5.  t4 = X2 + Y2
-	t3.Mul(t3, t4)  // 6.  t3 = t3 * t4
-	t4.Add(t0, t1)  // 7.  t4 = t0 + t1
-	t3.Sub(t3, t4)  // 8.  t3 = t3 - t4
-	t4.Add(Y1, Z1)  // 9.  t4 = Y1 + Z1
-	X3.Add(Y2, Z2)  // 10. X3 = Y2 + Z2
-	t4.Mul(t4, X3)  // 11. t4 = t4 * X3
-	X3.Add(t1, t2)  // 12. X3 = t1 + t2
-	t4.Sub(t4, X3)  // 13. t4 = t4 - X3
-	X3.Add(X1, Z1)  // 14. X3 = X1 + Z1
-	Y3.Add(X2, Z2)  // 15. Y3 = X2 + Z2
-	X3.Mul(X3, Y3)  // 16. X3 = X3 * Y3
-	Y3.Add(t0, t2)  // 17. Y3 = t0 + t2
-	Y3.Sub(X3, Y3)  // 18. Y3 = X3 - Y3
-	X3.Add(t0, t0)  // 19. X3 = t0 + t0
-	t0.Add(X3, t0)  // 20. t0 = X3 + t0
-	t2.Mul(_3B, t2) // 21. t2 = b3 * t2
-	Z3.Add(t1, t2)  // 22. Z3 = t1 + t2
-	t1.Sub(t1, t2)  // 23. t1 = t1 - t2
-	Y3.Mul(_3B, Y3) // 24. Y3 = b3 * Y3
-	X3.Mul(t4, Y3)  // 25. X3 = t4 * Y3
-	t2.Mul(t3, t1)  // 26. t2 = t3 * t1
-	X3.Sub(t2, X3)  // 27. X3 = t2 - X3
-	Y3.Mul(Y3, t0)  // 28. Y3 = Y3 * t0
-	t1.Mul(t1, Z3)  // 29. t1 = t1 * Z3
-	Y3.Add(t1, Y3)  // 30. Y3 = t1 + Y3
-	t0.Mul(t0, t3)  // 31. t0 = t0 * t3
-	Z3.Mul(Z3, t4)  // 32. Z3 = Z3 * t4
-	Z3.Add(Z3, t0)  // 33. Z3 = Z3 + t0
+	var X1X2, Y1Y2, Z1Z2, _3bZ1Z2 ff.Fp2
+	var A, B, C, D, E, F, G ff.Fp2
+	t0, t1 := &ff.Fp2{}, &ff.Fp2{}
+
+	X1X2.Mul(X1, X2)
+	Y1Y2.Mul(Y1, Y2)
+	Z1Z2.Mul(Z1, Z2)
+	_3bZ1Z2.Mul(&Z1Z2, _3B)
+
+	A.Add(&X1X2, &X1X2)    // A = 2X1X2
+	A.Add(&A, &X1X2)       //   = 3X1X2
+	B.Add(&Y1Y2, &_3bZ1Z2) // B = Y1Y2+3BZ1Z2
+	C.Sub(&Y1Y2, &_3bZ1Z2) // C = Y1Y2-3BZ1Z2
+
+	t0.Add(X1, Y1)   // t0 = (X1 + Y1)
+	D.Add(X2, Y2)    // D  = (X2 + Y2)
+	D.Mul(&D, t0)    //    = X1X2 + X1Y2 + X2Y1 + Y1Y2
+	D.Sub(&D, &X1X2) //    = X1Y2 + X2Y1 + Y1Y2
+	D.Sub(&D, &Y1Y2) //    = X1Y2 + X2Y1
+
+	if isAddLine {
+		var EE, FF ff.Fp2
+		t0.Mul(Y1, Z2) // t0 = Y1Z2
+		t1.Mul(Y2, Z1) // t1 = Y2Z1
+		E.Add(t0, t1)  // E  = Y1Z2 + Y2Z1
+		EE.Sub(t1, t0) // EE = Y2Z1 - Y1Z2
+
+		t0.Mul(X1, Z2) // t0 = X1Z2
+		t1.Mul(X2, Z1) // t1 = X2Z1
+		F.Add(t0, t1)  // F  = X1Z2 + X2Z1
+		FF.Sub(t0, t1) // FF = X1Z2 - X2Z1
+
+		l[0].Mul(&FF, Z2)   // l0 = (X1Z2 - X2Z1)*Z2
+		l[1].Mul(&EE, Z2)   // l1 = (Y2Z1 - Y1Z2)*Z2
+		t0.Mul(&EE, X2)     // t0 = (Y2Z1 - Y1Z2)*X2
+		l[2].Mul(&FF, Y2)   // l2 = (X1Z2 - X2Z1)*Y2
+		l[2].Add(&l[2], Y2) //    = (Y2Z1 - Y1Z2)*X2 + (X1Z2 - X2Z1)*Y2
+		l[2].Neg()          //    = - (Y2Z1 - Y1Z2)*X2 - (X1Z2 - X2Z1)*Y2
+	} else {
+		t0.Add(Y1, Z1)   // t0 = (Y1 + Z1)
+		t1.Add(Y2, Z2)   // t1 = (Y2 + Z2)
+		E.Mul(t0, t1)    // E  = Y1Y2 + Y1Z2 + Y2Z1 + Z1Z2
+		E.Sub(&E, &Y1Y2) //    = Y1Z2 + Y2Z1 + Z1Z2
+		E.Sub(&E, &Z1Z2) //    = Y1Z2 + Y2Z1
+
+		t0.Add(X1, Z1)   // t0 = (X1 + Z1)
+		t1.Add(X2, Z2)   // t1 = (X2 + Z2)
+		F.Mul(t0, t1)    // F  = X1X2 + X1Z2 + X2Z1 + Z1Z2
+		F.Sub(&F, &X1X2) //    = X1Z2 + X2Z1 + Z1Z2
+		F.Sub(&F, &Z1Z2) //    = X1Z2 + X2Z1
+	}
+	G.Mul(&F, _3B) // G = 3b*F
+
+	t0.Mul(&E, &G) // t0 = E*G
+	X3.Mul(&D, &C) // X3 = D*C
+	X3.Sub(X3, t0) //    = D*C - E*G
+
+	t0.Mul(&A, &G) // t0 = A*G
+	Y3.Mul(&B, &C) // Y3 = B*C
+	Y3.Add(Y3, t0) //    = B*C + A*G
+
+	t0.Mul(&A, &D) // t0 = A*D
+	Z3.Mul(&E, &B) // Z3 = E*B
+	Z3.Add(Z3, t0) //    = E*B + A*D
+
 	PQ.Set(&R)
 	if isAddLine {
 

@@ -7,13 +7,14 @@ import (
 	"github.com/cloudflare/circl/internal/test"
 )
 
-func randomG1() *G1 {
+func randomG1(t testing.TB) *G1 {
 	var P G1
 	var k Scalar
 	_, _ = rand.Read(k[:])
 	P.ScalarMult(&k, G1Generator())
 	if !P.IsOnCurve() {
-		panic("not on curve")
+		t.Helper()
+		t.Fatal("not on curve")
 	}
 	return &P
 }
@@ -22,7 +23,7 @@ func TestG1Add(t *testing.T) {
 	const testTimes = 1 << 6
 	var Q, R G1
 	for i := 0; i < testTimes; i++ {
-		P := randomG1()
+		P := randomG1(t)
 		Q.Set(P)
 		R.Set(P)
 		R.Add(&R, &R)
@@ -42,7 +43,7 @@ func TestG1ScalarMult(t *testing.T) {
 	var k Scalar
 	var Q G1
 	for i := 0; i < testTimes; i++ {
-		P := randomG1()
+		P := randomG1(t)
 		_, _ = rand.Read(k[:])
 		Q.ScalarMult(&k, P)
 		Q.ToAffine()
@@ -55,17 +56,18 @@ func TestG1ScalarMult(t *testing.T) {
 }
 
 func BenchmarkG1(b *testing.B) {
-	var P, Q G1
+	P := randomG1(b)
+	Q := randomG1(b)
 	b.Run("Add", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			P.Add(&P, &Q)
+			P.Add(P, Q)
 		}
 	})
 	b.Run("Mul", func(b *testing.B) {
 		var k Scalar
 		_, _ = rand.Read(k[:])
 		for i := 0; i < b.N; i++ {
-			P.ScalarMult(&k, &P)
+			P.ScalarMult(&k, P)
 		}
 	})
 }
