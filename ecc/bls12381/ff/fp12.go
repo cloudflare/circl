@@ -2,6 +2,7 @@ package ff
 
 import "fmt"
 
+// Fp12 represents an element of the field Fp12 = Fp6[w]/(w^2-v)., where v in Fp6.
 type Fp12 [2]Fp6
 
 func (z Fp12) String() string        { return fmt.Sprintf("\n0: %v\n1: %v", z[0], z[1]) }
