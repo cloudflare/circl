@@ -7,7 +7,7 @@ func doubleAndLine(P *G2, l *line) {
 	//   "Faster Pairing Computations on Curves with High-Degree Twists" by
 	//   Costello-Lange-Naehrig. [Sec. 5] (eprint.iacr.org/2009/615).
 	//   "Complete addition formulas for prime order elliptic curves" by
-	//   Costello-Renes-Batina. [Alg.7] (eprint.iacr.org/2015/1060).
+	//   Costello-Renes-Batina. [Alg.9] (eprint.iacr.org/2015/1060).
 	var R G2
 	X, Y, Z := &P.x, &P.y, &P.z
 	X3, Y3, Z3 := &R.x, &R.y, &R.z
@@ -46,16 +46,18 @@ func doubleAndLine(P *G2, l *line) {
 	Z3.Add(Z3, Z3) //     Z3 = 4B*F
 	P.Set(&R)
 	if isDoubLine {
-		l[2].Add(&A, &A)    // 13. l2 = 2A
-		l[2].Add(&l[2], &A) //     l2 = 3A
-		l[1].Set(&F)        // 14. l1 = F
-		l[1].Neg()          //     l1 = -F
-		l[0].Sub(&D, &B)    // 15. l0 = D-B
+		l.l1.Add(&A, &A)    // 12. l1 = 2A
+		l.l1.Add(&l.l1, &A) //     l1 = 3A = 3X1
+		l.l0.Set(&F)        // 13. l0 = F
+		l.l0.Neg()          //     l0 = -F = -2Y1Z1
+		l.l3.Sub(&D, &B)    // 14. l3 = D-B = 3b*Z1^2-Y1^2
 	}
 }
 
 func addAndLine(PQ, P, Q *G2, l *line) {
 	// Reference:
+	//   "Faster Pairing Computations on Curves with High-Degree Twists" by
+	//   Costello-Lange-Naehrig. [Sec. 5] (eprint.iacr.org/2009/615).
 	//   "Complete addition formulas for prime order elliptic curves" by
 	//   Costello-Renes-Batina. [Alg.7] (eprint.iacr.org/2015/1060).
 	var R G2
@@ -96,12 +98,12 @@ func addAndLine(PQ, P, Q *G2, l *line) {
 		F.Add(t0, t1)  // F  = X1Z2 + X2Z1
 		FF.Sub(t0, t1) // FF = X1Z2 - X2Z1
 
-		l[0].Mul(&FF, Z2)   // l0 = (X1Z2 - X2Z1)*Z2
-		l[1].Mul(&EE, Z2)   // l1 = (Y2Z1 - Y1Z2)*Z2
+		l.l0.Mul(&FF, Z2)   // l0 = (X1Z2 - X2Z1)*Z2
+		l.l1.Mul(&EE, Z2)   // l1 = (Y2Z1 - Y1Z2)*Z2
 		t0.Mul(&EE, X2)     // t0 = (Y2Z1 - Y1Z2)*X2
-		l[2].Mul(&FF, Y2)   // l2 = (X1Z2 - X2Z1)*Y2
-		l[2].Add(&l[2], Y2) //    = (Y2Z1 - Y1Z2)*X2 + (X1Z2 - X2Z1)*Y2
-		l[2].Neg()          //    = - (Y2Z1 - Y1Z2)*X2 - (X1Z2 - X2Z1)*Y2
+		l.l3.Mul(&FF, Y2)   // l2 = (X1Z2 - X2Z1)*Y2
+		l.l3.Add(&l.l3, Y2) //    = (Y2Z1 - Y1Z2)*X2 + (X1Z2 - X2Z1)*Y2
+		l.l3.Neg()          //    = (Y1Z2 - Y2Z1)*X2 - (X1Z2 - X2Z1)*Y2
 	} else {
 		t0.Add(Y1, Z1)   // t0 = (Y1 + Z1)
 		t1.Add(Y2, Z2)   // t1 = (Y2 + Z2)
@@ -130,7 +132,4 @@ func addAndLine(PQ, P, Q *G2, l *line) {
 	Z3.Add(Z3, t0) //    = E*B + A*D
 
 	PQ.Set(&R)
-	if isAddLine {
-
-	}
 }

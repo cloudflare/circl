@@ -80,11 +80,11 @@ func (z *Fp6) Sqr(x *Fp6) {
 	tt.Add(aL, aH)
 	tt.Sub(tt, aM)
 
+	c3.Mul(aL, aM)
+	c5.Mul(aM, aH)
 	c0.Sqr(aL)
 	c2.Sqr(aH)
-	c3.Mul(aL, aM)
 	c4.Sqr(tt)
-	c5.Mul(aM, aH)
 
 	c5.Add(c5, c5)      // 2c5
 	c3.Add(c3, c3)      // 2c3

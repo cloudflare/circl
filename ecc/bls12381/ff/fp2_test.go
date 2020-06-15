@@ -15,6 +15,17 @@ func randomFp2() *Fp2 {
 
 func TestFp2(t *testing.T) {
 	const testTimes = 1 << 10
+	t.Run("no_alias", func(t *testing.T) {
+		var want, got Fp2
+		x := randomFp2()
+		got.Set(x)
+		got.Sqr(&got)
+		want.Set(x)
+		want.Mul(&want, &want)
+		if !got.IsEqual(&want) {
+			test.ReportError(t, got, want, x)
+		}
+	})
 	t.Run("mul_inv", func(t *testing.T) {
 		var z Fp2
 		for i := 0; i < testTimes; i++ {
