@@ -7,25 +7,21 @@ import (
 )
 
 // G1 is a point in the BLS12 curve over Fp.
-type G1 struct {
-	x ff.Fp
-	y ff.Fp
-	z ff.Fp
-}
+type G1 struct{ x, y, z ff.Fp }
 
 func (g G1) String() string { return fmt.Sprintf("x: %v\ny: %v\nz: %v", g.x, g.y, g.z) }
 
-// Set is (TMP)
+// Set is (TMP).
 func (g *G1) Set(P *G1) {
 	g.x.Set(&P.x)
 	g.y.Set(&P.y)
 	g.z.Set(&P.z)
 }
 
-// Neg is
+// Neg inverts g.
 func (g *G1) Neg() { g.y.Neg() }
 
-// SetIdentity is
+// SetIdentity assigns g to the identity element.
 func (g *G1) SetIdentity() { g.x.SetZero(); g.y.SetOne(); g.z.SetZero() }
 
 // IsOnG1 returns true if the point is in the group G1.
@@ -37,7 +33,7 @@ func (g *G1) IsIdentity() bool { return g.z.IsZero() }
 // IsRTorsion returns true if point is r-torsion.
 func (g *G1) IsRTorsion() bool { var P G1; P.ScalarMult(&primeOrder, g); return P.IsIdentity() }
 
-// Double is
+// Double updates g = 2g.
 func (g *G1) Double() {
 	// Reference:
 	//   "Complete addition formulas for prime order elliptic curves" by
@@ -68,7 +64,7 @@ func (g *G1) Double() {
 	g.Set(&R)
 }
 
-// Add is
+// Add updates g=P+Q.
 func (g *G1) Add(P, Q *G1) {
 	// Reference:
 	//   "Complete addition formulas for prime order elliptic curves" by
@@ -115,7 +111,7 @@ func (g *G1) Add(P, Q *G1) {
 	g.Set(&R)
 }
 
-// ScalarMult is
+// ScalarMult calculates g = kP.
 func (g *G1) ScalarMult(k *Scalar, P *G1) {
 	var Q G1
 	Q.SetIdentity()
@@ -129,7 +125,7 @@ func (g *G1) ScalarMult(k *Scalar, P *G1) {
 	g.Set(&Q)
 }
 
-// IsEqual is
+// IsEqual returns true if g and p are equivalent.
 func (g *G1) IsEqual(p *G1) bool {
 	var lx, rx, ly, ry ff.Fp
 	lx.Mul(&g.x, &p.z) // lx = x1*z2
@@ -141,7 +137,7 @@ func (g *G1) IsEqual(p *G1) bool {
 	return lx.IsZero() && ly.IsZero()
 }
 
-// IsOnCurve is
+// IsOnCurve returns true if g is a valid point on the curve.
 func (g *G1) IsOnCurve() bool {
 	var x3, z3, y2 ff.Fp
 	y2.Sqr(&g.y)           // y2 = y^2
@@ -156,13 +152,15 @@ func (g *G1) IsOnCurve() bool {
 	return y2.IsZero()
 }
 
-// ToAffine is
-func (g *G1) ToAffine() {
-	var invZ ff.Fp
-	invZ.Inv(&g.z)
-	g.x.Mul(&g.x, &invZ)
-	g.y.Mul(&g.y, &invZ)
-	g.z.Mul(&g.z, &invZ)
+// Normalize updates g with its affine representation.
+func (g *G1) Normalize() {
+	if !g.z.IsZero() {
+		var invZ ff.Fp
+		invZ.Inv(&g.z)
+		g.x.Mul(&g.x, &invZ)
+		g.y.Mul(&g.y, &invZ)
+		g.z.Mul(&g.z, &invZ)
+	}
 }
 
 // G1Generator returns the generator point of G1.

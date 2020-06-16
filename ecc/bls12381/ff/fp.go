@@ -1,12 +1,9 @@
 package ff
 
-import (
-	"math/big"
-)
+import "math/big"
 
-const _NF1 = 6 // number of 64-bit words to represent an element in Fp.
-
-// type Fp [_NF1]uint64
+// const _NF1 = 6 // number of 64-bit words to represent an element in Fp.
+// type Fp [_NF1]uint64.
 
 type Fp struct{ i big.Int }
 
