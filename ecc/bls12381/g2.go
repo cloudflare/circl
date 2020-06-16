@@ -15,17 +15,13 @@ type G2 struct {
 
 func (g G2) String() string { return fmt.Sprintf("x: %v\ny: %v\nz: %v", g.x, g.y, g.z) }
 
-// Set is (TMP)
-func (g *G2) Set(P *G2) {
-	g.x.Set(&P.x)
-	g.y.Set(&P.y)
-	g.z.Set(&P.z)
-}
+// Set is (TMP).
+func (g *G2) Set(P *G2) { g.x.Set(&P.x); g.y.Set(&P.y); g.z.Set(&P.z) }
 
-// Neg is
+// Neg inverts g.
 func (g *G2) Neg() { g.y.Neg() }
 
-// SetIdentity is
+// SetIdentity assigns g to the identity element.
 func (g *G2) SetIdentity() { g.x.SetZero(); g.y.SetOne(); g.z.SetZero() }
 
 // IsOnG2 returns true if the point is in the group G2.
@@ -37,13 +33,13 @@ func (g *G2) IsIdentity() bool { return g.z.IsZero() }
 // IsRTorsion returns true if point is r-torsion.
 func (g *G2) IsRTorsion() bool { var P G2; P.ScalarMult(&primeOrder, g); return P.IsIdentity() }
 
-// Double is
+// Double updates g = 2g.
 func (g *G2) Double() { doubleAndLine(g, nil) }
 
-// Add is
+// Add updates g=P+Q.
 func (g *G2) Add(P, Q *G2) { addAndLine(g, P, Q, nil) }
 
-// ScalarMult is
+// ScalarMult calculates g = kP.
 func (g *G2) ScalarMult(k *Scalar, P *G2) {
 	var Q G2
 	Q.SetIdentity()
@@ -57,7 +53,7 @@ func (g *G2) ScalarMult(k *Scalar, P *G2) {
 	g.Set(&Q)
 }
 
-// IsEqual is
+// IsEqual returns true if g and p are equivalent.
 func (g *G2) IsEqual(p *G2) bool {
 	var lx, rx, ly, ry ff.Fp2
 	lx.Mul(&g.x, &p.z) // lx = x1*z2
@@ -69,7 +65,7 @@ func (g *G2) IsEqual(p *G2) bool {
 	return lx.IsZero() && ly.IsZero()
 }
 
-// IsOnCurve is
+// IsOnCurve returns true if g is a valid point on the curve.
 func (g *G2) IsOnCurve() bool {
 	var x3, z3, y2 ff.Fp2
 	y2.Sqr(&g.y)           // y2 = y^2
@@ -84,13 +80,15 @@ func (g *G2) IsOnCurve() bool {
 	return y2.IsZero()
 }
 
-// ToAffine is
-func (g *G2) ToAffine() {
-	var invZ ff.Fp2
-	invZ.Inv(&g.z)
-	g.x.Mul(&g.x, &invZ)
-	g.y.Mul(&g.y, &invZ)
-	g.z.Mul(&g.z, &invZ)
+// Normalize updates g with its affine representation.
+func (g *G2) Normalize() {
+	if !g.z.IsZero() {
+		var invZ ff.Fp2
+		invZ.Inv(&g.z)
+		g.x.Mul(&g.x, &invZ)
+		g.y.Mul(&g.y, &invZ)
+		g.z.Mul(&g.z, &invZ)
+	}
 }
 
 // G2Generator returns the generator point of G2.

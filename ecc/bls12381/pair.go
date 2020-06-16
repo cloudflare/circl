@@ -6,12 +6,11 @@ import "github.com/cloudflare/circl/ecc/bls12381/ff"
 func Pair(P *G1, Q *G2) *Gt { return finalExp(miller(P, Q)) }
 
 func miller(P *G1, Q *G2) *Gt {
-	T := &G2{}
 	f := &ff.Fp12{}
-	l := &line{}
-
-	T.Set(Q)
 	f.SetOne()
+	T := &G2{}
+	T.Set(Q)
+	l := &line{}
 	const lenX = 64
 	for i := lenX - 2; i >= 0; i-- {
 		f.Sqr(f)

@@ -46,7 +46,7 @@ func TestG1ScalarMult(t *testing.T) {
 		P := randomG1(t)
 		_, _ = rand.Read(k[:])
 		Q.ScalarMult(&k, P)
-		Q.ToAffine()
+		Q.Normalize()
 		got := Q.IsOnG1()
 		want := true
 		if got != want {

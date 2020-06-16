@@ -18,11 +18,11 @@ func TestDevel(t *testing.T) {
 }
 
 func BenchmarkPair(b *testing.B) {
-	var P G1
-	var Q G2
+	g1 := G1Generator()
+	g2 := G2Generator()
 	b.Run("Miller", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			miller(&P, &Q)
+			_ = miller(g1, g2)
 		}
 	})
 }
