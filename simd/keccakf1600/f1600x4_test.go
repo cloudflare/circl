@@ -1,11 +1,9 @@
 package keccakf1600
 
-import (
-	"testing"
-)
+import "testing"
 
 // From the Keccak code package
-var PermutationOfZeroes = []uint64{
+var permutationOfZeroes = [25]uint64{
 	0xF1258F7940E1DDE7, 0x84D5CCF933C0478A, 0xD598261EA65AA9EE,
 	0xBD1547306F80494D, 0x8B284E056253D057, 0xFF97A42D7F8E6FD4,
 	0x90FEE5A0A44647C4, 0x8C5BDA0CD6192E76, 0xAD30A6F71B19059C,
@@ -17,45 +15,43 @@ var PermutationOfZeroes = []uint64{
 	0xEAF1FF7B5CECA249,
 }
 
-func TestGenericF1600x4(t *testing.T) {
-	a := &[100]uint64{}
-	genericF1600x4(a[:])
-
-	for i := 0; i < 25; i++ {
-		for j := 0; j < 4; j++ {
-			if a[4*i+j] != PermutationOfZeroes[i] {
-				t.Fatal()
+func TestKeccakF1600x4(t *testing.T) {
+	test := func(t *testing.T, f func(s *StateX4, a []uint64)) {
+		t.Helper()
+		var state StateX4
+		a := state.Initialize()
+		f(&state, a)
+		for i := 0; i < 25; i++ {
+			for j := 0; j < 4; j++ {
+				if a[4*i+j] != permutationOfZeroes[i] {
+					t.Fatal()
+				}
 			}
 		}
 	}
-}
 
-func TestF1600x4(t *testing.T) {
-	if !AvailableX4 {
-		t.Skip()
-	}
-	var state StateX4
-	a := state.Initialize()
-
-	state.Permute()
-
-	for i := 0; i < 25; i++ {
-		for j := 0; j < 4; j++ {
-			if a[4*i+j] != PermutationOfZeroes[i] {
-				t.Fatal()
-			}
-		}
-	}
+	t.Run("Generic", func(t *testing.T) {
+		test(t, func(s *StateX4, a []uint64) { permuteScalar(a) })
+	})
+	t.Run("SIMD", func(t *testing.T) {
+		test(t, func(s *StateX4, a []uint64) { s.Permute() })
+	})
 }
 
 func BenchmarkF1600x4(b *testing.B) {
-	if !AvailableX4 {
-		b.Skip()
-	}
-	var state StateX4
-	_ = state.Initialize()
+	benchmark := func(b *testing.B, f func(s *StateX4, a []uint64)) {
+		var state StateX4
+		a := state.Initialize()
 
-	for i := 0; i < b.N; i++ {
-		state.Permute()
+		for i := 0; i < b.N; i++ {
+			f(&state, a)
+		}
 	}
+
+	b.Run("Generic", func(b *testing.B) {
+		benchmark(b, func(s *StateX4, a []uint64) { permuteScalar(a) })
+	})
+	b.Run("SIMD", func(b *testing.B) {
+		benchmark(b, func(s *StateX4, a []uint64) { s.Permute() })
+	})
 }

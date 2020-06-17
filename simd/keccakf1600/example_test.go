@@ -1,21 +1,17 @@
 package keccakf1600_test
 
 import (
-	"github.com/cloudflare/circl/simd/keccakf1600"
-
 	"encoding/binary"
 	"fmt"
 
-	// Vendored copy of golang.org/x/crypto/sha3.
-	sha3 "github.com/cloudflare/circl/internal/shake"
+	"github.com/cloudflare/circl/simd/keccakf1600"
+	"golang.org/x/crypto/sha3"
 )
 
 func Example() {
 	// As an example, computes the (first 32 bytes of a) SHAKE-256 stream of
 	// four short strings at the same time.
-	// See sign/dilithium/mode3/internal/sample.go for a real world example.
-
-	msgs := [][]byte{
+	msgs := [4][]byte{
 		[]byte("These are some short"),
 		[]byte("strings of the same "),
 		[]byte("length that fit in a"),
@@ -23,7 +19,9 @@ func Example() {
 	}
 	var hashes [4][32]byte
 
-	if !keccakf1600.AvailableX4 {
+	// The user could branch to a fast non-SIMD implementation if this function
+	// returns false.
+	if !keccakf1600.IsEnabledX4() {
 		// Compute hashes separately using golang.org/x/crypto/sha3 instead
 		// when a fast four-way implementation is not available.  A generic
 		// keccakf1600 implementation is quite a bit slower than using
@@ -53,7 +51,7 @@ func Example() {
 			// Final bit of the message together with the SHAKE-256 domain
 			// separator (0b1111) and the start of the padding (0b10....)
 			state[8+i] = uint64(binary.LittleEndian.Uint32(msgs[i][16:])) |
-				(0x1f << 32)
+				(uint64(0x1f) << 32)
 			state[16*4+i] = 0x80 << 56 // end of padding (0b...01)
 		}
 
@@ -72,8 +70,9 @@ func Example() {
 		}
 	}
 
-	fmt.Printf("%x\n%x\n%x\n%x\n", hashes[0], hashes[1], hashes[2], hashes[3])
-	// Output: 9b48efc4f4e562fe28c510b2ad3966b101ac20066dc88117d85a595cc965f7e4
+	fmt.Printf("\n%x\n%x\n%x\n%x\n", hashes[0], hashes[1], hashes[2], hashes[3])
+	// Output:
+	// 9b48efc4f4e562fe28c510b2ad3966b101ac20066dc88117d85a595cc965f7e4
 	// 19333d8bb71edce81f0630e4154abea83bf7d2f7e709d62fda878b6e9db9c9c1
 	// 28f31cc0b8d95185fbba5c4ed5cd94ed7dba0e13c21ca830d1325a212defdfc5
 	// 51392299d6b10e62b98eb02c9540784046cc9c83e46eddd2ce57cddc2037f917
