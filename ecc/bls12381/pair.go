@@ -5,7 +5,7 @@ import "github.com/cloudflare/circl/ecc/bls12381/ff"
 // Pair calculates the ate-pairing of P and Q.
 func Pair(P *G1, Q *G2) *Gt { return finalExp(miller(P, Q)) }
 
-func miller(P *G1, Q *G2) *Gt {
+func miller(P *G1, Q *G2) *ff.Fp12 {
 	f := &ff.Fp12{}
 	f.SetOne()
 	T := &G2{}
@@ -23,10 +23,7 @@ func miller(P *G1, Q *G2) *Gt {
 		}
 	}
 	f.Cjg() // inverts f as paramX is negative.
-
-	var out Gt
-	out.g.Set(f)
-	return &out
+	return f
 }
 
 // line contains the coefficients of a sparse element of Fp12.
@@ -64,4 +61,30 @@ func (l *line) eval(P *G1) *ff.Fp12 {
 	return &g
 }
 
-func finalExp(g *Gt) *Gt { return g }
+func finalExp(f *ff.Fp12) *Gt {
+	_ = easyExponentiation(f)
+	var g Gt
+	return &g
+}
+
+// easyExponentiation raises f^(p^6-1)(p^2+1) and returns an element in the
+// 12-th cyclotomic group.
+func easyExponentiation(f *ff.Fp12) *ff.Cyclo12 {
+	var t0, t1, t2, p ff.Fp12
+	p.Frob(f)        // p = f^(p)
+	p.Frob(&p)       // p = f^(p^2)
+	t0.Mul(&p, f)    // t0 = f^(p^2 + 1)
+	t2.Inv(&t0)      // t2 = f^-(p^2 + 1)
+	t1.Frob(&t0)     // t1 = f^(p^2 + 1)*(p)
+	t1.Frob(&t1)     // t1 = f^(p^2 + 1)*(p^2)
+	t1.Frob(&t1)     // t1 = f^(p^2 + 1)*(p^3)
+	t1.Frob(&t1)     // t1 = f^(p^2 + 1)*(p^4)
+	t1.Frob(&t1)     // t1 = f^(p^2 + 1)*(p^5)
+	t1.Frob(&t1)     // t1 = f^(p^2 + 1)*(p^6)
+	t0.Mul(&t0, &t1) // t0 = f^(p^2 + 1)*(p^6 - 1)
+
+	g := &ff.Cyclo12{}
+	g[0].Set(&t0[0])
+	g[1].Set(&t0[1])
+	return g
+}
