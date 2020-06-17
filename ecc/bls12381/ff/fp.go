@@ -7,7 +7,7 @@ import "math/big"
 
 type Fp struct{ i big.Int }
 
-func (z Fp) String() string      { return "0x" + z.i.Text(16) }
+func (z Fp) String() string      { return "0x" + z.i.Text(10) }
 func (z *Fp) Set(x *Fp)          { z.i.Set(&x.i) }
 func (z *Fp) SetString(s string) { z.i.SetString(s, 0) }
 func (z *Fp) SetUint64(n uint64) { z.i.SetUint64(n) }

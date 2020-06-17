@@ -13,29 +13,30 @@ r = bls12_order(bls12_x) # prime order
 F = GF(p)          # Base field
 k = 12             # embedding degree
 d = 6              # twist degree
-F2.<U> = GF(p**2, modulus=[1,0,1]) # t^2+1
+# F2.<U> = GF(p**2, modulus=[1,0,1]) # t^2+1
 # F2.<X>  = GF(p**2, modulus=t**2+1,        name='X',proof=false)
 # F6.<Y>  = GF(p**6, modulus=t**6-2*t**3+2, name='Y',proof=false)
 # F12.<Z> = GF(p**12,modulus=t**12-2*t**6+2,name='Z',proof=false)
 
+K2.<x> = PolynomialRing(F)
+F2.<u> = F.extension(x^2+1)
+K6.<y> = PolynomialRing(F2)
+F6.<v> = F2.extension(y^3 - (u+1))
+K12.<z> = PolynomialRing(F6)
+Ipol = z^2-v
+Ipol.is_irreducible = lambda : true # shortcut to avoid expensive check
+I = Ideal(Ipol)
+# F12.<w> = F6.extension(z^2 - v) # Constructing this field takes long time.
+F12.<w> = K12.quotient_by_principal_ideal(I)
+
 g1_order = g1_h(bls12_x) * bls12_order(bls12_x)
 g2_order = g2_h(bls12_x) * bls12_order(bls12_x)
 g1_b = F(4)
-g2_b = F2(4*(U+1))
+g2_b = F2(4*(u+1))
 G1 = EllipticCurve(F, [0,g1_b])
 G2 = EllipticCurve(F2,[0,g2_b])
-# G2Full = EllipticCurve(F12,[0,g1_b])
-# GT = F12
-
-# K2.<x> = PolynomialRing(F)
-# F2.<u> = F.extension(x^2+1)
-# K6.<y> = PolynomialRing(F2)
-# F6.<v> = F2.extension(y^3 - (u+1))
-# K12.<z> = PolynomialRing(F6)
-# F12.<w> = F6.extension(z^2 - v) # Constructing this field takes long time.
-
-
-
+G2Full = EllipticCurve(F12,[0,g1_b])
+GT = F12
 
 def checks():
     assert G1.order() == g1_order, "order of G1 fail"

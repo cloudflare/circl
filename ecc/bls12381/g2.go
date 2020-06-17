@@ -7,11 +7,7 @@ import (
 )
 
 // G2 is a point in the twist of the BLS12 curve over Fp2.
-type G2 struct {
-	x ff.Fp2
-	y ff.Fp2
-	z ff.Fp2
-}
+type G2 struct{ x, y, z ff.Fp2 }
 
 func (g G2) String() string { return fmt.Sprintf("x: %v\ny: %v\nz: %v", g.x, g.y, g.z) }
 

@@ -15,6 +15,8 @@ func TestDevel(t *testing.T) {
 	fmt.Printf("g1:\n%v\n", g1)
 	fmt.Printf("g2:\n%v\n", g2)
 	fmt.Printf("g3:\n%v\n", g3)
+	cy := easyExponentiation(g3)
+	fmt.Printf("cy:\n%v\n", cy)
 }
 
 func BenchmarkPair(b *testing.B) {
