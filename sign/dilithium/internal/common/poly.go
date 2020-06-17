@@ -93,7 +93,7 @@ func (p *Poly) Power2Round(p0PlusQ, p1 *Poly) {
 // the unmodified high bits --- see makeHint().
 //
 // Returns the number of ones in the hint polynomial.
-func (p *Poly) MakeHint(p0, p1 *Poly) (pop uint32) {
+func (p *Poly) makeHintGeneric(p0, p1 *Poly) (pop uint32) {
 	for i := 0; i < N; i++ {
 		h := makeHint(p0[i], p1[i])
 		pop += h
