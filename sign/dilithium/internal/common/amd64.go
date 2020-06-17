@@ -152,3 +152,18 @@ func (p *Poly) Decompose(p0PlusQ, p1 *Poly) {
 		p.decomposeGeneric(p0PlusQ, p1)
 	}
 }
+
+// Sets p to the hint polynomial for p0 the modified low bits and p1
+// the unmodified high bits --- see makeHint().
+//
+// Returns the number of ones in the hint polynomial.
+func (p *Poly) MakeHint(p0, p1 *Poly) (pop uint32) {
+	if cpu.X86.HasAVX2 && cpu.X86.HasPOPCNT {
+		return makeHintAVX2(
+			(*[N]uint32)(p),
+			(*[N]uint32)(p0),
+			(*[N]uint32)(p1),
+		)
+	}
+	return p.makeHintGeneric(p0, p1)
+}

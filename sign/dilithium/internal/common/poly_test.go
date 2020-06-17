@@ -31,6 +31,36 @@ func TestExceeds(t *testing.T) {
 	}
 }
 
+func TestMakeHintAgainstGeneric(t *testing.T) {
+	var p0, p1, h1, h2 Poly
+	for i := 0; i < 255; i++ {
+		if i&3 == 1 {
+			p0[i] = Gamma2 / 2
+		} else if i&3 == 2 {
+			p0[i] = Q - Gamma2/2
+		} else if i&3 == 0 {
+			p0[i] = Q - Gamma2
+		} else {
+			p0[i] = 2 * Gamma2
+		}
+
+		if (i>>2)&1 == 1 {
+			p1[i] = 1234
+		} else {
+			p1[i] = 0
+		}
+	}
+
+	pop1 := h1.makeHintGeneric(&p0, &p1)
+	pop2 := h2.MakeHint(&p0, &p1)
+	if h1 != h2 {
+		t.Fatal()
+	}
+	if pop1 != pop2 {
+		t.Fatal()
+	}
+}
+
 func TestComposeAgainstGeneric(t *testing.T) {
 	for k := 0; k < 1000; k++ {
 		var p, a0, b0, a1, b1 Poly
@@ -171,6 +201,13 @@ func BenchmarkDecomposeGeneric(b *testing.B) {
 	}
 }
 
+func BenchmarkMakeHintGeneric(b *testing.B) {
+	var p, p0, p1 Poly
+	for i := 0; i < b.N; i++ {
+		p.makeHintGeneric(&p0, &p1)
+	}
+}
+
 func BenchmarkMulHat(b *testing.B) {
 	var p Poly
 	for i := 0; i < b.N; i++ {
@@ -224,5 +261,12 @@ func BenchmarkDecompose(b *testing.B) {
 	var p, p0, p1 Poly
 	for i := 0; i < b.N; i++ {
 		p.Decompose(&p0, &p1)
+	}
+}
+
+func BenchmarkMakeHint(b *testing.B) {
+	var p, p0, p1 Poly
+	for i := 0; i < b.N; i++ {
+		p.MakeHint(&p0, &p1)
 	}
 }
