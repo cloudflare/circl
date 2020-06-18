@@ -387,6 +387,129 @@ func PolyDeriveUniformLeGamma1(p *common.Poly, seed *[48]byte, nonce uint16) {
 	}
 }
 
+// For each i, sample ps[i] uniformly with 60 non-zero coefficients in {q-1,1}
+// using the the given seed and w1[i].  ps[i] may be nil and is ignored
+// in that case.  ps[i] will be normalized.
+//
+// Can only be called when DeriveX4Available is true.
+//
+// This function is currently not used (yet).
+func PolyDeriveUniformB60X4(ps [4]*common.Poly, seed *[48]byte,
+	w1 [4]*VecK) {
+	// Pack the w1s
+	var w1Packed [4][common.PolyLe16Size * K]byte
+	for j := 0; j < 4; j++ {
+		if ps[j] != nil {
+			w1[j].PackLe16(w1Packed[j][:])
+		}
+	}
+
+	var perm f1600x4.State
+	state := perm.Initialize()
+
+	// Absorb the seed in the four states
+	for i := 0; i < 6; i++ {
+		v := binary.LittleEndian.Uint64(seed[8*i : 8*(i+1)])
+		for j := 0; j < 4; j++ {
+			state[i*4+j] = v
+		}
+	}
+
+	// Absorb the start of the packed w₁s
+	offset := 0 // offset into w1Packed[j]
+	for i := 6; i < 17; i++ {
+		for j := 0; j < 4; j++ {
+			state[i*4+j] = binary.LittleEndian.Uint64(w1Packed[j][offset : offset+8])
+		}
+		offset += 8
+	}
+
+	offset -= 8
+
+	// Absorb the remainder of the packed w₁s.
+PermuteLoop:
+	for {
+		perm.Permute()
+
+		for i := 0; i < 17; i++ {
+			offset += 8
+			if offset == len(w1Packed[0]) {
+				// SHAKE256 domain separator and padding
+				for j := 0; j < 4; j++ {
+					state[i*4+j] ^= 0x1f
+					state[16*4+j] ^= 0x80 << 56
+				}
+				perm.Permute()
+
+				break PermuteLoop
+			}
+
+			for j := 0; j < 4; j++ {
+				state[i*4+j] ^= binary.LittleEndian.Uint64(
+					w1Packed[j][offset : offset+8])
+			}
+		}
+	}
+
+	var signs [4]uint64
+	var idx [4]uint16 // indices into ps
+
+	for j := 0; j < 4; j++ {
+		if ps[j] != nil {
+			signs[j] = state[j]
+			*ps[j] = common.Poly{} // zero ps[j]
+			idx[j] = common.N - 60
+		} else {
+			idx[j] = common.N // mark as completed
+		}
+	}
+
+	stateOffset := 1
+	for {
+		done := true
+
+	PolyLoop:
+		for j := 0; j < 4; j++ {
+			if idx[j] == common.N {
+				continue
+			}
+
+			for i := stateOffset; i < 17; i++ {
+				var bs [8]byte
+				binary.LittleEndian.PutUint64(bs[:], state[4*i+j])
+				for k := 0; k < 8; k++ {
+					b := uint16(bs[k])
+
+					if b > idx[j] {
+						continue
+					}
+
+					ps[j][idx[j]] = ps[j][b]
+					ps[j][b] = 1
+					// Takes least significant bit of signs and uses it for the sign.
+					// Note 1 ^ (1 | (Q-1)) = Q-1.
+					ps[j][b] ^= uint32((-(signs[j] & 1)) & (1 | (common.Q - 1)))
+					signs[j] >>= 1
+
+					idx[j]++
+					if idx[j] == common.N {
+						continue PolyLoop
+					}
+				}
+			}
+
+			done = false
+		}
+
+		if done {
+			break
+		}
+
+		perm.Permute()
+		stateOffset = 0
+	}
+}
+
 // Samples p uniformly with 60 non-zero coefficients in {q-1,1}.
 //
 // The polynomial p will be normalized.
@@ -404,9 +527,7 @@ func PolyDeriveUniformB60(p *common.Poly, seed *[48]byte, w1 *VecK) {
 	// Essentially we generate a sequence of 60 ones or minus ones,
 	// prepend 196 zeroes and shuffle the concatenation using the
 	// usual algorithm (Fisher--Yates.)
-	signs := (uint64(buf[0]) | (uint64(buf[1]) << 8) | (uint64(buf[2]) << 16) |
-		(uint64(buf[3]) << 24) | (uint64(buf[4]) << 32) | (uint64(buf[5]) << 40) |
-		(uint64(buf[6]) << 48) | (uint64(buf[7]) << 56))
+	signs := binary.LittleEndian.Uint64(buf[:])
 	bufOff := 8 // offset into buf
 
 	*p = common.Poly{} // zero p

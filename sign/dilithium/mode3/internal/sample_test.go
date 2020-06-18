@@ -287,6 +287,34 @@ func TestDeriveUniformX4(t *testing.T) {
 	}
 }
 
+func TestDeriveUniformB60X4(t *testing.T) {
+	if !DeriveX4Available {
+		t.SkipNow()
+	}
+	var ps [4]common.Poly
+	var p common.Poly
+	var seed [48]byte
+	var w1s [4]VecK
+	for j := 0; j < 4; j++ {
+		for k := 0; k < K; k++ {
+			for i := 0; i < common.N; i++ {
+				w1s[j][k][i] = uint32(j+k*4+i*4*K) & 15
+			}
+		}
+	}
+	PolyDeriveUniformB60X4(
+		[4]*common.Poly{&ps[0], &ps[1], &ps[2], &ps[3]},
+		&seed,
+		[4]*VecK{&w1s[0], &w1s[1], &w1s[2], &w1s[3]},
+	)
+	for j := 0; j < 4; j++ {
+		PolyDeriveUniformB60(&p, &seed, &w1s[j])
+		if ps[j] != p {
+			t.Fatalf("%v %v", ps[j], p)
+		}
+	}
+}
+
 func TestDeriveUniformLeGamma1X4(t *testing.T) {
 	if !DeriveX4Available {
 		t.SkipNow()
@@ -307,6 +335,30 @@ func TestDeriveUniformLeGamma1X4(t *testing.T) {
 		if ps[i] != p {
 			t.Fatalf("%d\n%v\n%v", i, p, ps[i])
 		}
+	}
+}
+
+func BenchmarkPolyDeriveUniformB60(b *testing.B) {
+	var seed [48]byte
+	var p common.Poly
+	var w1 VecK
+	for i := 0; i < b.N; i++ {
+		w1[0][0] = uint32(i)
+		PolyDeriveUniformB60(&p, &seed, &w1)
+	}
+}
+
+func BenchmarkPolyDeriveUniformB60X4(b *testing.B) {
+	var seed [48]byte
+	var p common.Poly
+	var w1 VecK
+	for i := 0; i < b.N; i++ {
+		w1[0][0] = uint32(i)
+		PolyDeriveUniformB60X4(
+			[4]*common.Poly{&p, &p, &p, &p},
+			&seed,
+			[4]*VecK{&w1, &w1, &w1, &w1},
+		)
 	}
 }
 
