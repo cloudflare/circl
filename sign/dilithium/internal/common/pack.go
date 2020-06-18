@@ -1,5 +1,9 @@
 package common
 
+import (
+	"encoding/binary"
+)
+
 // Sets p to the polynomial whose coefficients are less than 512 encoded
 // into buf (which must be of size PolyT1Size).
 //
@@ -113,18 +117,65 @@ func (p *Poly) PackLeGamma1(buf []byte) {
 // Beware, for arbitrary buf the coefficients of p might exceed γ₁.
 func (p *Poly) UnpackLeGamma1(buf []byte) {
 	j := 0
-	for i := 0; i < PolyLeGamma1Size; i += 5 {
-		p0 := Gamma1 - 1 - ((uint32(buf[i]) |
-			(uint32(buf[i+1]) << 8) |
-			(uint32(buf[i+2]) << 16)) & 0xfffff)
-		p1 := Gamma1 - 1 - ((uint32(buf[i+2]) >> 4) |
-			(uint32(buf[i+3]) << 4) |
-			(uint32(buf[i+4]) << 12))
+	for i := 0; i < PolyLeGamma1Size; i += 40 {
+		a0 := binary.LittleEndian.Uint64(buf[i:])
+		a1 := binary.LittleEndian.Uint64(buf[i+8:])
+		a2 := binary.LittleEndian.Uint64(buf[i+16:])
+		a3 := binary.LittleEndian.Uint64(buf[i+24:])
+		a4 := binary.LittleEndian.Uint64(buf[i+32:])
+
+		p0 := Gamma1 - 1 - uint32(a0&0xfffff)
+		p1 := Gamma1 - 1 - uint32((a0>>20)&0xfffff)
+		p2 := Gamma1 - 1 - uint32((a0>>40)&0xfffff)
+		p3 := Gamma1 - 1 - uint32(((a0>>60)|(a1<<4))&0xfffff)
+		p4 := Gamma1 - 1 - uint32((a1>>16)&0xfffff)
+		p5 := Gamma1 - 1 - uint32((a1>>36)&0xfffff)
+		p6 := Gamma1 - 1 - uint32(((a1>>56)|(a2<<8))&0xfffff)
+		p7 := Gamma1 - 1 - uint32((a2>>12)&0xfffff)
+		p8 := Gamma1 - 1 - uint32((a2>>32)&0xfffff)
+		p9 := Gamma1 - 1 - uint32(((a2>>52)|(a3<<12))&0xfffff)
+		p10 := Gamma1 - 1 - uint32((a3>>8)&0xfffff)
+		p11 := Gamma1 - 1 - uint32((a3>>28)&0xfffff)
+		p12 := Gamma1 - 1 - uint32(((a3>>48)|(a4<<16))&0xfffff)
+		p13 := Gamma1 - 1 - uint32((a4>>4)&0xfffff)
+		p14 := Gamma1 - 1 - uint32((a4>>24)&0xfffff)
+		p15 := Gamma1 - 1 - uint32((a4>>44)&0xfffff)
+
 		p0 += uint32(int32(p0)>>31) & Q
 		p1 += uint32(int32(p1)>>31) & Q
+		p2 += uint32(int32(p2)>>31) & Q
+		p3 += uint32(int32(p3)>>31) & Q
+		p4 += uint32(int32(p4)>>31) & Q
+		p5 += uint32(int32(p5)>>31) & Q
+		p6 += uint32(int32(p6)>>31) & Q
+		p7 += uint32(int32(p7)>>31) & Q
+		p8 += uint32(int32(p8)>>31) & Q
+		p9 += uint32(int32(p9)>>31) & Q
+		p10 += uint32(int32(p10)>>31) & Q
+		p11 += uint32(int32(p11)>>31) & Q
+		p12 += uint32(int32(p12)>>31) & Q
+		p13 += uint32(int32(p13)>>31) & Q
+		p14 += uint32(int32(p14)>>31) & Q
+		p15 += uint32(int32(p15)>>31) & Q
+
 		p[j] = p0
 		p[j+1] = p1
-		j += 2
+		p[j+2] = p2
+		p[j+3] = p3
+		p[j+4] = p4
+		p[j+5] = p5
+		p[j+6] = p6
+		p[j+7] = p7
+		p[j+8] = p8
+		p[j+9] = p9
+		p[j+10] = p10
+		p[j+11] = p11
+		p[j+12] = p12
+		p[j+13] = p13
+		p[j+14] = p14
+		p[j+15] = p15
+
+		j += 16
 	}
 }
 
