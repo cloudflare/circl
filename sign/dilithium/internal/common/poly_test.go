@@ -145,6 +145,18 @@ func TestNormalizeAgainstGeneric(t *testing.T) {
 	}
 }
 
+func TestMulBy2ToDAgainstGeneric(t *testing.T) {
+	for k := 0; k < 1000; k++ {
+		var p1, p2, q Poly
+		q.RandLe2Q()
+		p1.mulBy2toDGeneric(&q)
+		p2.MulBy2toD(&q)
+		if p1 != p2 {
+			t.Fatalf("MulBy2ToD(%v) =\n%v\n!= %v", q, p1, p2)
+		}
+	}
+}
+
 func BenchmarkNormalizeGeneric(b *testing.B) {
 	var p Poly
 	for i := 0; i < b.N; i++ {
@@ -208,6 +220,13 @@ func BenchmarkMakeHintGeneric(b *testing.B) {
 	}
 }
 
+func BenchmarkMulBy2toDGeneric(b *testing.B) {
+	var p, q Poly
+	for i := 0; i < b.N; i++ {
+		p.mulBy2toDGeneric(&q)
+	}
+}
+
 func BenchmarkMulHat(b *testing.B) {
 	var p Poly
 	for i := 0; i < b.N; i++ {
@@ -268,5 +287,12 @@ func BenchmarkMakeHint(b *testing.B) {
 	var p, p0, p1 Poly
 	for i := 0; i < b.N; i++ {
 		p.MakeHint(&p0, &p1)
+	}
+}
+
+func BenchmarkMulBy2toD(b *testing.B) {
+	var p, q Poly
+	for i := 0; i < b.N; i++ {
+		p.MulBy2toD(&q)
 	}
 }

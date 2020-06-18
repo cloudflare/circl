@@ -86,3 +86,10 @@ func (p *Poly) Decompose(p0PlusQ, p1 *Poly) {
 func (p *Poly) MakeHint(p0, p1 *Poly) (pop uint32) {
 	return p.makeHintGeneric(p0, p1)
 }
+
+// Sets p to 2ᵈ q without reducing.
+//
+// So it requires the coefficients of p  to be less than 2³²⁻ᴰ.
+func (p *Poly) MulBy2toD(q *Poly) {
+	p.mulBy2toDGeneric(q)
+}

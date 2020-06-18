@@ -1260,6 +1260,33 @@ func makeHintAVX2() {
 	RET()
 }
 
+func mulBy2toDAVX2() {
+	TEXT("mulBy2toDAVX2", NOSPLIT, "func(p, q *[256]uint32)")
+	Pragma("noescape")
+	pPtr := Load(Param("p"), GP64())
+	qPtr := Load(Param("q"), GP64())
+
+	var x [8]VecVirtual
+	for i := 0; i < 8; i++ {
+		x[i] = YMM()
+	}
+
+	for j := 0; j < 4; j++ {
+		for i := 0; i < 8; i++ {
+			VMOVDQU(Mem{Base: qPtr, Disp: 32 * (8*j + i)}, x[i])
+		}
+		for i := 0; i < 8; i++ {
+			VPSLLD(U8(params.D), x[i], x[i])
+		}
+		for i := 0; i < 8; i++ {
+			VMOVDQU(x[i], Mem{Base: pPtr, Disp: 32 * (8*j + i)})
+		}
+	}
+
+	RET()
+}
+
+
 func main() {
 	ConstraintExpr("amd64")
 
@@ -1274,6 +1301,7 @@ func main() {
 	exceedsAVX2()
 	decomposeAVX2()
 	makeHintAVX2()
+	mulBy2toDAVX2()
 
 	Generate()
 }
