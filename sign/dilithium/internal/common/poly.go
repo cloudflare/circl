@@ -141,7 +141,7 @@ func (p *Poly) mulHatGeneric(a, b *Poly) {
 // Sets p to 2ᵈ q without reducing.
 //
 // So it requires the coefficients of p  to be less than 2³²⁻ᴰ.
-func (p *Poly) MulBy2toD(q *Poly) {
+func (p *Poly) mulBy2toDGeneric(q *Poly) {
 	for i := 0; i < N; i++ {
 		p[i] = q[i] << D
 	}

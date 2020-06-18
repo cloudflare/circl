@@ -167,3 +167,17 @@ func (p *Poly) MakeHint(p0, p1 *Poly) (pop uint32) {
 	}
 	return p.makeHintGeneric(p0, p1)
 }
+
+// Sets p to 2ᵈ q without reducing.
+//
+// So it requires the coefficients of p  to be less than 2³²⁻ᴰ.
+func (p *Poly) MulBy2toD(q *Poly) {
+	if cpu.X86.HasAVX2 {
+		mulBy2toDAVX2(
+			(*[N]uint32)(p),
+			(*[N]uint32)(q),
+		)
+	} else {
+		p.mulBy2toDGeneric(q)
+	}
+}

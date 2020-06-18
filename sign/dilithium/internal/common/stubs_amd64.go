@@ -36,3 +36,6 @@ func decomposeAVX2(p *[256]uint32, p0PlusQ *[256]uint32, p1 *[256]uint32)
 
 //go:noescape
 func makeHintAVX2(p *[256]uint32, p0 *[256]uint32, p1 *[256]uint32) uint32
+
+//go:noescape
+func mulBy2toDAVX2(p *[256]uint32, q *[256]uint32)
