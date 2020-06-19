@@ -124,3 +124,10 @@ func (z *Fp6) Inv(x *Fp6) {
 	z[1].Mul(c1, t0) // z1 = c1/den
 	z[2].Mul(c2, t0) // z2 = c2/den
 }
+func (z *Fp6) Frob(x *Fp6) {
+	z[0].Frob(&x[0])
+	z[1].Frob(&x[1])
+	z[2].Frob(&x[2])
+	z[1].Mul(&z[1], &frob6_v1)
+	z[2].Mul(&z[2], &frob6_v2)
+}
