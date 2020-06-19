@@ -61,30 +61,36 @@ func (l *line) eval(P *G1) *ff.Fp12 {
 	return &g
 }
 
-func finalExp(f *ff.Fp12) *Gt {
-	_ = easyExponentiation(f)
-	var g Gt
-	return &g
-}
+func finalExp(f *ff.Fp12) *Gt { return hardExponentiation(ff.EasyExponentiation(f)) }
 
-// easyExponentiation raises f^(p^6-1)(p^2+1) and returns an element in the
-// 12-th cyclotomic group.
-func easyExponentiation(f *ff.Fp12) *ff.Cyclo12 {
-	var t0, t1, t2, p ff.Fp12
-	p.Frob(f)        // p = f^(p)
-	p.Frob(&p)       // p = f^(p^2)
-	t0.Mul(&p, f)    // t0 = f^(p^2 + 1)
-	t2.Inv(&t0)      // t2 = f^-(p^2 + 1)
-	t1.Frob(&t0)     // t1 = f^(p^2 + 1)*(p)
-	t1.Frob(&t1)     // t1 = f^(p^2 + 1)*(p^2)
-	t1.Frob(&t1)     // t1 = f^(p^2 + 1)*(p^3)
-	t1.Frob(&t1)     // t1 = f^(p^2 + 1)*(p^4)
-	t1.Frob(&t1)     // t1 = f^(p^2 + 1)*(p^5)
-	t1.Frob(&t1)     // t1 = f^(p^2 + 1)*(p^6)
-	t0.Mul(&t0, &t1) // t0 = f^(p^2 + 1)*(p^6 - 1)
+// HardExponentiation raises f^(Cy_12(p)/r) and returns a r-root of unity.
+func hardExponentiation(f *ff.Cyclo12) *Gt {
+	var t0, t1, _f, f3 ff.Cyclo12
+	var c, a0, a1, a2, a3 ff.Cyclo12
+	_f.Inv(f)        // _f = f^-1
+	f3.Sqr(f)        // f3 = f^2
+	f3.Mul(&f3, f)   // f3 = f^3
+	t0.Pow(f)        // t0 = f^x
+	t0.Mul(&t0, &_f) // t0 = f^(x-1)
+	t1.Pow(&t0)      // t1 = f^(x-1)*x
+	t0.Inv(&t0)      // t0 = f^-(x-1)
+	a3.Mul(&t1, &t0) // a3 = f^(x-1)*(x-1)
+	a2.Frob(&a3)     // a2 = a3*p
+	a1.Frob(&a2)     // a1 = a2*p = a3*p^2
+	t0.Inv(&a3)      // t0 = -a3
+	a1.Mul(&a1, &t0) // a1 = a3*p^2-a3
+	a0.Frob(&a1)     // a0 = a3*p^3-a3*p
+	a0.Mul(&a0, &f3) // a0 = a3*p^3-a3*p+3
 
-	g := &ff.Cyclo12{}
-	g[0].Set(&t0[0])
-	g[1].Set(&t0[1])
-	return g
+	c.Pow(&a3)     // c = f^(a3*x)
+	c.Mul(&c, &a2) // c = f^(a3*x+a2)
+	c.Pow(&c)      // c = f^(a3*x+a2)*x = f^(a3*x^2+a2*x)
+	c.Mul(&c, &a1) // c = f^(a3*x^2+a2*x+a1)
+	c.Pow(&c)      // c = f^(a3*x^2+a2*x+a1)*x = f^(a3*x^3+a2*x^2+a1*x)
+	c.Mul(&c, &a0) // c = f^(a3*x^3+a2*x^2+a1*x+a0)
+
+	var z Gt
+	z[0].Set(&c[0])
+	z[1].Set(&c[1])
+	return &z
 }
