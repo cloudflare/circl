@@ -128,6 +128,6 @@ func (z *Fp6) Frob(x *Fp6) {
 	z[0].Frob(&x[0])
 	z[1].Frob(&x[1])
 	z[2].Frob(&x[2])
-	z[1].Mul(&z[1], &frob6_v1)
-	z[2].Mul(&z[2], &frob6_v2)
+	z[1].Mul(&z[1], &frob6V1)
+	z[2].Mul(&z[2], &frob6V2)
 }

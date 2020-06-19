@@ -1,30 +1,35 @@
 package bls12381
 
 import (
-	"fmt"
 	"testing"
+
+	"github.com/cloudflare/circl/ecc/bls12381/ff"
 )
-
-func TestDevel(t *testing.T) {
-	t.Logf("Devel\n")
-
-	g1 := G1Generator()
-	g2 := G2Generator()
-	g3 := miller(g1, g2)
-
-	fmt.Printf("g1:\n%v\n", g1)
-	fmt.Printf("g2:\n%v\n", g2)
-	fmt.Printf("g3:\n%v\n", g3)
-	cy := easyExponentiation(g3)
-	fmt.Printf("cy:\n%v\n", cy)
-}
 
 func BenchmarkPair(b *testing.B) {
 	g1 := G1Generator()
 	g2 := G2Generator()
+	f := miller(g1, g2)
+	g := ff.EasyExponentiation(f)
+
 	b.Run("Miller", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			_ = miller(g1, g2)
+		}
+	})
+	b.Run("EasyExp", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			ff.EasyExponentiation(f)
+		}
+	})
+	b.Run("HardExp", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			hardExponentiation(g)
+		}
+	})
+	b.Run("FinalExp", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_ = finalExp(f)
 		}
 	})
 }

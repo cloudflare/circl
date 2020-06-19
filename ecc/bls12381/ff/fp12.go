@@ -12,7 +12,7 @@ func (z *Fp12) SetOne()              { z[0].SetOne(); z[1].SetZero() }
 func (z *Fp12) IsZero() bool         { return z[0].IsZero() && z[1].IsZero() }
 func (z *Fp12) IsEqual(x *Fp12) bool { return z[0].IsEqual(&x[0]) && z[1].IsEqual(&x[1]) }
 func (z *Fp12) MulBeta()             { var t Fp6; t.Set(&z[0]); z[0].Sub(&z[0], &z[1]); z[1].Add(&t, &z[1]) }
-func (z *Fp12) Frob(x *Fp12)         { z[0].Frob(&x[0]); z[1].Frob(&x[1]); z[1].Mul(&z[1], &frob12_w1) }
+func (z *Fp12) Frob(x *Fp12)         { z[0].Frob(&x[0]); z[1].Frob(&x[1]); z[1].Mul(&z[1], &frob12W1) }
 func (z *Fp12) Cjg()                 { z[1].Neg() }
 func (z *Fp12) Neg()                 { z[0].Neg(); z[1].Neg() }
 func (z *Fp12) Add(x, y *Fp12)       { z[0].Add(&x[0], &y[0]); z[1].Add(&x[1], &y[1]) }
