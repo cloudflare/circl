@@ -7,7 +7,6 @@
 package dilithium
 
 import (
-	"errors"
 	"fmt"
 	"io"
 
@@ -21,8 +20,8 @@ type {{ .Impl }} struct{}
 // {{ .Mode }} is Dilithium in mode "{{ .Name }}".
 var {{ .Mode }} Mode = &{{ .Impl }}{}
 
-func (m *{{ .Impl }}) GenerateKey(rand io.Reader) (PublicKey,
-	PrivateKey, error) {
+func (m *{{ .Impl }}) GenerateKey(rand io.Reader) (
+	PublicKey, PrivateKey, error) {
 	return {{ .Pkg }}.GenerateKey(rand)
 }
 
@@ -56,7 +55,7 @@ func (m *{{ .Impl }}) Verify(pk PublicKey, msg []byte, signature []byte) bool {
 func (m *{{ .Impl }}) PublicKeyFromBytes(data []byte) PublicKey {
 	var ret {{ .Pkg }}.PublicKey
 	if len(data) != {{ .Pkg }}.PublicKeySize {
-		panic(errors.New("packed public key must be of {{ .Pkg }}.PublicKeySize bytes"))
+		panic("packed public key must be of {{ .Pkg }}.PublicKeySize bytes")
 	}
 	var buf [{{ .Pkg }}.PublicKeySize]byte
 	copy(buf[:], data)
@@ -67,7 +66,7 @@ func (m *{{ .Impl }}) PublicKeyFromBytes(data []byte) PublicKey {
 func (m *{{ .Impl }}) PrivateKeyFromBytes(data []byte) PrivateKey {
 	var ret {{ .Pkg }}.PrivateKey
 	if len(data) != {{ .Pkg }}.PrivateKeySize {
-		panic(errors.New("packed public key must be of {{ .Pkg }}.PrivateKeySize bytes"))
+		panic("packed public key must be of {{ .Pkg }}.PrivateKeySize bytes")
 	}
 	var buf [{{ .Pkg }}.PrivateKeySize]byte
 	copy(buf[:], data)

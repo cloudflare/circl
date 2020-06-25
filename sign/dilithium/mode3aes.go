@@ -3,7 +3,6 @@
 package dilithium
 
 import (
-	"errors"
 	"fmt"
 	"io"
 
@@ -17,8 +16,8 @@ type implMode3AES struct{}
 // Mode3AES is Dilithium in mode "Dilithium3-AES".
 var Mode3AES Mode = &implMode3AES{}
 
-func (m *implMode3AES) GenerateKey(rand io.Reader) (PublicKey,
-	PrivateKey, error) {
+func (m *implMode3AES) GenerateKey(rand io.Reader) (
+	PublicKey, PrivateKey, error) {
 	return mode3aes.GenerateKey(rand)
 }
 
@@ -52,7 +51,7 @@ func (m *implMode3AES) Verify(pk PublicKey, msg []byte, signature []byte) bool {
 func (m *implMode3AES) PublicKeyFromBytes(data []byte) PublicKey {
 	var ret mode3aes.PublicKey
 	if len(data) != mode3aes.PublicKeySize {
-		panic(errors.New("packed public key must be of mode3aes.PublicKeySize bytes"))
+		panic("packed public key must be of mode3aes.PublicKeySize bytes")
 	}
 	var buf [mode3aes.PublicKeySize]byte
 	copy(buf[:], data)
@@ -63,7 +62,7 @@ func (m *implMode3AES) PublicKeyFromBytes(data []byte) PublicKey {
 func (m *implMode3AES) PrivateKeyFromBytes(data []byte) PrivateKey {
 	var ret mode3aes.PrivateKey
 	if len(data) != mode3aes.PrivateKeySize {
-		panic(errors.New("packed public key must be of mode3aes.PrivateKeySize bytes"))
+		panic("packed public key must be of mode3aes.PrivateKeySize bytes")
 	}
 	var buf [mode3aes.PrivateKeySize]byte
 	copy(buf[:], data)

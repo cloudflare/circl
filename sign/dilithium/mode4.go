@@ -3,7 +3,6 @@
 package dilithium
 
 import (
-	"errors"
 	"fmt"
 	"io"
 
@@ -17,8 +16,8 @@ type implMode4 struct{}
 // Mode4 is Dilithium in mode "Dilithium4".
 var Mode4 Mode = &implMode4{}
 
-func (m *implMode4) GenerateKey(rand io.Reader) (PublicKey,
-	PrivateKey, error) {
+func (m *implMode4) GenerateKey(rand io.Reader) (
+	PublicKey, PrivateKey, error) {
 	return mode4.GenerateKey(rand)
 }
 
@@ -52,7 +51,7 @@ func (m *implMode4) Verify(pk PublicKey, msg []byte, signature []byte) bool {
 func (m *implMode4) PublicKeyFromBytes(data []byte) PublicKey {
 	var ret mode4.PublicKey
 	if len(data) != mode4.PublicKeySize {
-		panic(errors.New("packed public key must be of mode4.PublicKeySize bytes"))
+		panic("packed public key must be of mode4.PublicKeySize bytes")
 	}
 	var buf [mode4.PublicKeySize]byte
 	copy(buf[:], data)
@@ -63,7 +62,7 @@ func (m *implMode4) PublicKeyFromBytes(data []byte) PublicKey {
 func (m *implMode4) PrivateKeyFromBytes(data []byte) PrivateKey {
 	var ret mode4.PrivateKey
 	if len(data) != mode4.PrivateKeySize {
-		panic(errors.New("packed public key must be of mode4.PrivateKeySize bytes"))
+		panic("packed public key must be of mode4.PrivateKeySize bytes")
 	}
 	var buf [mode4.PrivateKeySize]byte
 	copy(buf[:], data)
