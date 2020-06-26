@@ -404,7 +404,7 @@ func PolyDeriveUniformB60X4(ps [4]*common.Poly, seed *[48]byte,
 		}
 	}
 
-	var perm f1600x4.State
+	var perm keccakf1600.StateX4
 	state := perm.Initialize()
 
 	// Absorb the seed in the four states

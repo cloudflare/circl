@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	sha3 "github.com/cloudflare/circl/internal/shake"
 	"github.com/cloudflare/circl/simd/keccakf1600"
-	"golang.org/x/crypto/sha3"
 )
 
 func Example() {
