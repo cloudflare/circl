@@ -7,7 +7,7 @@ import (
 )
 
 var (
-	// Number of interations
+	// Number of iterations
 	numIter = 10
 	// Modulus
 	modulus, _ = new(big.Int).SetString(fp2S(p), 16)

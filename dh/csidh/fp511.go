@@ -126,7 +126,7 @@ func modExpRdcCommon(r, b, e *fp, fpBitLen int) {
 	precomp[0] = one // b ^ 0
 	precomp[1] = *b  // b ^ 1
 	for i := 2; i < 16; i = i + 2 {
-		// OPTIMIZE: implement fast squering. Then interleaving fast squaring
+		// OPTIMIZE: implement fast squaring. Then interleaving fast squaring
 		// with multiplication should improve performance.
 		mulRdc(&precomp[i], &precomp[i/2], &precomp[i/2]) // sqr
 		mulRdc(&precomp[i+1], &precomp[i], b)
@@ -163,13 +163,13 @@ func modExpRdcCommon(r, b, e *fp, fpBitLen int) {
 	r[7] = ctPick64(w, r[7], t[7])
 }
 
-// modExpRdc does modular exponentation of 512-bit number.
+// modExpRdc does modular exponentiation of 512-bit number.
 // Constant-time.
 func modExpRdc512(r, b, e *fp) {
 	modExpRdcCommon(r, b, e, 512)
 }
 
-// modExpRdc does modular exponentation of 64-bit number.
+// modExpRdc does modular exponentiation of 64-bit number.
 // Constant-time.
 func modExpRdc64(r, b *fp, e uint64) {
 	modExpRdcCommon(r, b, &fp{e}, 64)
