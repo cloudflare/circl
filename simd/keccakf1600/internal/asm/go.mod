@@ -1,4 +1,4 @@
-module github.com/cloudflare/circl/sign/dilithium/internal/f1600x4/asm
+module github.com/cloudflare/circl/simd/keccakf1600/internal/asm
 
 go 1.12
 

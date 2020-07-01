@@ -2,7 +2,7 @@ package internal
 
 import (
 	"github.com/cloudflare/circl/internal/shake"
-	"github.com/cloudflare/circl/sign/dilithium/internal/f1600x4"
+	"github.com/cloudflare/circl/simd/keccakf1600"
 
 	"github.com/cloudflare/circl/sign/dilithium/internal/common"
 
@@ -11,7 +11,7 @@ import (
 
 // DeriveX4Available indicates whether the system supports the quick fourway
 // sampling variants like PolyDeriveUniformX4.
-var DeriveX4Available = f1600x4.Available && !UseAES
+var DeriveX4Available = keccakf1600.IsEnabledX4() && !UseAES
 
 // For each i, sample ps[i] uniformly with coefficients of norm less than γ₁
 // using the the given seed and nonces[i].  ps[i] may be nil and is ignored
@@ -21,7 +21,7 @@ var DeriveX4Available = f1600x4.Available && !UseAES
 // Can only be called when DeriveX4Available is true.
 func PolyDeriveUniformLeGamma1X4(ps [4]*common.Poly, seed *[48]byte,
 	nonces [4]uint16) {
-	var perm f1600x4.State
+	var perm keccakf1600.StateX4
 	state := perm.Initialize()
 
 	// Absorb the seed in the four states
@@ -110,7 +110,7 @@ func PolyDeriveUniformLeGamma1X4(ps [4]*common.Poly, seed *[48]byte,
 //
 // Can only be called when DeriveX4Available is true.
 func PolyDeriveUniformX4(ps [4]*common.Poly, seed *[32]byte, nonces [4]uint16) {
-	var perm f1600x4.State
+	var perm keccakf1600.StateX4
 	state := perm.Initialize()
 
 	// Absorb the seed in the four states
@@ -404,7 +404,7 @@ func PolyDeriveUniformB60X4(ps [4]*common.Poly, seed *[48]byte,
 		}
 	}
 
-	var perm f1600x4.State
+	var perm keccakf1600.StateX4
 	state := perm.Initialize()
 
 	// Absorb the seed in the four states
