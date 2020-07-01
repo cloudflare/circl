@@ -218,7 +218,7 @@ func (sk *PrivateKey) computeT0andT1(t0, t1 *VecK) {
 // NewKeyFromSeed derives a public/private key pair using the given seed.
 func NewKeyFromSeed(seed *[common.SeedSize]byte) (*PublicKey, *PrivateKey) {
 	var buf [96]byte
-	h := shake.NewShake128()
+	h := shake.NewShake256()
 	_, _ = h.Write(seed[:])
 	_, _ = h.Read(buf[:])
 	return NewKeyFromExpandedSeed(&buf)
