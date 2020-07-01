@@ -5,7 +5,7 @@ package p384
 const baseOmega = uint(7)
 
 // baseOddMultiples has [2*i+1] * G at position i.
-// Each coordinate has been mutiplied by R=2^384
+// Each coordinate has been multiplied by R=2^384
 var baseOddMultiples = [1 << (baseOmega - 1)]affinePoint{
 	// 1P
 	{
