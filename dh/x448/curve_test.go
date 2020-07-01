@@ -20,7 +20,7 @@ func getModulus() *big.Int {
 }
 
 func doubleBig(x1, z1, p *big.Int) {
-	// Montgomery point doubling in projective (X:Z) coordintates.
+	// Montgomery point doubling in projective (X:Z) coordinates.
 	A24 := big.NewInt(39082)
 	A, B, C := big.NewInt(0), big.NewInt(0), big.NewInt(0)
 	A.Add(x1, z1).Mod(A, p)

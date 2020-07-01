@@ -50,7 +50,7 @@ func (P *twistPoint) Double() {
 	fp.Mul(Py, g, h)  // Y = G * H, T = E * H
 }
 
-// mixAdd calulates P= P+Q, where Q is a precomputed point with Z_Q = 1.
+// mixAdd calculates P= P+Q, where Q is a precomputed point with Z_Q = 1.
 func (P *twistPoint) mixAddZ1(Q *preTwistPointAffine) {
 	fp.Add(&P.z, &P.z, &P.z) // D = 2*z1 (z2=1)
 	P.coreAddition(Q)

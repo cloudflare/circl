@@ -264,7 +264,7 @@ func TestCombinedMult(t *testing.T) {
 	}
 }
 
-func TestAbsoute(t *testing.T) {
+func TestAbsolute(t *testing.T) {
 	cases := []int32{-2, -1, 0, 1, 2}
 	expected := []int32{2, 1, 0, 1, 2}
 	for i := range cases {
