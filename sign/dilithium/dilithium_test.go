@@ -20,7 +20,11 @@ func testNewKeyFromSeed(t *testing.T, name, esk, epk string) {
 	if mode == nil {
 		t.Fatal()
 	}
-	pk, sk := mode.NewKeyFromSeed(make([]byte, mode.SeedSize()))
+	var seed [96]byte
+	h := shake.NewShake128()
+	_, _ = h.Write(make([]byte, mode.SeedSize()))
+	_, _ = h.Read(seed[:])
+	pk, sk := mode.NewKeyFromExpandedSeed(&seed)
 	pkh := hexHash(pk.Bytes())
 	skh := hexHash(sk.Bytes())
 	if pkh != epk {
