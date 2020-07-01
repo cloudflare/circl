@@ -68,7 +68,7 @@ func (s *fpRngGen) randFp(v *fp, rng io.Reader) {
 // if function has finished successfully. In case first return value is true,
 // second return value indicates if curve represented by coffactor 'a' is
 // supersingular.
-// Implemenation uses divide-and-conquer strategy and recursion in order to
+// Implementation uses divide-and-conquer strategy and recursion in order to
 // speed up calculation of Q_i = [(p+1)/l_i] * P.
 // Implementation is not constant time, but it operates on public data only.
 func cofactorMul(p *point, a *coeff, halfL, halfR int, order *fp) (bool, bool) {

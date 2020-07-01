@@ -37,7 +37,7 @@
 // uses MULX instruction. Macro smashes value in DX.
 // Input: I0 and I1.
 // Output: O
-// All the other arguments are resgisters, used for storing temporary values
+// All the other arguments are registers, used for storing temporary values
 #define MULS256_MULX(O, I0, I1, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9) \
 	MOVQ    I0, DX          \
 	MULXQ   I1, T1, T0      \   // T0:T1 = A0*B0
@@ -353,7 +353,7 @@
 
 // Template for calculating the Montgomery reduction algorithm described in
 // section 5.2.3 of https://eprint.iacr.org/2017/1015.pdf. Template must be
-// customized with schoolbook multiplicaton for 128 x 320-bit number.
+// customized with schoolbook multiplication for 128 x 320-bit number.
 // This macro reuses memory of IN value and *changes* it. Smashes registers
 // R[8-15], BX, CX
 // Input:

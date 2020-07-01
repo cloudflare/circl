@@ -3,7 +3,7 @@ package goldilocks
 import fp "github.com/cloudflare/circl/math/fp448"
 
 var (
-	// genX is the x-coordintate of the generator of Goldilocks curve.
+	// genX is the x-coordinate of the generator of Goldilocks curve.
 	genX = fp.Elt{
 		0x5e, 0xc0, 0x0c, 0xc7, 0x2b, 0xa8, 0x26, 0x26,
 		0x8e, 0x93, 0x00, 0x8b, 0xe1, 0x80, 0x3b, 0x43,

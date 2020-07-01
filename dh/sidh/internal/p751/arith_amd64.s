@@ -1609,7 +1609,7 @@ TEXT ·mulP751(SB), $96-24
 
 // Template for calculating the Montgomery reduction algorithm described in
 // section 5.2.3 of https://eprint.iacr.org/2017/1015.pdf. Template must be
-// customized with schoolbook multiplicaton for 256 x 448-bit number.
+// customized with schoolbook multiplication for 256 x 448-bit number.
 // This macro reuses memory of IN value and *changes* it. Smashes registers
 // R[8-15], AX, BX, CX, DX, BP.
 // Input:
