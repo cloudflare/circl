@@ -380,7 +380,7 @@ func (v vector) testSign(t *testing.T, preHash bool) {
 	}
 }
 
-// there are no test vectors for signctx prehashed
+// there are no test vectors for signctx prehashed.
 func (v vector) testSignCtx(t *testing.T) {
 	private := ed25519.NewKeyFromSeed(v.sk)
 
@@ -416,7 +416,7 @@ func (v vector) testVerify(t *testing.T, preHash bool) {
 	}
 }
 
-func (v vector) testVerifyCtx(t *testing.T, preHash bool) {
+func (v vector) testVerifyCtx(t *testing.T) {
 	var got bool
 	opts := crypto.Hash(0)
 	got = ed25519.VerifyCtx(v.pk, v.msg, v.sig, opts, string(v.ctx))
@@ -455,7 +455,7 @@ func TestEd25519(t *testing.T) {
 
 			v.testPublicKey(t)
 			v.testSignCtx(t)
-			v.testVerifyCtx(t, false)
+			v.testVerifyCtx(t)
 		} else {
 			t.Fatal("Suite not supported")
 		}
