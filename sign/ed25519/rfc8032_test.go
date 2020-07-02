@@ -380,7 +380,8 @@ func (v vector) testSign(t *testing.T, preHash bool) {
 	}
 }
 
-func (v vector) testSignCtx(t *testing.T, preHash bool) {
+// there are no test vectors for signctx prehashed
+func (v vector) testSignCtx(t *testing.T) {
 	private := ed25519.NewKeyFromSeed(v.sk)
 
 	var got []byte
@@ -415,6 +416,18 @@ func (v vector) testVerify(t *testing.T, preHash bool) {
 	}
 }
 
+func (v vector) testVerifyCtx(t *testing.T, preHash bool) {
+	var got bool
+	opts := crypto.Hash(0)
+	got = ed25519.VerifyCtx(v.pk, v.msg, v.sig, opts, string(v.ctx))
+
+	want := true
+
+	if got != want {
+		test.ReportError(t, got, want, v.name)
+	}
+}
+
 func TestEd25519(t *testing.T) {
 	for _, v := range vectorsEd25519 {
 		got := v.matchMsgLen() && v.matchCtxLen()
@@ -428,18 +441,21 @@ func TestEd25519(t *testing.T) {
 			v.testSign(t, false)
 			v.testVerify(t, false)
 		} else if v.isPreHashed() {
-			got := v.ph
-			want := true
-			if got != want {
-				test.ReportError(t, got, want, v.sk)
+			if v.ph != true {
+				t.Fatal("Vectors should be hashed")
 			}
 
 			v.testPublicKey(t)
 			v.testSign(t, true)
 			v.testVerify(t, true)
 		} else if v.hasContext() {
+			if !(v.ctxLen > 0) {
+				t.Fatal("Vectors should have context")
+			}
+
 			v.testPublicKey(t)
-			v.testSignCtx(t, true)
+			v.testSignCtx(t)
+			v.testVerifyCtx(t, false)
 		} else {
 			t.Fatal("Suite not supported")
 		}
