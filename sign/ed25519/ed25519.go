@@ -353,7 +353,7 @@ func VerifyPh(public PublicKey, message, signature []byte, opts crypto.SignerOpt
 // signature, or when the public key cannot be decoded, or when context is
 // not provided.
 // This function does not handle prehashed messages. Context string should be
-// provided, and should be no more than 255 of lenght.
+// provided, and should be no more than 255 of length.
 func VerifyCtx(public PublicKey, message, signature []byte, opts crypto.SignerOpts, ctx string) bool {
 	if len(public) != PublicKeySize ||
 		len(signature) != SignatureSize ||
@@ -375,7 +375,7 @@ func VerifyCtx(public PublicKey, message, signature []byte, opts crypto.SignerOp
 // VerifyPhCtx returns true if the signature is valid. Failure cases are invalid
 // signature, or when the public key cannot be decoded.
 // This function handles prehashed messages with SHA512. Context string can
-// be additionally provided, but should be no more than 255 of lenght.
+// be additionally provided, but should be no more than 255 of length.
 func VerifyPhCtx(public PublicKey, message, signature []byte, opts crypto.SignerOpts, ctx string) bool {
 	if len(public) != PublicKeySize ||
 		len(signature) != SignatureSize ||
