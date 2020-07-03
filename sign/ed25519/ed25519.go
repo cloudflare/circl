@@ -24,7 +24,7 @@ const (
 	// SignatureSize is the length in bytes of signatures.
 	SignatureSize = 64
 
-	// ContextMaxSize is the maximum allowed context length.
+	// ContextMaxSize is the maximum length (in bytes) allowed for context.
 	ContextMaxSize = 255
 )
 const (
@@ -226,7 +226,7 @@ func (kp *KeyPair) SignWithCtx(message []byte, opts crypto.SignerOpts, ctx strin
 		return nil, errors.New("ed25519: incorrect message for non prehashed signing")
 	}
 
-	if !(len(ctx) > 0) || len(ctx) > ContextMaxSize {
+	if len(ctx) == 0 || len(ctx) > ContextMaxSize {
 		return nil, errors.New("ed25519: bad context length: " + strconv.Itoa(len(ctx)))
 	}
 
