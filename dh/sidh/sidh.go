@@ -18,7 +18,7 @@ type KeyVariant uint
 type key struct {
 	// Domain parameters of the algorithm to be used with a key
 	params *common.SidhParams
-	// Flag indicates wether corresponds to 2-, 3-torsion group or SIKE
+	// Flag indicates whether corresponds to 2-, 3-torsion group or SIKE
 	keyVariant KeyVariant
 }
 
@@ -48,7 +48,7 @@ const (
 
 const (
 	// First 2 bits identify SIDH variant third bit indicates
-	// wether key is a SIKE variant (set) or SIDH (not set)
+	// whether key is a SIKE variant (set) or SIDH (not set)
 
 	// 001 - SIDH: corresponds to 2-torsion group
 	KeyVariantSidhA KeyVariant = 1 << 0

@@ -22,7 +22,7 @@ func hexStr2Key(k *Key, s string) {
 	copy(k[:], b)
 }
 
-// Indicates wether long tests should be run
+// Indicates whether long tests should be run
 var runLongTest = flag.Bool("long", false, "runs longer tests")
 
 type katVector struct {

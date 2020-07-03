@@ -28,7 +28,7 @@ func CheckOk(result bool, msg string, t testing.TB) {
 	}
 }
 
-// checkErr fails on error condition. mustFail indicates wether err is expected
+// checkErr fails on error condition. mustFail indicates whether err is expected
 // to be nil or not.
 func checkErr(t testing.TB, err error, mustFail bool, msg string) {
 	t.Helper()

@@ -1739,7 +1739,7 @@ TEXT ·rdcP751(SB), $0-16
 	MOVQ z+0(FP), REG_P2
 	MOVQ x+8(FP), REG_P1
 
-	// Check wether to use optimized implementation
+	// Check whether to use optimized implementation
 	CMPB    ·HasADXandBMI2(SB), $1
 	JE      redc_with_mulx_adcx_adox
 	CMPB    ·HasBMI2(SB), $1

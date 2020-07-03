@@ -220,7 +220,7 @@ func TestClone(t *testing.T) {
 	}
 }
 
-// Checks wether reset works correctly after clone.
+// Checks whether reset works correctly after clone.
 func TestCloneAndReset(t *testing.T) {
 	// Shake 256, uses SHA-3 with rate = 136
 	d1 := NewShake256()
