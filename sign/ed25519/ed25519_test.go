@@ -141,7 +141,7 @@ func TestSigner(t *testing.T) {
 		test.ReportError(t, got, want)
 	}
 
-	got = ed25519.VerifyPh(pubSigner, d, sig, ops)
+	got = ed25519.VerifyPh(pubSigner, d, sig, ops, "")
 	want = true
 	if got != want {
 		test.ReportError(t, got, want)
@@ -222,7 +222,7 @@ func BenchmarkEd25519(b *testing.B) {
 		sig, _ := key.SignPh(msg, opts, ctx)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			ed25519.VerifyPh(key.GetPublic(), msg, sig, opts)
+			ed25519.VerifyPh(key.GetPublic(), msg, sig, opts, ctx)
 		}
 	})
 	b.Run("signWithCtx", func(b *testing.B) {
@@ -241,7 +241,7 @@ func BenchmarkEd25519(b *testing.B) {
 		sig, _ := key.SignWithCtx(msg, opts, ctx)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			ed25519.VerifyCtx(key.GetPublic(), msg, sig, opts, ctx)
+			ed25519.VerifyWithCtx(key.GetPublic(), msg, sig, opts, ctx)
 		}
 	})
 }
@@ -292,7 +292,7 @@ func Example_ed25519Ph() {
 	}
 
 	// Anyone can verify the signature using Alice's public key.
-	ok := ed25519.VerifyPh(keys.GetPublic(), d, signature, opts)
+	ok := ed25519.VerifyPh(keys.GetPublic(), d, signature, opts, ctx)
 	fmt.Println(ok)
 	// Output: true
 }

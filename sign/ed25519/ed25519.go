@@ -201,7 +201,7 @@ func (kp *KeyPair) SignPure(message []byte, opts crypto.SignerOpts) ([]byte, err
 // hashed with SHA512. This can be achieved by passing crypto.SHA512 as the value
 // for opts.
 // Messages prehashed with other algorithms are not handled.
-// Context should be passed to this function, which length should be no more than
+// Context could be passed to this function, which length should be no more than
 // 255. It can be empty.
 func (kp *KeyPair) SignPh(message []byte, opts crypto.SignerOpts, ctx string) ([]byte, error) {
 	if opts != crypto.SHA512 && len(message) != sha512.Size {
@@ -286,7 +286,9 @@ func Verify(public PublicKey, message, signature []byte) bool {
 // VerifyPh returns true if the signature is valid. Failure cases are invalid
 // signature, or when the public key cannot be decoded.
 // This function handles prehashed messages with SHA512.
-func VerifyPh(public PublicKey, message, signature []byte, opts crypto.SignerOpts) bool {
+// Context could be passed to this function, which length should be no more than
+// 255. It can be empty.
+func VerifyPh(public PublicKey, message, signature []byte, opts crypto.SignerOpts, ctx string) bool {
 	if len(public) != PublicKeySize ||
 		len(signature) != SignatureSize ||
 		!isLessThanOrder(signature[paramB:]) {
@@ -297,16 +299,15 @@ func VerifyPh(public PublicKey, message, signature []byte, opts crypto.SignerOpt
 		return false
 	}
 
-	ctx := ""
 	return verify(public, message, signature, true, []byte(ctx))
 }
 
-// VerifyCtx returns true if the signature is valid. Failure cases are invalid
+// VerifyWithCtx returns true if the signature is valid. Failure cases are invalid
 // signature, or when the public key cannot be decoded, or when context is
 // not provided.
 // This function does not handle prehashed messages. Context string should be
 // provided, and should be no more than 255 of length.
-func VerifyCtx(public PublicKey, message, signature []byte, opts crypto.SignerOpts, ctx string) bool {
+func VerifyWithCtx(public PublicKey, message, signature []byte, opts crypto.SignerOpts, ctx string) bool {
 	if len(public) != PublicKeySize ||
 		len(signature) != SignatureSize ||
 		!isLessThanOrder(signature[paramB:]) {
@@ -317,33 +318,11 @@ func VerifyCtx(public PublicKey, message, signature []byte, opts crypto.SignerOp
 		return false
 	}
 
-	if !(len(ctx) > 0) || len(ctx) > ContextMaxSize {
+	if len(ctx) == 0 || len(ctx) > ContextMaxSize {
 		return false
 	}
 
 	return verify(public, message, signature, false, []byte(ctx))
-}
-
-// VerifyPhCtx returns true if the signature is valid. Failure cases are invalid
-// signature, or when the public key cannot be decoded.
-// This function handles prehashed messages with SHA512. Context string can
-// be additionally provided, but should be no more than 255 of length.
-func VerifyPhCtx(public PublicKey, message, signature []byte, opts crypto.SignerOpts, ctx string) bool {
-	if len(public) != PublicKeySize ||
-		len(signature) != SignatureSize ||
-		!isLessThanOrder(signature[paramB:]) {
-		return false
-	}
-
-	if opts.HashFunc() != crypto.SHA512 || len(message) != sha512.Size {
-		return false
-	}
-
-	if len(ctx) > ContextMaxSize {
-		return false
-	}
-
-	return verify(public, message, signature, true, []byte(ctx))
 }
 
 func clamp(k []byte) {

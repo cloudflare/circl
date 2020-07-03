@@ -405,7 +405,7 @@ func (v vector) testVerify(t *testing.T, preHash bool) {
 		_, _ = h.Write(v.msg)
 		d := h.Sum(nil)
 
-		got = ed25519.VerifyPh(v.pk, d, v.sig, opts)
+		got = ed25519.VerifyPh(v.pk, d, v.sig, opts, "")
 	} else {
 		got = ed25519.Verify(v.pk, v.msg, v.sig)
 	}
@@ -420,7 +420,7 @@ func (v vector) testVerify(t *testing.T, preHash bool) {
 func (v vector) testVerifyCtx(t *testing.T) {
 	var got bool
 	opts := crypto.Hash(0)
-	got = ed25519.VerifyCtx(v.pk, v.msg, v.sig, opts, string(v.ctx))
+	got = ed25519.VerifyWithCtx(v.pk, v.msg, v.sig, opts, string(v.ctx))
 
 	want := true
 
