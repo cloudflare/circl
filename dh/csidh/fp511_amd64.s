@@ -14,7 +14,7 @@ TEXT ·mul512Amd64(SB), NOSPLIT, $0-24
     MOVQ    a+0(FP), DI    // result
     MOVQ    b+8(FP), SI    // multiplicand
 
-    // Check wether to use optimized implementation
+    // Check whether to use optimized implementation
     CMPB    ·hasBMI2(SB), $1
     JE      mul512_mulx
 

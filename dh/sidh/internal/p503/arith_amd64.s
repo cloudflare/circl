@@ -696,7 +696,7 @@ TEXT ·mulP503(SB), NOSPLIT, $104-24
 	MOVQ    x+8(FP), REG_P1
 	MOVQ    y+16(FP), REG_P2
 
-	// Check wether to use optimized implementation
+	// Check whether to use optimized implementation
 	CMPB    ·HasADXandBMI2(SB), $1
 	JE      mul_with_mulx_adcx_adox
 	CMPB    ·HasBMI2(SB), $1
@@ -1193,7 +1193,7 @@ TEXT ·rdcP503(SB), $0-16
 	MOVQ    z+0(FP), REG_P2
 	MOVQ    x+8(FP), REG_P1
 
-	// Check wether to use optimized implementation
+	// Check whether to use optimized implementation
 	CMPB    ·HasADXandBMI2(SB), $1
 	JE      redc_with_mulx_adcx_adox
 	CMPB    ·HasBMI2(SB), $1

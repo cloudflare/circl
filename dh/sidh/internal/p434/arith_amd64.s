@@ -651,7 +651,7 @@ TEXT ·mulP434(SB),NOSPLIT,$112-24
     MOVQ    x+8(FP), DI
     MOVQ    y+16(FP), SI
 
-    // Check wether to use optimized implementation
+    // Check whether to use optimized implementation
     CMPB    ·HasADXandBMI2(SB), $1
     JE      mul_with_mulx_adcx_adox
 
