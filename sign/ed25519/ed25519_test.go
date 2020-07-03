@@ -111,8 +111,12 @@ func TestSigner(t *testing.T) {
 
 	ops = crypto.SHA512
 	msg2 := make([]byte, 64)
-	_, _ = rand.Read(msg)
-	sig, err = signer.Sign(nil, msg2, ops)
+	_, _ = rand.Read(msg2)
+	h := sha512.New()
+	_, _ = h.Write(msg2)
+	d := h.Sum(nil)
+
+	sig, err = signer.Sign(nil, d, ops)
 	if err != nil {
 		got := err
 		var want error
@@ -137,7 +141,7 @@ func TestSigner(t *testing.T) {
 		test.ReportError(t, got, want)
 	}
 
-	got = ed25519.VerifyPh(pubSigner, msg2, sig, ops)
+	got = ed25519.VerifyPh(pubSigner, d, sig, ops)
 	want = true
 	if got != want {
 		test.ReportError(t, got, want)
@@ -176,7 +180,6 @@ func TestErrors(t *testing.T) {
 	})
 }
 
-// TODO: add context here
 func BenchmarkEd25519(b *testing.B) {
 	msg := make([]byte, 128)
 	_, _ = rand.Read(msg)
@@ -220,6 +223,25 @@ func BenchmarkEd25519(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			ed25519.VerifyPh(key.GetPublic(), msg, sig, opts)
+		}
+	})
+	b.Run("signWithCtx", func(b *testing.B) {
+		key, _ := ed25519.GenerateKey(rand.Reader)
+		opts := crypto.Hash(0)
+		ctx := "context"
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = key.SignWithCtx(msg, opts, ctx)
+		}
+	})
+	b.Run("verifyWithCtx", func(b *testing.B) {
+		key, _ := ed25519.GenerateKey(rand.Reader)
+		opts := crypto.Hash(0)
+		ctx := "context"
+		sig, _ := key.SignWithCtx(msg, opts, ctx)
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			ed25519.VerifyCtx(key.GetPublic(), msg, sig, opts, ctx)
 		}
 	})
 }
