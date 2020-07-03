@@ -281,10 +281,12 @@ func Example_ed25519Ph() {
 	// Alice signs a message.
 	message := []byte("A message to be signed")
 	opts := crypto.SHA512
+	ctx := ""
+
+	// The message is hashed.
 	h := sha512.New()
 	_, _ = h.Write(message)
 	d := h.Sum(nil)
-	ctx := ""
 
 	signature, err := keys.SignPh(d, opts, ctx)
 	if err != nil {
