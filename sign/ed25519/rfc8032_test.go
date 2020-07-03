@@ -368,7 +368,8 @@ func (v vector) testSign(t *testing.T, preHash bool) {
 		d := h.Sum(nil)
 
 		opts := crypto.SHA512
-		got, err = private.SignPh(d, opts)
+		ctx := ""
+		got, err = private.SignPh(d, opts, ctx)
 	} else {
 		opts := crypto.Hash(0)
 		got, err = private.SignPure(v.msg, opts)
@@ -388,7 +389,7 @@ func (v vector) testSignCtx(t *testing.T) {
 	var err error
 
 	opts := crypto.Hash(0)
-	got, err = private.SignPureCtx(v.msg, opts, string(v.ctx))
+	got, err = private.SignWithCtx(v.msg, opts, string(v.ctx))
 
 	want := v.sig
 	if !bytes.Equal(got, want) || err != nil {

@@ -70,7 +70,9 @@ func (kp *KeyPair) Sign(rand io.Reader, message []byte, opts crypto.SignerOpts) 
 		if len(message) != sha512.Size {
 			return nil, errors.New("ed25519: incorrect message length")
 		}
-		return kp.SignPh(message, opts)
+
+		ctx := ""
+		return kp.SignPh(message, opts, ctx)
 	case crypto.Hash(0):
 		return kp.SignPure(message, opts)
 	default:
@@ -180,41 +182,6 @@ func sign(kp *KeyPair, message []byte, preHash bool, ctx []byte) ([]byte, error)
 	return signature[:], err
 }
 
-// SignCtx creates a signature of a message given a key pair.
-// This function can handle unhashed messages or messages that have been
-// prehashed with SHA512. It handles context with a maximum of 255 bytes.
-// The opts.HashFunc() must return zero to indicate the message hasn't been
-// hashed. This can be achieved by passing crypto.Hash(0) as the value for opts.
-// The opts.HashFunc() must return SHA512 to indicate the message has been
-// hashed with SHA512. This can be achieved by passing crypto.SHA512 as the value
-// for opts.
-// Context should be passed to this function, which length should be no more
-// than 255. It should not be empty.
-// Messages prehashed with other algorithms are not handled.
-func (kp *KeyPair) SignCtx(message []byte, opts crypto.SignerOpts, ctx string) ([]byte, error) {
-	l := len(ctx)
-
-	if l > 0 {
-		if l > ContextMaxSize {
-			return nil, errors.New("ed25519: bad context length: " + strconv.Itoa(l))
-		}
-
-		switch opts.HashFunc() {
-		case crypto.SHA512:
-			if len(message) != sha512.Size {
-				return nil, errors.New("ed25519: incorrect message length")
-			}
-			return kp.SignPhCtx(message, opts, ctx)
-		case crypto.Hash(0):
-			return kp.SignPureCtx(message, opts, ctx)
-		default:
-			return nil, errors.New("ed25519: expected unhashed message or message hashed with SHA-512")
-		}
-	}
-
-	return nil, errors.New("ed25519: option not valid. A context string should be provided")
-}
-
 // SignPure creates a signature of a message given a keypair.
 // This function handles unhashed messages.
 // The opts.HashFunc() must return zero to indicate the message hasn't been
@@ -229,47 +196,14 @@ func (kp *KeyPair) SignPure(message []byte, opts crypto.SignerOpts) ([]byte, err
 }
 
 // SignPh creates a signature of a message given a keypair.
-// This function handles prehashed messages.
-// The opts.HashFunc() must return SHA512 to indicate the message has been
-// hashed with SHA512. This can be achieved by passing crypto.SHA512 as the value
-// for opts.
-// Messages prehashed with other algorithms are not handled.
-func (kp *KeyPair) SignPh(message []byte, opts crypto.SignerOpts) ([]byte, error) {
-	if opts != crypto.SHA512 && len(message) != sha512.Size {
-		return nil, errors.New("ed25519: incorrect message for prehashed signing")
-	}
-
-	ctx := ""
-	return sign(kp, message, true, []byte(ctx))
-}
-
-// SignPureCtx creates a signature of a message given a keypair.
-// This function handles unhashed messages with context.
-// The opts.HashFunc() must return zero to indicate the message hasn't been
-// hashed. This can be achieved by passing crypto.Hash(0) as the value for opts.
-// Context should be passed to this function, which length should be no more than
-// 255. It should not be empty.
-func (kp *KeyPair) SignPureCtx(message []byte, opts crypto.SignerOpts, ctx string) ([]byte, error) {
-	if opts != crypto.Hash(0) {
-		return nil, errors.New("ed25519: incorrect message for non prehashed signing")
-	}
-
-	if !(len(ctx) > 0) || len(ctx) > ContextMaxSize {
-		return nil, errors.New("ed25519: bad context length: " + strconv.Itoa(len(ctx)))
-	}
-
-	return sign(kp, message, false, []byte(ctx))
-}
-
-// SignPhCtx creates a signature of a message given a keypair.
-// This function handles prehashed messages with context.
+// This function handles prehashed messages with an optional context.
 // The opts.HashFunc() must return SHA512 to indicate the message has been
 // hashed with SHA512. This can be achieved by passing crypto.SHA512 as the value
 // for opts.
 // Messages prehashed with other algorithms are not handled.
 // Context should be passed to this function, which length should be no more than
 // 255. It can be empty.
-func (kp *KeyPair) SignPhCtx(message []byte, opts crypto.SignerOpts, ctx string) ([]byte, error) {
+func (kp *KeyPair) SignPh(message []byte, opts crypto.SignerOpts, ctx string) ([]byte, error) {
 	if opts != crypto.SHA512 && len(message) != sha512.Size {
 		return nil, errors.New("ed25519: incorrect message for prehashed signing")
 	}
@@ -279,6 +213,24 @@ func (kp *KeyPair) SignPhCtx(message []byte, opts crypto.SignerOpts, ctx string)
 	}
 
 	return sign(kp, message, true, []byte(ctx))
+}
+
+// SignWithCtx creates a signature of a message given a keypair.
+// This function handles unhashed messages with context.
+// The opts.HashFunc() must return zero to indicate the message hasn't been
+// hashed. This can be achieved by passing crypto.Hash(0) as the value for opts.
+// Context should be passed to this function, which length should be no more than
+// 255. It should not be empty.
+func (kp *KeyPair) SignWithCtx(message []byte, opts crypto.SignerOpts, ctx string) ([]byte, error) {
+	if opts != crypto.Hash(0) {
+		return nil, errors.New("ed25519: incorrect message for non prehashed signing")
+	}
+
+	if !(len(ctx) > 0) || len(ctx) > ContextMaxSize {
+		return nil, errors.New("ed25519: bad context length: " + strconv.Itoa(len(ctx)))
+	}
+
+	return sign(kp, message, false, []byte(ctx))
 }
 
 func verify(public PublicKey, message, signature []byte, preHash bool, ctx []byte) bool {

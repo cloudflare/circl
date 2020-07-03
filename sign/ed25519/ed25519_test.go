@@ -176,6 +176,7 @@ func TestErrors(t *testing.T) {
 	})
 }
 
+// TODO: add context here
 func BenchmarkEd25519(b *testing.B) {
 	msg := make([]byte, 128)
 	_, _ = rand.Read(msg)
@@ -205,15 +206,17 @@ func BenchmarkEd25519(b *testing.B) {
 	b.Run("signPh", func(b *testing.B) {
 		key, _ := ed25519.GenerateKey(rand.Reader)
 		opts := crypto.SHA512
+		ctx := ""
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			_, _ = key.SignPh(msg, opts)
+			_, _ = key.SignPh(msg, opts, ctx)
 		}
 	})
 	b.Run("verifyPh", func(b *testing.B) {
 		key, _ := ed25519.GenerateKey(rand.Reader)
 		opts := crypto.SHA512
-		sig, _ := key.SignPh(msg, opts)
+		ctx := ""
+		sig, _ := key.SignPh(msg, opts, ctx)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			ed25519.VerifyPh(key.GetPublic(), msg, sig, opts)
@@ -259,8 +262,9 @@ func Example_ed25519Ph() {
 	h := sha512.New()
 	_, _ = h.Write(message)
 	d := h.Sum(nil)
+	ctx := ""
 
-	signature, err := keys.SignPh(d, opts)
+	signature, err := keys.SignPh(d, opts, ctx)
 	if err != nil {
 		panic("error on signing message")
 	}
