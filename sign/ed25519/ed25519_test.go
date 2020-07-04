@@ -55,7 +55,7 @@ func TestWrongPublicKey(t *testing.T) {
 	}
 }
 
-func TestSigner(t *testing.T) {
+func TestSignerPure(t *testing.T) {
 	// ed25519
 	seed := make(ed25519.PrivateKey, ed25519.PrivateKeySize)
 	_, _ = rand.Read(seed)
@@ -108,13 +108,33 @@ func TestSigner(t *testing.T) {
 	if got != want {
 		test.ReportError(t, got, want)
 	}
+}
 
+func TestSignerPh(t *testing.T) {
 	// ed25519ph
-	ops = crypto.SHA512
-	msg2 := make([]byte, 64)
-	_, _ = rand.Read(msg2)
+	seed := make(ed25519.PrivateKey, ed25519.PrivateKeySize)
+	_, _ = rand.Read(seed)
+	key := ed25519.NewKeyFromSeed(seed)
 
-	sig, err = signer.Sign(nil, msg2, ops)
+	priv := key.GetPrivate()
+	if !bytes.Equal(seed, priv) {
+		got := priv
+		want := seed
+		test.ReportError(t, got, want)
+	}
+	priv = key.Seed()
+	if !bytes.Equal(seed, priv) {
+		got := priv
+		want := seed
+		test.ReportError(t, got, want)
+	}
+
+	signer := crypto.Signer(key)
+	ops := crypto.SHA512
+	msg := make([]byte, 64)
+	_, _ = rand.Read(msg)
+
+	sig, err := signer.Sign(nil, msg, ops)
 	if err != nil {
 		got := err
 		var want error
@@ -126,8 +146,8 @@ func TestSigner(t *testing.T) {
 		test.ReportError(t, got, want)
 	}
 
-	pubKey = key.GetPublic()
-	pubSigner, ok = signer.Public().(ed25519.PublicKey)
+	pubKey := key.GetPublic()
+	pubSigner, ok := signer.Public().(ed25519.PublicKey)
 	if !ok {
 		got := ok
 		want := true
@@ -139,21 +159,41 @@ func TestSigner(t *testing.T) {
 		test.ReportError(t, got, want)
 	}
 
-	got = ed25519.VerifyWithOpts(pubSigner, msg2, sig, ops)
-	want = true
+	got := ed25519.VerifyWithOpts(pubSigner, msg, sig, ops)
+	want := true
 	if got != want {
 		test.ReportError(t, got, want)
 	}
+}
 
+func TestSignerWithCtx(t *testing.T) {
 	// ed25519ctx
-	ops2 := &ed25519.Options{
+	seed := make(ed25519.PrivateKey, ed25519.PrivateKeySize)
+	_, _ = rand.Read(seed)
+	key := ed25519.NewKeyFromSeed(seed)
+
+	priv := key.GetPrivate()
+	if !bytes.Equal(seed, priv) {
+		got := priv
+		want := seed
+		test.ReportError(t, got, want)
+	}
+	priv = key.Seed()
+	if !bytes.Equal(seed, priv) {
+		got := priv
+		want := seed
+		test.ReportError(t, got, want)
+	}
+
+	signer := crypto.Signer(key)
+	ops := &ed25519.Options{
 		Hash:    crypto.Hash(0),
 		Context: "context",
 	}
-	msg3 := make([]byte, 64)
-	_, _ = rand.Read(msg3)
+	msg := make([]byte, 64)
+	_, _ = rand.Read(msg)
 
-	sig, err = signer.Sign(nil, msg3, ops2)
+	sig, err := signer.Sign(nil, msg, ops)
 	if err != nil {
 		got := err
 		var want error
@@ -165,8 +205,8 @@ func TestSigner(t *testing.T) {
 		test.ReportError(t, got, want)
 	}
 
-	pubKey = key.GetPublic()
-	pubSigner, ok = signer.Public().(ed25519.PublicKey)
+	pubKey := key.GetPublic()
+	pubSigner, ok := signer.Public().(ed25519.PublicKey)
 	if !ok {
 		got := ok
 		want := true
@@ -178,8 +218,8 @@ func TestSigner(t *testing.T) {
 		test.ReportError(t, got, want)
 	}
 
-	got = ed25519.VerifyWithOpts(pubSigner, msg3, sig, ops2)
-	want = true
+	got := ed25519.VerifyWithOpts(pubSigner, msg, sig, ops)
+	want := true
 	if got != want {
 		test.ReportError(t, got, want)
 	}
@@ -262,10 +302,10 @@ func BenchmarkEd25519(b *testing.B) {
 			ed25519.VerifyPh(key.GetPublic(), msg, sig, opts, ctx)
 		}
 	})
+	ctx := "context"
 	b.Run("signWithCtx", func(b *testing.B) {
 		key, _ := ed25519.GenerateKey(rand.Reader)
 		opts := crypto.Hash(0)
-		ctx := "context"
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			_, _ = key.SignWithCtx(msg, opts, ctx)
@@ -274,7 +314,6 @@ func BenchmarkEd25519(b *testing.B) {
 	b.Run("verifyWithCtx", func(b *testing.B) {
 		key, _ := ed25519.GenerateKey(rand.Reader)
 		opts := crypto.Hash(0)
-		ctx := "context"
 		sig, _ := key.SignWithCtx(msg, opts, ctx)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
