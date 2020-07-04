@@ -56,27 +56,24 @@ func (kp *KeyPair) Seed() []byte { return kp.GetPrivate() }
 func (kp *KeyPair) Public() crypto.PublicKey { return kp.GetPublic() }
 
 // Sign creates a signature of a message given a key pair.
-// This function can handle unhashed messages or messages that have been
+// This function can handle unhashed messages or messages that will be
 // prehashed with SHA512, but does not handle context.
 // The opts.HashFunc() must return zero to indicate the message hasn't been
 // hashed. This can be achieved by passing crypto.Hash(0) as the value for opts.
-// The opts.HashFunc() must return SHA512 to indicate the message has been
+// The opts.HashFunc() must return SHA512 to indicate that the message will be
 // hashed with SHA512. This can be achieved by passing crypto.SHA512 as the value
 // for opts.
-// Messages prehashed with other algorithms are not handled.
+// Messages to be prehashed with other algorithms are not handled.
 func (kp *KeyPair) Sign(rand io.Reader, message []byte, opts crypto.SignerOpts) ([]byte, error) {
 	switch opts.HashFunc() {
 	case crypto.SHA512:
-		if len(message) != sha512.Size {
-			return nil, errors.New("ed25519: incorrect message length")
-		}
 
 		ctx := ""
 		return kp.SignPh(message, opts, ctx)
 	case crypto.Hash(0):
 		return kp.SignPure(message, opts)
 	default:
-		return nil, errors.New("ed25519: expected unhashed message or message hashed with SHA-512")
+		return nil, errors.New("ed25519: expected unhashed message or message to be hashed with SHA-512")
 	}
 }
 
@@ -197,14 +194,14 @@ func (kp *KeyPair) SignPure(message []byte, opts crypto.SignerOpts) ([]byte, err
 
 // SignPh creates a signature of a message given a keypair.
 // This function handles prehashed messages with an optional context.
-// The opts.HashFunc() must return SHA512 to indicate the message has been
+// The opts.HashFunc() must return SHA512 to indicate the message will be
 // hashed with SHA512. This can be achieved by passing crypto.SHA512 as the value
 // for opts.
-// Messages prehashed with other algorithms are not handled.
+// Messages to be prehashed with other algorithms are not handled.
 // Context could be passed to this function, which length should be no more than
 // 255. It can be empty.
 func (kp *KeyPair) SignPh(message []byte, opts crypto.SignerOpts, ctx string) ([]byte, error) {
-	if opts != crypto.SHA512 && len(message) != sha512.Size {
+	if opts != crypto.SHA512 {
 		return nil, errors.New("ed25519: incorrect message for prehashed signing")
 	}
 
@@ -212,7 +209,11 @@ func (kp *KeyPair) SignPh(message []byte, opts crypto.SignerOpts, ctx string) ([
 		return nil, errors.New("ed25519: bad context length: " + strconv.Itoa(len(ctx)))
 	}
 
-	return sign(kp, message, true, []byte(ctx))
+	h := sha512.New()
+	_, _ = h.Write(message)
+	d := h.Sum(nil)
+
+	return sign(kp, d, true, []byte(ctx))
 }
 
 // SignWithCtx creates a signature of a message given a keypair.
@@ -285,7 +286,7 @@ func Verify(public PublicKey, message, signature []byte) bool {
 
 // VerifyPh returns true if the signature is valid. Failure cases are invalid
 // signature, or when the public key cannot be decoded.
-// This function handles prehashed messages with SHA512.
+// This function handles messages to be prehashed with SHA512.
 // Context could be passed to this function, which length should be no more than
 // 255. It can be empty.
 func VerifyPh(public PublicKey, message, signature []byte, opts crypto.SignerOpts, ctx string) bool {
@@ -295,11 +296,15 @@ func VerifyPh(public PublicKey, message, signature []byte, opts crypto.SignerOpt
 		return false
 	}
 
-	if opts.HashFunc() != crypto.SHA512 || len(message) != sha512.Size {
+	if opts.HashFunc() != crypto.SHA512 {
 		return false
 	}
 
-	return verify(public, message, signature, true, []byte(ctx))
+	h := sha512.New()
+	_, _ = h.Write(message)
+	d := h.Sum(nil)
+
+	return verify(public, d, signature, true, []byte(ctx))
 }
 
 // VerifyWithCtx returns true if the signature is valid. Failure cases are invalid

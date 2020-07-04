@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto"
 	"crypto/rand"
-	"crypto/sha512"
 	"errors"
 	"fmt"
 	"testing"
@@ -112,11 +111,8 @@ func TestSigner(t *testing.T) {
 	ops = crypto.SHA512
 	msg2 := make([]byte, 64)
 	_, _ = rand.Read(msg2)
-	h := sha512.New()
-	_, _ = h.Write(msg2)
-	d := h.Sum(nil)
 
-	sig, err = signer.Sign(nil, d, ops)
+	sig, err = signer.Sign(nil, msg2, ops)
 	if err != nil {
 		got := err
 		var want error
@@ -141,7 +137,7 @@ func TestSigner(t *testing.T) {
 		test.ReportError(t, got, want)
 	}
 
-	got = ed25519.VerifyPh(pubSigner, d, sig, ops, "")
+	got = ed25519.VerifyPh(pubSigner, msg2, sig, ops, "")
 	want = true
 	if got != want {
 		test.ReportError(t, got, want)
@@ -158,7 +154,7 @@ func TestErrors(t *testing.T) {
 		ops := crypto.SHA224
 		key, _ := ed25519.GenerateKey(nil)
 		_, got := key.Sign(nil, msg[:], ops)
-		want := errors.New("ed25519: expected unhashed message or message hashed with SHA-512")
+		want := errors.New("ed25519: expected unhashed message or message to be hashed with SHA-512")
 		if got.Error() != want.Error() {
 			test.ReportError(t, got, want)
 		}
@@ -283,18 +279,13 @@ func Example_ed25519Ph() {
 	opts := crypto.SHA512
 	ctx := ""
 
-	// The message is hashed.
-	h := sha512.New()
-	_, _ = h.Write(message)
-	d := h.Sum(nil)
-
-	signature, err := keys.SignPh(d, opts, ctx)
+	signature, err := keys.SignPh(message, opts, ctx)
 	if err != nil {
 		panic("error on signing message")
 	}
 
 	// Anyone can verify the signature using Alice's public key.
-	ok := ed25519.VerifyPh(keys.GetPublic(), d, signature, opts, ctx)
+	ok := ed25519.VerifyPh(keys.GetPublic(), message, signature, opts, ctx)
 	fmt.Println(ok)
 	// Output: true
 }

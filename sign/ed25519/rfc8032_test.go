@@ -5,7 +5,6 @@ import (
 	"bufio"
 	"bytes"
 	"crypto"
-	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
 	"strings"
@@ -363,13 +362,9 @@ func (v vector) testSign(t *testing.T, preHash bool) {
 	var err error
 
 	if preHash {
-		h := sha512.New()
-		_, _ = h.Write(v.msg)
-		d := h.Sum(nil)
-
 		opts := crypto.SHA512
 		ctx := ""
-		got, err = private.SignPh(d, opts, ctx)
+		got, err = private.SignPh(v.msg, opts, ctx)
 	} else {
 		opts := crypto.Hash(0)
 		got, err = private.SignPure(v.msg, opts)
@@ -381,7 +376,6 @@ func (v vector) testSign(t *testing.T, preHash bool) {
 	}
 }
 
-// there are no test vectors for signctx prehashed.
 func (v vector) testSignCtx(t *testing.T) {
 	private := ed25519.NewKeyFromSeed(v.sk)
 
@@ -401,11 +395,7 @@ func (v vector) testVerify(t *testing.T, preHash bool) {
 	var got bool
 	if preHash {
 		opts := crypto.SHA512
-		h := sha512.New()
-		_, _ = h.Write(v.msg)
-		d := h.Sum(nil)
-
-		got = ed25519.VerifyPh(v.pk, d, v.sig, opts, "")
+		got = ed25519.VerifyPh(v.pk, v.msg, v.sig, opts, "")
 	} else {
 		got = ed25519.Verify(v.pk, v.msg, v.sig)
 	}
@@ -443,7 +433,7 @@ func TestEd25519(t *testing.T) {
 			v.testVerify(t, false)
 		} else if v.isPreHashed() {
 			if v.ph != true {
-				t.Fatal("Vectors should be hashed")
+				t.Fatal("Vectors should be marked to be hashed")
 			}
 
 			v.testPublicKey(t)
