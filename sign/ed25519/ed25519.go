@@ -31,6 +31,25 @@ const (
 	paramB = 256 / 8 // Size of keys in bytes.
 )
 
+// Options are the options that the ed25519 functions can take.
+type Options struct {
+	// Hash can be crypto.Hash(0) for Ed25519/Ed25519ctx, or crypto.SHA512
+	// for Ed25519ph.
+	Hash crypto.Hash
+
+	// Context is an optional domain separation string for Ed25519ph and a
+	// must for Ed25519ctx. It must be less than or equal to 255.
+	Context string
+}
+
+// HashFunc returns an identifier for the hash function to be used
+// to hash the message.
+// For the Ed25519 and  Ed25519ctx this must be crypto.Hash(0); for Ed25519ph
+// this must be crypto.SHA512.
+func (opt *Options) HashFunc() crypto.Hash {
+	return opt.Hash
+}
+
 // PublicKey represents a public key of Ed25519.
 type PublicKey []byte
 
@@ -57,7 +76,7 @@ func (kp *KeyPair) Public() crypto.PublicKey { return kp.GetPublic() }
 
 // Sign creates a signature of a message given a key pair.
 // This function can handle unhashed messages or messages that will be
-// prehashed with SHA512, but does not handle context.
+// prehashed with SHA512. It also handles context.
 // The opts.HashFunc() must return zero to indicate the message hasn't been
 // hashed. This can be achieved by passing crypto.Hash(0) as the value for opts.
 // The opts.HashFunc() must return SHA512 to indicate that the message will be
@@ -65,12 +84,19 @@ func (kp *KeyPair) Public() crypto.PublicKey { return kp.GetPublic() }
 // for opts.
 // Messages to be prehashed with other algorithms are not handled.
 func (kp *KeyPair) Sign(rand io.Reader, message []byte, opts crypto.SignerOpts) ([]byte, error) {
+	var ctx string
+	if o, ok := opts.(*Options); ok {
+		ctx = o.Context
+	}
+
 	switch opts.HashFunc() {
 	case crypto.SHA512:
-
-		ctx := ""
 		return kp.SignPh(message, opts, ctx)
 	case crypto.Hash(0):
+		if len(ctx) > 0 {
+			return kp.SignWithCtx(message, opts, ctx)
+		}
+
 		return kp.SignPure(message, opts)
 	default:
 		return nil, errors.New("ed25519: expected unhashed message or message to be hashed with SHA-512")
@@ -184,7 +210,7 @@ func sign(kp *KeyPair, message []byte, preHash bool, ctx []byte) ([]byte, error)
 // The opts.HashFunc() must return zero to indicate the message hasn't been
 // hashed. This can be achieved by passing crypto.Hash(0) as the value for opts.
 func (kp *KeyPair) SignPure(message []byte, opts crypto.SignerOpts) ([]byte, error) {
-	if opts != crypto.Hash(0) {
+	if opts.HashFunc() != crypto.Hash(0) {
 		return nil, errors.New("ed25519: incorrect message for non prehashed signing")
 	}
 
@@ -201,7 +227,7 @@ func (kp *KeyPair) SignPure(message []byte, opts crypto.SignerOpts) ([]byte, err
 // Context could be passed to this function, which length should be no more than
 // 255. It can be empty.
 func (kp *KeyPair) SignPh(message []byte, opts crypto.SignerOpts, ctx string) ([]byte, error) {
-	if opts != crypto.SHA512 {
+	if opts.HashFunc() != crypto.SHA512 {
 		return nil, errors.New("ed25519: incorrect message for prehashed signing")
 	}
 
@@ -223,7 +249,7 @@ func (kp *KeyPair) SignPh(message []byte, opts crypto.SignerOpts, ctx string) ([
 // Context should be passed to this function, which length should be no more than
 // 255. It should not be empty.
 func (kp *KeyPair) SignWithCtx(message []byte, opts crypto.SignerOpts, ctx string) ([]byte, error) {
-	if opts != crypto.Hash(0) {
+	if opts.HashFunc() != crypto.Hash(0) {
 		return nil, errors.New("ed25519: incorrect message for non prehashed signing")
 	}
 
@@ -319,7 +345,7 @@ func VerifyWithCtx(public PublicKey, message, signature []byte, opts crypto.Sign
 		return false
 	}
 
-	if opts != crypto.Hash(0) {
+	if opts.HashFunc() != crypto.Hash(0) {
 		return false
 	}
 

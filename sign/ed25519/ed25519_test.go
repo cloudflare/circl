@@ -142,6 +142,44 @@ func TestSigner(t *testing.T) {
 	if got != want {
 		test.ReportError(t, got, want)
 	}
+
+	ops2 := &ed25519.Options{
+		Hash:    crypto.Hash(0),
+		Context: "context",
+	}
+	msg3 := make([]byte, 64)
+	_, _ = rand.Read(msg3)
+
+	sig, err = signer.Sign(nil, msg3, ops2)
+	if err != nil {
+		got := err
+		var want error
+		test.ReportError(t, got, want)
+	}
+	if len(sig) != ed25519.SignatureSize {
+		got := len(sig)
+		want := ed25519.SignatureSize
+		test.ReportError(t, got, want)
+	}
+
+	pubKey = key.GetPublic()
+	pubSigner, ok = signer.Public().(ed25519.PublicKey)
+	if !ok {
+		got := ok
+		want := true
+		test.ReportError(t, got, want)
+	}
+	if !bytes.Equal(pubKey, pubSigner) {
+		got := pubSigner
+		want := pubKey
+		test.ReportError(t, got, want)
+	}
+
+	got = ed25519.VerifyWithCtx(pubSigner, msg3, sig, ops2, ops2.Context)
+	want = true
+	if got != want {
+		test.ReportError(t, got, want)
+	}
 }
 
 type badReader struct{}
