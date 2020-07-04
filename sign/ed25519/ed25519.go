@@ -12,6 +12,7 @@ import (
 	cryptoRand "crypto/rand"
 	"crypto/sha512"
 	"errors"
+	"hash"
 	"io"
 	"strconv"
 )
@@ -146,18 +147,7 @@ func sign(kp *KeyPair, message []byte, preHash bool, ctx []byte) ([]byte, error)
 	// 2.  Compute SHA-512(dom2(F, C) || prefix || PH(M))
 	H.Reset()
 
-	if len(ctx) > 0 {
-		_, _ = H.Write([]byte(dom2))
-		if preHash {
-			_, _ = H.Write([]byte{byte(0x01), byte(len(ctx))})
-		} else {
-			_, _ = H.Write([]byte{byte(0x00), byte(len(ctx))})
-		}
-		_, _ = H.Write(ctx)
-	} else if preHash {
-		_, _ = H.Write([]byte(dom2))
-		_, _ = H.Write([]byte{0x01, 0x00})
-	}
+	H = defineDom(H, ctx, preHash)
 
 	_, _ = H.Write(prefix)
 	_, _ = H.Write(message)
@@ -173,18 +163,7 @@ func sign(kp *KeyPair, message []byte, preHash bool, ctx []byte) ([]byte, error)
 	// 4.  Compute SHA512(dom2(F, C) || R || A || PH(M)).
 	H.Reset()
 
-	if len(ctx) > 0 {
-		_, _ = H.Write([]byte(dom2))
-		if preHash {
-			_, _ = H.Write([]byte{byte(0x01), byte(len(ctx))})
-		} else {
-			_, _ = H.Write([]byte{byte(0x00), byte(len(ctx))})
-		}
-		_, _ = H.Write(ctx)
-	} else if preHash {
-		_, _ = H.Write([]byte(dom2))
-		_, _ = H.Write([]byte{0x01, 0x00})
-	}
+	H = defineDom(H, ctx, preHash)
 
 	_, _ = H.Write(R)
 	_, _ = H.Write(kp.public[:])
@@ -269,18 +248,7 @@ func verify(public PublicKey, message, signature []byte, preHash bool, ctx []byt
 	R := signature[:paramB]
 	H := sha512.New()
 
-	if len(ctx) > 0 {
-		_, _ = H.Write([]byte(dom2))
-		if preHash {
-			_, _ = H.Write([]byte{byte(0x01), byte(len(ctx))})
-		} else {
-			_, _ = H.Write([]byte{byte(0x00), byte(len(ctx))})
-		}
-		_, _ = H.Write(ctx)
-	} else if preHash {
-		_, _ = H.Write([]byte(dom2))
-		_, _ = H.Write([]byte{0x01, 0x00})
-	}
+	H = defineDom(H, ctx, preHash)
 
 	_, _ = H.Write(R)
 	_, _ = H.Write(public)
@@ -400,4 +368,21 @@ func isLessThanOrder(x []byte) bool {
 		i--
 	}
 	return x[i] < order[i]
+}
+
+func defineDom(h hash.Hash, ctx []byte, preHash bool) hash.Hash {
+	if len(ctx) > 0 {
+		_, _ = h.Write([]byte(dom2))
+		if preHash {
+			_, _ = h.Write([]byte{byte(0x01), byte(len(ctx))})
+		} else {
+			_, _ = h.Write([]byte{byte(0x00), byte(len(ctx))})
+		}
+		_, _ = h.Write(ctx)
+	} else if preHash {
+		_, _ = h.Write([]byte(dom2))
+		_, _ = h.Write([]byte{0x01, 0x00})
+	}
+
+	return h
 }
