@@ -310,6 +310,38 @@ func Verify(public PublicKey, message, signature []byte) bool {
 	return verify(public, message, signature, false, []byte(ctx))
 }
 
+// VerifyWithOpts returns true if the signature is valid. Failure cases are invalid
+// signature, or when the public key cannot be decoded.
+// This function handles messages to be prehashed with SHA512, or messages
+// not to be prehashed.
+// Context could be passed to this function, which length should be no more than
+// 255. It can be empty.
+func VerifyWithOpts(public PublicKey, message, signature []byte, opts crypto.SignerOpts) bool {
+	if len(public) != PublicKeySize ||
+		len(signature) != SignatureSize ||
+		!isLessThanOrder(signature[paramB:]) {
+		return false
+	}
+
+	var ctx string
+	if o, ok := opts.(*Options); ok {
+		ctx = o.Context
+	}
+
+	switch opts.HashFunc() {
+	case crypto.SHA512:
+		return VerifyPh(public, message, signature, opts, ctx)
+	case crypto.Hash(0):
+		if len(ctx) > 0 {
+			return VerifyWithCtx(public, message, signature, opts, ctx)
+		}
+
+		return Verify(public, message, signature)
+	default:
+		return false
+	}
+}
+
 // VerifyPh returns true if the signature is valid. Failure cases are invalid
 // signature, or when the public key cannot be decoded.
 // This function handles messages to be prehashed with SHA512.

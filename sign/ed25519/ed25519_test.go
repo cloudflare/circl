@@ -56,6 +56,7 @@ func TestWrongPublicKey(t *testing.T) {
 }
 
 func TestSigner(t *testing.T) {
+	// ed25519
 	seed := make(ed25519.PrivateKey, ed25519.PrivateKeySize)
 	_, _ = rand.Read(seed)
 	key := ed25519.NewKeyFromSeed(seed)
@@ -102,12 +103,13 @@ func TestSigner(t *testing.T) {
 		test.ReportError(t, got, want)
 	}
 
-	got := ed25519.Verify(pubSigner, msg, sig)
+	got := ed25519.VerifyWithOpts(pubSigner, msg, sig, ops)
 	want := true
 	if got != want {
 		test.ReportError(t, got, want)
 	}
 
+	// ed25519ph
 	ops = crypto.SHA512
 	msg2 := make([]byte, 64)
 	_, _ = rand.Read(msg2)
@@ -137,12 +139,13 @@ func TestSigner(t *testing.T) {
 		test.ReportError(t, got, want)
 	}
 
-	got = ed25519.VerifyPh(pubSigner, msg2, sig, ops, "")
+	got = ed25519.VerifyWithOpts(pubSigner, msg2, sig, ops)
 	want = true
 	if got != want {
 		test.ReportError(t, got, want)
 	}
 
+	// ed25519ctx
 	ops2 := &ed25519.Options{
 		Hash:    crypto.Hash(0),
 		Context: "context",
@@ -175,7 +178,7 @@ func TestSigner(t *testing.T) {
 		test.ReportError(t, got, want)
 	}
 
-	got = ed25519.VerifyWithCtx(pubSigner, msg3, sig, ops2, ops2.Context)
+	got = ed25519.VerifyWithOpts(pubSigner, msg3, sig, ops2)
 	want = true
 	if got != want {
 		test.ReportError(t, got, want)
