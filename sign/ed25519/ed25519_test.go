@@ -327,3 +327,28 @@ func Example_ed25519Ph() {
 	fmt.Println(ok)
 	// Output: true
 }
+
+func Example_ed25519Ctx() {
+	// import "github.com/cloudflare/circl/sign/ed25519"
+
+	// Generating Alice's key pair
+	keys, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		panic("error on generating keys")
+	}
+
+	// Alice signs a message.
+	message := []byte("A message to be signed")
+	opts := crypto.Hash(0)
+	ctx := "context"
+
+	signature, err := keys.SignWithCtx(message, opts, ctx)
+	if err != nil {
+		panic("error on signing message")
+	}
+
+	// Anyone can verify the signature using Alice's public key.
+	ok := ed25519.VerifyWithCtx(keys.GetPublic(), message, signature, opts, ctx)
+	fmt.Println(ok)
+	// Output: true
+}
