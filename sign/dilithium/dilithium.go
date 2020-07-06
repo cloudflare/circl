@@ -23,7 +23,7 @@ import (
 // PublicKey is a Dilithium public key.
 //
 // The structure contains values precomputed during unpacking/key generation
-// and is therefore signficantly larger than a packed public key.
+// and is therefore significantly larger than a packed public key.
 type PublicKey interface {
 	// Packs public key
 	Bytes() []byte

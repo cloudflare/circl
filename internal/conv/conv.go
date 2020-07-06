@@ -53,7 +53,7 @@ func BigInt2BytesLe(z []byte, x *big.Int) {
 	}
 }
 
-// Uint64Le2BigInt converts a llitle-endian slice x into a big number.
+// Uint64Le2BigInt converts a little-endian slice x into a big number.
 func Uint64Le2BigInt(x []uint64) *big.Int {
 	n := len(x)
 	b := new(big.Int)

@@ -11,7 +11,7 @@
 //
 // For those systems not supporting AVX2, the package still provides the
 // expected functionality by means of a generic and slow implementation.
-// The recommentation is to beforehand verify IsEnabledX4() to determine if
+// The recommendation is to beforehand verify IsEnabledX4() to determine if
 // the current system supports the SIMD implementation.
 package keccakf1600
 
@@ -31,7 +31,7 @@ type StateX4 struct {
 	// to be able to move the start of the state.
 
 	// 4 x 25 uint64s for the interleaved states and three uint64s headroom
-	// to fix allignment.
+	// to fix alignment.
 	a [103]uint64
 
 	// Offset into a that is 32 byte aligned.

@@ -1,2 +1,2 @@
-// Package simd provides parallel implementations of some primitves.
+// Package simd provides parallel implementations of some primitives.
 package simd

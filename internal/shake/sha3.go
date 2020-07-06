@@ -82,7 +82,7 @@ func (d *Shake) permute() {
 		d.bufo = 0
 		KeccakF1600(&d.a)
 	case spongeSqueezing:
-		// If we're squeezing, we need to apply the permutatin before
+		// If we're squeezing, we need to apply the permutation before
 		// copying more output.
 		KeccakF1600(&d.a)
 		d.bufo = 0

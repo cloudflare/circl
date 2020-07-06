@@ -87,7 +87,7 @@ func decompose(a uint32) (a0plusQ, a1 uint32) {
 }
 
 // Assume 0 ≤ r, f < Q with ‖f‖_∞ ≤ α/2.  Decompose r as r = r1*α + r0 as
-// computed by decompoes().  Write r' := r - f (mod Q).  Now, decompose
+// computed by decompose().  Write r' := r - f (mod Q).  Now, decompose
 // r'=r-f again as  r' = r'1*α + r'0 using decompose().  As f is small, we
 // have r'1 = r1 + h, where h ∈ {-1, 0, 1}.  makeHint() computes |h|
 // given z0 := r0 - f (mod Q) and r1.  With |h|, which is called the hint,

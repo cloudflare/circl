@@ -31,7 +31,7 @@ func main() {
 	superRound := GP64()
 	MOVQ(U64(6), superRound) // count down.
 
-	// XXX Because our AVX2 is signficantly larger, it might better not
+	// XXX Because our AVX2 is significantly larger, it might better not
 	//     to group four rounds together, but simply loop over the rounds
 	//     themselves.
 
