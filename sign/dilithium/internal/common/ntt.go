@@ -129,7 +129,7 @@ func (p *Poly) nttGeneric() {
 	// i.e. brv(2), brv(3), brv(4), ... and these powers of z are given by
 	// the Zetas array.
 	//
-	// The polynomials x ± zⁱ are irreducable and coprime, hence by the
+	// The polynomials x ± zⁱ are irreducible and coprime, hence by the
 	// Chinese Remainder Theorem we know
 	//
 	//  R[x]/(x²⁵⁶+1) → R[x] / (x-z) x ... x R[x] / (x+z²⁵⁵)

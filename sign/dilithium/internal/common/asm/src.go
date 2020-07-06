@@ -310,7 +310,7 @@ func nttAVX2() {
 		// with junk 32b in between.  By shifting the odd xss 32b to the
 		// left and merging them with the even xss, we get the desired
 		// order 0, 1, 2, 3, ... without any padding, which can then be
-		// moved out into memeory.
+		// moved out into memory.
 
 		VPSLLQ(U8(32), xs[1], xs[1])
 		VPSLLQ(U8(32), xs[3], xs[3])
@@ -817,7 +817,7 @@ func packLe16AVX2() {
 		VPERM2I128(U8(49), b[7], b[3], a[7])
 
 		// a has been transposed, so a[0] contains p[0], p[8], ... and
-		// a[1] ontains p[1], p[9], ..., etc.  We shift a[i] by 4*i to the left
+		// a[1] contains p[1], p[9], ..., etc.  We shift a[i] by 4*i to the left
 		// and or them together.
 		for i := 1; i < 8; i++ {
 			VPSLLD(U8(4*i), a[i], a[i])

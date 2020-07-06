@@ -145,7 +145,7 @@ func powPminus3div4(z, x *Elt) {
 // Cmov assigns y to x if n is 1.
 func Cmov(x, y *Elt, n uint) { cmov(x, y, n) }
 
-// Cswap interchages x and y if n is 1.
+// Cswap interchanges x and y if n is 1.
 func Cswap(x, y *Elt, n uint) { cswap(x, y, n) }
 
 // Add calculates z = x+y mod p.

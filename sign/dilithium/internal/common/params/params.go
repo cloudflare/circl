@@ -26,6 +26,6 @@ const (
 	// Size of a packed polynomial of norm <γ₁.
 	PolyLeGamma1Size = (N * (QBits - 3)) / 8
 
-	// Size of a packed polynomial whose coeffients are in [0,16).
+	// Size of a packed polynomial whose coefficients are in [0,16).
 	PolyLe16Size = N / 2
 )
