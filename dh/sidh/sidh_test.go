@@ -306,9 +306,9 @@ func testPrivateKeyBelowMax(t *testing.T, vec sidhVec) {
 			var secretBytes = make([]byte, prv.Size())
 
 			// Calculate either (2^e2 - 1) or (2^s - 1); where s=ceil(log_2(3^e3)))
-			maxSecertVal := big.NewInt(int64(dp.SecretBitLen))
-			maxSecertVal.Exp(big.NewInt(int64(2)), maxSecertVal, nil)
-			maxSecertVal.Sub(maxSecertVal, big.NewInt(1))
+			maxSecretVal := big.NewInt(int64(dp.SecretBitLen))
+			maxSecretVal.Exp(big.NewInt(int64(2)), maxSecretVal, nil)
+			maxSecretVal.Sub(maxSecretVal, big.NewInt(1))
 
 			// Do same test 1000 times
 			for i := 0; i < 1000; i++ {
@@ -324,7 +324,7 @@ func testPrivateKeyBelowMax(t *testing.T, vec sidhVec) {
 				}
 				prvBig := new(big.Int).SetBytes(secretBytes)
 				// Check if generated key is bigger then acceptable
-				if prvBig.Cmp(maxSecertVal) == 1 {
+				if prvBig.Cmp(maxSecretVal) == 1 {
 					t.Error("Generated private key is wrong")
 				}
 			}

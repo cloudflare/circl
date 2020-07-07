@@ -7,7 +7,7 @@ import (
 	. "github.com/cloudflare/circl/dh/sidh/internal/common"
 )
 
-// Values omputed using Sage
+// Values computed using Sage
 var (
 	expectedJ = Fp2{
 		A: Fp{0x38ECC0A0F53BACB4, 0xF987759E90A6C0DD, 0xC3007B353AE699F6, 0xB2B7E62A4F182414, 0xA65A854B34034F1B, 0xC71EAD20BE427422, 0xFC94F0D8DD51},

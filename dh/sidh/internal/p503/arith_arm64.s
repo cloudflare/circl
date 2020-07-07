@@ -411,7 +411,7 @@ TEXT ·mulP503(SB), NOSPLIT, $0-24
 	ADCS	R19, R14
 	ADC	ZR, ZR, R8
 
-	// Compute maskes and combined carry
+	// Compute masks and combined carry
 	SUB	R7, ZR, R9
 	SUB	R8, ZR, R10
 	AND	R8, R7

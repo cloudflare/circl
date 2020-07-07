@@ -2,7 +2,7 @@
 
 #include "textflag.h"
 
-// Multipies 512-bit value by 64-bit value. Uses MULQ instruction to
+// Multiplies 512-bit value by 64-bit value. Uses MULQ instruction to
 // multiply 2 64-bit values.
 //
 // Result: x = (y * z) mod 2^512
