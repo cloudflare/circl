@@ -24,7 +24,7 @@ func zeroPoint() *affinePoint { return &affinePoint{} }
 
 func (ap affinePoint) String() string {
 	if ap.isZero() {
-		return fmt.Sprint("inf")
+		return "inf"
 	}
 	return fmt.Sprintf("x: %v\ny: %v", ap.x, ap.y)
 }
