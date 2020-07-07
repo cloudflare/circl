@@ -324,6 +324,7 @@ func BenchmarkEd25519(b *testing.B) {
 
 func Example_ed25519() {
 	// import "github.com/cloudflare/circl/sign/ed25519"
+	// import "crypto/rand"
 
 	// Generating Alice's key pair
 	keys, err := ed25519.GenerateKey(rand.Reader)
@@ -347,6 +348,7 @@ func Example_ed25519() {
 
 func Example_ed25519Ph() {
 	// import "github.com/cloudflare/circl/sign/ed25519"
+	// import "crypto/rand"
 
 	// Generating Alice's key pair
 	keys, err := ed25519.GenerateKey(rand.Reader)
@@ -372,6 +374,7 @@ func Example_ed25519Ph() {
 
 func Example_ed25519Ctx() {
 	// import "github.com/cloudflare/circl/sign/ed25519"
+	// import "crypto/rand"
 
 	// Generating Alice's key pair
 	keys, err := ed25519.GenerateKey(rand.Reader)
