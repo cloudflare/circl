@@ -24,7 +24,7 @@ ifeq ($(V),1)
 endif
 
 lint:
-	$(GOLANGCILINT) run --config $(ETC_DIR)/golangci.yml ./...
+	$(GOLANGCILINT) run --config $(ETC_DIR)/golangci.yml ./... -v
 
 build:
 	$(GO) build ./...

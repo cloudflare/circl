@@ -92,7 +92,7 @@ func (kat *Wycheproof) verify(t *testing.T) {
 				}
 			}
 			{
-				got := ed25519.Verify(keys.GetPublic(), msg, sig)
+				got := ed25519.VerifyPure(keys.GetPublic(), msg, sig)
 				want := isValid
 				if got != want {
 					test.ReportError(t, got, want, i, gT.TcID)
