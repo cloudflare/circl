@@ -126,8 +126,18 @@ func NewKeyFromSeed(seed PrivateKey) *KeyPair {
 }
 
 func sign(kp *KeyPair, message []byte, preHash bool, ctx []byte) ([]byte, error) {
-	// 1.  Hash the 32-byte private key using SHA-512.
 	H := sha512.New()
+	var d []byte
+
+	if preHash {
+		_, _ = H.Write(message)
+		d = H.Sum(nil)
+		H.Reset()
+	} else {
+		d = message
+	}
+
+	// 1.  Hash the 32-byte private key using SHA-512.
 	_, _ = H.Write(kp.private[:])
 	h := H.Sum(nil)
 	clamp(h[:])
@@ -139,7 +149,7 @@ func sign(kp *KeyPair, message []byte, preHash bool, ctx []byte) ([]byte, error)
 	writeDom(H, ctx, preHash)
 
 	_, _ = H.Write(prefix)
-	_, _ = H.Write(message)
+	_, _ = H.Write(d)
 	r := H.Sum(nil)
 	reduceModOrder(r[:], true)
 
@@ -156,7 +166,7 @@ func sign(kp *KeyPair, message []byte, preHash bool, ctx []byte) ([]byte, error)
 
 	_, _ = H.Write(R)
 	_, _ = H.Write(kp.public[:])
-	_, _ = H.Write(message)
+	_, _ = H.Write(d)
 	hRAM := H.Sum(nil)
 
 	reduceModOrder(hRAM[:], true)
@@ -191,11 +201,7 @@ func (kp *KeyPair) SignPh(message []byte, ctx string) ([]byte, error) {
 		return nil, errors.New("ed25519: bad context length: " + strconv.Itoa(len(ctx)))
 	}
 
-	h := sha512.New()
-	_, _ = h.Write(message)
-	d := h.Sum(nil)
-
-	return sign(kp, d, true, []byte(ctx))
+	return sign(kp, message, true, []byte(ctx))
 }
 
 // SignWithCtx creates a signature of a message given a keypair.
@@ -223,14 +229,24 @@ func verify(public PublicKey, message, signature []byte, preHash bool, ctx []byt
 		return false
 	}
 
-	R := signature[:paramB]
 	H := sha512.New()
+	var d []byte
+
+	if preHash {
+		_, _ = H.Write(message)
+		d = H.Sum(nil)
+		H.Reset()
+	} else {
+		d = message
+	}
+
+	R := signature[:paramB]
 
 	writeDom(H, ctx, preHash)
 
 	_, _ = H.Write(R)
 	_, _ = H.Write(public)
-	_, _ = H.Write(message)
+	_, _ = H.Write(d)
 	hRAM := H.Sum(nil)
 	reduceModOrder(hRAM[:], true)
 
@@ -283,11 +299,7 @@ func VerifyPure(public PublicKey, message, signature []byte) bool {
 // Context could be passed to this function, which length should be no more than
 // 255. It can be empty.
 func VerifyPh(public PublicKey, message, signature []byte, ctx string) bool {
-	h := sha512.New()
-	_, _ = h.Write(message)
-	d := h.Sum(nil)
-
-	return verify(public, d, signature, true, []byte(ctx))
+	return verify(public, message, signature, true, []byte(ctx))
 }
 
 // VerifyWithCtx returns true if the signature is valid. Failure cases are invalid
