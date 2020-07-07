@@ -1,15 +1,35 @@
 linters:
-  enable-all: true
-  disable:
-    - testpackage # it can be improved
-    - lll         # it can be improved
-    - gocritic    # it can be improved
-    - gocognit    # it can be improved
-    - gochecknoglobals
-    - gochecknoinits
-    - gomnd
-    - dupl
-    - wsl
+  disable-all: true
+  enable:
+    - bodyclose
+    - deadcode
+    - depguard
+    - dogsled
+    - errcheck
+    - funlen
+    - goconst
+    - gocyclo
+    - gofmt
+    - goimports
+    - golint
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - interfacer
+    - lll
+    - misspell
+    - nakedret
+    - scopelint
+    - staticcheck
+    - structcheck
+    - stylecheck
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - varcheck
+    - whitespace
 
 linters-settings:
   funlen:
