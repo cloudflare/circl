@@ -1,6 +1,9 @@
 linters:
   disable-all: true
   enable:
+#   - lll    
+#   - gocritic    
+#   - gocognit    
     - bodyclose
     - deadcode
     - depguard
