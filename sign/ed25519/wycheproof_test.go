@@ -2,7 +2,6 @@ package ed25519_test
 
 import (
 	"bytes"
-	"crypto"
 	"encoding/hex"
 	"encoding/json"
 	"io/ioutil"
@@ -86,15 +85,14 @@ func (kat *Wycheproof) verify(t *testing.T) {
 				test.ReportError(t, got, want, i, gT.TcID)
 			}
 			if isValid {
-				opts := crypto.Hash(0)
-				got, err := keys.SignPure(msg, opts)
+				got, err := keys.SignPure(msg)
 				want := sig
 				if !bytes.Equal(got, want) || err != nil {
 					test.ReportError(t, got, want, i, gT.TcID)
 				}
 			}
 			{
-				got := ed25519.Verify(keys.GetPublic(), msg, sig)
+				got := ed25519.VerifyPure(keys.GetPublic(), msg, sig)
 				want := isValid
 				if got != want {
 					test.ReportError(t, got, want, i, gT.TcID)

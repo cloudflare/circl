@@ -47,7 +47,7 @@ func TestWrongPublicKey(t *testing.T) {
 	}
 	sig := (&[ed25519.SignatureSize]byte{})[:]
 	for _, public := range wrongPublicKeys {
-		got := ed25519.Verify(public[:], []byte(""), sig)
+		got := ed25519.VerifyPure(public[:], []byte(""), sig)
 		want := false
 		if got != want {
 			test.ReportError(t, got, want, public)
@@ -103,7 +103,7 @@ func TestSignerPure(t *testing.T) {
 		test.ReportError(t, got, want)
 	}
 
-	got := ed25519.VerifyWithOpts(pubSigner, msg, sig, ops)
+	got := ed25519.Verify(pubSigner, msg, sig, ops)
 	want := true
 	if got != want {
 		test.ReportError(t, got, want)
@@ -159,7 +159,7 @@ func TestSignerPh(t *testing.T) {
 		test.ReportError(t, got, want)
 	}
 
-	got := ed25519.VerifyWithOpts(pubSigner, msg, sig, ops)
+	got := ed25519.Verify(pubSigner, msg, sig, ops)
 	want := true
 	if got != want {
 		test.ReportError(t, got, want)
@@ -218,7 +218,7 @@ func TestSignerWithCtx(t *testing.T) {
 		test.ReportError(t, got, want)
 	}
 
-	got := ed25519.VerifyWithOpts(pubSigner, msg, sig, ops)
+	got := ed25519.Verify(pubSigner, msg, sig, ops)
 	want := true
 	if got != want {
 		test.ReportError(t, got, want)
@@ -268,56 +268,50 @@ func BenchmarkEd25519(b *testing.B) {
 	})
 	b.Run("sign", func(b *testing.B) {
 		key, _ := ed25519.GenerateKey(rand.Reader)
-		opts := crypto.Hash(0)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			_, _ = key.SignPure(msg, opts)
+			_, _ = key.SignPure(msg)
 		}
 	})
 	b.Run("verify", func(b *testing.B) {
 		key, _ := ed25519.GenerateKey(rand.Reader)
-		opts := crypto.Hash(0)
-		sig, _ := key.SignPure(msg, opts)
+		sig, _ := key.SignPure(msg)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			ed25519.Verify(key.GetPublic(), msg, sig)
+			ed25519.VerifyPure(key.GetPublic(), msg, sig)
 		}
 	})
 	b.Run("signPh", func(b *testing.B) {
 		key, _ := ed25519.GenerateKey(rand.Reader)
-		opts := crypto.SHA512
 		ctx := ""
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			_, _ = key.SignPh(msg, opts, ctx)
+			_, _ = key.SignPh(msg, ctx)
 		}
 	})
 	b.Run("verifyPh", func(b *testing.B) {
 		key, _ := ed25519.GenerateKey(rand.Reader)
-		opts := crypto.SHA512
 		ctx := ""
-		sig, _ := key.SignPh(msg, opts, ctx)
+		sig, _ := key.SignPh(msg, ctx)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			ed25519.VerifyPh(key.GetPublic(), msg, sig, opts, ctx)
+			ed25519.VerifyPh(key.GetPublic(), msg, sig, ctx)
 		}
 	})
 	ctx := "context"
 	b.Run("signWithCtx", func(b *testing.B) {
 		key, _ := ed25519.GenerateKey(rand.Reader)
-		opts := crypto.Hash(0)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			_, _ = key.SignWithCtx(msg, opts, ctx)
+			_, _ = key.SignWithCtx(msg, ctx)
 		}
 	})
 	b.Run("verifyWithCtx", func(b *testing.B) {
 		key, _ := ed25519.GenerateKey(rand.Reader)
-		opts := crypto.Hash(0)
-		sig, _ := key.SignWithCtx(msg, opts, ctx)
+		sig, _ := key.SignWithCtx(msg, ctx)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			ed25519.VerifyWithCtx(key.GetPublic(), msg, sig, opts, ctx)
+			ed25519.VerifyWithCtx(key.GetPublic(), msg, sig, ctx)
 		}
 	})
 }
@@ -334,14 +328,13 @@ func Example_ed25519() {
 
 	// Alice signs a message.
 	message := []byte("A message to be signed")
-	opts := crypto.Hash(0)
-	signature, err := keys.SignPure(message, opts)
+	signature, err := keys.SignPure(message)
 	if err != nil {
 		panic("error on signing message")
 	}
 
 	// Anyone can verify the signature using Alice's public key.
-	ok := ed25519.Verify(keys.GetPublic(), message, signature)
+	ok := ed25519.VerifyPure(keys.GetPublic(), message, signature)
 	fmt.Println(ok)
 	// Output: true
 }
@@ -358,16 +351,15 @@ func Example_ed25519Ph() {
 
 	// Alice signs a message.
 	message := []byte("A message to be signed")
-	opts := crypto.SHA512
 	ctx := ""
 
-	signature, err := keys.SignPh(message, opts, ctx)
+	signature, err := keys.SignPh(message, ctx)
 	if err != nil {
 		panic("error on signing message")
 	}
 
 	// Anyone can verify the signature using Alice's public key.
-	ok := ed25519.VerifyPh(keys.GetPublic(), message, signature, opts, ctx)
+	ok := ed25519.VerifyPh(keys.GetPublic(), message, signature, ctx)
 	fmt.Println(ok)
 	// Output: true
 }
@@ -384,16 +376,15 @@ func Example_ed25519Ctx() {
 
 	// Alice signs a message.
 	message := []byte("A message to be signed")
-	opts := crypto.Hash(0)
 	ctx := "context"
 
-	signature, err := keys.SignWithCtx(message, opts, ctx)
+	signature, err := keys.SignWithCtx(message, ctx)
 	if err != nil {
 		panic("error on signing message")
 	}
 
 	// Anyone can verify the signature using Alice's public key.
-	ok := ed25519.VerifyWithCtx(keys.GetPublic(), message, signature, opts, ctx)
+	ok := ed25519.VerifyWithCtx(keys.GetPublic(), message, signature, ctx)
 	fmt.Println(ok)
 	// Output: true
 }

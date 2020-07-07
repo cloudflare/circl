@@ -83,13 +83,13 @@ func (kp *KeyPair) Sign(rand io.Reader, message []byte, opts crypto.SignerOpts) 
 
 	switch opts.HashFunc() {
 	case crypto.SHA512:
-		return kp.SignPh(message, opts, ctx)
+		return kp.SignPh(message, ctx)
 	case crypto.Hash(0):
 		if len(ctx) > 0 {
-			return kp.SignWithCtx(message, opts, ctx)
+			return kp.SignWithCtx(message, ctx)
 		}
 
-		return kp.SignPure(message, opts)
+		return kp.SignPure(message)
 	default:
 		return nil, errors.New("ed25519: expected unhashed message or message to be hashed with SHA-512")
 	}
@@ -175,12 +175,8 @@ func sign(kp *KeyPair, message []byte, preHash bool, ctx []byte) ([]byte, error)
 
 // SignPure creates a signature of a message given a keypair.
 // This function supports the signature variant defined in RFC-8032: Ed25519,
-// meaning it handles unhashed messages, with not context.
-func (kp *KeyPair) SignPure(message []byte, opts crypto.SignerOpts) ([]byte, error) {
-	if opts.HashFunc() != crypto.Hash(0) {
-		return nil, errors.New("ed25519: incorrect message for non prehashed signing")
-	}
-
+// meaning it handles messages that will not be prehashed, with no context.
+func (kp *KeyPair) SignPure(message []byte) ([]byte, error) {
 	ctx := ""
 	return sign(kp, message, false, []byte(ctx))
 }
@@ -190,11 +186,7 @@ func (kp *KeyPair) SignPure(message []byte, opts crypto.SignerOpts) ([]byte, err
 // meaning it handles messages to be prehashed with SHA512.
 // Context could be passed to this function, which length should be no more than
 // 255. It can be empty.
-func (kp *KeyPair) SignPh(message []byte, opts crypto.SignerOpts, ctx string) ([]byte, error) {
-	if opts.HashFunc() != crypto.SHA512 {
-		return nil, errors.New("ed25519: incorrect message for prehashed signing")
-	}
-
+func (kp *KeyPair) SignPh(message []byte, ctx string) ([]byte, error) {
 	if len(ctx) > ContextMaxSize {
 		return nil, errors.New("ed25519: bad context length: " + strconv.Itoa(len(ctx)))
 	}
@@ -211,11 +203,7 @@ func (kp *KeyPair) SignPh(message []byte, opts crypto.SignerOpts, ctx string) ([
 // meaning it handles unhashed messages with context.
 // Context should be passed to this function, which length should be no more than
 // 255. It should not be empty.
-func (kp *KeyPair) SignWithCtx(message []byte, opts crypto.SignerOpts, ctx string) ([]byte, error) {
-	if opts.HashFunc() != crypto.Hash(0) {
-		return nil, errors.New("ed25519: incorrect message for non prehashed signing")
-	}
-
+func (kp *KeyPair) SignWithCtx(message []byte, ctx string) ([]byte, error) {
 	if len(ctx) == 0 || len(ctx) > ContextMaxSize {
 		return nil, fmt.Errorf("ed25519: bad context length: %v > %v", len(ctx), ContextMaxSize)
 	}
@@ -256,19 +244,11 @@ func verify(public PublicKey, message, signature []byte, preHash bool, ctx []byt
 
 // Verify returns true if the signature is valid. Failure cases are invalid
 // signature, or when the public key cannot be decoded.
-// This function does not handle prehashed messages.
-func Verify(public PublicKey, message, signature []byte) bool {
-	ctx := ""
-	return verify(public, message, signature, false, []byte(ctx))
-}
-
-// VerifyWithOpts returns true if the signature is valid. Failure cases are invalid
-// signature, or when the public key cannot be decoded.
 // This function supports all the three signature variants defined in RFC-8032,
 // namely Ed25519 (or pure EdDSA), Ed25519Ph, and Ed25519Ctx.
 // Context could be passed to this function, which length should be no more than
 // 255. It can be empty.
-func VerifyWithOpts(public PublicKey, message, signature []byte, opts crypto.SignerOpts) bool {
+func Verify(public PublicKey, message, signature []byte, opts crypto.SignerOpts) bool {
 	var ctx string
 	if o, ok := opts.(*Options); ok {
 		ctx = o.Context
@@ -276,16 +256,24 @@ func VerifyWithOpts(public PublicKey, message, signature []byte, opts crypto.Sig
 
 	switch opts.HashFunc() {
 	case crypto.SHA512:
-		return VerifyPh(public, message, signature, opts, ctx)
+		return VerifyPh(public, message, signature, ctx)
 	case crypto.Hash(0):
 		if len(ctx) > 0 {
-			return VerifyWithCtx(public, message, signature, opts, ctx)
+			return VerifyWithCtx(public, message, signature, ctx)
 		}
 
-		return Verify(public, message, signature)
+		return VerifyPure(public, message, signature)
 	default:
 		return false
 	}
+}
+
+// VerifyPure returns true if the signature is valid. Failure cases are invalid
+// signature, or when the public key cannot be decoded.
+// This function does not handle prehashed messages.
+func VerifyPure(public PublicKey, message, signature []byte) bool {
+	ctx := ""
+	return verify(public, message, signature, false, []byte(ctx))
 }
 
 // VerifyPh returns true if the signature is valid. Failure cases are invalid
@@ -294,11 +282,7 @@ func VerifyWithOpts(public PublicKey, message, signature []byte, opts crypto.Sig
 // meaning it handles messages to be prehashed with SHA512.
 // Context could be passed to this function, which length should be no more than
 // 255. It can be empty.
-func VerifyPh(public PublicKey, message, signature []byte, opts crypto.SignerOpts, ctx string) bool {
-	if opts.HashFunc() != crypto.SHA512 {
-		return false
-	}
-
+func VerifyPh(public PublicKey, message, signature []byte, ctx string) bool {
 	h := sha512.New()
 	_, _ = h.Write(message)
 	d := h.Sum(nil)
@@ -310,13 +294,9 @@ func VerifyPh(public PublicKey, message, signature []byte, opts crypto.SignerOpt
 // signature, or when the public key cannot be decoded, or when context is
 // not provided.
 // This function supports the signature variant defined in RFC-8032: Ed25519ctx,
-// meaning it does not handle prehashed messages. Context string should be
-// provided, and should be no more than 255 of length.
-func VerifyWithCtx(public PublicKey, message, signature []byte, opts crypto.SignerOpts, ctx string) bool {
-	if opts.HashFunc() != crypto.Hash(0) {
-		return false
-	}
-
+// meaning it does not handle prehashed messages. Context string must be
+// provided, and must not be more than 255 of length.
+func VerifyWithCtx(public PublicKey, message, signature []byte, ctx string) bool {
 	if len(ctx) == 0 || len(ctx) > ContextMaxSize {
 		return false
 	}

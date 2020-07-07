@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"bufio"
 	"bytes"
-	"crypto"
 	"encoding/hex"
 	"fmt"
 	"strings"
@@ -43,15 +42,14 @@ func (v *rfc8032Vector) test(t *testing.T, lineNum int) {
 			test.ReportError(t, got, want, lineNum, v)
 		}
 
-		opts := crypto.Hash(0)
-		got, err := keys.SignPure(v.message, opts)
+		got, err := keys.SignPure(v.message)
 		want = v.signature
 		if !bytes.Equal(got, want) || err != nil {
 			test.ReportError(t, got, want, lineNum, v)
 		}
 	}
 	{
-		got := ed25519.Verify(keys.GetPublic(), v.message, v.signature)
+		got := ed25519.VerifyPure(keys.GetPublic(), v.message, v.signature)
 		want := true
 		if got != want {
 			test.ReportError(t, got, want, lineNum, v)
@@ -362,12 +360,10 @@ func (v vector) testSign(t *testing.T, preHash bool) {
 	var err error
 
 	if preHash {
-		opts := crypto.SHA512
 		ctx := ""
-		got, err = private.SignPh(v.msg, opts, ctx)
+		got, err = private.SignPh(v.msg, ctx)
 	} else {
-		opts := crypto.Hash(0)
-		got, err = private.SignPure(v.msg, opts)
+		got, err = private.SignPure(v.msg)
 	}
 
 	want := v.sig
@@ -382,8 +378,7 @@ func (v vector) testSignCtx(t *testing.T) {
 	var got []byte
 	var err error
 
-	opts := crypto.Hash(0)
-	got, err = private.SignWithCtx(v.msg, opts, string(v.ctx))
+	got, err = private.SignWithCtx(v.msg, string(v.ctx))
 
 	want := v.sig
 	if !bytes.Equal(got, want) || err != nil {
@@ -394,10 +389,9 @@ func (v vector) testSignCtx(t *testing.T) {
 func (v vector) testVerify(t *testing.T, preHash bool) {
 	var got bool
 	if preHash {
-		opts := crypto.SHA512
-		got = ed25519.VerifyPh(v.pk, v.msg, v.sig, opts, "")
+		got = ed25519.VerifyPh(v.pk, v.msg, v.sig, "")
 	} else {
-		got = ed25519.Verify(v.pk, v.msg, v.sig)
+		got = ed25519.VerifyPure(v.pk, v.msg, v.sig)
 	}
 
 	want := true
@@ -409,8 +403,7 @@ func (v vector) testVerify(t *testing.T, preHash bool) {
 
 func (v vector) testVerifyCtx(t *testing.T) {
 	var got bool
-	opts := crypto.Hash(0)
-	got = ed25519.VerifyWithCtx(v.pk, v.msg, v.sig, opts, string(v.ctx))
+	got = ed25519.VerifyWithCtx(v.pk, v.msg, v.sig, string(v.ctx))
 
 	want := true
 
