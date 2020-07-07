@@ -39,7 +39,7 @@ type Options struct {
 	crypto.Hash
 
 	// Context is an optional domain separation string for Ed25519ph and a
-	// must for Ed25519ctx. It must be less than or equal to 255.
+	// must for Ed25519ctx. Its length  must be less or equal than 255 bytes.
 	Context string
 }
 
@@ -70,11 +70,11 @@ func (kp *KeyPair) Public() crypto.PublicKey { return kp.GetPublic() }
 // Sign creates a signature of a message given a key pair.
 // This function supports all the three signature variants defined in RFC-8032,
 // namely Ed25519 (or pure EdDSA), Ed25519Ph, and Ed25519Ctx.
-// The opts.HashFunc() must return zero to indicate the message hasn't been
-// hashed. This can be achieved by passing crypto.Hash(0) as the value for opts.
-// The opts.HashFunc() must return SHA512 to indicate that the message will be
-// hashed with SHA512. This can be achieved by passing crypto.SHA512 as the value
-// for opts.
+// The opts.HashFunc() must return zero to specify either Ed25519 or Ed25519Ctx
+// variant. This can be achieved by passing crypto.Hash(0) as the value for opts.
+// The opts.HashFunc() must return SHA512 to specify the Ed25519Ph variant.
+// This can be achieved by passing crypto.SHA512 as the value for opts.
+// Use an Options struct to pass a context string for signing.
 func (kp *KeyPair) Sign(rand io.Reader, message []byte, opts crypto.SignerOpts) ([]byte, error) {
 	var ctx string
 	if o, ok := opts.(*Options); ok {
@@ -91,7 +91,7 @@ func (kp *KeyPair) Sign(rand io.Reader, message []byte, opts crypto.SignerOpts) 
 
 		return kp.SignPure(message)
 	default:
-		return nil, errors.New("ed25519: expected unhashed message or message to be hashed with SHA-512")
+		return nil, errors.New("ed25519: bad hash algorithm")
 	}
 }
 
@@ -185,7 +185,7 @@ func sign(kp *KeyPair, message []byte, preHash bool, ctx []byte) ([]byte, error)
 
 // SignPure creates a signature of a message given a keypair.
 // This function supports the signature variant defined in RFC-8032: Ed25519,
-// meaning it handles messages that will not be prehashed, with no context.
+// also known as the pure version of EdDSA.
 func (kp *KeyPair) SignPure(message []byte) ([]byte, error) {
 	ctx := ""
 	return sign(kp, message, false, []byte(ctx))
@@ -193,7 +193,7 @@ func (kp *KeyPair) SignPure(message []byte) ([]byte, error) {
 
 // SignPh creates a signature of a message given a keypair.
 // This function supports the signature variant defined in RFC-8032: Ed25519ph,
-// meaning it handles messages to be prehashed with SHA512.
+// meaning it internally hashes the message using SHA-512.
 // Context could be passed to this function, which length should be no more than
 // 255. It can be empty.
 func (kp *KeyPair) SignPh(message []byte, ctx string) ([]byte, error) {
@@ -262,8 +262,11 @@ func verify(public PublicKey, message, signature []byte, preHash bool, ctx []byt
 // signature, or when the public key cannot be decoded.
 // This function supports all the three signature variants defined in RFC-8032,
 // namely Ed25519 (or pure EdDSA), Ed25519Ph, and Ed25519Ctx.
-// Context could be passed to this function, which length should be no more than
-// 255. It can be empty.
+// The opts.HashFunc() must return zero to specify either Ed25519 or Ed25519Ctx
+// variant. This can be achieved by passing crypto.Hash(0) as the value for opts.
+// The opts.HashFunc() must return SHA512 to specify the Ed25519Ph variant.
+// This can be achieved by passing crypto.SHA512 as the value for opts.
+// Use an Options struct to pass a context string for signing.
 func Verify(public PublicKey, message, signature []byte, opts crypto.SignerOpts) bool {
 	var ctx string
 	if o, ok := opts.(*Options); ok {
@@ -286,7 +289,8 @@ func Verify(public PublicKey, message, signature []byte, opts crypto.SignerOpts)
 
 // VerifyPure returns true if the signature is valid. Failure cases are invalid
 // signature, or when the public key cannot be decoded.
-// This function does not handle prehashed messages.
+// This function supports the signature variant defined in RFC-8032: Ed25519,
+// also known as the pure version of EdDSA.
 func VerifyPure(public PublicKey, message, signature []byte) bool {
 	ctx := ""
 	return verify(public, message, signature, false, []byte(ctx))
@@ -295,7 +299,7 @@ func VerifyPure(public PublicKey, message, signature []byte) bool {
 // VerifyPh returns true if the signature is valid. Failure cases are invalid
 // signature, or when the public key cannot be decoded.
 // This function supports the signature variant defined in RFC-8032: Ed25519ph,
-// meaning it handles messages to be prehashed with SHA512.
+// meaning it internally hashes the message using SHA-512.
 // Context could be passed to this function, which length should be no more than
 // 255. It can be empty.
 func VerifyPh(public PublicKey, message, signature []byte, ctx string) bool {
@@ -306,7 +310,7 @@ func VerifyPh(public PublicKey, message, signature []byte, ctx string) bool {
 // signature, or when the public key cannot be decoded, or when context is
 // not provided.
 // This function supports the signature variant defined in RFC-8032: Ed25519ctx,
-// meaning it does not handle prehashed messages. Context string must be
+// meaning it does not handle prehashed messages. Non-empty context string must be
 // provided, and must not be more than 255 of length.
 func VerifyWithCtx(public PublicKey, message, signature []byte, ctx string) bool {
 	if len(ctx) == 0 || len(ctx) > ContextMaxSize {

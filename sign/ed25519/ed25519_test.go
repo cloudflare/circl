@@ -235,7 +235,7 @@ func TestErrors(t *testing.T) {
 		ops := crypto.SHA224
 		key, _ := ed25519.GenerateKey(nil)
 		_, got := key.Sign(nil, msg[:], ops)
-		want := errors.New("ed25519: expected unhashed message or message to be hashed with SHA-512")
+		want := errors.New("ed25519: bad hash algorithm")
 		if got.Error() != want.Error() {
 			test.ReportError(t, got, want)
 		}
