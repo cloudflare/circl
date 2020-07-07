@@ -402,11 +402,8 @@ func (v vector) testVerify(t *testing.T, preHash bool) {
 }
 
 func (v vector) testVerifyCtx(t *testing.T) {
-	var got bool
-	got = ed25519.VerifyWithCtx(v.pk, v.msg, v.sig, string(v.ctx))
-
+	got := ed25519.VerifyWithCtx(v.pk, v.msg, v.sig, string(v.ctx))
 	want := true
-
 	if got != want {
 		test.ReportError(t, got, want, v.name)
 	}
