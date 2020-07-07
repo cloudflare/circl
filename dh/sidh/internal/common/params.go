@@ -6,7 +6,7 @@ import "fmt"
 var sidhParams = make(map[uint8]SidhParams)
 
 // Params returns domain parameters corresponding to finite field and identified by
-// `id` provieded by the caller. Function panics in case `id` wasn't registered earlier.
+// `id` provided by the caller. Function panics in case `id` wasn't registered earlier.
 func Params(id uint8) *SidhParams {
 	if val, ok := sidhParams[id]; ok {
 		return &val

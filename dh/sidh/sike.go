@@ -53,7 +53,7 @@ func (c *KEM) Allocate(id uint8, rng io.Reader) {
 
 // Encapsulate receives the public key and generates SIKE ciphertext and shared secret.
 // The generated ciphertext is used for authentication.
-// Error is returned in case PRNG fails. Function panics in case wrongly formated
+// Error is returned in case PRNG fails. Function panics in case wrongly formatted
 // input was provided.
 func (c *KEM) Encapsulate(ciphertext, secret []byte, pub *PublicKey) error {
 	if !c.allocated {
@@ -238,7 +238,7 @@ func (c *KEM) encrypt(ctext []byte, rng io.Reader, pub *PublicKey, ptext []byte)
 }
 
 // decrypt uses SIKE private key to decrypt ciphertext. Returns plaintext in case
-// decryption succeeds or error in case unexptected input was provided.
+// decryption succeeds or error in case unexpected input was provided.
 // Constant time.
 func (c *KEM) decrypt(n []byte, prv *PrivateKey, ctext []byte) (int, error) {
 	var c1Len int

@@ -5,7 +5,7 @@
 // It comes with implementations of 2 different field arithmetic
 // implementations sidh.Fp503 and sidh.Fp751.
 //
-//	| Algoirthm | Public Key Size | Shared Secret Size | Ciphertext Size |
+//	| Algorithm | Public Key Size | Shared Secret Size | Ciphertext Size |
 //	|-----------|-----------------|--------------------|-----------------|
 //	| SIDH/p503 |          376    |        126         | N/A             |
 //	| SIDH/p751 |          564    |        188         | N/A             |

@@ -109,7 +109,7 @@ func testPKERoundTrip(t *testing.T, v sikeVec) {
 	err = v.kem.encrypt(ct, rand.Reader, pkB, msg[:])
 	CheckNoErr(t, err, "PKE roundtrip - encryption failed")
 	ptLen, err := v.kem.decrypt(pt[:], skB, ct)
-	CheckNoErr(t, err, "PKE roundtrip - decription failed")
+	CheckNoErr(t, err, "PKE roundtrip - description failed")
 
 	if !bytes.Equal(pt[:ptLen], msg[:]) {
 		t.Errorf("Decryption failed \n got : %X\n exp : %X", pt[:ptLen], msg)

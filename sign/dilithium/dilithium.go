@@ -6,7 +6,7 @@
 // https://pq-crystals.org/dilithium/data/dilithium-specification-round2.pdf
 //
 // Each of the eight different modes of Dilithium is implemented by a
-// subpackge.  For instance, Dilithium III can be found in
+// subpackage.  For instance, Dilithium III can be found in
 //
 //  github.com/cloudflare/circl/sign/dilithium/mode3
 //
@@ -32,7 +32,7 @@ type PublicKey interface {
 // PrivateKey is a Dilithium public key.
 //
 // The structure contains values precomputed during unpacking/key generation
-// and is therefore signficantly larger than a packed private key.
+// and is therefore significantly larger than a packed private key.
 type PrivateKey interface {
 	// Packs private key
 	Bytes() []byte

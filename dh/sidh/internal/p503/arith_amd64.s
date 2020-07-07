@@ -107,7 +107,7 @@
 // uses ADOX, ADCX and MULX instructions. Macro smashes values in AX and DX.
 // Input: I0 and I1.
 // Output: O
-// All the other arguments resgisters are used for storing temporary values
+// All the other arguments registers are used for storing temporary values
 #define MULS256_MULX_ADCX_ADOX(O, I0, I1, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9) \
 							\   // U0[0]
 	MOVQ     0+I0, DX       \   // MULX requires multiplayer in DX

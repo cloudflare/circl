@@ -97,7 +97,7 @@ func (P *preTwistPointAffine) cmov(Q *preTwistPointAffine, b uint) {
 	fp.Cmov(&P.dt2, &Q.dt2, b)
 }
 
-// mixAdd calulates P= P+Q, where Q is a precomputed point with Z_Q != 1.
+// mixAdd calculates P= P+Q, where Q is a precomputed point with Z_Q != 1.
 func (P *twistPoint) mixAdd(Q *preTwistPointProy) {
 	fp.Mul(&P.z, &P.z, &Q.z2) // D = 2*z1*z2
 	P.coreAddition(&Q.preTwistPointAffine)
@@ -124,7 +124,7 @@ func (P *preTwistPointProy) cmov(Q *preTwistPointProy, b uint) {
 	fp.Cmov(&P.z2, &Q.z2, b)
 }
 
-// FromTwistPoint precomputes some coordinates of Q for mised addition.
+// FromTwistPoint precomputes some coordinates of Q for missed addition.
 func (P *preTwistPointProy) FromTwistPoint(Q *twistPoint) {
 	fp.Add(&P.addYX, &Q.y, &Q.x)         // addYX = X + Y
 	fp.Sub(&P.subYX, &Q.y, &Q.x)         // subYX = Y - X
