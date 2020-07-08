@@ -107,7 +107,7 @@ func (c *KEM) Encapsulate(ciphertext, secret []byte, pub *PublicKey) error {
 
 // Decapsulate given the keypair and ciphertext as inputs, Decapsulate outputs a shared
 // secret if plaintext verifies correctly, otherwise function outputs random value.
-// Decapsulation may panic in case input is wrongly formated, in particular, size of
+// Decapsulation may panic in case input is wrongly formatted, in particular, size of
 // the 'ciphertext' must be exactly equal to c.CiphertextSize().
 func (c *KEM) Decapsulate(secret []byte, prv *PrivateKey, pub *PublicKey, ciphertext []byte) error {
 	if !c.allocated {

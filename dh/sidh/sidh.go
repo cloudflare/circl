@@ -261,7 +261,7 @@ func (prv *PrivateKey) DeriveSecret(ss []byte, pub *PublicKey) {
 	var isA = (prv.keyVariant & KeyVariantSidhA) == KeyVariantSidhA
 
 	if (pub.keyVariant == prv.keyVariant) || (pub.params.ID != prv.params.ID) {
-		panic("sidh: public and private are incompatbile")
+		panic("sidh: public and private are incompatible")
 	}
 
 	switch prv.params.ID {

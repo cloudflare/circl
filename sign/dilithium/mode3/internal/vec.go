@@ -63,7 +63,7 @@ func (v *VecL) Power2Round(v0PlusQ, v1 *VecL) {
 // Applies Poly.Decompose componentwise.
 //
 // Requires the vector to be normalized.
-func (v *VecL) Decmopose(v0PlusQ, v1 *VecL) {
+func (v *VecL) Decompose(v0PlusQ, v1 *VecL) {
 	for i := 0; i < L; i++ {
 		v[i].Decompose(&v0PlusQ[i], &v1[i])
 	}
