@@ -1,6 +1,7 @@
-<img src=".etc/icon.png" align="right" height="300" width="300"/>
+<img src=".etc/icon.png" align="right" height="300" width="300">
 
 # CIRCL
+
 [![CIRCL](https://github.com/cloudflare/circl/workflows/CIRCL/badge.svg)](https://github.com/cloudflare/circl/actions)
 [![GoDoc](https://godoc.org/github.com/cloudflare/circl?status.svg)](https://pkg.go.dev/github.com/cloudflare/circl?tab=overview)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cloudflare/circl)](https://goreportcard.com/report/github.com/cloudflare/circl)
@@ -11,26 +12,23 @@ of cryptographic primitives written in Go. The goal of this library is to be use
 experimental deployment of cryptographic algorithms targeting Post-Quantum (PQ) and Elliptic
 Curve Cryptography (ECC).
 
-
-### Security Disclaimer
+## Security Disclaimer
 
 🚨 This library is offered as-is, and without a guarantee. Therefore, it is expected that changes in the code, repository, and API occur in the future. We recommend to take caution before using this library in a production application since part of its content is experimental.
 
-
-### Installation
+## Installation
 
 You can get it by typing:
 
 ```sh
- $ go get -u github.com/cloudflare/circl
+$ go get -u github.com/cloudflare/circl
 ```
 
-### Versioning
+## Versioning
 
 Version numbers are [Semvers](https://semver.org/). We release a minor version for new functionality, a major version for breaking API changes, and increment the patchlevel for bugfixes.
 
-
-### Implemented Primitives
+## Implemented Primitives
 
 | Category | Algorithms | Description | Applications |
 |-----------|------------|-------------|--------------|
@@ -43,7 +41,7 @@ Version numbers are [Semvers](https://semver.org/). We release a minor version f
 | Digital Signatures | Ed25519, Ed448 | RFC-8032 provides new signature schemes based on Edwards curves. | Digital certificates and authentication. |
 | PQ Digital Signatures | Dilithium | Lattice (Module LWE) based signature scheme | Post-Quantum PKI |
 
-### Work in Progress
+## Work in Progress
 
 | Category | Algorithms | Description | Applications |
 |-----------|------------|-------------|--------------|
@@ -53,24 +51,22 @@ Version numbers are [Semvers](https://semver.org/). We release a minor version f
 | PQ KEM | Kyber | Lattice (M-LWE) based key encapsulation mechanism. | Post-Quantum Key exchange |
 | PQ Digital Signatures | SPHINCS+ | Stateless hash-based signature scheme | Post-Quantum PKI |
 
-
-### Testing and Benchmarking
+## Testing and Benchmarking
 
 Library comes with number of make targets which can be used for testing and
 benchmarking:
 
-*   ``test``: performs testing of the binary.
-*   ``bench``: runs benchmarks.
-*   ``cover``: produces coverage.
-*   ``lint`` : runs set of linters on the code base.
+* ``test``: performs testing of the binary.
+* ``bench``: runs benchmarks.
+* ``cover``: produces coverage.
+* ``lint`` : runs set of linters on the code base.
 
-### Contributing
+## Contributing
 
 To contribute, fork this repository and make your changes, and then make a Pull
 Request. A Pull Request requires approval of the admin team and a successful
 CI build.
 
-
-### License
+## License
 
 The project is licensed under the [BSD-3-Clause License](./LICENSE).
