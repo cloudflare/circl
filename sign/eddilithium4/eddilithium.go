@@ -14,7 +14,7 @@ import (
 
 const (
 	// Size of seed for NewKeyFromSeed
-	SeedSize = ed448.PrivateKeySize // > mode3.SeedSize
+	SeedSize = ed448.PrivateKeySize // > mode4.SeedSize
 
 	// Size of a packed PublicKey
 	PublicKeySize = mode4.PublicKeySize + ed448.PublicKeySize
