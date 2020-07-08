@@ -173,5 +173,5 @@ func (sk *PrivateKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) (
 // Returns a *PublicKey.  The type crypto.PublicKey is used to make
 // PrivateKey implement the crypto.Signer interface.
 func (sk *PrivateKey) Public() crypto.PublicKey {
-	return (*internal.PrivateKey)(sk).Public()
+	return (*PublicKey)((*internal.PrivateKey)(sk).Public())
 }
