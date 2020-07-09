@@ -13,13 +13,13 @@ import (
 )
 
 const (
-	// SeedSize is the lenght of the seed for NewKeyFromSeed
+	// SeedSize is the length of the seed for NewKeyFromSeed
 	SeedSize = mode3.SeedSize // = ed25519.SeedSize = 32
 
-	// PublicKeySize is the lenght in bytes of the packed public key.
+	// PublicKeySize is the length in bytes of the packed public key.
 	PublicKeySize = mode3.PublicKeySize + ed25519.PublicKeySize
 
-	// PrivateKeySize is the lenght in bytes of the packed public key.
+	// PrivateKeySize is the length in bytes of the packed public key.
 	PrivateKeySize = mode3.PrivateKeySize + ed25519.PrivateKeySize
 
 	// SignatureSize is the length in bytes of the signatures.
