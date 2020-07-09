@@ -12,8 +12,10 @@ import (
 	cryptoRand "crypto/rand"
 	"errors"
 	"io"
+	"strconv"
 
 	"github.com/cloudflare/circl/ecc/goldilocks"
+	"github.com/cloudflare/circl/internal/shake"
 	sha3 "github.com/cloudflare/circl/internal/shake"
 )
 
@@ -24,13 +26,27 @@ const (
 	PrivateKeySize = 57
 	// SignatureSize is the length in bytes of signatures.
 	SignatureSize = 114
-	// MaxContextLength is the maximum length in bytes of context strings.
-	MaxContextLength = 255
+	// ContextMaxSize is the maximum length (in bytes) allowed for context.
+	ContextMaxSize = 255
 )
 const (
 	paramB   = 456 / 8    // Size of keys in bytes.
 	hashSize = 2 * paramB // Size of the hash function's output.
 )
+
+// Options are the options that the ed448 functions can take.
+type Options struct {
+	// Hash should be crypto.Hash(0) for Ed448
+	crypto.Hash
+
+	// Context is an optional domain separation string for Ed448ph.
+	// Its length  must be less or equal than 255 bytes.
+	Context string
+
+	// Prehash should be set for ed448ph, indicating that the message
+	// will be prehashed with SHAKE256.
+	PreHash bool
+}
 
 // PublicKey represents a public key of Ed448.
 type PublicKey []byte
@@ -57,16 +73,32 @@ func (kp *KeyPair) Seed() []byte { return kp.GetPrivate() }
 func (kp *KeyPair) Public() crypto.PublicKey { return kp.GetPublic() }
 
 // Sign creates a signature of a message given a key pair.
-// Ed448 performs two passes over messages to be signed and therefore cannot
-// handle pre-hashed messages.
-// The opts.HashFunc() must return zero to indicate the message hasn't been
-// hashed. This can be achieved by passing crypto.Hash(0) as the value for opts.
-// This function signs using as context the empty string.
+// This function supports all the two signature variants defined in RFC-8032,
+// namely Ed448 (or pure EdDSA) and Ed448Ph.
+// The opts.HashFunc() must return zero to the specify Ed448 variant. This can
+// be achieved by passing crypto.Hash(0) as the value for opts.
+// Use an Options struct to pass a bool indicating that the ed448Ph variant
+// should be used.
+// The struct can also be optionally used to pass a context string for signing.
 func (kp *KeyPair) Sign(rand io.Reader, message []byte, opts crypto.SignerOpts) ([]byte, error) {
-	if opts.HashFunc() != crypto.Hash(0) {
-		return nil, errors.New("ed448: cannot sign hashed message")
+	var ctx string
+	var preHash bool
+
+	if o, ok := opts.(*Options); ok {
+		preHash = o.PreHash
+		ctx = o.Context
 	}
-	return kp.SignWithContext(message, nil)
+
+	if preHash {
+		return kp.SignPh(message, ctx)
+	}
+
+	switch opts.HashFunc() {
+	case crypto.Hash(0):
+		return kp.SignPure(message, ctx)
+	default:
+		return nil, errors.New("ed448: bad hash algorithm")
+	}
 }
 
 // GenerateKey produces public and private keys using entropy from rand.
@@ -100,16 +132,20 @@ func NewKeyFromSeed(seed PrivateKey) *KeyPair {
 	return pair
 }
 
-// SignWithContext creates a signature of a message and context. The context is a
-// constant string that separates uses of the signature between different protocols.
-// See Section 8.3 of RFC-8032 (https://tools.ietf.org/html/rfc8032#section-8.3).
-func (kp *KeyPair) SignWithContext(message, context []byte) ([]byte, error) {
-	if len(context) > MaxContextLength {
-		return nil, errors.New("context should be at most ed448.MaxContextLength bytes")
+func sign(kp *KeyPair, message, ctx []byte, preHash bool) ([]byte, error) {
+	H := sha3.NewShake256()
+	var d []byte
+
+	if preHash {
+		_, _ = H.Write(message)
+		d = H.Sum(nil)
+		H.Reset()
+	} else {
+		d = message
 	}
+
 	// 1.  Hash the 57-byte private key using SHAKE256(x, 114).
 	var h [hashSize]byte
-	H := sha3.NewShake256()
 	_, _ = H.Write(kp.private[:])
 	_, _ = H.Read(h[:])
 	s := &goldilocks.Scalar{}
@@ -118,12 +154,12 @@ func (kp *KeyPair) SignWithContext(message, context []byte) ([]byte, error) {
 
 	// 2.  Compute SHAKE256(dom4(F, C) || prefix || PH(M), 114).
 	var rPM [hashSize]byte
-	dom4 := [10]byte{'S', 'i', 'g', 'E', 'd', '4', '4', '8', byte(0), byte(len(context))}
 	H.Reset()
-	_, _ = H.Write(dom4[:])
-	_, _ = H.Write(context)
+
+	H = writeDom(H, ctx, preHash)
+
 	_, _ = H.Write(prefix)
-	_, _ = H.Write(message)
+	_, _ = H.Write(d)
 	_, _ = H.Read(rPM[:])
 
 	// 3.  Compute the point [r]B.
@@ -135,11 +171,12 @@ func (kp *KeyPair) SignWithContext(message, context []byte) ([]byte, error) {
 	// 4.  Compute SHAKE256(dom4(F, C) || R || A || PH(M), 114)
 	var hRAM [hashSize]byte
 	H.Reset()
-	_, _ = H.Write(dom4[:])
-	_, _ = H.Write(context)
+
+	H = writeDom(H, ctx, preHash)
+
 	_, _ = H.Write(R)
 	_, _ = H.Write(kp.public[:])
-	_, _ = H.Write(message)
+	_, _ = H.Write(d)
 	_, _ = H.Read(hRAM[:])
 
 	// 5.  Compute S = (r + k * s) mod order.
@@ -156,29 +193,62 @@ func (kp *KeyPair) SignWithContext(message, context []byte) ([]byte, error) {
 	return signature[:], err
 }
 
-// Verify returns true if the signature is valid. Failure cases are invalid
-// signature, or when the public key cannot be decoded.
-func Verify(public PublicKey, message, context, signature []byte) bool {
+// SignPure creates a signature of a message given a keypair.
+// This function supports the signature variant defined in RFC-8032: Ed448,
+// also known as the pure version of EdDSA.
+func (kp *KeyPair) SignPure(message []byte, ctx string) ([]byte, error) {
+	if len(ctx) > ContextMaxSize {
+		return nil, errors.New("ed448: bad context length: " + strconv.Itoa(len(ctx)))
+	}
+
+	return sign(kp, message, []byte(ctx), false)
+}
+
+// SignPh creates a signature of a message given a keypair.
+// This function supports the signature variant defined in RFC-8032: Ed448ph,
+// meaning it internally hashes the message using SHAKE-256.
+// Context could be passed to this function, which length should be no more than
+// 255. It can be empty.
+func (kp *KeyPair) SignPh(message []byte, ctx string) ([]byte, error) {
+	if len(ctx) > ContextMaxSize {
+		return nil, errors.New("ed448: bad context length: " + strconv.Itoa(len(ctx)))
+	}
+
+	return sign(kp, message, []byte(ctx), true)
+}
+
+func verify(public PublicKey, message, signature, ctx []byte, preHash bool) bool {
 	if len(public) != PublicKeySize ||
 		len(signature) != SignatureSize ||
-		len(context) > MaxContextLength ||
+		len(ctx) > ContextMaxSize ||
 		!isLessThanOrder(signature[paramB:]) {
 		return false
 	}
+
 	P, err := goldilocks.FromBytes(public)
 	if err != nil {
 		return false
 	}
 
-	var hRAM [hashSize]byte
-	dom4 := [10]byte{'S', 'i', 'g', 'E', 'd', '4', '4', '8', byte(0), byte(len(context))}
-	R := signature[:paramB]
 	H := sha3.NewShake256()
-	_, _ = H.Write(dom4[:])
-	_, _ = H.Write(context)
+	var d []byte
+
+	if preHash {
+		_, _ = H.Write(message)
+		d = H.Sum(nil)
+		H.Reset()
+	} else {
+		d = message
+	}
+
+	var hRAM [hashSize]byte
+	R := signature[:paramB]
+
+	H = writeDom(H, ctx, preHash)
+
 	_, _ = H.Write(R)
 	_, _ = H.Write(public)
-	_, _ = H.Write(message)
+	_, _ = H.Write(d)
 	_, _ = H.Read(hRAM[:])
 
 	k := &goldilocks.Scalar{}
@@ -190,6 +260,47 @@ func Verify(public PublicKey, message, context, signature []byte) bool {
 	P.Neg()
 	_ = goldilocks.Curve{}.CombinedMult(S, k, P).ToBytes(encR)
 	return bytes.Equal(R, encR)
+}
+
+// Verify returns true if the signature is valid. Failure cases are invalid
+// signature, or when the public key cannot be decoded.
+func Verify(public PublicKey, message, signature []byte, opts crypto.SignerOpts) bool {
+	var ctx string
+	var preHash bool
+
+	if o, ok := opts.(*Options); ok {
+		preHash = o.PreHash
+		ctx = o.Context
+	}
+
+	if preHash {
+		return VerifyPh(public, message, signature, ctx)
+	}
+
+	switch opts.HashFunc() {
+	case crypto.Hash(0):
+		return VerifyPure(public, message, signature, ctx)
+	default:
+		return false
+	}
+}
+
+// VerifyPure returns true if the signature is valid. Failure cases are invalid
+// signature, or when the public key cannot be decoded.
+// This function supports the signature variant defined in RFC-8032: Ed448,
+// also known as the pure version of EdDSA.
+func VerifyPure(public PublicKey, message, signature []byte, ctx string) bool {
+	return verify(public, message, signature, []byte(ctx), false)
+}
+
+// VerifyPh returns true if the signature is valid. Failure cases are invalid
+// signature, or when the public key cannot be decoded.
+// This function supports the signature variant defined in RFC-8032: Ed25519ph,
+// meaning it internally hashes the message using SHAKE-256.
+// Context could be passed to this function, which length should be no more than
+// 255. It can be empty.
+func VerifyPh(public PublicKey, message, signature []byte, ctx string) bool {
+	return verify(public, message, signature, []byte(ctx), true)
 }
 
 func deriveSecretScalar(s *goldilocks.Scalar, h []byte) {
@@ -207,4 +318,18 @@ func isLessThanOrder(x []byte) bool {
 		i--
 	}
 	return x[paramB-1] == 0 && x[i] < order[i]
+}
+
+func writeDom(h shake.Shake, ctx []byte, preHash bool) shake.Shake {
+	dom4 := "SigEd448"
+	_, _ = h.Write([]byte(dom4))
+
+	if preHash {
+		_, _ = h.Write([]byte{byte(0x01), byte(len(ctx))})
+	} else {
+		_, _ = h.Write([]byte{byte(0x00), byte(len(ctx))})
+	}
+	_, _ = h.Write(ctx)
+
+	return h
 }

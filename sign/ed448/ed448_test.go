@@ -62,7 +62,7 @@ func TestWrongPublicKey(t *testing.T) {
 	}
 	sig := (&[ed448.SignatureSize]byte{})[:]
 	for _, public := range wrongPublicKeys {
-		got := ed448.Verify(public[:], []byte(""), []byte(""), sig)
+		got := ed448.VerifyPure(public[:], []byte(""), sig, "")
 		want := false
 		if got != want {
 			test.ReportError(t, got, want, public)
@@ -117,7 +117,7 @@ func TestSigner(t *testing.T) {
 		test.ReportError(t, got, want)
 	}
 
-	got := ed448.Verify(pubSigner, msg, nil, sig)
+	got := ed448.Verify(pubSigner, msg, sig, ops)
 	want := true
 	if got != want {
 		test.ReportError(t, got, want)
@@ -134,7 +134,7 @@ func TestErrors(t *testing.T) {
 		ops := crypto.SHA224
 		key, _ := ed448.GenerateKey(nil)
 		_, got := key.Sign(nil, msg[:], ops)
-		want := errors.New("ed448: cannot sign hashed message")
+		want := errors.New("ed448: bad hash algorithm")
 		if got.Error() != want.Error() {
 			test.ReportError(t, got, want)
 		}
@@ -158,8 +158,8 @@ func TestErrors(t *testing.T) {
 		var msg [16]byte
 		var ctx [256]byte
 		key, _ := ed448.GenerateKey(nil)
-		_, got := key.SignWithContext(msg[:], ctx[:])
-		want := errors.New("context should be at most ed448.MaxContextLength bytes")
+		_, got := key.SignPure(msg[:], string(ctx[:]))
+		want := errors.New("ed448: bad context length: 256")
 		if got.Error() != want.Error() {
 			test.ReportError(t, got, want)
 		}
@@ -181,15 +181,15 @@ func BenchmarkEd448(b *testing.B) {
 		key, _ := ed448.GenerateKey(rand.Reader)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			_, _ = key.SignWithContext(msg, ctx)
+			_, _ = key.SignPure(msg, string(ctx))
 		}
 	})
 	b.Run("verify", func(b *testing.B) {
 		key, _ := ed448.GenerateKey(rand.Reader)
-		sig, _ := key.SignWithContext(msg, ctx)
+		sig, _ := key.SignPure(msg, string(ctx))
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			ed448.Verify(key.GetPublic(), msg, ctx, sig)
+			ed448.VerifyPure(key.GetPublic(), msg, sig, "")
 		}
 	})
 }
@@ -205,14 +205,14 @@ func Example_ed448() {
 
 	// Alice signs a message.
 	message := []byte("A message to be signed")
-	context := []byte("This is a context string")
-	signature, err := keys.SignWithContext(message, context)
+	ctx := "This is a context string"
+	signature, err := keys.SignPure(message, ctx)
 	if err != nil {
 		panic("error on signing message")
 	}
 
 	// Anyone can verify the signature using Alice's public key.
-	ok := ed448.Verify(keys.GetPublic(), message, context, signature)
+	ok := ed448.VerifyPure(keys.GetPublic(), message, signature, ctx)
 	fmt.Println(ok)
 	// Output: true
 }
