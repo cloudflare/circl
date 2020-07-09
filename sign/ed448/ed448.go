@@ -15,7 +15,6 @@ import (
 	"strconv"
 
 	"github.com/cloudflare/circl/ecc/goldilocks"
-	"github.com/cloudflare/circl/internal/shake"
 	sha3 "github.com/cloudflare/circl/internal/shake"
 )
 
@@ -320,7 +319,7 @@ func isLessThanOrder(x []byte) bool {
 	return x[paramB-1] == 0 && x[i] < order[i]
 }
 
-func writeDom(h shake.Shake, ctx []byte, preHash bool) shake.Shake {
+func writeDom(h sha3.Shake, ctx []byte, preHash bool) sha3.Shake {
 	dom4 := "SigEd448"
 	_, _ = h.Write([]byte(dom4))
 
