@@ -1,4 +1,4 @@
-// eddilithium3 implements the hybrid signature scheme Ed25519-Dilithium3.
+// Package eddilithium3 implements the hybrid signature scheme Ed25519-Dilithium3.
 package eddilithium3
 
 import (
@@ -13,16 +13,16 @@ import (
 )
 
 const (
-	// Size of seed for NewKeyFromSeed
+	// SeedSize is the lenght of the seed for NewKeyFromSeed
 	SeedSize = mode3.SeedSize // = ed25519.SeedSize = 32
 
-	// Size of a packed PublicKey
+	// PublicKeySize is the lenght in bytes of the packed public key.
 	PublicKeySize = mode3.PublicKeySize + ed25519.PublicKeySize
 
-	// Size of a packed PrivateKey
+	// PrivateKeySize is the lenght in bytes of the packed public key.
 	PrivateKeySize = mode3.PrivateKeySize + ed25519.PrivateKeySize
 
-	// Size of a signature
+	// SignatureSize is the length in bytes of the signatures.
 	SignatureSize = mode3.SignatureSize + ed25519.SignatureSize
 )
 
