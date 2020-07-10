@@ -87,14 +87,14 @@ func (kat *Wycheproof) verify(t *testing.T) {
 				test.ReportError(t, got, want, i, gT.TcID)
 			}
 			if isValid {
-				got, err := keys.SignWithContext(msg, ctx)
+				got, err := keys.SignPure(msg, string(ctx))
 				want := sig
 				if !bytes.Equal(got, want) || err != nil {
 					test.ReportError(t, got, want, i, gT.TcID)
 				}
 			}
 			{
-				got := ed448.Verify(keys.GetPublic(), msg, ctx, sig)
+				got := ed448.VerifyPure(keys.GetPublic(), msg, sig, string(ctx))
 				want := isValid
 				if got != want {
 					test.ReportError(t, got, want, i, gT.TcID)

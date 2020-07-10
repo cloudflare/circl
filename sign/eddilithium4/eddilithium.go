@@ -1,4 +1,4 @@
-// eddilithium4 implements the hybrid signature scheme Ed448-Dilithium4.
+// Package eddilithium4 implements the hybrid signature scheme Ed448-Dilithium4.
 package eddilithium4
 
 import (
@@ -13,16 +13,16 @@ import (
 )
 
 const (
-	// Size of seed for NewKeyFromSeed
+	// SeedSize is the length of the seed for NewKeyFromSeed
 	SeedSize = ed448.PrivateKeySize // > mode4.SeedSize
 
-	// Size of a packed PublicKey
+	// PublicKeySize is the length in bytes of the packed public key.
 	PublicKeySize = mode4.PublicKeySize + ed448.PublicKeySize
 
-	// Size of a packed PrivateKey
+	// PrivateKeySize is the length in bytes of the packed public key.
 	PrivateKeySize = mode4.PrivateKeySize + ed448.PrivateKeySize
 
-	// Size of a signature
+	// SignatureSize is the length in bytes of the signatures.
 	SignatureSize = mode4.SignatureSize + ed448.SignatureSize
 )
 
@@ -97,8 +97,8 @@ func Verify(pk *PublicKey, msg []byte, signature []byte) bool {
 	if !ed448.Verify(
 		pk.e,
 		msg,
-		[]byte{}, // context
 		signature[mode4.SignatureSize:],
+		crypto.Hash(0),
 	) {
 		return false
 	}
