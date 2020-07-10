@@ -70,7 +70,8 @@ func TestWrongPublicKey(t *testing.T) {
 	}
 }
 
-func TestSigner(t *testing.T) {
+func TestSignerPure(t *testing.T) {
+	// ed448
 	seed := make(ed448.PrivateKey, ed448.PrivateKeySize)
 	_, _ = rand.Read(seed)
 	key := ed448.NewKeyFromSeed(seed)
@@ -90,6 +91,124 @@ func TestSigner(t *testing.T) {
 
 	signer := crypto.Signer(key)
 	ops := crypto.Hash(0)
+	msg := make([]byte, 16)
+	_, _ = rand.Read(msg)
+	sig, err := signer.Sign(nil, msg, ops)
+	if err != nil {
+		got := err
+		var want error
+		test.ReportError(t, got, want)
+	}
+	if len(sig) != ed448.SignatureSize {
+		got := len(sig)
+		want := ed448.SignatureSize
+		test.ReportError(t, got, want)
+	}
+
+	pubKey := key.GetPublic()
+	pubSigner, ok := signer.Public().(ed448.PublicKey)
+	if !ok {
+		got := ok
+		want := true
+		test.ReportError(t, got, want)
+	}
+	if !bytes.Equal(pubKey, pubSigner) {
+		got := pubSigner
+		want := pubKey
+		test.ReportError(t, got, want)
+	}
+
+	got := ed448.Verify(pubSigner, msg, sig, ops)
+	want := true
+	if got != want {
+		test.ReportError(t, got, want)
+	}
+}
+
+func TestSignerPh(t *testing.T) {
+	// ed448Ph
+	seed := make(ed448.PrivateKey, ed448.PrivateKeySize)
+	_, _ = rand.Read(seed)
+	key := ed448.NewKeyFromSeed(seed)
+
+	priv := key.GetPrivate()
+	if !bytes.Equal(seed, priv) {
+		got := priv
+		want := seed
+		test.ReportError(t, got, want)
+	}
+	priv = key.Seed()
+	if !bytes.Equal(seed, priv) {
+		got := priv
+		want := seed
+		test.ReportError(t, got, want)
+	}
+
+	signer := crypto.Signer(key)
+	ops := &ed448.Options{
+		Hash:    crypto.Hash(0),
+		Context: "",
+		PreHash: true,
+	}
+	msg := make([]byte, 16)
+	_, _ = rand.Read(msg)
+	sig, err := signer.Sign(nil, msg, ops)
+	if err != nil {
+		got := err
+		var want error
+		test.ReportError(t, got, want)
+	}
+	if len(sig) != ed448.SignatureSize {
+		got := len(sig)
+		want := ed448.SignatureSize
+		test.ReportError(t, got, want)
+	}
+
+	pubKey := key.GetPublic()
+	pubSigner, ok := signer.Public().(ed448.PublicKey)
+	if !ok {
+		got := ok
+		want := true
+		test.ReportError(t, got, want)
+	}
+	if !bytes.Equal(pubKey, pubSigner) {
+		got := pubSigner
+		want := pubKey
+		test.ReportError(t, got, want)
+	}
+
+	got := ed448.Verify(pubSigner, msg, sig, ops)
+	want := true
+	if got != want {
+		test.ReportError(t, got, want)
+	}
+}
+
+func TestSignerWithCxt(t *testing.T) {
+	// ed448 with context
+	seed := make(ed448.PrivateKey, ed448.PrivateKeySize)
+	_, _ = rand.Read(seed)
+	key := ed448.NewKeyFromSeed(seed)
+
+	priv := key.GetPrivate()
+	if !bytes.Equal(seed, priv) {
+		got := priv
+		want := seed
+		test.ReportError(t, got, want)
+	}
+	priv = key.Seed()
+	if !bytes.Equal(seed, priv) {
+		got := priv
+		want := seed
+		test.ReportError(t, got, want)
+	}
+
+	signer := crypto.Signer(key)
+	ops := &ed448.Options{
+		Hash:    crypto.Hash(0),
+		Context: "context",
+		PreHash: false,
+	}
 	msg := make([]byte, 16)
 	_, _ = rand.Read(msg)
 	sig, err := signer.Sign(nil, msg, ops)
@@ -192,6 +311,21 @@ func BenchmarkEd448(b *testing.B) {
 			ed448.VerifyPure(key.GetPublic(), msg, sig, "")
 		}
 	})
+	b.Run("signPh", func(b *testing.B) {
+		key, _ := ed448.GenerateKey(rand.Reader)
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, _ = key.SignPh(msg, string(ctx))
+		}
+	})
+	b.Run("verifyPh", func(b *testing.B) {
+		key, _ := ed448.GenerateKey(rand.Reader)
+		sig, _ := key.SignPh(msg, string(ctx))
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			ed448.VerifyPh(key.GetPublic(), msg, sig, "")
+		}
+	})
 }
 
 func Example_ed448() {
@@ -213,6 +347,29 @@ func Example_ed448() {
 
 	// Anyone can verify the signature using Alice's public key.
 	ok := ed448.VerifyPure(keys.GetPublic(), message, signature, ctx)
+	fmt.Println(ok)
+	// Output: true
+}
+
+func Example_ed448Ph() {
+	// import "github.com/cloudflare/circl/sign/ed448"
+
+	// Generating Alice's key pair
+	keys, err := ed448.GenerateKey(rand.Reader)
+	if err != nil {
+		panic("error on generating keys")
+	}
+
+	// Alice signs a message.
+	message := []byte("A message to be signed")
+	ctx := "This is a context string"
+	signature, err := keys.SignPh(message, ctx)
+	if err != nil {
+		panic("error on signing message")
+	}
+
+	// Anyone can verify the signature using Alice's public key.
+	ok := ed448.VerifyPh(keys.GetPublic(), message, signature, ctx)
 	fmt.Println(ok)
 	// Output: true
 }

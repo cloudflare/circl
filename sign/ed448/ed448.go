@@ -136,8 +136,10 @@ func sign(kp *KeyPair, message, ctx []byte, preHash bool) ([]byte, error) {
 	var d []byte
 
 	if preHash {
+		var h [64]byte
 		_, _ = H.Write(message)
-		d = H.Sum(nil)
+		_, _ = H.Read(h[:])
+		d = h[:]
 		H.Reset()
 	} else {
 		d = message
@@ -233,8 +235,10 @@ func verify(public PublicKey, message, signature, ctx []byte, preHash bool) bool
 	var d []byte
 
 	if preHash {
+		var h [64]byte
 		_, _ = H.Write(message)
-		d = H.Sum(nil)
+		_, _ = H.Read(h[:])
+		d = h[:]
 		H.Reset()
 	} else {
 		d = message
