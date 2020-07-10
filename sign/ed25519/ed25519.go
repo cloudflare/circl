@@ -125,7 +125,7 @@ func NewKeyFromSeed(seed PrivateKey) *KeyPair {
 	return pair
 }
 
-func sign(kp *KeyPair, message []byte, preHash bool, ctx []byte) ([]byte, error) {
+func sign(kp *KeyPair, message, ctx []byte, preHash bool) ([]byte, error) {
 	H := sha512.New()
 	var d []byte
 
@@ -188,7 +188,7 @@ func sign(kp *KeyPair, message []byte, preHash bool, ctx []byte) ([]byte, error)
 // also known as the pure version of EdDSA.
 func (kp *KeyPair) SignPure(message []byte) ([]byte, error) {
 	ctx := ""
-	return sign(kp, message, false, []byte(ctx))
+	return sign(kp, message, []byte(ctx), false)
 }
 
 // SignPh creates a signature of a message given a keypair.
@@ -201,7 +201,7 @@ func (kp *KeyPair) SignPh(message []byte, ctx string) ([]byte, error) {
 		return nil, errors.New("ed25519: bad context length: " + strconv.Itoa(len(ctx)))
 	}
 
-	return sign(kp, message, true, []byte(ctx))
+	return sign(kp, message, []byte(ctx), true)
 }
 
 // SignWithCtx creates a signature of a message given a keypair.
@@ -214,10 +214,10 @@ func (kp *KeyPair) SignWithCtx(message []byte, ctx string) ([]byte, error) {
 		return nil, fmt.Errorf("ed25519: bad context length: %v > %v", len(ctx), ContextMaxSize)
 	}
 
-	return sign(kp, message, false, []byte(ctx))
+	return sign(kp, message, []byte(ctx), false)
 }
 
-func verify(public PublicKey, message, signature []byte, preHash bool, ctx []byte) bool {
+func verify(public PublicKey, message, signature, ctx []byte, preHash bool) bool {
 	if len(public) != PublicKeySize ||
 		len(signature) != SignatureSize ||
 		!isLessThanOrder(signature[paramB:]) {
@@ -293,7 +293,7 @@ func Verify(public PublicKey, message, signature []byte, opts crypto.SignerOpts)
 // also known as the pure version of EdDSA.
 func VerifyPure(public PublicKey, message, signature []byte) bool {
 	ctx := ""
-	return verify(public, message, signature, false, []byte(ctx))
+	return verify(public, message, signature, []byte(ctx), false)
 }
 
 // VerifyPh returns true if the signature is valid. Failure cases are invalid
@@ -303,7 +303,7 @@ func VerifyPure(public PublicKey, message, signature []byte) bool {
 // Context could be passed to this function, which length should be no more than
 // 255. It can be empty.
 func VerifyPh(public PublicKey, message, signature []byte, ctx string) bool {
-	return verify(public, message, signature, true, []byte(ctx))
+	return verify(public, message, signature, []byte(ctx), true)
 }
 
 // VerifyWithCtx returns true if the signature is valid. Failure cases are invalid
@@ -317,7 +317,7 @@ func VerifyWithCtx(public PublicKey, message, signature []byte, ctx string) bool
 		return false
 	}
 
-	return verify(public, message, signature, false, []byte(ctx))
+	return verify(public, message, signature, []byte(ctx), false)
 }
 
 func clamp(k []byte) {
