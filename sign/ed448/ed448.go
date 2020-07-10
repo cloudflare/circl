@@ -11,6 +11,7 @@ import (
 	"crypto"
 	cryptoRand "crypto/rand"
 	"errors"
+	"fmt"
 	"io"
 	"strconv"
 
@@ -157,7 +158,7 @@ func sign(kp *KeyPair, message, ctx []byte, preHash bool) ([]byte, error) {
 	var rPM [hashSize]byte
 	H.Reset()
 
-	H = writeDom(H, ctx, preHash)
+	writeDom(&H, ctx, preHash)
 
 	_, _ = H.Write(prefix)
 	_, _ = H.Write(d)
@@ -173,7 +174,7 @@ func sign(kp *KeyPair, message, ctx []byte, preHash bool) ([]byte, error) {
 	var hRAM [hashSize]byte
 	H.Reset()
 
-	H = writeDom(H, ctx, preHash)
+	writeDom(&H, ctx, preHash)
 
 	_, _ = H.Write(R)
 	_, _ = H.Write(kp.public[:])
@@ -199,7 +200,7 @@ func sign(kp *KeyPair, message, ctx []byte, preHash bool) ([]byte, error) {
 // also known as the pure version of EdDSA.
 func (kp *KeyPair) SignPure(message []byte, ctx string) ([]byte, error) {
 	if len(ctx) > ContextMaxSize {
-		return nil, errors.New("ed448: bad context length: " + strconv.Itoa(len(ctx)))
+		return nil, fmt.Errorf("ed448: bad context length: " + strconv.Itoa(len(ctx)))
 	}
 
 	return sign(kp, message, []byte(ctx), false)
@@ -212,7 +213,7 @@ func (kp *KeyPair) SignPure(message []byte, ctx string) ([]byte, error) {
 // 255. It can be empty.
 func (kp *KeyPair) SignPh(message []byte, ctx string) ([]byte, error) {
 	if len(ctx) > ContextMaxSize {
-		return nil, errors.New("ed448: bad context length: " + strconv.Itoa(len(ctx)))
+		return nil, fmt.Errorf("ed448: bad context length: " + strconv.Itoa(len(ctx)))
 	}
 
 	return sign(kp, message, []byte(ctx), true)
@@ -247,7 +248,7 @@ func verify(public PublicKey, message, signature, ctx []byte, preHash bool) bool
 	var hRAM [hashSize]byte
 	R := signature[:paramB]
 
-	H = writeDom(H, ctx, preHash)
+	writeDom(&H, ctx, preHash)
 
 	_, _ = H.Write(R)
 	_, _ = H.Write(public)
@@ -298,7 +299,7 @@ func VerifyPure(public PublicKey, message, signature []byte, ctx string) bool {
 
 // VerifyPh returns true if the signature is valid. Failure cases are invalid
 // signature, or when the public key cannot be decoded.
-// This function supports the signature variant defined in RFC-8032: Ed25519ph,
+// This function supports the signature variant defined in RFC-8032: Ed448ph,
 // meaning it internally hashes the message using SHAKE-256.
 // Context could be passed to this function, which length should be no more than
 // 255. It can be empty.
@@ -323,7 +324,7 @@ func isLessThanOrder(x []byte) bool {
 	return x[paramB-1] == 0 && x[i] < order[i]
 }
 
-func writeDom(h sha3.Shake, ctx []byte, preHash bool) sha3.Shake {
+func writeDom(h io.Writer, ctx []byte, preHash bool) {
 	dom4 := "SigEd448"
 	_, _ = h.Write([]byte(dom4))
 
@@ -333,6 +334,4 @@ func writeDom(h sha3.Shake, ctx []byte, preHash bool) sha3.Shake {
 		_, _ = h.Write([]byte{byte(0x00), byte(len(ctx))})
 	}
 	_, _ = h.Write(ctx)
-
-	return h
 }

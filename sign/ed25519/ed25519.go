@@ -198,7 +198,7 @@ func (kp *KeyPair) SignPure(message []byte) ([]byte, error) {
 // 255. It can be empty.
 func (kp *KeyPair) SignPh(message []byte, ctx string) ([]byte, error) {
 	if len(ctx) > ContextMaxSize {
-		return nil, errors.New("ed25519: bad context length: " + strconv.Itoa(len(ctx)))
+		return nil, fmt.Errorf("ed25519: bad context length: " + strconv.Itoa(len(ctx)))
 	}
 
 	return sign(kp, message, []byte(ctx), true)
