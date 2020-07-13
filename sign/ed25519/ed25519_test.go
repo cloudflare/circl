@@ -1,390 +1,85 @@
 package ed25519_test
 
 import (
-	"bytes"
-	"crypto"
-	"crypto/rand"
-	"errors"
-	"fmt"
 	"testing"
 
-	"github.com/cloudflare/circl/internal/test"
 	"github.com/cloudflare/circl/sign/ed25519"
 )
 
-func TestWrongPublicKey(t *testing.T) {
-	wrongPublicKeys := [...][ed25519.PublicKeySize]byte{
-		{ // y = p
-			0xed, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f,
-		},
-		{ // y > p
-			0xed + 1, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f,
-		},
-		{ // x^2 = u/v = (y^2-1)/(dy^2+1) is not a quadratic residue
-			0x9a, 0x0a, 0xbe, 0xc6, 0x23, 0xcb, 0x5a, 0x23,
-			0x4e, 0x49, 0xd8, 0x92, 0xc2, 0x72, 0xd5, 0xa8,
-			0x27, 0xff, 0x42, 0x07, 0x7d, 0xe3, 0xf2, 0xb4,
-			0x74, 0x75, 0x9d, 0x04, 0x34, 0xed, 0xa6, 0x70,
-		},
-		{ // y = 1 and x^2 = u/v = 0, and the sign of X is 1
-			0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 | 0x80,
-		},
-		{ // y = -1 and x^2 = u/v = 0, and the sign of X is 1
-			0xec, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-			0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f | 0x80,
-		},
+type zeroReader struct{}
+
+func (zeroReader) Read(buf []byte) (int, error) {
+	for i := range buf {
+		buf[i] = 0
 	}
-	sig := (&[ed25519.SignatureSize]byte{})[:]
-	for _, public := range wrongPublicKeys {
-		got := ed25519.VerifyPure(public[:], []byte(""), sig)
-		want := false
-		if got != want {
-			test.ReportError(t, got, want, public)
+	return len(buf), nil
+}
+
+func TestMalleability(t *testing.T) {
+	// https://tools.ietf.org/html/rfc8032#section-5.1.7 adds an additional test
+	// that s be in [0, order). This prevents someone from adding a multiple of
+	// order to s and obtaining a second valid signature for the same message.
+	msg := []byte{0x54, 0x65, 0x73, 0x74}
+	sig := []byte{
+		0x7c, 0x38, 0xe0, 0x26, 0xf2, 0x9e, 0x14, 0xaa, 0xbd, 0x05, 0x9a,
+		0x0f, 0x2d, 0xb8, 0xb0, 0xcd, 0x78, 0x30, 0x40, 0x60, 0x9a, 0x8b,
+		0xe6, 0x84, 0xdb, 0x12, 0xf8, 0x2a, 0x27, 0x77, 0x4a, 0xb0, 0x67,
+		0x65, 0x4b, 0xce, 0x38, 0x32, 0xc2, 0xd7, 0x6f, 0x8f, 0x6f, 0x5d,
+		0xaf, 0xc0, 0x8d, 0x93, 0x39, 0xd4, 0xee, 0xf6, 0x76, 0x57, 0x33,
+		0x36, 0xa5, 0xc5, 0x1e, 0xb6, 0xf9, 0x46, 0xb3, 0x1d,
+	}
+	publicKey := []byte{
+		0x7d, 0x4d, 0x0e, 0x7f, 0x61, 0x53, 0xa6, 0x9b, 0x62, 0x42, 0xb5,
+		0x22, 0xab, 0xbe, 0xe6, 0x85, 0xfd, 0xa4, 0x42, 0x0f, 0x88, 0x34,
+		0xb1, 0x08, 0xc3, 0xbd, 0xae, 0x36, 0x9e, 0xf5, 0x49, 0xfa,
+	}
+
+	if ed25519.Verify(publicKey, msg, sig) {
+		t.Fatal("non-canonical signature accepted")
+	}
+}
+
+func BenchmarkKeyGeneration(b *testing.B) {
+	var zero zeroReader
+	for i := 0; i < b.N; i++ {
+		if _, _, err := ed25519.GenerateKey(zero); err != nil {
+			b.Fatal(err)
 		}
 	}
 }
 
-func TestSignerPure(t *testing.T) {
-	// ed25519
-	seed := make(ed25519.PrivateKey, ed25519.PrivateKeySize)
-	_, _ = rand.Read(seed)
-	key := ed25519.NewKeyFromSeed(seed)
-
-	priv := key.GetPrivate()
-	if !bytes.Equal(seed, priv) {
-		got := priv
-		want := seed
-		test.ReportError(t, got, want)
-	}
-	priv = key.Seed()
-	if !bytes.Equal(seed, priv) {
-		got := priv
-		want := seed
-		test.ReportError(t, got, want)
-	}
-
-	signer := crypto.Signer(key)
-	ops := crypto.Hash(0)
-	msg := make([]byte, 16)
-	_, _ = rand.Read(msg)
-	sig, err := signer.Sign(nil, msg, ops)
-	if err != nil {
-		got := err
-		var want error
-		test.ReportError(t, got, want)
-	}
-	if len(sig) != ed25519.SignatureSize {
-		got := len(sig)
-		want := ed25519.SignatureSize
-		test.ReportError(t, got, want)
-	}
-
-	pubKey := key.GetPublic()
-	pubSigner, ok := signer.Public().(ed25519.PublicKey)
-	if !ok {
-		got := ok
-		want := true
-		test.ReportError(t, got, want)
-	}
-	if !bytes.Equal(pubKey, pubSigner) {
-		got := pubSigner
-		want := pubKey
-		test.ReportError(t, got, want)
-	}
-
-	got := ed25519.Verify(pubSigner, msg, sig, ops)
-	want := true
-	if got != want {
-		test.ReportError(t, got, want)
+func BenchmarkNewKeyFromSeed(b *testing.B) {
+	seed := make([]byte, ed25519.SeedSize)
+	b.ReportAllocs()
+	for i := 0; i < b.N; i++ {
+		_ = ed25519.NewKeyFromSeed(seed)
 	}
 }
 
-func TestSignerPh(t *testing.T) {
-	// ed25519ph
-	seed := make(ed25519.PrivateKey, ed25519.PrivateKeySize)
-	_, _ = rand.Read(seed)
-	key := ed25519.NewKeyFromSeed(seed)
-
-	priv := key.GetPrivate()
-	if !bytes.Equal(seed, priv) {
-		got := priv
-		want := seed
-		test.ReportError(t, got, want)
-	}
-	priv = key.Seed()
-	if !bytes.Equal(seed, priv) {
-		got := priv
-		want := seed
-		test.ReportError(t, got, want)
-	}
-
-	signer := crypto.Signer(key)
-	ops := crypto.SHA512
-	msg := make([]byte, 64)
-	_, _ = rand.Read(msg)
-
-	sig, err := signer.Sign(nil, msg, ops)
+func BenchmarkSigning(b *testing.B) {
+	var zero zeroReader
+	_, priv, err := ed25519.GenerateKey(zero)
 	if err != nil {
-		got := err
-		var want error
-		test.ReportError(t, got, want)
+		b.Fatal(err)
 	}
-	if len(sig) != ed25519.SignatureSize {
-		got := len(sig)
-		want := ed25519.SignatureSize
-		test.ReportError(t, got, want)
-	}
-
-	pubKey := key.GetPublic()
-	pubSigner, ok := signer.Public().(ed25519.PublicKey)
-	if !ok {
-		got := ok
-		want := true
-		test.ReportError(t, got, want)
-	}
-	if !bytes.Equal(pubKey, pubSigner) {
-		got := pubSigner
-		want := pubKey
-		test.ReportError(t, got, want)
-	}
-
-	got := ed25519.Verify(pubSigner, msg, sig, ops)
-	want := true
-	if got != want {
-		test.ReportError(t, got, want)
+	message := []byte("Hello, world!")
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		ed25519.Sign(priv, message)
 	}
 }
 
-func TestSignerWithCtx(t *testing.T) {
-	// ed25519ctx
-	seed := make(ed25519.PrivateKey, ed25519.PrivateKeySize)
-	_, _ = rand.Read(seed)
-	key := ed25519.NewKeyFromSeed(seed)
-
-	priv := key.GetPrivate()
-	if !bytes.Equal(seed, priv) {
-		got := priv
-		want := seed
-		test.ReportError(t, got, want)
-	}
-	priv = key.Seed()
-	if !bytes.Equal(seed, priv) {
-		got := priv
-		want := seed
-		test.ReportError(t, got, want)
-	}
-
-	signer := crypto.Signer(key)
-	ops := &ed25519.Options{
-		Hash:    crypto.Hash(0),
-		Context: "context",
-	}
-	msg := make([]byte, 64)
-	_, _ = rand.Read(msg)
-
-	sig, err := signer.Sign(nil, msg, ops)
+func BenchmarkVerification(b *testing.B) {
+	var zero zeroReader
+	pub, priv, err := ed25519.GenerateKey(zero)
 	if err != nil {
-		got := err
-		var want error
-		test.ReportError(t, got, want)
+		b.Fatal(err)
 	}
-	if len(sig) != ed25519.SignatureSize {
-		got := len(sig)
-		want := ed25519.SignatureSize
-		test.ReportError(t, got, want)
+	message := []byte("Hello, world!")
+	signature := ed25519.Sign(priv, message)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		ed25519.Verify(pub, message, signature)
 	}
-
-	pubKey := key.GetPublic()
-	pubSigner, ok := signer.Public().(ed25519.PublicKey)
-	if !ok {
-		got := ok
-		want := true
-		test.ReportError(t, got, want)
-	}
-	if !bytes.Equal(pubKey, pubSigner) {
-		got := pubSigner
-		want := pubKey
-		test.ReportError(t, got, want)
-	}
-
-	got := ed25519.Verify(pubSigner, msg, sig, ops)
-	want := true
-	if got != want {
-		test.ReportError(t, got, want)
-	}
-}
-
-type badReader struct{}
-
-func (badReader) Read([]byte) (n int, err error) { return 0, errors.New("cannot read") }
-
-func TestErrors(t *testing.T) {
-	t.Run("badHash", func(t *testing.T) {
-		var msg [16]byte
-		ops := crypto.SHA224
-		key, _ := ed25519.GenerateKey(nil)
-		_, got := key.Sign(nil, msg[:], ops)
-		want := errors.New("ed25519: bad hash algorithm")
-		if got.Error() != want.Error() {
-			test.ReportError(t, got, want)
-		}
-	})
-	t.Run("badReader", func(t *testing.T) {
-		_, got := ed25519.GenerateKey(badReader{})
-		want := errors.New("cannot read")
-		if got.Error() != want.Error() {
-			test.ReportError(t, got, want)
-		}
-	})
-	t.Run("wrongSeedSize", func(t *testing.T) {
-		var seed [256]byte
-		var want error
-		got := test.CheckPanic(func() { ed25519.NewKeyFromSeed(seed[:]) })
-		if got != want {
-			test.ReportError(t, got, want)
-		}
-	})
-}
-
-func BenchmarkEd25519(b *testing.B) {
-	msg := make([]byte, 128)
-	_, _ = rand.Read(msg)
-
-	b.Run("keygen", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			_, _ = ed25519.GenerateKey(rand.Reader)
-		}
-	})
-	b.Run("sign", func(b *testing.B) {
-		key, _ := ed25519.GenerateKey(rand.Reader)
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			_, _ = key.SignPure(msg)
-		}
-	})
-	b.Run("verify", func(b *testing.B) {
-		key, _ := ed25519.GenerateKey(rand.Reader)
-		sig, _ := key.SignPure(msg)
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			ed25519.VerifyPure(key.GetPublic(), msg, sig)
-		}
-	})
-	b.Run("signPh", func(b *testing.B) {
-		key, _ := ed25519.GenerateKey(rand.Reader)
-		ctx := ""
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			_, _ = key.SignPh(msg, ctx)
-		}
-	})
-	b.Run("verifyPh", func(b *testing.B) {
-		key, _ := ed25519.GenerateKey(rand.Reader)
-		ctx := ""
-		sig, _ := key.SignPh(msg, ctx)
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			ed25519.VerifyPh(key.GetPublic(), msg, sig, ctx)
-		}
-	})
-	ctx := "context"
-	b.Run("signWithCtx", func(b *testing.B) {
-		key, _ := ed25519.GenerateKey(rand.Reader)
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			_, _ = key.SignWithCtx(msg, ctx)
-		}
-	})
-	b.Run("verifyWithCtx", func(b *testing.B) {
-		key, _ := ed25519.GenerateKey(rand.Reader)
-		sig, _ := key.SignWithCtx(msg, ctx)
-		b.ResetTimer()
-		for i := 0; i < b.N; i++ {
-			ed25519.VerifyWithCtx(key.GetPublic(), msg, sig, ctx)
-		}
-	})
-}
-
-func Example_ed25519() {
-	// import "github.com/cloudflare/circl/sign/ed25519"
-	// import "crypto/rand"
-
-	// Generating Alice's key pair
-	keys, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		panic("error on generating keys")
-	}
-
-	// Alice signs a message.
-	message := []byte("A message to be signed")
-	signature, err := keys.SignPure(message)
-	if err != nil {
-		panic("error on signing message")
-	}
-
-	// Anyone can verify the signature using Alice's public key.
-	ok := ed25519.VerifyPure(keys.GetPublic(), message, signature)
-	fmt.Println(ok)
-	// Output: true
-}
-
-func Example_ed25519Ph() {
-	// import "github.com/cloudflare/circl/sign/ed25519"
-	// import "crypto/rand"
-
-	// Generating Alice's key pair
-	keys, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		panic("error on generating keys")
-	}
-
-	// Alice signs a message.
-	message := []byte("A message to be signed")
-	ctx := ""
-
-	signature, err := keys.SignPh(message, ctx)
-	if err != nil {
-		panic("error on signing message")
-	}
-
-	// Anyone can verify the signature using Alice's public key.
-	ok := ed25519.VerifyPh(keys.GetPublic(), message, signature, ctx)
-	fmt.Println(ok)
-	// Output: true
-}
-
-func Example_ed25519Ctx() {
-	// import "github.com/cloudflare/circl/sign/ed25519"
-	// import "crypto/rand"
-
-	// Generating Alice's key pair
-	keys, err := ed25519.GenerateKey(rand.Reader)
-	if err != nil {
-		panic("error on generating keys")
-	}
-
-	// Alice signs a message.
-	message := []byte("A message to be signed")
-	ctx := "context"
-
-	signature, err := keys.SignWithCtx(message, ctx)
-	if err != nil {
-		panic("error on signing message")
-	}
-
-	// Anyone can verify the signature using Alice's public key.
-	ok := ed25519.VerifyWithCtx(keys.GetPublic(), message, signature, ctx)
-	fmt.Println(ok)
-	// Output: true
 }

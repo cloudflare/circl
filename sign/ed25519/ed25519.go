@@ -1,16 +1,45 @@
 // Package ed25519 implements Ed25519 signature scheme as described in RFC-8032.
 //
-// References:
-//  - RFC8032 https://rfc-editor.org/rfc/rfc8032.txt
-//  - Ed25519 https://ed25519.cr.yp.to/
-//  - High-speed high-security signatures. https://doi.org/10.1007/s13389-012-0027-1
+// This package implements the three signature variants.
+//
+//  | Scheme Name | Sign Function     | Verification  | Context           |
+//  |-------------|-------------------|---------------|-------------------|
+//  | Ed25519     | Sign              | Verify        | None              |
+//  | Ed25519Ph   | SignPh            | VerifyPh      | Yes, can be empty |
+//  | Ed25519Ctx  | SignWithCtx       | VerifyWithCtx | Yes, non-empty    |
+//  | All above   | (PrivateKey).Sign | VerifyAny     | As above          |
+//
+// Specific functions for sign and verify are defined. A generic signing
+// function for all schemes is available through the crypto.Signer interface,
+// which is implemented by the PrivateKey type. A correspond all-in-one
+// verification method is provided by the VerifyAny function.
+//
+// Signing with Ed25519Ph or Ed25519Ctx requires a context string for domain
+// separation. This parameter is passed using a SignerOptions struct defined
+// in this package.
+//
+// Compatibility with crypto.ed25519
+//
+// These functions are compatible with the “Ed25519” function defined in
+// RFC-8032. However, unlike RFC 8032's formulation, this package's private
+// key representation includes a public key suffix to make multiple signing
+// operations with the same key more efficient. This package refers to the
+// RFC-8032 private key as the “seed”.
+//
+// References
+//
+//  - RFC-8032: https://rfc-editor.org/rfc/rfc8032.txt
+//  - Ed25519: https://ed25519.cr.yp.to/
+//  - EdDSA: High-speed high-security signatures. https://doi.org/10.1007/s13389-012-0027-1
 package ed25519
 
 import (
 	"bytes"
 	"crypto"
+	cryptoEd25519 "crypto/ed25519"
 	cryptoRand "crypto/rand"
 	"crypto/sha512"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"io"
@@ -18,127 +47,171 @@ import (
 )
 
 const (
-	// PublicKeySize is the length in bytes of Ed25519 public keys.
-	PublicKeySize = 32
-	// PrivateKeySize is the length in bytes of Ed25519 private keys.
-	PrivateKeySize = 32
-	// SignatureSize is the length in bytes of signatures.
-	SignatureSize = 64
-
 	// ContextMaxSize is the maximum length (in bytes) allowed for context.
 	ContextMaxSize = 255
+	// PublicKeySize is the size, in bytes, of public keys as used in this package.
+	PublicKeySize = 32
+	// PrivateKeySize is the size, in bytes, of private keys as used in this package.
+	PrivateKeySize = 64
+	// SignatureSize is the size, in bytes, of signatures generated and verified by this package.
+	SignatureSize = 64
+	// SeedSize is the size, in bytes, of private key seeds. These are the private key representations used by RFC 8032.
+	SeedSize = 32
 )
+
 const (
 	paramB = 256 / 8 // Size of keys in bytes.
 )
 
-// Options are the options that the ed25519 functions can take.
-type Options struct {
-	// Hash can be crypto.Hash(0) for Ed25519/Ed25519ctx, or crypto.SHA512
+// SignerOptions implements crypto.SignerOpts and augments with parameters
+// that are specific to the Ed25519 signature schemes.
+type SignerOptions struct {
+	// Hash must be crypto.Hash(0) for Ed25519/Ed25519ctx, or crypto.SHA512
 	// for Ed25519ph.
 	crypto.Hash
 
 	// Context is an optional domain separation string for Ed25519ph and a
-	// must for Ed25519ctx. Its length  must be less or equal than 255 bytes.
+	// must for Ed25519ctx. Its length must be less or equal than 255 bytes.
 	Context string
+
+	// Scheme is an identifier for choosing a signature scheme.
+	Scheme SchemeID
 }
 
-// PublicKey represents a public key of Ed25519.
-type PublicKey []byte
+// SchemeID is an identifier for each signature scheme.
+type SchemeID uint
 
-// PrivateKey represents a private key of Ed25519.
+const (
+	ED25519 SchemeID = iota
+	ED25519Ph
+	ED25519Ctx
+)
+
+// PublicKey is the type of Ed25519 public keys.
+type PublicKey = cryptoEd25519.PublicKey
+
+// PrivateKey is the type of Ed25519 private keys. It implements crypto.Signer.
 type PrivateKey []byte
 
-// KeyPair implements crypto.Signer (golang.org/pkg/crypto/#Signer) interface.
-type KeyPair struct {
-	private [PrivateKeySize]byte
-	public  [PublicKeySize]byte
+// Equal reports whether priv and x have the same value.
+func (priv PrivateKey) Equal(x crypto.PrivateKey) bool {
+	xx, ok := x.(PrivateKey)
+	if !ok {
+		return false
+	}
+	return subtle.ConstantTimeCompare(priv, xx) == 1
 }
 
-// GetPrivate returns a copy of the private key.
-func (kp *KeyPair) GetPrivate() PrivateKey { z := kp.private; return z[:] }
+// Public returns the PublicKey corresponding to priv.
+func (priv PrivateKey) Public() crypto.PublicKey {
+	publicKey := make([]byte, PublicKeySize)
+	copy(publicKey, priv[SeedSize:])
+	return PublicKey(publicKey)
+}
 
-// GetPublic returns a copy of the public key.
-func (kp *KeyPair) GetPublic() PublicKey { z := kp.public; return z[:] }
+// Seed returns the private key seed corresponding to priv. It is provided for
+// interoperability with RFC 8032. RFC 8032's private keys correspond to seeds
+// in this package.
+func (priv PrivateKey) Seed() []byte {
+	seed := make([]byte, SeedSize)
+	copy(seed, priv[:SeedSize])
+	return seed
+}
 
-// Seed returns the private key seed.
-func (kp *KeyPair) Seed() []byte { return kp.GetPrivate() }
-
-// Public returns a crypto.PublicKey.
-func (kp *KeyPair) Public() crypto.PublicKey { return kp.GetPublic() }
-
-// Sign creates a signature of a message given a key pair.
-// This function supports all the three signature variants defined in RFC-8032,
-// namely Ed25519 (or pure EdDSA), Ed25519Ph, and Ed25519Ctx.
+// Sign creates a signature of a message with priv key.
+// This function is compatible with crypto.ed25519 and also supports the
+// three signature variants defined in RFC-8032, namely Ed25519 (or pure
+// EdDSA), Ed25519Ph, and Ed25519Ctx.
 // The opts.HashFunc() must return zero to specify either Ed25519 or Ed25519Ctx
-// variant. This can be achieved by passing crypto.Hash(0) as the value for opts.
+// variant. This can be achieved by passing crypto.Hash(0) as the value for
+// opts.
 // The opts.HashFunc() must return SHA512 to specify the Ed25519Ph variant.
 // This can be achieved by passing crypto.SHA512 as the value for opts.
-// Use an Options struct to pass a context string for signing.
-func (kp *KeyPair) Sign(rand io.Reader, message []byte, opts crypto.SignerOpts) ([]byte, error) {
+// Use a SignerOptions struct (defined in this package) to pass a context
+// string for signing.
+func (priv PrivateKey) Sign(
+	rand io.Reader,
+	message []byte,
+	opts crypto.SignerOpts) (signature []byte, err error) {
 	var ctx string
-	if o, ok := opts.(*Options); ok {
+	var scheme SchemeID
+	if o, ok := opts.(SignerOptions); ok {
 		ctx = o.Context
+		scheme = o.Scheme
 	}
 
-	switch opts.HashFunc() {
-	case crypto.SHA512:
-		return kp.SignPh(message, ctx)
-	case crypto.Hash(0):
-		if len(ctx) > 0 {
-			return kp.SignWithCtx(message, ctx)
-		}
-
-		return kp.SignPure(message)
+	switch true {
+	case scheme == ED25519 && opts.HashFunc() == crypto.Hash(0):
+		return Sign(priv, message), nil
+	case scheme == ED25519Ph && opts.HashFunc() == crypto.SHA512:
+		return SignPh(priv, message, ctx), nil
+	case scheme == ED25519Ctx && opts.HashFunc() == crypto.Hash(0) && len(ctx) > 0:
+		return SignWithCtx(priv, message, ctx), nil
 	default:
 		return nil, errors.New("ed25519: bad hash algorithm")
 	}
 }
 
-// GenerateKey produces public and private keys using entropy from rand.
+// GenerateKey generates a public/private key pair using entropy from rand.
 // If rand is nil, crypto/rand.Reader will be used.
-func GenerateKey(rand io.Reader) (*KeyPair, error) {
+func GenerateKey(rand io.Reader) (PublicKey, PrivateKey, error) {
 	if rand == nil {
 		rand = cryptoRand.Reader
 	}
-	seed := make(PrivateKey, PrivateKeySize)
+
+	seed := make([]byte, SeedSize)
 	if _, err := io.ReadFull(rand, seed); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return NewKeyFromSeed(seed), nil
+
+	privateKey := NewKeyFromSeed(seed)
+	publicKey := make([]byte, PublicKeySize)
+	copy(publicKey, privateKey[SeedSize:])
+
+	return publicKey, privateKey, nil
 }
 
-// NewKeyFromSeed generates a pair of Ed25519 keys given a private key.
-func NewKeyFromSeed(seed PrivateKey) *KeyPair {
-	if len(seed) != PrivateKeySize {
-		panic("ed25519: bad private key length")
+// NewKeyFromSeed calculates a private key from a seed. It will panic if
+// len(seed) is not SeedSize. This function is provided for interoperability
+// with RFC 8032. RFC 8032's private keys correspond to seeds in this
+// package.
+func NewKeyFromSeed(seed []byte) PrivateKey {
+	privateKey := make([]byte, PrivateKeySize)
+	newKeyFromSeed(privateKey, seed)
+	return privateKey
+}
+
+func newKeyFromSeed(privateKey, seed []byte) {
+	if l := len(seed); l != SeedSize {
+		panic("ed25519: bad seed length: " + strconv.Itoa(l))
 	}
 	var P pointR1
 	k := sha512.Sum512(seed)
 	clamp(k[:])
 	reduceModOrder(k[:paramB], false)
 	P.fixedMult(k[:paramB])
-
-	pair := &KeyPair{}
-	copy(pair.private[:], seed)
-	_ = P.ToBytes(pair.public[:])
-	return pair
+	copy(privateKey[:SeedSize], seed)
+	_ = P.ToBytes(privateKey[SeedSize:])
 }
 
-func sign(kp *KeyPair, message, ctx []byte, preHash bool) ([]byte, error) {
+func sign(signature []byte, privateKey PrivateKey, message, ctx []byte, preHash bool) {
+	if l := len(privateKey); l != PrivateKeySize {
+		panic("ed25519: bad private key length: " + strconv.Itoa(l))
+	}
+
 	H := sha512.New()
-	var d []byte
+	var PHM []byte
 
 	if preHash {
 		_, _ = H.Write(message)
-		d = H.Sum(nil)
+		PHM = H.Sum(nil)
 		H.Reset()
 	} else {
-		d = message
+		PHM = message
 	}
 
 	// 1.  Hash the 32-byte private key using SHA-512.
-	_, _ = H.Write(kp.private[:])
+	_, _ = H.Write(privateKey[:SeedSize])
 	h := H.Sum(nil)
 	clamp(h[:])
 	prefix, s := h[paramB:], h[:paramB]
@@ -149,7 +222,7 @@ func sign(kp *KeyPair, message, ctx []byte, preHash bool) ([]byte, error) {
 	writeDom(H, ctx, preHash)
 
 	_, _ = H.Write(prefix)
-	_, _ = H.Write(d)
+	_, _ = H.Write(PHM)
 	r := H.Sum(nil)
 	reduceModOrder(r[:], true)
 
@@ -157,7 +230,9 @@ func sign(kp *KeyPair, message, ctx []byte, preHash bool) ([]byte, error) {
 	var P pointR1
 	P.fixedMult(r[:paramB])
 	R := (&[paramB]byte{})[:]
-	err := P.ToBytes(R)
+	if err := P.ToBytes(R); err != nil {
+		panic(err)
+	}
 
 	// 4.  Compute SHA512(dom2(F, C) || R || A || PH(M)).
 	H.Reset()
@@ -165,8 +240,8 @@ func sign(kp *KeyPair, message, ctx []byte, preHash bool) ([]byte, error) {
 	writeDom(H, ctx, preHash)
 
 	_, _ = H.Write(R)
-	_, _ = H.Write(kp.public[:])
-	_, _ = H.Write(d)
+	_, _ = H.Write(privateKey[SeedSize:])
+	_, _ = H.Write(PHM)
 	hRAM := H.Sum(nil)
 
 	reduceModOrder(hRAM[:], true)
@@ -176,45 +251,51 @@ func sign(kp *KeyPair, message, ctx []byte, preHash bool) ([]byte, error) {
 	calculateS(S, r[:paramB], hRAM[:paramB], s)
 
 	// 6.  The signature is the concatenation of R and S.
-	var signature [SignatureSize]byte
 	copy(signature[:paramB], R[:])
 	copy(signature[paramB:], S[:])
-
-	return signature[:], err
 }
 
-// SignPure creates a signature of a message given a keypair.
+// Sign signs the message with privateKey and returns a signature.
 // This function supports the signature variant defined in RFC-8032: Ed25519,
 // also known as the pure version of EdDSA.
-func (kp *KeyPair) SignPure(message []byte) ([]byte, error) {
-	ctx := ""
-	return sign(kp, message, []byte(ctx), false)
+// It will panic if len(privateKey) is not PrivateKeySize.
+func Sign(privateKey PrivateKey, message []byte) []byte {
+	signature := make([]byte, SignatureSize)
+	sign(signature, privateKey, message, []byte(""), false)
+	return signature
 }
 
-// SignPh creates a signature of a message given a keypair.
+// SignPh creates a signature of a message with private key and context.
 // This function supports the signature variant defined in RFC-8032: Ed25519ph,
-// meaning it internally hashes the message using SHA-512.
+// meaning it internally hashes the message using SHA-512, and optionally
+// accepts a context string.
+// It will panic if len(privateKey) is not PrivateKeySize.
 // Context could be passed to this function, which length should be no more than
-// 255. It can be empty.
-func (kp *KeyPair) SignPh(message []byte, ctx string) ([]byte, error) {
+// ContextMaxSize=255. It can be empty.
+func SignPh(privateKey PrivateKey, message []byte, ctx string) []byte {
 	if len(ctx) > ContextMaxSize {
-		return nil, fmt.Errorf("ed25519: bad context length: " + strconv.Itoa(len(ctx)))
+		panic(fmt.Errorf("ed25519: bad context length: %v", len(ctx)))
 	}
 
-	return sign(kp, message, []byte(ctx), true)
+	signature := make([]byte, SignatureSize)
+	sign(signature, privateKey, message, []byte(ctx), true)
+	return signature
 }
 
-// SignWithCtx creates a signature of a message given a keypair.
+// SignWithCtx creates a signature of a message with private key and context.
 // This function supports the signature variant defined in RFC-8032: Ed25519ctx,
-// meaning it handles unhashed messages with context.
-// Context should be passed to this function, which length should be no more than
-// 255. It should not be empty.
-func (kp *KeyPair) SignWithCtx(message []byte, ctx string) ([]byte, error) {
+// meaning it accepts a non-empty context string.
+// It will panic if len(privateKey) is not PrivateKeySize.
+// Context must be passed to this function, which length should be no more than
+// ContextMaxSize=255 and cannot be empty.
+func SignWithCtx(privateKey PrivateKey, message []byte, ctx string) []byte {
 	if len(ctx) == 0 || len(ctx) > ContextMaxSize {
-		return nil, fmt.Errorf("ed25519: bad context length: %v > %v", len(ctx), ContextMaxSize)
+		panic(fmt.Errorf("ed25519: bad context length: %v > %v", len(ctx), ContextMaxSize))
 	}
 
-	return sign(kp, message, []byte(ctx), false)
+	signature := make([]byte, SignatureSize)
+	sign(signature, privateKey, message, []byte(ctx), false)
+	return signature
 }
 
 func verify(public PublicKey, message, signature, ctx []byte, preHash bool) bool {
@@ -230,14 +311,14 @@ func verify(public PublicKey, message, signature, ctx []byte, preHash bool) bool
 	}
 
 	H := sha512.New()
-	var d []byte
+	var PHM []byte
 
 	if preHash {
 		_, _ = H.Write(message)
-		d = H.Sum(nil)
+		PHM = H.Sum(nil)
 		H.Reset()
 	} else {
-		d = message
+		PHM = message
 	}
 
 	R := signature[:paramB]
@@ -246,7 +327,7 @@ func verify(public PublicKey, message, signature, ctx []byte, preHash bool) bool
 
 	_, _ = H.Write(R)
 	_, _ = H.Write(public)
-	_, _ = H.Write(d)
+	_, _ = H.Write(PHM)
 	hRAM := H.Sum(nil)
 	reduceModOrder(hRAM[:], true)
 
@@ -258,7 +339,7 @@ func verify(public PublicKey, message, signature, ctx []byte, preHash bool) bool
 	return bytes.Equal(R, encR)
 }
 
-// Verify returns true if the signature is valid. Failure cases are invalid
+// VerifyAny returns true if the signature is valid. Failure cases are invalid
 // signature, or when the public key cannot be decoded.
 // This function supports all the three signature variants defined in RFC-8032,
 // namely Ed25519 (or pure EdDSA), Ed25519Ph, and Ed25519Ctx.
@@ -266,34 +347,33 @@ func verify(public PublicKey, message, signature, ctx []byte, preHash bool) bool
 // variant. This can be achieved by passing crypto.Hash(0) as the value for opts.
 // The opts.HashFunc() must return SHA512 to specify the Ed25519Ph variant.
 // This can be achieved by passing crypto.SHA512 as the value for opts.
-// Use an Options struct to pass a context string for signing.
-func Verify(public PublicKey, message, signature []byte, opts crypto.SignerOpts) bool {
+// Use a SignerOptions struct to pass a context string for signing.
+func VerifyAny(public PublicKey, message, signature []byte, opts crypto.SignerOpts) bool {
 	var ctx string
-	if o, ok := opts.(*Options); ok {
+	var scheme SchemeID
+	if o, ok := opts.(SignerOptions); ok {
 		ctx = o.Context
+		scheme = o.Scheme
 	}
 
-	switch opts.HashFunc() {
-	case crypto.SHA512:
+	switch true {
+	case scheme == ED25519 && opts.HashFunc() == crypto.Hash(0):
+		return Verify(public, message, signature)
+	case scheme == ED25519Ph && opts.HashFunc() == crypto.SHA512:
 		return VerifyPh(public, message, signature, ctx)
-	case crypto.Hash(0):
-		if len(ctx) > 0 {
-			return VerifyWithCtx(public, message, signature, ctx)
-		}
-
-		return VerifyPure(public, message, signature)
+	case scheme == ED25519Ctx && opts.HashFunc() == crypto.Hash(0) && len(ctx) > 0:
+		return VerifyWithCtx(public, message, signature, ctx)
 	default:
 		return false
 	}
 }
 
-// VerifyPure returns true if the signature is valid. Failure cases are invalid
+// Verify returns true if the signature is valid. Failure cases are invalid
 // signature, or when the public key cannot be decoded.
 // This function supports the signature variant defined in RFC-8032: Ed25519,
 // also known as the pure version of EdDSA.
-func VerifyPure(public PublicKey, message, signature []byte) bool {
-	ctx := ""
-	return verify(public, message, signature, []byte(ctx), false)
+func Verify(public PublicKey, message, signature []byte) bool {
+	return verify(public, message, signature, []byte(""), false)
 }
 
 // VerifyPh returns true if the signature is valid. Failure cases are invalid

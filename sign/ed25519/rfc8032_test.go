@@ -29,27 +29,27 @@ func (v *rfc8032Vector) fetch(line string) {
 	v.public, _ = hex.DecodeString(values[1])
 	v.message, _ = hex.DecodeString(values[2])
 	v.signature, _ = hex.DecodeString(values[3])
-	v.private = v.private[:ed25519.PrivateKeySize]
+	v.private = v.private[:ed25519.SeedSize]
 	v.signature = v.signature[:ed25519.SignatureSize]
 }
 
 func (v *rfc8032Vector) test(t *testing.T, lineNum int) {
-	keys := ed25519.NewKeyFromSeed(v.private)
+	key := ed25519.NewKeyFromSeed(v.private)
 	{
-		got := keys.GetPublic()
+		got := key.Public().(ed25519.PublicKey)
 		want := v.public
 		if !bytes.Equal(got, want) {
 			test.ReportError(t, got, want, lineNum, v)
 		}
 
-		got, err := keys.SignPure(v.message)
+		got = ed25519.Sign(key, v.message)
 		want = v.signature
-		if !bytes.Equal(got, want) || err != nil {
+		if !bytes.Equal(got, want) {
 			test.ReportError(t, got, want, lineNum, v)
 		}
 	}
 	{
-		got := ed25519.VerifyPure(keys.GetPublic(), v.message, v.signature)
+		got := ed25519.Verify(key.Public().(ed25519.PublicKey), v.message, v.signature)
 		want := true
 		if got != want {
 			test.ReportError(t, got, want, lineNum, v)
@@ -427,7 +427,7 @@ func (v vector) matchCtxLen() bool { return uint(len(v.ctx)) == v.ctxLen }
 
 func (v vector) testPublicKey(t *testing.T) {
 	keys := ed25519.NewKeyFromSeed(v.sk)
-	got := keys.GetPublic()
+	got := keys.Public().(ed25519.PublicKey)
 	want := v.pk
 
 	if !bytes.Equal(got, want) {
@@ -436,22 +436,20 @@ func (v vector) testPublicKey(t *testing.T) {
 }
 
 func (v vector) testSign(t *testing.T) {
-	private := ed25519.NewKeyFromSeed(v.sk)
+	key := ed25519.NewKeyFromSeed(v.sk)
 
 	var got []byte
-	var err error
 
 	if v.ph {
-		ctx := ""
-		got, err = private.SignPh(v.msg, ctx)
+		got = ed25519.SignPh(key, v.msg, "")
 	} else if v.ctxLen > 0 {
-		got, err = private.SignWithCtx(v.msg, string(v.ctx))
+		got = ed25519.SignWithCtx(key, v.msg, string(v.ctx))
 	} else {
-		got, err = private.SignPure(v.msg)
+		got = ed25519.Sign(key, v.msg)
 	}
 
 	want := v.sig
-	if !bytes.Equal(got, want) || err != nil {
+	if !bytes.Equal(got, want) {
 		test.ReportError(t, got, want, v.name)
 	}
 }
@@ -463,7 +461,7 @@ func (v vector) testVerify(t *testing.T) {
 	} else if v.ctxLen > 0 {
 		got = ed25519.VerifyWithCtx(v.pk, v.msg, v.sig, string(v.ctx))
 	} else {
-		got = ed25519.VerifyPure(v.pk, v.msg, v.sig)
+		got = ed25519.Verify(v.pk, v.msg, v.sig)
 	}
 
 	want := true
