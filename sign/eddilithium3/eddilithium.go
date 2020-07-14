@@ -20,7 +20,7 @@ const (
 	PublicKeySize = mode3.PublicKeySize + ed25519.PublicKeySize
 
 	// PrivateKeySize is the length in bytes of the packed public key.
-	PrivateKeySize = mode3.PrivateKeySize + ed25519.PrivateKeySize
+	PrivateKeySize = mode3.PrivateKeySize + ed25519.SeedSize
 
 	// SignatureSize is the length in bytes of the signatures.
 	SignatureSize = mode3.SignatureSize + ed25519.SignatureSize
@@ -34,7 +34,7 @@ type PublicKey struct {
 
 // PrivateKey is the type of an EdDilithium3 private key.
 type PrivateKey struct {
-	e ed25519.KeyPair
+	e ed25519.PrivateKey
 	d mode3.PrivateKey
 }
 
@@ -57,7 +57,7 @@ func GenerateKey(rand io.Reader) (*PublicKey, *PrivateKey, error) {
 // NewKeyFromSeed derives a public/private key pair using the given seed.
 func NewKeyFromSeed(seed *[SeedSize]byte) (*PublicKey, *PrivateKey) {
 	var seed1 [32]byte
-	var seed2 [32]byte
+	var seed2 [ed25519.SeedSize]byte
 
 	// Internally, Ed25519 and Dilithium hash the seeds they are passed again
 	// with different hash functions, so it would be safe to use exactly the
@@ -71,9 +71,9 @@ func NewKeyFromSeed(seed *[SeedSize]byte) (*PublicKey, *PrivateKey) {
 	_, _ = h.Read(seed1[:])
 	_, _ = h.Read(seed2[:])
 	dpk, dsk := mode3.NewKeyFromSeed(&seed1)
-	epair := ed25519.NewKeyFromSeed(seed2[:])
+	esk := ed25519.NewKeyFromSeed(seed2[:])
 
-	return &PublicKey{epair.GetPublic(), *dpk}, &PrivateKey{*epair, *dsk}
+	return &PublicKey{esk.Public().(ed25519.PublicKey), *dpk}, &PrivateKey{esk, *dsk}
 }
 
 // SignTo signs the given message and writes the signature into signature.
@@ -84,7 +84,8 @@ func SignTo(sk *PrivateKey, msg []byte, signature []byte) {
 		msg,
 		signature[:mode3.SignatureSize],
 	)
-	esig, _ := sk.e.SignPure(
+	esig := ed25519.Sign(
+		sk.e,
 		msg,
 	)
 	copy(signature[mode3.SignatureSize:], esig[:])
@@ -103,7 +104,6 @@ func Verify(pk *PublicKey, msg []byte, signature []byte) bool {
 		pk.e,
 		msg,
 		signature[mode3.SignatureSize:],
-		crypto.Hash(0),
 	) {
 		return false
 	}
@@ -124,7 +124,7 @@ func (sk *PrivateKey) Unpack(buf *[PrivateKeySize]byte) {
 	var tmp [mode3.PrivateKeySize]byte
 	copy(tmp[:], buf[:mode3.PrivateKeySize])
 	sk.d.Unpack(&tmp)
-	sk.e = *ed25519.NewKeyFromSeed(buf[mode3.PrivateKeySize:])
+	sk.e = ed25519.NewKeyFromSeed(buf[mode3.PrivateKeySize:])
 }
 
 // Pack packs the public key into buf.
@@ -212,7 +212,7 @@ func (sk *PrivateKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) (
 // PrivateKey implement the crypto.Signer interface.
 func (sk *PrivateKey) Public() crypto.PublicKey {
 	return &PublicKey{
-		sk.e.GetPublic(),
+		sk.e.Public().(ed25519.PublicKey),
 		*sk.d.Public().(*mode3.PublicKey),
 	}
 }
