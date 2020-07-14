@@ -1,6 +1,7 @@
 // Package ed25519 implements Ed25519 signature scheme as described in RFC-8032.
 //
-// This package implements the three signature variants.
+// This package provides optimized implementations of the three signature
+// variants and maintaining closer compatiblilty with crypto/ed25519.
 //
 //  | Scheme Name | Sign Function     | Verification  | Context           |
 //  |-------------|-------------------|---------------|-------------------|
@@ -16,7 +17,8 @@
 //
 // Signing with Ed25519Ph or Ed25519Ctx requires a context string for domain
 // separation. This parameter is passed using a SignerOptions struct defined
-// in this package.
+// in this package. While Ed25519Ph accepts an empty context, Ed25519Ctx
+// enforces non-empty context strings.
 //
 // Compatibility with crypto.ed25519
 //
@@ -74,7 +76,8 @@ type SignerOptions struct {
 	// must for Ed25519ctx. Its length must be less or equal than 255 bytes.
 	Context string
 
-	// Scheme is an identifier for choosing a signature scheme.
+	// Scheme is an identifier for choosing a signature scheme. The zero value
+	// is ED25519.
 	Scheme SchemeID
 }
 
