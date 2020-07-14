@@ -38,7 +38,6 @@ package ed25519
 import (
 	"bytes"
 	"crypto"
-	cryptoEd25519 "crypto/ed25519"
 	cryptoRand "crypto/rand"
 	"crypto/sha512"
 	"crypto/subtle"
@@ -89,9 +88,6 @@ const (
 	ED25519Ph
 	ED25519Ctx
 )
-
-// PublicKey is the type of Ed25519 public keys.
-type PublicKey = cryptoEd25519.PublicKey
 
 // PrivateKey is the type of Ed25519 private keys. It implements crypto.Signer.
 type PrivateKey []byte
