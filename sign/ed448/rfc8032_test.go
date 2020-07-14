@@ -477,7 +477,7 @@ func (v vector) matchCtxLen() bool { return uint(len(v.ctx)) == v.ctxLen }
 
 func (v vector) testPublicKey(t *testing.T) {
 	keys := ed448.NewKeyFromSeed(v.sk)
-	got := keys.GetPublic()
+	got := keys.Public().(ed448.PublicKey)
 	want := v.pk
 
 	if !bytes.Equal(got, want) {
@@ -489,16 +489,15 @@ func (v vector) testSign(t *testing.T) {
 	private := ed448.NewKeyFromSeed(v.sk)
 
 	var got []byte
-	var err error
 
 	if v.ph {
-		got, err = private.SignPh(v.msg, string(v.ctx))
+		got = ed448.SignPh(private, v.msg, string(v.ctx))
 	} else {
-		got, err = private.SignPure(v.msg, string(v.ctx))
+		got = ed448.Sign(private, v.msg, string(v.ctx))
 	}
 
 	want := v.sig
-	if !bytes.Equal(got, want) || err != nil {
+	if !bytes.Equal(got, want) {
 		test.ReportError(t, got, want, v.name)
 	}
 }
@@ -509,7 +508,7 @@ func (v vector) testVerify(t *testing.T) {
 	if v.ph {
 		got = ed448.VerifyPh(v.pk, v.msg, v.sig, string(v.ctx))
 	} else {
-		got = ed448.VerifyPure(v.pk, v.msg, v.sig, string(v.ctx))
+		got = ed448.Verify(v.pk, v.msg, v.sig, string(v.ctx))
 	}
 
 	want := true
