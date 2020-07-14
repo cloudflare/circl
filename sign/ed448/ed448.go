@@ -1,6 +1,23 @@
 // Package ed448 implements Ed448 signature scheme as described in RFC-8032.
 //
+// This package implements two signature variants.
+//
+//  | Scheme Name | Sign Function     | Verification  | Context           |
+//  |-------------|-------------------|---------------|-------------------|
+//  | Ed448       | Sign              | Verify        | Yes, can be empty |
+//  | Ed448Ph     | SignPh            | VerifyPh      | Yes, can be empty |
+//  | All above   | (PrivateKey).Sign | VerifyAny     | As above          |
+//
+// Specific functions for sign and verify are defined. A generic signing
+// function for all schemes is available through the crypto.Signer interface,
+// which is implemented by the PrivateKey type. A correspond all-in-one
+// verification method is provided by the VerifyAny function.
+//
+// Both schemes require a context string for domain separation. This parameter
+// is passed using a SignerOptions struct defined in this package.
+//
 // References:
+//
 //  - RFC8032 https://rfc-editor.org/rfc/rfc8032.txt
 //  - EdDSA for more curves https://eprint.iacr.org/2015/677
 //  - High-speed high-security signatures. https://doi.org/10.1007/s13389-012-0027-1
@@ -10,6 +27,7 @@ import (
 	"bytes"
 	"crypto"
 	cryptoRand "crypto/rand"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"io"
@@ -20,57 +38,84 @@ import (
 )
 
 const (
+	// ContextMaxSize is the maximum length (in bytes) allowed for context.
+	ContextMaxSize = 255
 	// PublicKeySize is the length in bytes of Ed448 public keys.
 	PublicKeySize = 57
 	// PrivateKeySize is the length in bytes of Ed448 private keys.
-	PrivateKeySize = 57
+	PrivateKeySize = 114
 	// SignatureSize is the length in bytes of signatures.
 	SignatureSize = 114
-	// ContextMaxSize is the maximum length (in bytes) allowed for context.
-	ContextMaxSize = 255
+	// SeedSize is the size, in bytes, of private key seeds. These are the private key representations used by RFC 8032.
+	SeedSize = 57
 )
+
 const (
 	paramB   = 456 / 8    // Size of keys in bytes.
 	hashSize = 2 * paramB // Size of the hash function's output.
 )
 
-// Options are the options that the ed448 functions can take.
-type Options struct {
-	// Hash should be crypto.Hash(0) for Ed448
+// SignerOptions implements crypto.SignerOpts and augments with parameters
+// that are specific to the Ed448 signature schemes.
+type SignerOptions struct {
+	// Hash must be crypto.Hash(0) for both Ed448 and Ed448Ph.
 	crypto.Hash
 
-	// Context is an optional domain separation string for Ed448ph.
-	// Its length  must be less or equal than 255 bytes.
+	// Context is an optional domain separation string for signing.
+	// Its length must be less or equal than 255 bytes.
 	Context string
 
-	// Prehash should be set for ed448ph, indicating that the message
-	// will be prehashed with SHAKE256.
-	PreHash bool
+	// Scheme is an identifier for choosing a signature scheme.
+	Scheme SchemeID
 }
 
-// PublicKey represents a public key of Ed448.
+// SchemeID is an identifier for each signature scheme.
+type SchemeID uint
+
+const (
+	ED448 SchemeID = iota
+	ED448Ph
+)
+
+// PublicKey is the type of Ed448 public keys.
 type PublicKey []byte
 
-// PrivateKey represents a private key of Ed448.
-type PrivateKey []byte
-
-// KeyPair implements crypto.Signer (golang.org/pkg/crypto/#Signer) interface.
-type KeyPair struct {
-	private [PrivateKeySize]byte
-	public  [PublicKeySize]byte
+// Equal reports whether pub and x have the same value.
+func (pub PublicKey) Equal(x crypto.PublicKey) bool {
+	xx, ok := x.(PublicKey)
+	if !ok {
+		return false
+	}
+	return bytes.Equal(pub, xx)
 }
 
-// GetPrivate returns a copy of the private key.
-func (kp *KeyPair) GetPrivate() PrivateKey { z := kp.private; return z[:] }
+// PrivateKey is the type of Ed448 private keys. It implements crypto.Signer.
+type PrivateKey []byte
 
-// GetPublic returns a copy of the public key.
-func (kp *KeyPair) GetPublic() PublicKey { z := kp.public; return z[:] }
+// Equal reports whether priv and x have the same value.
+func (priv PrivateKey) Equal(x crypto.PrivateKey) bool {
+	xx, ok := x.(PrivateKey)
+	if !ok {
+		return false
+	}
+	return subtle.ConstantTimeCompare(priv, xx) == 1
+}
 
-// Seed returns the private key seed.
-func (kp *KeyPair) Seed() []byte { return kp.GetPrivate() }
+// Public returns the PublicKey corresponding to priv.
+func (priv PrivateKey) Public() crypto.PublicKey {
+	publicKey := make([]byte, PublicKeySize)
+	copy(publicKey, priv[SeedSize:])
+	return PublicKey(publicKey)
+}
 
-// Public returns a crypto.PublicKey.
-func (kp *KeyPair) Public() crypto.PublicKey { return kp.GetPublic() }
+// Seed returns the private key seed corresponding to priv. It is provided for
+// interoperability with RFC 8032. RFC 8032's private keys correspond to seeds
+// in this package.
+func (priv PrivateKey) Seed() []byte {
+	seed := make([]byte, SeedSize)
+	copy(seed, priv[:SeedSize])
+	return seed
+}
 
 // Sign creates a signature of a message given a key pair.
 // This function supports all the two signature variants defined in RFC-8032,
@@ -80,45 +125,62 @@ func (kp *KeyPair) Public() crypto.PublicKey { return kp.GetPublic() }
 // Use an Options struct to pass a bool indicating that the ed448Ph variant
 // should be used.
 // The struct can also be optionally used to pass a context string for signing.
-func (kp *KeyPair) Sign(rand io.Reader, message []byte, opts crypto.SignerOpts) ([]byte, error) {
+func (priv PrivateKey) Sign(
+	rand io.Reader,
+	message []byte,
+	opts crypto.SignerOpts) (signature []byte, err error) {
 	var ctx string
-	var preHash bool
+	var scheme SchemeID
 
-	if o, ok := opts.(*Options); ok {
-		preHash = o.PreHash
+	if o, ok := opts.(SignerOptions); ok {
 		ctx = o.Context
+		scheme = o.Scheme
 	}
 
-	if preHash {
-		return kp.SignPh(message, ctx)
-	}
-
-	switch opts.HashFunc() {
-	case crypto.Hash(0):
-		return kp.SignPure(message, ctx)
+	switch true {
+	case scheme == ED448 && opts.HashFunc() == crypto.Hash(0):
+		return Sign(priv, message, ctx), nil
+	case scheme == ED448Ph && opts.HashFunc() == crypto.Hash(0):
+		return SignPh(priv, message, ctx), nil
 	default:
 		return nil, errors.New("ed448: bad hash algorithm")
 	}
 }
 
-// GenerateKey produces public and private keys using entropy from rand.
+// GenerateKey generates a public/private key pair using entropy from rand.
 // If rand is nil, crypto/rand.Reader will be used.
-func GenerateKey(rand io.Reader) (*KeyPair, error) {
+func GenerateKey(rand io.Reader) (PublicKey, PrivateKey, error) {
 	if rand == nil {
 		rand = cryptoRand.Reader
 	}
-	seed := make(PrivateKey, PrivateKeySize)
+
+	seed := make(PrivateKey, SeedSize)
 	if _, err := io.ReadFull(rand, seed); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return NewKeyFromSeed(seed), nil
+
+	privateKey := NewKeyFromSeed(seed)
+	publicKey := make([]byte, PublicKeySize)
+	copy(publicKey, privateKey[SeedSize:])
+
+	return publicKey, privateKey, nil
 }
 
-// NewKeyFromSeed generates a pair of Ed448 keys given a private key.
-func NewKeyFromSeed(seed PrivateKey) *KeyPair {
-	if len(seed) != PrivateKeySize {
-		panic("ed448: bad private key length")
+// NewKeyFromSeed calculates a private key from a seed. It will panic if
+// len(seed) is not SeedSize. This function is provided for interoperability
+// with RFC 8032. RFC 8032's private keys correspond to seeds in this
+// package.
+func NewKeyFromSeed(seed []byte) PrivateKey {
+	privateKey := make([]byte, PrivateKeySize)
+	newKeyFromSeed(privateKey, seed)
+	return privateKey
+}
+
+func newKeyFromSeed(privateKey, seed []byte) {
+	if l := len(seed); l != SeedSize {
+		panic("ed448: bad seed length: " + strconv.Itoa(l))
 	}
+
 	var h [hashSize]byte
 	H := sha3.NewShake256()
 	_, _ = H.Write(seed)
@@ -126,29 +188,31 @@ func NewKeyFromSeed(seed PrivateKey) *KeyPair {
 	s := &goldilocks.Scalar{}
 	deriveSecretScalar(s, h[:paramB])
 
-	pair := &KeyPair{}
-	copy(pair.private[:], seed)
-	_ = goldilocks.Curve{}.ScalarBaseMult(s).ToBytes(pair.public[:])
-	return pair
+	copy(privateKey[:SeedSize], seed)
+	_ = goldilocks.Curve{}.ScalarBaseMult(s).ToBytes(privateKey[SeedSize:])
 }
 
-func sign(kp *KeyPair, message, ctx []byte, preHash bool) ([]byte, error) {
+func sign(signature []byte, privateKey PrivateKey, message, ctx []byte, preHash bool) {
+	if len(ctx) > ContextMaxSize {
+		panic(fmt.Errorf("ed448: bad context length: " + strconv.Itoa(len(ctx))))
+	}
+
 	H := sha3.NewShake256()
-	var d []byte
+	var PHM []byte
 
 	if preHash {
 		var h [64]byte
 		_, _ = H.Write(message)
 		_, _ = H.Read(h[:])
-		d = h[:]
+		PHM = h[:]
 		H.Reset()
 	} else {
-		d = message
+		PHM = message
 	}
 
 	// 1.  Hash the 57-byte private key using SHAKE256(x, 114).
 	var h [hashSize]byte
-	_, _ = H.Write(kp.private[:])
+	_, _ = H.Write(privateKey[:SeedSize])
 	_, _ = H.Read(h[:])
 	s := &goldilocks.Scalar{}
 	deriveSecretScalar(s, h[:paramB])
@@ -161,15 +225,16 @@ func sign(kp *KeyPair, message, ctx []byte, preHash bool) ([]byte, error) {
 	writeDom(&H, ctx, preHash)
 
 	_, _ = H.Write(prefix)
-	_, _ = H.Write(d)
+	_, _ = H.Write(PHM)
 	_, _ = H.Read(rPM[:])
 
 	// 3.  Compute the point [r]B.
 	r := &goldilocks.Scalar{}
 	r.FromBytes(rPM[:])
 	R := (&[paramB]byte{})[:]
-	err := goldilocks.Curve{}.ScalarBaseMult(r).ToBytes(R)
-
+	if err := (goldilocks.Curve{}.ScalarBaseMult(r).ToBytes(R)); err != nil {
+		panic(err)
+	}
 	// 4.  Compute SHAKE256(dom4(F, C) || R || A || PH(M), 114)
 	var hRAM [hashSize]byte
 	H.Reset()
@@ -177,8 +242,8 @@ func sign(kp *KeyPair, message, ctx []byte, preHash bool) ([]byte, error) {
 	writeDom(&H, ctx, preHash)
 
 	_, _ = H.Write(R)
-	_, _ = H.Write(kp.public[:])
-	_, _ = H.Write(d)
+	_, _ = H.Write(privateKey[SeedSize:])
+	_, _ = H.Write(PHM)
 	_, _ = H.Read(hRAM[:])
 
 	// 5.  Compute S = (r + k * s) mod order.
@@ -189,21 +254,18 @@ func sign(kp *KeyPair, message, ctx []byte, preHash bool) ([]byte, error) {
 	S.Add(S, r)
 
 	// 6.  The signature is the concatenation of R and S.
-	var signature [SignatureSize]byte
 	copy(signature[:paramB], R[:])
 	copy(signature[paramB:], S[:])
-	return signature[:], err
 }
 
-// SignPure creates a signature of a message given a keypair.
+// Sign signs the message with privateKey and returns a signature.
 // This function supports the signature variant defined in RFC-8032: Ed448,
 // also known as the pure version of EdDSA.
-func (kp *KeyPair) SignPure(message []byte, ctx string) ([]byte, error) {
-	if len(ctx) > ContextMaxSize {
-		return nil, fmt.Errorf("ed448: bad context length: " + strconv.Itoa(len(ctx)))
-	}
-
-	return sign(kp, message, []byte(ctx), false)
+// It will panic if len(privateKey) is not PrivateKeySize.
+func Sign(priv PrivateKey, message []byte, ctx string) []byte {
+	signature := make([]byte, SignatureSize)
+	sign(signature, priv, message, []byte(ctx), false)
+	return signature
 }
 
 // SignPh creates a signature of a message given a keypair.
@@ -211,12 +273,10 @@ func (kp *KeyPair) SignPure(message []byte, ctx string) ([]byte, error) {
 // meaning it internally hashes the message using SHAKE-256.
 // Context could be passed to this function, which length should be no more than
 // 255. It can be empty.
-func (kp *KeyPair) SignPh(message []byte, ctx string) ([]byte, error) {
-	if len(ctx) > ContextMaxSize {
-		return nil, fmt.Errorf("ed448: bad context length: " + strconv.Itoa(len(ctx)))
-	}
-
-	return sign(kp, message, []byte(ctx), true)
+func SignPh(priv PrivateKey, message []byte, ctx string) []byte {
+	signature := make([]byte, SignatureSize)
+	sign(signature, priv, message, []byte(ctx), true)
+	return signature
 }
 
 func verify(public PublicKey, message, signature, ctx []byte, preHash bool) bool {
@@ -233,16 +293,16 @@ func verify(public PublicKey, message, signature, ctx []byte, preHash bool) bool
 	}
 
 	H := sha3.NewShake256()
-	var d []byte
+	var PHM []byte
 
 	if preHash {
 		var h [64]byte
 		_, _ = H.Write(message)
 		_, _ = H.Read(h[:])
-		d = h[:]
+		PHM = h[:]
 		H.Reset()
 	} else {
-		d = message
+		PHM = message
 	}
 
 	var hRAM [hashSize]byte
@@ -252,7 +312,7 @@ func verify(public PublicKey, message, signature, ctx []byte, preHash bool) bool
 
 	_, _ = H.Write(R)
 	_, _ = H.Write(public)
-	_, _ = H.Write(d)
+	_, _ = H.Write(PHM)
 	_, _ = H.Read(hRAM[:])
 
 	k := &goldilocks.Scalar{}
@@ -266,34 +326,36 @@ func verify(public PublicKey, message, signature, ctx []byte, preHash bool) bool
 	return bytes.Equal(R, encR)
 }
 
-// Verify returns true if the signature is valid. Failure cases are invalid
+// VerifyAny returns true if the signature is valid. Failure cases are invalid
 // signature, or when the public key cannot be decoded.
-func Verify(public PublicKey, message, signature []byte, opts crypto.SignerOpts) bool {
+// This function supports all the two signature variants defined in RFC-8032,
+// namely Ed448 (or pure EdDSA) and Ed448Ph.
+// The opts.HashFunc() must return zero, this can be achieved by passing
+// crypto.Hash(0) as the value for opts.
+// Use a SignerOptions struct to pass a context string for signing.
+func VerifyAny(public PublicKey, message, signature []byte, opts crypto.SignerOpts) bool {
 	var ctx string
-	var preHash bool
-
-	if o, ok := opts.(*Options); ok {
-		preHash = o.PreHash
+	var scheme SchemeID
+	if o, ok := opts.(SignerOptions); ok {
 		ctx = o.Context
+		scheme = o.Scheme
 	}
 
-	if preHash {
+	switch true {
+	case scheme == ED448 && opts.HashFunc() == crypto.Hash(0):
+		return Verify(public, message, signature, ctx)
+	case scheme == ED448Ph && opts.HashFunc() == crypto.Hash(0):
 		return VerifyPh(public, message, signature, ctx)
-	}
-
-	switch opts.HashFunc() {
-	case crypto.Hash(0):
-		return VerifyPure(public, message, signature, ctx)
 	default:
 		return false
 	}
 }
 
-// VerifyPure returns true if the signature is valid. Failure cases are invalid
+// Verify returns true if the signature is valid. Failure cases are invalid
 // signature, or when the public key cannot be decoded.
 // This function supports the signature variant defined in RFC-8032: Ed448,
 // also known as the pure version of EdDSA.
-func VerifyPure(public PublicKey, message, signature []byte, ctx string) bool {
+func Verify(public PublicKey, message, signature []byte, ctx string) bool {
 	return verify(public, message, signature, []byte(ctx), false)
 }
 

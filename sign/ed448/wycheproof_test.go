@@ -60,7 +60,7 @@ func (kat *Wycheproof) keyPair(t *testing.T) {
 		private, _ := hex.DecodeString(g.Key.Sk)
 		public, _ := hex.DecodeString(g.Key.Pk)
 		keys := ed448.NewKeyFromSeed(private)
-		got := keys.GetPublic()
+		got := keys.Public().(ed448.PublicKey)
 		want := public
 
 		if !bytes.Equal(got, want) {
@@ -80,21 +80,21 @@ func (kat *Wycheproof) verify(t *testing.T) {
 			sig, _ := hex.DecodeString(gT.Sig)
 			msg, _ := hex.DecodeString(gT.Msg)
 
-			keys := ed448.NewKeyFromSeed(private)
-			got := keys.GetPublic()
+			priv := ed448.NewKeyFromSeed(private)
+			got := priv.Public().(ed448.PublicKey)
 			want := public
 			if !bytes.Equal(got, want) {
 				test.ReportError(t, got, want, i, gT.TcID)
 			}
 			if isValid {
-				got, err := keys.SignPure(msg, string(ctx))
+				got := ed448.Sign(priv, msg, string(ctx))
 				want := sig
-				if !bytes.Equal(got, want) || err != nil {
+				if !bytes.Equal(got, want) {
 					test.ReportError(t, got, want, i, gT.TcID)
 				}
 			}
 			{
-				got := ed448.VerifyPure(keys.GetPublic(), msg, sig, string(ctx))
+				got := ed448.Verify(priv.Public().(ed448.PublicKey), msg, sig, string(ctx))
 				want := isValid
 				if got != want {
 					test.ReportError(t, got, want, i, gT.TcID)

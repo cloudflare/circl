@@ -78,7 +78,6 @@ func TestSigner(t *testing.T) {
 }
 
 func testSigner(t *testing.T, signer crypto.Signer, ops ed25519.SignerOptions) {
-	t.Helper()
 	msg := make([]byte, 64)
 	_, _ = rand.Read(msg)
 
