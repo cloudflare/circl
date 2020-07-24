@@ -1,23 +1,22 @@
-package goldilocks_test
+package ted448_test
 
 import (
 	"crypto/rand"
-	"encoding/binary"
 	"math/big"
 	"testing"
 
-	"github.com/cloudflare/circl/ecc/goldilocks"
 	"github.com/cloudflare/circl/internal/conv"
+	"github.com/cloudflare/circl/internal/ted448"
 	"github.com/cloudflare/circl/internal/test"
 )
 
 func TestReduceModOrder(t *testing.T) {
-	order := goldilocks.Curve{}.Order()
+	order := ted448.Order()
 	bigOrder := conv.BytesLe2BigInt(order[:])
-	const max = 3*goldilocks.ScalarSize - 1
+	const max = 3*ted448.ScalarSize - 1
 	var b [max]byte
 	_, _ = rand.Read(b[:])
-	var z goldilocks.Scalar
+	var z ted448.Scalar
 	for i := 0; i < max; i++ {
 		x := b[0:i]
 		bigX := conv.BytesLe2BigInt(x)
@@ -35,12 +34,11 @@ func TestReduceModOrder(t *testing.T) {
 }
 
 func testOp(t *testing.T,
-	f func(z, x, y *goldilocks.Scalar),
-	g func(z, x, y *big.Int),
-) {
+	f func(z, x, y *ted448.Scalar),
+	g func(z, x, y *big.Int)) {
 	const testTimes = 1 << 8
-	var x, y, z goldilocks.Scalar
-	order := goldilocks.Curve{}.Order()
+	var x, y, z ted448.Scalar
+	order := ted448.Order()
 	want := new(big.Int)
 	bigOrder := conv.BytesLe2BigInt(order[:])
 
@@ -66,25 +64,32 @@ func testOp(t *testing.T,
 func TestScalar(t *testing.T) {
 	t.Run("Add", func(t *testing.T) {
 		testOp(t,
-			func(z, x, y *goldilocks.Scalar) { z.Add(x, y) },
+			func(z, x, y *ted448.Scalar) { z.Add(x, y) },
 			func(z, x, y *big.Int) { z.Add(x, y) })
 	})
 	t.Run("Sub", func(t *testing.T) {
 		testOp(t,
-			func(z, x, y *goldilocks.Scalar) { z.Sub(x, y) },
+			func(z, x, y *ted448.Scalar) { z.Sub(x, y) },
 			func(z, x, y *big.Int) { z.Sub(x, y) })
 	})
 	t.Run("Mul", func(t *testing.T) {
 		testOp(t,
-			func(z, x, y *goldilocks.Scalar) { z.Mul(x, y) },
+			func(z, x, y *ted448.Scalar) { z.Mul(x, y) },
 			func(z, x, y *big.Int) { z.Mul(x, y) })
+	})
+	t.Run("Inv", func(t *testing.T) {
+		order := ted448.Order()
+		bigOrder := conv.BytesLe2BigInt(order[:])
+		testOp(t,
+			func(z, x, y *ted448.Scalar) { z.Inv(x) },
+			func(z, x, y *big.Int) { z.ModInverse(x, bigOrder) })
 	})
 }
 
 func BenchmarkScalar(b *testing.B) {
-	var k [2 * goldilocks.ScalarSize]byte
-	var x, y, z goldilocks.Scalar
-	_ = binary.Read(rand.Reader, binary.LittleEndian, x[:])
+	var k [2 * ted448.ScalarSize]byte
+	var x, y, z ted448.Scalar
+	_, _ = rand.Read(x[:])
 	b.Run("Add", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			z.Add(&x, &y)
@@ -103,6 +108,11 @@ func BenchmarkScalar(b *testing.B) {
 	b.Run("Red", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			z.FromBytes(k[:])
+		}
+	})
+	b.Run("Inv", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			z.Inv(&x)
 		}
 	})
 }

@@ -149,7 +149,7 @@ func BenchmarkEd25519Ph(b *testing.B) {
 		ctx := ""
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			_ = ed25519.SignPh(key, msg, ctx)
+			ed25519.SignPh(key, msg, ctx)
 		}
 	})
 	b.Run("Verify", func(b *testing.B) {
@@ -171,7 +171,7 @@ func BenchmarkEd25519Ctx(b *testing.B) {
 		_, priv, _ := ed25519.GenerateKey(rand.Reader)
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			_ = ed25519.SignWithCtx(priv, msg, ctx)
+			ed25519.SignWithCtx(priv, msg, ctx)
 		}
 	})
 	b.Run("Verify", func(b *testing.B) {

@@ -1,18 +1,24 @@
-package goldilocks
+package ted448
 
 import (
+	"crypto/rand"
 	"encoding/binary"
 	"math/bits"
+
+	"github.com/cloudflare/circl/internal/conv"
 )
 
-// ScalarSize is the size (in bytes) of scalars.
-const ScalarSize = 56 // 448 / 8
-
-//_N is the number of 64-bit words to store scalars.
-const _N = 7 // 448 / 64
+const (
+	// ScalarSize is the size (in bytes) of scalars.
+	ScalarSize = 56
+	//_N is the number of 64-bit words to store scalars.
+	_N = 7 // 448 / 64
+)
 
 // Scalar represents a positive integer stored in little-endian order.
 type Scalar [ScalarSize]byte
+
+func (z Scalar) String() string { return conv.BytesLe2Hex(z[:]) }
 
 type scalar64 [_N]uint64
 
@@ -34,6 +40,25 @@ func (z *scalar64) toScalar(x *Scalar) {
 	binary.LittleEndian.PutUint64(x[4*8:5*8], z[4])
 	binary.LittleEndian.PutUint64(x[5*8:6*8], z[5])
 	binary.LittleEndian.PutUint64(x[6*8:7*8], z[6])
+}
+
+// isZero returns 1 if z=0.
+func (z *scalar64) isZero() uint {
+	z.modOrder()
+	var z64 uint64
+	for i := range z {
+		z64 |= z[i]
+	}
+	z32 := uint32(z64&0xFFFFFFFF) | (uint32(z64>>32) & 0xFFFFFFF)
+	return uint((uint64(z32) - 1) >> 63)
+}
+
+// cmov moves x into z if b=1.
+func (z *scalar64) cmov(x *scalar64, b uint64) {
+	m := -(b & 1)
+	for i := range z {
+		z[i] = (z[i] &^ m) | (x[i] & m)
+	}
 }
 
 // add calculates z = x + y. Assumes len(z) > max(len(x),len(y)).
@@ -84,14 +109,6 @@ func mulWord(z, x []uint64, y uint64) {
 	z[len(x)] = carry
 }
 
-// Cmov moves x into z if b=1.
-func (z *scalar64) Cmov(b uint64, x *scalar64) {
-	m := uint64(0) - b
-	for i := range z {
-		z[i] = (z[i] &^ m) | (x[i] & m)
-	}
-}
-
 // leftShift shifts to the left the words of z returning the more significant word.
 func (z *scalar64) leftShift(low uint64) uint64 {
 	high := z[_N-1]
@@ -111,6 +128,15 @@ func (z *scalar64) reduceOneWord(x uint64) {
 	add(z[:], z[:], prod)
 }
 
+// Sub calculates z = x-y mod order.
+func (z *scalar64) sub(x, y *scalar64) {
+	var t scalar64
+	c := sub(z[:], x[:], y[:])
+	sub(t[:], z[:], residue448[:])
+	z.cmov(&t, c)
+	z.modOrder()
+}
+
 // modOrder reduces z mod order.
 func (z *scalar64) modOrder() {
 	var o64, x scalar64
@@ -119,7 +145,7 @@ func (z *scalar64) modOrder() {
 	// At most 8 (eight) iterations reduce 3 bits by subtracting.
 	for i := 0; i < 8; i++ {
 		c := sub(x[:], z[:], o64[:]) // (c || x) = z-order
-		z.Cmov(1-c, &x)              // if c != 0 { z = x }
+		z.cmov(&x, 1-c)              // if c != 0 { z = x }
 	}
 }
 
@@ -146,14 +172,11 @@ func (z *Scalar) FromBytes(x []byte) {
 	z64.toScalar(z)
 }
 
-// divBy4 calculates z = x/4 mod order.
-func (z *Scalar) divBy4(x *Scalar) { z.Mul(x, &invFour) }
-
 // Red reduces z mod order.
 func (z *Scalar) Red() { var t scalar64; t.fromScalar(z); t.modOrder(); t.toScalar(z) }
 
-// Neg calculates z = -z mod order.
-func (z *Scalar) Neg() { z.Sub(&order, z) }
+// Neg calculates z = -x mod order.
+func (z *Scalar) Neg(x *Scalar) { z.Sub(&order, x) }
 
 // Add calculates z = x+y mod order.
 func (z *Scalar) Add(x, y *Scalar) {
@@ -162,20 +185,17 @@ func (z *Scalar) Add(x, y *Scalar) {
 	y64.fromScalar(y)
 	c := add(z64[:], x64[:], y64[:])
 	add(t[:], z64[:], residue448[:])
-	z64.Cmov(c, &t)
+	z64.cmov(&t, c)
 	z64.modOrder()
 	z64.toScalar(z)
 }
 
 // Sub calculates z = x-y mod order.
 func (z *Scalar) Sub(x, y *Scalar) {
-	var z64, x64, y64, t scalar64
+	var z64, x64, y64 scalar64
 	x64.fromScalar(x)
 	y64.fromScalar(y)
-	c := sub(z64[:], x64[:], y64[:])
-	sub(t[:], z64[:], residue448[:])
-	z64.Cmov(c, &t)
-	z64.modOrder()
+	z64.sub(&x64, &y64)
 	z64.toScalar(z)
 }
 
@@ -199,5 +219,15 @@ func (z *Scalar) Mul(x, y *Scalar) {
 	z64.toScalar(z)
 }
 
-// IsZero returns true if z=0.
-func (z *Scalar) IsZero() bool { z.Red(); return *z == Scalar{} }
+// Inv calculates z = 1/x mod order.
+func (z *Scalar) Inv(x *Scalar) {
+	var t, r Scalar
+	_, _ = rand.Read(r[:])
+	r.Red()
+	t.Mul(x, &r)
+	bigT := conv.BytesLe2BigInt(t[:])
+	bigOrder := conv.BytesLe2BigInt(order[:])
+	bigT.ModInverse(bigT, bigOrder)
+	conv.BigInt2BytesLe(z[:], bigT)
+	z.Mul(z, &r)
+}

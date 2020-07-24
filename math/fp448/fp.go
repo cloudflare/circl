@@ -45,6 +45,9 @@ func IsZero(x *Elt) bool { Modp(x); return *x == Elt{} }
 // IsOne returns true if x is equal to 1.
 func IsOne(x *Elt) bool { Modp(x); return *x == Elt{1} }
 
+// Parity returns the last bit of x.
+func Parity(x *Elt) int { Modp(x); return int(x[0] & 1) }
+
 // SetOne assigns x=1.
 func SetOne(x *Elt) { *x = Elt{1} }
 
