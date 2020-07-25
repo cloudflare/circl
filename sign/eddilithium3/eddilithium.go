@@ -186,10 +186,10 @@ func (sk *PrivateKey) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-func (sk *PrivateKey) Scheme() sign.Scheme        { return Scheme }
-func (pk *PublicKey) Scheme() sign.Scheme         { return Scheme }
-func (sk *PrivateKey) Equal(sign.PrivateKey) bool { return true /* TODO */ }
-func (pk *PublicKey) Equal(sign.PublicKey) bool   { return true /* TODO */ }
+func (sk *PrivateKey) Scheme() sign.Scheme          { return Scheme }
+func (pk *PublicKey) Scheme() sign.Scheme           { return Scheme }
+func (sk *PrivateKey) Equal(crypto.PrivateKey) bool { return true /* TODO */ }
+func (pk *PublicKey) Equal(crypto.PublicKey) bool   { return true /* TODO */ }
 
 // Sign signs the given message.
 //

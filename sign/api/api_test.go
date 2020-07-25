@@ -1,9 +1,11 @@
 package api_test
 
 import (
+	"crypto"
 	"fmt"
 	"testing"
 
+	"github.com/cloudflare/circl/sign"
 	"github.com/cloudflare/circl/sign/api"
 )
 
@@ -57,18 +59,22 @@ func TestApi(t *testing.T) {
 		}
 
 		msg := []byte(fmt.Sprintf("Signing with %s", scheme.Name()))
-		sig := scheme.Sign(sk, msg, nil)
+		opts := &sign.SignatureOpts{
+			Hash:    crypto.Hash(0),
+			Context: "a context",
+		}
+		sig := scheme.Sign(sk, msg, opts)
 
 		if scheme.SignatureSize() != uint(len(sig)) {
 			t.Fatal()
 		}
 
-		if !scheme.Verify(pk2, msg, sig, nil) {
+		if !scheme.Verify(pk2, msg, sig, opts) {
 			t.Fatal()
 		}
 
 		sig[0]++
-		if scheme.Verify(pk2, msg, sig, nil) {
+		if scheme.Verify(pk2, msg, sig, opts) {
 			t.Fatal()
 		}
 

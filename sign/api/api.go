@@ -3,7 +3,10 @@ package api
 
 import (
 	"github.com/cloudflare/circl/sign"
+	"github.com/cloudflare/circl/sign/ed25519"
+	"github.com/cloudflare/circl/sign/ed448"
 	"github.com/cloudflare/circl/sign/eddilithium3"
+	"github.com/cloudflare/circl/sign/eddilithium4"
 )
 
 var allSchemes [sign.SchemeCount]sign.Scheme
@@ -11,7 +14,10 @@ var allSchemeNames map[string]sign.Scheme
 
 func init() {
 	allSchemeNames = make(map[string]sign.Scheme)
+	register(ed25519.Scheme)
+	register(ed448.Scheme)
 	register(eddilithium3.Scheme)
+	register(eddilithium4.Scheme)
 }
 
 func register(s sign.Scheme) {

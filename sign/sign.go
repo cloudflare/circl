@@ -11,8 +11,12 @@ import (
 type SchemeID uint8
 
 const (
+	Ed25519 SchemeID = iota
+	Ed448
 	// EdDilithium3 is
-	EdDilithium3 SchemeID = iota
+	EdDilithium3
+	// EdDilithium4 is
+	EdDilithium4
 	// SchemeCount is the number of supported signature algorithms.
 	SchemeCount
 )
@@ -29,8 +33,9 @@ type SignatureOpts struct {
 type PublicKey interface {
 	// Returns the signature scheme for this public key.
 	Scheme() Scheme
-	Equal(PublicKey) bool
+	Equal(crypto.PublicKey) bool
 	encoding.BinaryMarshaler
+	crypto.PublicKey
 }
 
 // A private key allows one to create signatures.
@@ -38,10 +43,10 @@ type PrivateKey interface {
 	// Returns the signature scheme for this private key.
 	Scheme() Scheme
 
-	Equal(PrivateKey) bool
+	Equal(crypto.PrivateKey) bool
 	// For compatibility with Go standard library
 	crypto.Signer
-
+	crypto.PrivateKey
 	encoding.BinaryMarshaler
 }
 
