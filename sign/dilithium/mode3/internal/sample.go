@@ -67,7 +67,6 @@ func PolyDeriveUniformLeGamma1X4(ps [4]*common.Poly, seed *[48]byte,
 			if idx[j] == common.N {
 				continue
 			}
-			done = false
 
 			for i := 0; i < 17; i++ {
 				var t [4]uint32
@@ -101,6 +100,8 @@ func PolyDeriveUniformLeGamma1X4(ps [4]*common.Poly, seed *[48]byte,
 					}
 				}
 			}
+
+			done = false
 		}
 	}
 }
@@ -149,7 +150,6 @@ func PolyDeriveUniformX4(ps [4]*common.Poly, seed *[32]byte, nonces [4]uint16) {
 			if idx[j] == common.N {
 				continue
 			}
-			done = false
 			for i := 0; i < 7; i++ {
 				var t [8]uint32
 				t[0] = uint32(state[i*3*4+j] & 0x7fffff)
@@ -173,6 +173,7 @@ func PolyDeriveUniformX4(ps [4]*common.Poly, seed *[32]byte, nonces [4]uint16) {
 					}
 				}
 			}
+			done = false
 		}
 	}
 }
