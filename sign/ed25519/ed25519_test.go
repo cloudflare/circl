@@ -39,6 +39,24 @@ func TestMalleability(t *testing.T) {
 	}
 }
 
+func TestPublic(t *testing.T) {
+	var zero zeroReader
+	pub, priv, err := ed25519.GenerateKey(zero)
+	if !priv.Equal(priv) {
+		t.Fatal()
+	}
+	if !pub.Equal(pub) {
+		t.Fatal()
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	pub2 := priv.Public()
+	if !pub.Equal(pub2) {
+		t.Fatal()
+	}
+}
+
 func BenchmarkKeyGeneration(b *testing.B) {
 	var zero zeroReader
 	for i := 0; i < b.N; i++ {

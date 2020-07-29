@@ -171,3 +171,21 @@ func (sk *PrivateKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) (
 func (sk *PrivateKey) Public() crypto.PublicKey {
 	return (*PublicKey)((*internal.PrivateKey)(sk).Public())
 }
+
+// Equal returns whether the two private keys equal.
+func (sk *PrivateKey) Equal(other crypto.PrivateKey) bool {
+	castOther, ok := other.(*PrivateKey)
+	if !ok {
+		return false
+	}
+	return (*internal.PrivateKey)(sk).Equal((*internal.PrivateKey)(castOther))
+}
+
+// Equal returns whether the two public keys equal.
+func (pk *PublicKey) Equal(other crypto.PublicKey) bool {
+	castOther, ok := other.(*PublicKey)
+	if !ok {
+		return false
+	}
+	return (*internal.PublicKey)(pk).Equal((*internal.PublicKey)(castOther))
+}

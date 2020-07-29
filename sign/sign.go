@@ -83,16 +83,16 @@ type Scheme interface {
 	UnmarshalBinaryPrivateKey([]byte) (PrivateKey, error)
 
 	// Size of binary marshalled public keys
-	PublicKeySize() uint
+	PublicKeySize() int
 
 	// Size of binary marshalled public keys
-	PrivateKeySize() uint
+	PrivateKeySize() int
 
 	// Size of signatures
-	SignatureSize() uint
+	SignatureSize() int
 
 	// Size of seeds
-	SeedSize() uint
+	SeedSize() int
 }
 
 var (

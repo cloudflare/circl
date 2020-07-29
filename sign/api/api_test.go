@@ -27,7 +27,7 @@ func TestApi(t *testing.T) {
 			t.Fatal()
 		}
 
-		if uint(len(packedPk)) != scheme.PublicKeySize() {
+		if len(packedPk) != scheme.PublicKeySize() {
 			t.Fatal()
 		}
 
@@ -36,7 +36,7 @@ func TestApi(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if uint(len(packedSk)) != scheme.PrivateKeySize() {
+		if len(packedSk) != scheme.PrivateKeySize() {
 			t.Fatal()
 		}
 
@@ -65,7 +65,7 @@ func TestApi(t *testing.T) {
 		}
 		sig := scheme.Sign(sk, msg, opts)
 
-		if scheme.SignatureSize() != uint(len(sig)) {
+		if scheme.SignatureSize() != len(sig) {
 			t.Fatal()
 		}
 

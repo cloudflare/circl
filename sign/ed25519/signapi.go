@@ -12,15 +12,15 @@ const Scheme = scheme(sign.Ed25519)
 
 type scheme sign.SchemeID
 
-func (scheme) ID() sign.SchemeID    { return sign.SchemeID(Scheme) }
-func (scheme) Name() string         { return "Ed25519" }
-func (scheme) PublicKeySize() uint  { return PublicKeySize }
-func (scheme) PrivateKeySize() uint { return PrivateKeySize }
-func (scheme) SignatureSize() uint  { return SignatureSize }
-func (scheme) SeedSize() uint       { return SeedSize }
-func (scheme) TLSIdentifier() uint  { return 0xfe61 /* TODO */ }
+func (scheme) ID() sign.SchemeID   { return sign.SchemeID(Scheme) }
+func (scheme) Name() string        { return "Ed25519" }
+func (scheme) PublicKeySize() int  { return PublicKeySize }
+func (scheme) PrivateKeySize() int { return PrivateKeySize }
+func (scheme) SignatureSize() int  { return SignatureSize }
+func (scheme) SeedSize() int       { return SeedSize }
+func (scheme) TLSIdentifier() uint { return 0x0807 }
 func (scheme) Oid() asn1.ObjectIdentifier {
-	return asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 44363, 15, 10 /* TODO */}
+	return asn1.ObjectIdentifier{1, 3, 101, 112}
 }
 
 func (scheme) GenerateKey() (sign.PublicKey, sign.PrivateKey, error) {

@@ -2,6 +2,7 @@ package internal
 
 import (
 	cryptoRand "crypto/rand"
+	"crypto/subtle"
 	"io"
 
 	"github.com/cloudflare/circl/internal/shake"
@@ -414,4 +415,30 @@ func (sk *PrivateKey) Public() *PublicKey {
 	sk.computeT0andT1(&t0, &pk.t1)
 	pk.t1.PackT1(pk.t1p[:])
 	return pk
+}
+
+// Equal returns whether the two public keys are equal
+func (pk *PublicKey) Equal(other *PublicKey) bool {
+	return pk.rho == other.rho && pk.t1 == other.t1
+}
+
+// Equal returns whether the two private keys are equal
+func (sk *PrivateKey) Equal(other *PrivateKey) bool {
+	ret := (subtle.ConstantTimeCompare(sk.rho[:], other.rho[:]) &
+		subtle.ConstantTimeCompare(sk.key[:], other.key[:]) &
+		subtle.ConstantTimeCompare(sk.tr[:], other.tr[:]))
+
+	acc := uint32(0)
+	for i := 0; i < L; i++ {
+		for j := 0; j < common.N; j++ {
+			acc |= sk.s1[i][j] ^ other.s1[i][j]
+		}
+	}
+	for i := 0; i < K; i++ {
+		for j := 0; j < common.N; j++ {
+			acc |= sk.s2[i][j] ^ other.s2[i][j]
+			acc |= sk.t0[i][j] ^ other.t0[i][j]
+		}
+	}
+	return (ret & subtle.ConstantTimeEq(int32(acc), 0)) == 1
 }
