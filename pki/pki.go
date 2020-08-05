@@ -15,6 +15,12 @@ import (
 var allSchemesByOID map[string]sign.Scheme
 var allSchemesByTLS map[uint]sign.Scheme
 
+type pkixPrivKey struct {
+	Version    int
+	Algorithm  pkix.AlgorithmIdentifier
+	PrivateKey []byte
+}
+
 func init() {
 	allSchemesByOID = make(map[string]sign.Scheme)
 	for _, scheme := range api.AllSchemes() {
@@ -91,11 +97,7 @@ func UnmarshalPEMPrivateKey(data []byte) (sign.PrivateKey, error) {
 }
 
 func UnmarshalPKIXPrivateKey(data []byte) (sign.PrivateKey, error) {
-	var pkix struct {
-		Version    int
-		Algorithm  pkix.AlgorithmIdentifier
-		PrivateKey []byte
-	}
+	var pkix pkixPrivKey
 	if rest, err := asn1.Unmarshal(data, &pkix); err != nil {
 		return nil, err
 	} else if len(rest) != 0 {
@@ -172,11 +174,7 @@ func MarshalPKIXPrivateKey(sk sign.PrivateKey) ([]byte, error) {
 	}
 
 	scheme := sk.Scheme()
-	return asn1.Marshal(struct {
-		Version    int
-		Algorithm  pkix.AlgorithmIdentifier
-		PrivateKey []byte
-	}{
+	return asn1.Marshal(pkixPrivKey{
 		0,
 		pkix.AlgorithmIdentifier{
 			Algorithm: scheme.(CertificateScheme).Oid(),
