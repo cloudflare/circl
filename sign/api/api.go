@@ -9,20 +9,20 @@ import (
 	"github.com/cloudflare/circl/sign/eddilithium4"
 )
 
-var allSchemes [sign.SchemeCount]sign.Scheme
+var allSchemes = [...]sign.Scheme{
+	ed25519.Scheme,
+	ed448.Scheme,
+	eddilithium3.Scheme,
+	eddilithium4.Scheme,
+}
+
 var allSchemeNames map[string]sign.Scheme
 
 func init() {
 	allSchemeNames = make(map[string]sign.Scheme)
-	register(ed25519.Scheme)
-	register(ed448.Scheme)
-	register(eddilithium3.Scheme)
-	register(eddilithium4.Scheme)
-}
-
-func register(s sign.Scheme) {
-	allSchemes[s.ID()] = s
-	allSchemeNames[s.Name()] = s
+	for _, scheme := range allSchemes {
+		allSchemeNames[scheme.Name()] = scheme
+	}
 }
 
 // SchemeByName returns the scheme with the given name and nil if it is not

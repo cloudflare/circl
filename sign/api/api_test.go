@@ -12,7 +12,7 @@ import (
 func TestApi(t *testing.T) {
 	allSchemes := api.AllSchemes()
 	for _, scheme := range allSchemes {
-		t.Logf("%v: %v\n", scheme.ID(), scheme.Name())
+		t.Logf("%v\n", scheme.Name())
 		if scheme == nil {
 			t.Fatal()
 		}

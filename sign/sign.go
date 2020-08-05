@@ -7,20 +7,6 @@ import (
 	"errors"
 )
 
-// SchemeID is an identifier of a signature scheme.
-type SchemeID uint8
-
-const (
-	Ed25519 SchemeID = iota
-	Ed448
-	// EdDilithium3 is
-	EdDilithium3
-	// EdDilithium4 is
-	EdDilithium4
-	// SchemeCount is the number of supported signature algorithms.
-	SchemeCount
-)
-
 type SignatureOpts struct {
 	crypto.Hash
 	// If non-empty, includes the given context in the signature if supported
@@ -54,9 +40,6 @@ type PrivateKey interface {
 type Scheme interface {
 	// Name of the scheme
 	Name() string
-
-	// ID of the scheme
-	ID() SchemeID
 
 	// GenerateKey creates a new key-pair.
 	GenerateKey() (PublicKey, PrivateKey, error)
