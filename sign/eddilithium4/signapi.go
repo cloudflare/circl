@@ -28,7 +28,8 @@ func (*scheme) GenerateKey() (sign.PublicKey, sign.PrivateKey, error) {
 func (*scheme) Sign(
 	sk sign.PrivateKey,
 	message []byte,
-	opts *sign.SignatureOpts) []byte {
+	opts *sign.SignatureOpts,
+) []byte {
 	priv, ok := sk.(*PrivateKey)
 	if !ok {
 		panic(sign.ErrTypeMismatch)
@@ -41,7 +42,8 @@ func (*scheme) Sign(
 func (*scheme) Verify(
 	pk sign.PublicKey,
 	message, signature []byte,
-	opts *sign.SignatureOpts) bool {
+	opts *sign.SignatureOpts,
+) bool {
 	pub, ok := pk.(*PublicKey)
 	if !ok {
 		panic(sign.ErrTypeMismatch)
