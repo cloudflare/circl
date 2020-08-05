@@ -42,18 +42,18 @@ func TestMalleability(t *testing.T) {
 func TestPublic(t *testing.T) {
 	var zero zeroReader
 	pub, priv, err := ed25519.GenerateKey(zero)
-	if !priv.Equal(priv) {
-		t.Fatal()
-	}
-	if !pub.Equal(pub) {
-		t.Fatal()
-	}
 	if err != nil {
 		t.Fatal(err)
 	}
+	if !priv.Equal(priv) {
+		t.FailNow()
+	}
+	if !pub.Equal(pub) {
+		t.FailNow()
+	}
 	pub2 := priv.Public()
 	if !pub.Equal(pub2) {
-		t.Fatal()
+		t.FailNow()
 	}
 }
 
