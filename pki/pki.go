@@ -6,6 +6,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/cloudflare/circl/sign"
 	"github.com/cloudflare/circl/sign/api"
@@ -50,7 +51,10 @@ type TLSScheme interface {
 func UnmarshalPEMPublicKey(data []byte) (sign.PublicKey, error) {
 	block, rest := pem.Decode(data)
 	if len(rest) != 0 {
-		return nil, errors.New("trailing")
+		return nil, errors.New("trailing data")
+	}
+	if !strings.HasSuffix(block.Type, "PUBLIC KEY") {
+		return nil, errors.New("pem block type is not public key")
 	}
 
 	return UnmarshalPKIXPublicKey(block.Bytes)
@@ -78,6 +82,9 @@ func UnmarshalPEMPrivateKey(data []byte) (sign.PrivateKey, error) {
 	block, rest := pem.Decode(data)
 	if len(rest) != 0 {
 		return nil, errors.New("trailing")
+	}
+	if !strings.HasSuffix(block.Type, "PRIVATE KEY") {
+		return nil, errors.New("pem block type is not private key")
 	}
 
 	return UnmarshalPKIXPrivateKey(block.Bytes)
@@ -113,7 +120,7 @@ func MarshalPEMPublicKey(pk sign.PublicKey) ([]byte, error) {
 		return nil, err
 	}
 	str := pem.EncodeToMemory(&pem.Block{
-		Type:  fmt.Sprintf("%s PUBLIC KEY", pk.Scheme().Name()),
+		Type:  "PUBLIC KEY",
 		Bytes: data,
 	})
 	return str, nil
