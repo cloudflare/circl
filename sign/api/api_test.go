@@ -14,21 +14,21 @@ func TestApi(t *testing.T) {
 	for _, scheme := range allSchemes {
 		t.Run(scheme.Name(), func(t *testing.T) {
 			if scheme == nil {
-				t.Fatal()
+				t.FailNow()
 			}
 
 			pk, sk, err := scheme.GenerateKey()
 			if err != nil {
-				t.Fatal()
+				t.FailNow()
 			}
 
 			packedPk, err := pk.MarshalBinary()
 			if err != nil {
-				t.Fatal()
+				t.FailNow()
 			}
 
 			if len(packedPk) != scheme.PublicKeySize() {
-				t.Fatal()
+				t.FailNow()
 			}
 
 			packedSk, err := sk.MarshalBinary()
@@ -37,7 +37,7 @@ func TestApi(t *testing.T) {
 			}
 
 			if len(packedSk) != scheme.PrivateKeySize() {
-				t.Fatal()
+				t.FailNow()
 			}
 
 			pk2, err := scheme.UnmarshalBinaryPublicKey(packedPk)
@@ -51,11 +51,11 @@ func TestApi(t *testing.T) {
 			}
 
 			if !sk.Equal(sk2) {
-				t.Fatal()
+				t.FailNow()
 			}
 
 			if !pk.Equal(pk2) {
-				t.Fatal()
+				t.FailNow()
 			}
 
 			msg := []byte(fmt.Sprintf("Signing with %s", scheme.Name()))
@@ -66,29 +66,29 @@ func TestApi(t *testing.T) {
 			sig := scheme.Sign(sk, msg, opts)
 
 			if scheme.SignatureSize() != len(sig) {
-				t.Fatal()
+				t.FailNow()
 			}
 
 			if !scheme.Verify(pk2, msg, sig, opts) {
-				t.Fatal()
+				t.FailNow()
 			}
 
 			sig[0]++
 			if scheme.Verify(pk2, msg, sig, opts) {
-				t.Fatal()
+				t.FailNow()
 			}
 
 			scheme2 := api.SchemeByName(scheme.Name())
 			if scheme2 == nil || scheme2 != scheme {
-				t.Fatal()
+				t.FailNow()
 			}
 
 			if pk.Scheme() != scheme {
-				t.Fatal()
+				t.FailNow()
 			}
 
 			if sk.Scheme() != scheme {
-				t.Fatal()
+				t.FailNow()
 			}
 		})
 	}
