@@ -31,7 +31,7 @@ func (*scheme) Sign(
 	opts *sign.SignatureOpts) []byte {
 	priv, ok := sk.(*PrivateKey)
 	if !ok {
-		panic(sign.ErrType)
+		panic(sign.ErrTypeMismatch)
 	}
 	var sig [SignatureSize]byte
 	SignTo(priv, message, sig[:])
@@ -44,7 +44,7 @@ func (*scheme) Verify(
 	opts *sign.SignatureOpts) bool {
 	pub, ok := pk.(*PublicKey)
 	if !ok {
-		panic(sign.ErrType)
+		panic(sign.ErrTypeMismatch)
 	}
 	return Verify(pub, message, signature)
 }
