@@ -11,12 +11,13 @@ var Scheme sign.Scheme = &scheme{}
 
 type scheme struct{}
 
-func (*scheme) Name() string        { return "Ed448" }
-func (*scheme) PublicKeySize() int  { return PublicKeySize }
-func (*scheme) PrivateKeySize() int { return PrivateKeySize }
-func (*scheme) SignatureSize() int  { return SignatureSize }
-func (*scheme) SeedSize() int       { return SeedSize }
-func (*scheme) TLSIdentifier() uint { return 0x0808 }
+func (*scheme) Name() string          { return "Ed448" }
+func (*scheme) PublicKeySize() int    { return PublicKeySize }
+func (*scheme) PrivateKeySize() int   { return PrivateKeySize }
+func (*scheme) SignatureSize() int    { return SignatureSize }
+func (*scheme) SeedSize() int         { return SeedSize }
+func (*scheme) TLSIdentifier() uint   { return 0x0808 }
+func (*scheme) SupportsContext() bool { return true }
 func (*scheme) Oid() asn1.ObjectIdentifier {
 	return asn1.ObjectIdentifier{1, 3, 101, 113}
 }
@@ -34,7 +35,11 @@ func (*scheme) Sign(
 	if !ok {
 		panic(sign.ErrTypeMismatch)
 	}
-	return Sign(priv, message, opts.Context)
+	ctx := ""
+	if opts != nil {
+		ctx = opts.Context
+	}
+	return Sign(priv, message, ctx)
 }
 
 func (*scheme) Verify(
@@ -46,7 +51,11 @@ func (*scheme) Verify(
 	if !ok {
 		panic(sign.ErrTypeMismatch)
 	}
-	return Verify(pub, message, signature, opts.Context)
+	ctx := ""
+	if opts != nil {
+		ctx = opts.Context
+	}
+	return Verify(pub, message, signature, ctx)
 }
 
 func (*scheme) DeriveKey(seed []byte) (sign.PublicKey, sign.PrivateKey) {

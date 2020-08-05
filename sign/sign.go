@@ -8,8 +8,6 @@ import (
 )
 
 type SignatureOpts struct {
-	crypto.Hash
-
 	// If non-empty, includes the given context in the signature if supported
 	// and will cause an error during signing otherwise.
 	Context string
@@ -77,22 +75,29 @@ type Scheme interface {
 
 	// Size of seeds
 	SeedSize() int
+
+	// Returns whether contexts are supported
+	SupportsContext() bool
 }
 
 var (
-	// ErrTypeMismatch is the error returned if types of, for instance, private
+	// ErrTypeMismatch is the error used if types of, for instance, private
 	// and public keys don't match
 	ErrTypeMismatch = errors.New("types mismatch")
 
-	// ErrSeedSize is the error returned if the provided seed is of the wrong
+	// ErrSeedSize is the error used if the provided seed is of the wrong
 	// size.
 	ErrSeedSize = errors.New("wrong seed size")
 
-	// ErrPubKeySize is the error returned if the provided public key is of
+	// ErrPubKeySize is the error used if the provided public key is of
 	// the wrong size.
 	ErrPubKeySize = errors.New("wrong size for public key")
 
-	// ErrPubKeySize is the error returned if the provided private key is of
+	// ErrPrivKeySize is the error used if the provided private key is of
 	// the wrong size.
 	ErrPrivKeySize = errors.New("wrong size for private key")
+
+	// ErrContextNotSupported is the error used if a context is not
+	// supported
+	ErrContextNotSupported = errors.New("context not supported")
 )

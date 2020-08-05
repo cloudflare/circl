@@ -11,12 +11,13 @@ var Scheme sign.Scheme = &scheme{}
 
 type scheme struct{}
 
-func (*scheme) Name() string        { return "Ed25519-Dilithium3" }
-func (*scheme) PublicKeySize() int  { return PublicKeySize }
-func (*scheme) PrivateKeySize() int { return PrivateKeySize }
-func (*scheme) SignatureSize() int  { return SignatureSize }
-func (*scheme) SeedSize() int       { return SeedSize }
-func (*scheme) TLSIdentifier() uint { return 0xfe61 /* temp*/ }
+func (*scheme) Name() string          { return "Ed25519-Dilithium3" }
+func (*scheme) PublicKeySize() int    { return PublicKeySize }
+func (*scheme) PrivateKeySize() int   { return PrivateKeySize }
+func (*scheme) SignatureSize() int    { return SignatureSize }
+func (*scheme) SeedSize() int         { return SeedSize }
+func (*scheme) TLSIdentifier() uint   { return 0xfe61 /* temp*/ }
+func (*scheme) SupportsContext() bool { return false }
 func (*scheme) Oid() asn1.ObjectIdentifier {
 	return asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 44363, 45, 9}
 }
@@ -34,6 +35,9 @@ func (*scheme) Sign(
 	if !ok {
 		panic(sign.ErrTypeMismatch)
 	}
+	if opts != nil && opts.Context != "" {
+		panic(sign.ErrContextNotSupported)
+	}
 	var sig [SignatureSize]byte
 	SignTo(priv, message, sig[:])
 	return sig[:]
@@ -47,6 +51,9 @@ func (*scheme) Verify(
 	pub, ok := pk.(*PublicKey)
 	if !ok {
 		panic(sign.ErrTypeMismatch)
+	}
+	if opts != nil && opts.Context != "" {
+		panic(sign.ErrContextNotSupported)
 	}
 	return Verify(pub, message, signature)
 }

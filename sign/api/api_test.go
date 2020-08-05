@@ -1,7 +1,6 @@
 package api_test
 
 import (
-	"crypto"
 	"fmt"
 	"testing"
 
@@ -12,6 +11,7 @@ import (
 func TestApi(t *testing.T) {
 	allSchemes := api.AllSchemes()
 	for _, scheme := range allSchemes {
+		scheme := scheme
 		t.Run(scheme.Name(), func(t *testing.T) {
 			if scheme == nil {
 				t.FailNow()
@@ -59,9 +59,9 @@ func TestApi(t *testing.T) {
 			}
 
 			msg := []byte(fmt.Sprintf("Signing with %s", scheme.Name()))
-			opts := &sign.SignatureOpts{
-				Hash:    crypto.Hash(0),
-				Context: "a context",
+			opts := &sign.SignatureOpts{}
+			if scheme.SupportsContext() {
+				opts.Context = "A context"
 			}
 			sig := scheme.Sign(sk, msg, opts)
 
@@ -71,6 +71,14 @@ func TestApi(t *testing.T) {
 
 			if !scheme.Verify(pk2, msg, sig, opts) {
 				t.FailNow()
+			}
+
+			if scheme.SupportsContext() {
+				opts2 := opts
+				opts2.Context = "Wrong context"
+				if scheme.Verify(pk2, msg, sig, opts2) {
+					t.FailNow()
+				}
 			}
 
 			sig[0]++
