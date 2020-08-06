@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/cloudflare/circl/sign"
-	"github.com/cloudflare/circl/sign/api"
+	"github.com/cloudflare/circl/sign/schemes"
 )
 
 var allSchemesByOID map[string]sign.Scheme
@@ -23,14 +23,14 @@ type pkixPrivKey struct {
 
 func init() {
 	allSchemesByOID = make(map[string]sign.Scheme)
-	for _, scheme := range api.AllSchemes() {
+	for _, scheme := range schemes.All() {
 		if cert, ok := scheme.(CertificateScheme); ok {
 			allSchemesByOID[cert.Oid().String()] = scheme
 		}
 	}
 
 	allSchemesByTLS = make(map[uint]sign.Scheme)
-	for _, scheme := range api.AllSchemes() {
+	for _, scheme := range schemes.All() {
 		if tlsScheme, ok := scheme.(TLSScheme); ok {
 			allSchemesByTLS[tlsScheme.TLSIdentifier()] = scheme
 		}

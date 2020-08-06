@@ -1,4 +1,8 @@
 // Package sign provides unified interfaces for signature schemes.
+//
+// A register of schemes is available in the package
+//
+//  github.com/cloudflare/circl/sign/schemes
 package sign
 
 import (

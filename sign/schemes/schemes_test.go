@@ -1,15 +1,15 @@
-package api_test
+package schemes_test
 
 import (
 	"fmt"
 	"testing"
 
 	"github.com/cloudflare/circl/sign"
-	"github.com/cloudflare/circl/sign/api"
+	"github.com/cloudflare/circl/sign/schemes"
 )
 
 func TestApi(t *testing.T) {
-	allSchemes := api.AllSchemes()
+	allSchemes := schemes.All()
 	for _, scheme := range allSchemes {
 		scheme := scheme
 		t.Run(scheme.Name(), func(t *testing.T) {
@@ -86,7 +86,7 @@ func TestApi(t *testing.T) {
 				t.FailNow()
 			}
 
-			scheme2 := api.SchemeByName(scheme.Name())
+			scheme2 := schemes.ByName(scheme.Name())
 			if scheme2 == nil || scheme2 != scheme {
 				t.FailNow()
 			}

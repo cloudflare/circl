@@ -4,11 +4,11 @@ import (
 	"testing"
 
 	"github.com/cloudflare/circl/pki"
-	"github.com/cloudflare/circl/sign/api"
+	"github.com/cloudflare/circl/sign/schemes"
 )
 
 func TestPEM(t *testing.T) {
-	for _, scheme := range api.AllSchemes() {
+	for _, scheme := range schemes.All() {
 		scheme := scheme
 		t.Run(scheme.Name(), func(t *testing.T) {
 			if scheme == nil {

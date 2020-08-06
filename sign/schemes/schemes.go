@@ -1,5 +1,5 @@
-// Package api contains a register of signature algorithms.
-package api
+// Package schemes contains a register of signature algorithms.
+package schemes
 
 import (
 	"github.com/cloudflare/circl/sign"
@@ -25,9 +25,9 @@ func init() {
 	}
 }
 
-// SchemeByName returns the scheme with the given name and nil if it is not
+// ByName returns the scheme with the given name and nil if it is not
 // supported.
-func SchemeByName(name string) sign.Scheme { return allSchemeNames[name] }
+func ByName(name string) sign.Scheme { return allSchemeNames[name] }
 
-// AllSchemes returns all signature schemes supported.
-func AllSchemes() []sign.Scheme { a := allSchemes; return a[:] }
+// All returns all signature schemes supported.
+func All() []sign.Scheme { a := allSchemes; return a[:] }
