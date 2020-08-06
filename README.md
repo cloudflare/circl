@@ -39,6 +39,7 @@ Version numbers are [Semvers](https://semver.org/). We release a minor version f
 | Key Exchange | FourQ | One of the fastest elliptic curves at 128-bit security level. | Experimental for key agreement and digital signatures. |
 | Key Exchange / Digital signatures | P-384 | Our optimizations reduce the burden when moving from P-256 to P-384. |  ECDSA and ECDH using Suite B at top secret level. |
 | Digital Signatures | Ed25519, Ed448 | RFC-8032 provides new signature schemes based on Edwards curves. | Digital certificates and authentication. |
+| PQ KEM/PKE | Kyber | Lattice (M-LWE) based IND-CCA2 secure key encapsulation mechanism and IND-CPA secure public key encryption  | Post-Quantum Key exchange |
 | PQ Digital Signatures | Dilithium, Hybrid modes | Lattice (Module LWE) based signature scheme | Post-Quantum PKI |
 
 ### Work in Progress
@@ -48,7 +49,6 @@ Version numbers are [Semvers](https://semver.org/). We release a minor version f
 | Hashing to Elliptic Curve Groups | Several algorithms: Elligator2, Ristretto, SWU, Icart. | Protocols based on elliptic curves require hash functions that map bit strings to points on an elliptic curve.  | VOPRF. OPAQUE. PAKE. Verifiable random functions. |
 | Bilinear Pairings | Plans for moving BN256 to stronger pairing curves. | A bilineal pairing is a mathematical operation that enables the implementation of advanced cryptographic protocols, such as identity-based encryption (IBE), short digital signatures (BLS), and attribute-based encryption (ABE). | Geo Key Manager, Randomness Beacon, Ethereum and other blockchain applications. |
 | PQ KEM | HRSS-SXY | Lattice (NTRU) based key encapsulation mechanism. | Key exchange for low-latency environments |
-| PQ KEM | Kyber | Lattice (M-LWE) based key encapsulation mechanism. | Post-Quantum Key exchange |
 | PQ Digital Signatures | SPHINCS+ | Stateless hash-based signature scheme | Post-Quantum PKI |
 
 ## Testing and Benchmarking
