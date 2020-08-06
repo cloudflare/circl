@@ -45,7 +45,7 @@ func (m *Mat) Derive(seed *[32]byte) {
 // Set p to the inner product of a and b using pointwise multiplication.
 //
 // Assumes a and b are in Montgomery form and their coefficients are
-// pairwise sufficiently small to add, see Poly.MulHat().  Resulting
+// pairwise sufficiently small to multiply, see Poly.MulHat().  Resulting
 // coefficients are bounded by 2Lq.
 func PolyDotHat(p *common.Poly, a, b *VecL) {
 	var t common.Poly
