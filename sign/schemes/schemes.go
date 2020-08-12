@@ -2,6 +2,8 @@
 package schemes
 
 import (
+	"strings"
+
 	"github.com/cloudflare/circl/sign"
 	"github.com/cloudflare/circl/sign/ed25519"
 	"github.com/cloudflare/circl/sign/ed448"
@@ -21,13 +23,17 @@ var allSchemeNames map[string]sign.Scheme
 func init() {
 	allSchemeNames = make(map[string]sign.Scheme)
 	for _, scheme := range allSchemes {
-		allSchemeNames[scheme.Name()] = scheme
+		allSchemeNames[strings.ToLower(scheme.Name())] = scheme
 	}
 }
 
 // ByName returns the scheme with the given name and nil if it is not
 // supported.
-func ByName(name string) sign.Scheme { return allSchemeNames[name] }
+//
+// Names are case insensitive.
+func ByName(name string) sign.Scheme {
+	return allSchemeNames[strings.ToLower(name)]
+}
 
 // All returns all signature schemes supported.
 func All() []sign.Scheme { a := allSchemes; return a[:] }

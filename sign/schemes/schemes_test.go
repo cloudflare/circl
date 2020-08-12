@@ -8,6 +8,12 @@ import (
 	"github.com/cloudflare/circl/sign/schemes"
 )
 
+func TestCaseSensitivity(t *testing.T) {
+	if schemes.ByName("ed25519") != schemes.ByName("Ed25519") {
+		t.Fatal()
+	}
+}
+
 func TestApi(t *testing.T) {
 	allSchemes := schemes.All()
 	for _, scheme := range allSchemes {
