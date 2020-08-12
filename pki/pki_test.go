@@ -12,7 +12,7 @@ func TestPEM(t *testing.T) {
 		scheme := scheme
 		t.Run(scheme.Name(), func(t *testing.T) {
 			if scheme == nil {
-				t.FailNow()
+				t.Fatal()
 			}
 
 			_, ok := scheme.(pki.CertificateScheme)
@@ -35,7 +35,7 @@ func TestPEM(t *testing.T) {
 				t.Fatal(err)
 			}
 			if !pk.Equal(pk2) {
-				t.FailNow()
+				t.Fatal()
 			}
 
 			packedSk, err := pki.MarshalPEMPrivateKey(sk)
@@ -49,7 +49,7 @@ func TestPEM(t *testing.T) {
 			}
 
 			if !sk.Equal(sk2) {
-				t.FailNow()
+				t.Fatal()
 			}
 		})
 	}
