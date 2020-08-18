@@ -2,6 +2,7 @@
 package fp448
 
 import (
+	"crypto/subtle"
 	"errors"
 
 	"github.com/cloudflare/circl/internal/conv"
@@ -39,11 +40,14 @@ func ToBytes(b []byte, x *Elt) error {
 	return nil
 }
 
-// IsZero returns true if x is equal to 0.
-func IsZero(x *Elt) bool { Modp(x); return *x == Elt{} }
+// IsEqual returns 1 if x is equal to y; otherwise 0.
+func IsEqual(x, y *Elt) int { Modp(x); Modp(y); return subtle.ConstantTimeCompare(x[:], y[:]) }
 
-// IsOne returns true if x is equal to 1.
-func IsOne(x *Elt) bool { Modp(x); return *x == Elt{1} }
+// IsZero returns 1 if x is equal to 0; otherwise 0.
+func IsZero(x *Elt) int { Modp(x); z := Elt{}; return subtle.ConstantTimeCompare(x[:], z[:]) }
+
+// IsOne returns true if x is equal to 1; otherwise 0.
+func IsOne(x *Elt) int { Modp(x); o := Elt{1}; return subtle.ConstantTimeCompare(x[:], o[:]) }
 
 // Parity returns the last bit of x.
 func Parity(x *Elt) int { Modp(x); return int(x[0] & 1) }
@@ -61,9 +65,9 @@ func Neg(z, x *Elt) { Sub(z, &p, x) }
 func Modp(z *Elt) { Sub(z, z, &p) }
 
 // InvSqrt calculates z = sqrt(x/y) iff x/y is a quadratic-residue. If so,
-// isQR = true; otherwise, isQR = false, since x/y is a quadratic non-residue,
+// isQR = 1; otherwise, isQR = 0, since x/y is a quadratic non-residue,
 // and z = sqrt(-x/y).
-func InvSqrt(z, x, y *Elt) (isQR bool) {
+func InvSqrt(z, x, y *Elt) (isQR int) {
 	// First note that x^(2(k+1)) = x^(p-1)/2 * x = legendre(x) * x
 	// so that's x if x is a quadratic residue and -x otherwise.
 	// Next, y^(6k+3) = y^(4k+2) * y^(2k+1) = y^(p-1) * y^((p-1)/2) = legendre(y).

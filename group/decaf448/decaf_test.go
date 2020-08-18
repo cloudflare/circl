@@ -1,4 +1,4 @@
-package decaf_test
+package decaf448_test
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cloudflare/circl/ecc/decaf"
+	"github.com/cloudflare/circl/group/decaf448"
 	"github.com/cloudflare/circl/internal/test"
 	fp "github.com/cloudflare/circl/math/fp448"
 )
@@ -44,8 +44,8 @@ func (kat *testJSONFile) readFile(t *testing.T, fileName string) {
 	}
 }
 
-func verify(t *testing.T, i int, gotkG *decaf.Elt, wantEnckG []byte) {
-	wantkG := &decaf.Elt{}
+func verify(t *testing.T, i int, gotkG *decaf448.Elt, wantEnckG []byte) {
+	wantkG := &decaf448.Elt{}
 
 	gotEnckG, err := gotkG.MarshalBinary()
 	got := err == nil && bytes.Equal(gotEnckG, wantEnckG)
@@ -56,8 +56,8 @@ func verify(t *testing.T, i int, gotkG *decaf.Elt, wantEnckG []byte) {
 
 	err = wantkG.UnmarshalBinary(wantEnckG)
 	got = err == nil &&
-		decaf.IsValid(gotkG) &&
-		decaf.IsValid(wantkG) &&
+		decaf448.IsValid(gotkG) &&
+		decaf448.IsValid(wantkG) &&
 		gotkG.IsEqual(wantkG)
 	want = true
 	if got != want {
@@ -76,34 +76,34 @@ func TestDecafv1_0(t *testing.T) {
 		test.ReportError(t, got, want)
 	}
 	got = kat.Version
-	want = decaf.Version
+	want = decaf448.Version
 	if got != want {
 		test.ReportError(t, got, want)
 	}
-	var scalar decaf.Scalar
-	var P decaf.Elt
-	G := decaf.Generator()
+	var scalar decaf448.Scalar
+	var P decaf448.Elt
+	G := decaf448.Generator()
 	for i := range kat.Vectors {
 		k, _ := hex.DecodeString(kat.Vectors[i].K)
 		wantEnckG, _ := hex.DecodeString(kat.Vectors[i].KG)
 		wantEnckP, _ := hex.DecodeString(kat.Vectors[i].KP)
 		scalar.FromBytes(k)
 
-		decaf.MulGen(&P, &scalar)
+		decaf448.MulGen(&P, &scalar)
 		verify(t, i, &P, wantEnckG)
 
-		decaf.Mul(&P, &scalar, G)
+		decaf448.Mul(&P, &scalar, G)
 		verify(t, i, &P, wantEnckG)
 
-		decaf.Mul(&P, &scalar, &P)
+		decaf448.Mul(&P, &scalar, &P)
 		verify(t, i, &P, wantEnckP)
 	}
 }
 
 func TestDecafRandom(t *testing.T) {
 	const testTimes = 1 << 10
-	var e decaf.Elt
-	var enc [decaf.EncodingSize]byte
+	var e decaf448.Elt
+	var enc [decaf448.EncodingSize]byte
 
 	for i := 0; i < testTimes; i++ {
 		for found := false; !found; {
@@ -119,32 +119,32 @@ func TestDecafRandom(t *testing.T) {
 	}
 }
 
-func randomPoint() decaf.Elt {
-	var k decaf.Scalar
+func randomPoint() decaf448.Elt {
+	var k decaf448.Scalar
 	_, _ = rand.Read(k[:])
-	var P decaf.Elt
-	decaf.MulGen(&P, &k)
+	var P decaf448.Elt
+	decaf448.MulGen(&P, &k)
 	return P
 }
 
 func TestPointAdd(t *testing.T) {
 	const testTimes = 1 << 10
-	Q := &decaf.Elt{}
+	Q := &decaf448.Elt{}
 	for i := 0; i < testTimes; i++ {
 		P := randomPoint()
 		// Q = 16P = 2^4P
-		decaf.Double(Q, &P) // 2P
-		decaf.Double(Q, Q)  // 4P
-		decaf.Double(Q, Q)  // 8P
-		decaf.Double(Q, Q)  // 16P
+		decaf448.Double(Q, &P) // 2P
+		decaf448.Double(Q, Q)  // 4P
+		decaf448.Double(Q, Q)  // 8P
+		decaf448.Double(Q, Q)  // 16P
 		got := Q
 		// R = 16P = P+P...+P
-		R := decaf.Identity()
+		R := decaf448.Identity()
 		for j := 0; j < 16; j++ {
-			decaf.Add(R, R, &P)
+			decaf448.Add(R, R, &P)
 		}
 		want := R
-		if !decaf.IsValid(got) || !decaf.IsValid(want) || !got.IsEqual(want) {
+		if !decaf448.IsValid(got) || !decaf448.IsValid(want) || !got.IsEqual(want) {
 			test.ReportError(t, got, want, P)
 		}
 	}
@@ -152,11 +152,11 @@ func TestPointAdd(t *testing.T) {
 
 func TestPointNeg(t *testing.T) {
 	const testTimes = 1 << 10
-	Q := &decaf.Elt{}
+	Q := &decaf448.Elt{}
 	for i := 0; i < testTimes; i++ {
 		P := randomPoint()
-		decaf.Neg(Q, &P)
-		decaf.Add(Q, Q, &P)
+		decaf448.Neg(Q, &P)
+		decaf448.Add(Q, Q, &P)
 		got := Q.IsIdentity()
 		want := true
 		if got != want {
@@ -167,12 +167,12 @@ func TestPointNeg(t *testing.T) {
 
 func TestDecafOrder(t *testing.T) {
 	const testTimes = 1 << 10
-	Q := &decaf.Elt{}
-	order := decaf.Order()
+	Q := &decaf448.Elt{}
+	order := decaf448.Order()
 	for i := 0; i < testTimes; i++ {
 		P := randomPoint()
 
-		decaf.Mul(Q, &order, &P)
+		decaf448.Mul(Q, &order, &P)
 		got := Q.IsIdentity()
 		want := true
 		if got != want {
@@ -193,10 +193,10 @@ func TestDecafInvalid(t *testing.T) {
 		nonQR[:],     // s=4 and (a^2s^4 + (2a - 4d)*s^2 + 1) is non-QR.
 	}
 
-	var e decaf.Elt
+	var e decaf448.Elt
 	for _, enc := range badEncodings {
 		got := e.UnmarshalBinary(enc)
-		want := decaf.ErrInvalidDecoding
+		want := decaf448.ErrInvalidDecoding
 		if got != want {
 			test.ReportError(t, got, want, enc)
 		}
@@ -204,26 +204,54 @@ func TestDecafInvalid(t *testing.T) {
 }
 
 func BenchmarkDecaf(b *testing.B) {
-	var k, l decaf.Scalar
+	var k, l decaf448.Scalar
 	_, _ = rand.Read(k[:])
 	_, _ = rand.Read(l[:])
-	G := decaf.Generator()
-	P := decaf.Generator()
+	G := decaf448.Generator()
+	P := decaf448.Generator()
+	Z := decaf448.Identity()
 	enc, _ := G.MarshalBinary()
+
+	x := &fp.Elt{}
+	y := &fp.Elt{}
+	_, _ = rand.Read(y[:])
+	// p := fp.P()
+	// one := fp.One()
+	// fp.Sub(y, &p, &one)
 
 	b.Run("Add", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			decaf.Add(P, P, G)
+			decaf448.Add(P, P, G)
+		}
+	})
+	b.Run("IsZeroSub0", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			fp.IsZero(x)
+		}
+	})
+	b.Run("IsZeroSub1", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			fp.IsZero(y)
+		}
+	})
+	b.Run("IsZeroSi", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_ = Z.IsIdentity()
+		}
+	})
+	b.Run("IsZero", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_ = P.IsIdentity()
 		}
 	})
 	b.Run("Mul", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			decaf.Mul(G, &k, G)
+			decaf448.Mul(G, &k, G)
 		}
 	})
 	b.Run("MulGen", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			decaf.MulGen(P, &k)
+			decaf448.MulGen(P, &k)
 		}
 	})
 	b.Run("Marshal", func(b *testing.B) {

@@ -1,4 +1,4 @@
-// Package decaf provides a prime-order group derived from a quotient of
+// Package decaf448 provides a prime-order group derived from a quotient of
 // Edwards curves.
 //
 // Decaf Group
@@ -29,10 +29,11 @@
 // (4) https://sourceforge.net/p/ed448goldilocks/code/ci/v1.0/tree/
 //
 // (5) https://mailarchive.ietf.org/arch/msg/cfrg/S4YUTt_5eD4kwYbDuhEK0tXT1aM/
-package decaf
+package decaf448
 
 import (
-	"unsafe"
+	"crypto/subtle"
+	"math/bits"
 
 	"github.com/cloudflare/circl/internal/ted448"
 	fp "github.com/cloudflare/circl/math/fp448"
@@ -79,7 +80,12 @@ func Mul(c *Elt, n *Scalar, a *Elt) { ted448.ScalarMult(&c.p, n, &a.p) }
 func MulGen(c *Elt, n *Scalar) { ted448.ScalarBaseMult(&c.p, n) }
 
 // IsIdentity returns True if e is the identity of the group.
-func (e *Elt) IsIdentity() bool { return fp.IsZero(&e.p.X) && !fp.IsZero(&e.p.Y) && !fp.IsZero(&e.p.Z) }
+func (e *Elt) IsIdentity() bool {
+	b0 := fp.IsZero(&e.p.X)
+	b1 := 1 - fp.IsZero(&e.p.Y)
+	b2 := 1 - fp.IsZero(&e.p.Z)
+	return subtle.ConstantTimeEq(int32(4*b2+2*b1+b0), 0x7) == 1
+}
 
 // IsEqual returns True if e=a, where = is an equivalence relation.
 func (e *Elt) IsEqual(a *Elt) bool {
@@ -87,7 +93,7 @@ func (e *Elt) IsEqual(a *Elt) bool {
 	fp.Mul(l, &e.p.X, &a.p.Y)
 	fp.Mul(r, &a.p.X, &e.p.Y)
 	fp.Sub(l, l, r)
-	return fp.IsZero(l)
+	return fp.IsZero(l) == 1
 }
 
 // UnmarshalBinary interprets the first EncodingSize bytes passed in data, and
@@ -101,7 +107,7 @@ func (e *Elt) UnmarshalBinary(data []byte) error {
 	copy(s[:], data[:EncodingSize])
 	p := fp.P()
 	isLessThanP := isLessThan(s[:], p[:])
-	isPositiveS := fp.Parity(s) == 0
+	isPositiveS := 1 - fp.Parity(s)
 
 	den, num := &fp.Elt{}, &fp.Elt{}
 	isr, altx, t0 := &fp.Elt{}, &fp.Elt{}, &fp.Elt{}
@@ -132,14 +138,16 @@ func (e *Elt) UnmarshalBinary(data []byte) error {
 	fp.Add(x, x, x)                   // x = 2*s*isr^2*den*num
 	fp.Mul(y, y, t0)                  // y = (1 - a*s^2)*isr*den
 
-	isValid := isPositiveS && isLessThanP && isQR
-	b := uint(*((*byte)(unsafe.Pointer(&isValid))))
+	b0 := isPositiveS
+	b1 := isLessThanP
+	b2 := isQR
+	b := uint(subtle.ConstantTimeEq(int32(4*b2+2*b1+b0), 0x7))
 	fp.Cmov(&e.p.X, x, b)
 	fp.Cmov(&e.p.Y, y, b)
 	fp.Cmov(&e.p.Ta, x, b)
 	fp.Cmov(&e.p.Tb, y, b)
 	fp.Cmov(&e.p.Z, &one, b)
-	if !isValid {
+	if b == 0 {
 		return ErrInvalidDecoding
 	}
 	return nil
@@ -180,12 +188,14 @@ func (e *Elt) marshalBinary(enc []byte) error {
 	return fp.ToBytes(enc[:], s)
 }
 
-// isLessThan returns true if 0 <= x < y, and assumes that slices are of the
+// isLessThan returns 1 if 0 <= x < y, and assumes that slices are of the
 // same length and are interpreted in little-endian order.
-func isLessThan(x, y []byte) bool {
+func isLessThan(x, y []byte) int {
 	i := len(x) - 1
 	for i > 0 && x[i] == y[i] {
 		i--
 	}
-	return x[i] < y[i]
+	xi := int(x[i])
+	yi := int(y[i])
+	return ((xi - yi) >> (bits.UintSize - 1)) & 1
 }

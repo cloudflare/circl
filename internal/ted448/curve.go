@@ -46,7 +46,12 @@ func ParamD() fp.Elt { return paramD }
 
 // IsOnCurve returns true if the point lies on the curve.
 func IsOnCurve(P *Point) bool {
-	eq0 := *P != Point{}
+	eq0 := fp.IsZero(&P.X)
+	eq0 &= fp.IsZero(&P.Y)
+	eq0 &= fp.IsZero(&P.Z)
+	eq0 &= fp.IsZero(&P.Ta)
+	eq0 &= fp.IsZero(&P.Tb)
+	eq0 = 1 - eq0
 	x2, y2, t, t2, z2 := &fp.Elt{}, &fp.Elt{}, &fp.Elt{}, &fp.Elt{}, &fp.Elt{}
 	rhs, lhs := &fp.Elt{}, &fp.Elt{}
 	fp.Mul(t, &P.Ta, &P.Tb)  // t = ta*tb
@@ -63,7 +68,7 @@ func IsOnCurve(P *Point) bool {
 	fp.Mul(rhs, t, &P.Z)    // tz
 	fp.Sub(lhs, lhs, rhs)   // xy - tz
 	eq2 := fp.IsZero(lhs)
-	return eq0 && eq1 && eq2
+	return subtle.ConstantTimeByteEq(byte(4*eq2+2*eq1+eq0), 0x7) == 1
 }
 
 // subYDiv16 update x = (x - y) / 16.

@@ -1,4 +1,4 @@
-package decaf
+package decaf448
 
 import (
 	"errors"

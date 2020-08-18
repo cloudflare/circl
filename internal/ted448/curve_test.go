@@ -39,6 +39,23 @@ func TestPointAdd(t *testing.T) {
 	}
 }
 
+func TestIsOnCurve(t *testing.T) {
+	for _, v := range []struct {
+		P    ted448.Point
+		want bool
+	}{
+		{ted448.Point{}, false},
+		{ted448.Identity(), true},
+		{ted448.Generator(), true},
+		{randomPoint(), true},
+	} {
+		got := ted448.IsOnCurve(&v.P)
+		if got != v.want {
+			test.ReportError(t, got, v.want, v.P)
+		}
+	}
+}
+
 func TestPointNeg(t *testing.T) {
 	const testTimes = 1 << 10
 	for i := 0; i < testTimes; i++ {

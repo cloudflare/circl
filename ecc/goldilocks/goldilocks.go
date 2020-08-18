@@ -18,8 +18,9 @@
 package goldilocks
 
 import (
+	"crypto/subtle"
 	"errors"
-	"unsafe"
+	"math/bits"
 
 	"github.com/cloudflare/circl/internal/ted448"
 	fp "github.com/cloudflare/circl/math/fp448"
@@ -39,8 +40,8 @@ var ErrInvalidDecoding = errors.New("invalid decoding")
 // EncodingSize bytes of data.
 func (P *Point) Decode(data *[EncodingSize]byte) error {
 	x, y := &fp.Elt{}, &fp.Elt{}
-	isByteZero := (data[EncodingSize-1] & 0x7F) == 0x00
-	signX := data[EncodingSize-1] >> 7
+	isByteZero := subtle.ConstantTimeByteEq(data[EncodingSize-1]&0x7F, 0x00)
+	signX := int(data[EncodingSize-1] >> 7)
 	copy(y[:], data[:fp.Size])
 	p := fp.P()
 	isLessThanP := isLessThan(y[:], p[:])
@@ -52,18 +53,21 @@ func (P *Point) Decode(data *[EncodingSize]byte) error {
 	fp.Sub(u, u, &one)          // u = y^2-1
 	fp.Sub(v, v, &one)          // v = dy^2-a
 	isQR := fp.InvSqrt(x, u, v) // x = sqrt(u/v)
-	isValidXSign := !(fp.IsZero(x) && signX == 1)
-	fp.Neg(u, x)                        // u = -x
-	fp.Cmov(x, u, uint(signX^(x[0]&1))) // if signX != x mod 2
+	isValidXSign := 1 - (fp.IsZero(x) & signX)
+	fp.Neg(u, x)                            // u = -x
+	fp.Cmov(x, u, uint(signX^fp.Parity(x))) // if signX != x mod 2
 
-	isValid := isByteZero && isLessThanP && isQR && isValidXSign
-	b := uint(*(*byte)(unsafe.Pointer(&isValid)))
+	b0 := isByteZero
+	b1 := isLessThanP
+	b2 := isQR
+	b3 := isValidXSign
+	b := uint(subtle.ConstantTimeEq(int32(8*b3+4*b2+2*b1+b0), 0xF))
 	fp.Cmov(&P.X, x, b)
 	fp.Cmov(&P.Y, y, b)
 	fp.Cmov(&P.Ta, x, b)
 	fp.Cmov(&P.Tb, y, b)
 	fp.Cmov(&P.Z, &one, b)
-	if !isValid {
+	if b == 0 {
 		return ErrInvalidDecoding
 	}
 	return nil
@@ -143,14 +147,16 @@ func isogeny4(Q, P *ted448.Point, isPull bool) {
 	fp.Mul(&Q.Y, g, h) // Y = G * H, // T = E * H
 }
 
-// isLessThan returns true if 0 <= x < y, and assumes that slices are of the
+// isLessThan returns 1 if 0 <= x < y, and assumes that slices are of the
 // same length and are interpreted in little-endian order.
-func isLessThan(x, y []byte) bool {
+func isLessThan(x, y []byte) int {
 	i := len(x) - 1
 	for i > 0 && x[i] == y[i] {
 		i--
 	}
-	return x[i] < y[i]
+	xi := int(x[i])
+	yi := int(y[i])
+	return ((xi - yi) >> (bits.UintSize - 1)) & 1
 }
 
 var (

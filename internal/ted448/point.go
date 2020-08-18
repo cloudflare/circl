@@ -1,6 +1,7 @@
 package ted448
 
 import (
+	"crypto/subtle"
 	"fmt"
 
 	fp "github.com/cloudflare/circl/math/fp448"
@@ -108,7 +109,11 @@ func (P *Point) mixAdd(Q *prePointProy) {
 
 // IsIdentity returns True is P is the identity.
 func (P *Point) IsIdentity() bool {
-	return fp.IsZero(&P.X) && !fp.IsZero(&P.Y) && !fp.IsZero(&P.Z) && P.Y == P.Z
+	b0 := fp.IsZero(&P.X)
+	b1 := 1 - fp.IsZero(&P.Y)
+	b2 := 1 - fp.IsZero(&P.Z)
+	b3 := fp.IsEqual(&P.Y, &P.Z)
+	return subtle.ConstantTimeEq(int32(8*b3+4*b2+2*b1+b0), 0xF) == 1
 }
 
 // IsEqual returns True if P is equivalent to Q.
@@ -117,18 +122,18 @@ func (P *Point) IsEqual(Q *Point) bool {
 	fp.Mul(l, &P.X, &Q.Z)
 	fp.Mul(r, &Q.X, &P.Z)
 	fp.Sub(l, l, r)
-	b := fp.IsZero(l)
+	b0 := fp.IsZero(l)
 	fp.Mul(l, &P.Y, &Q.Z)
 	fp.Mul(r, &Q.Y, &P.Z)
 	fp.Sub(l, l, r)
-	b = b && fp.IsZero(l)
+	b1 := fp.IsZero(l)
 	fp.Mul(l, &P.Ta, &P.Tb)
 	fp.Mul(l, l, &Q.Z)
 	fp.Mul(r, &Q.Ta, &Q.Tb)
 	fp.Mul(r, r, &P.Z)
 	fp.Sub(l, l, r)
-	b = b && fp.IsZero(l)
-	return b
+	b2 := fp.IsZero(l)
+	return subtle.ConstantTimeEq(int32(4*b2+2*b1+b0), 0x7) == 1
 }
 
 // Neg obtains the inverse of P.
