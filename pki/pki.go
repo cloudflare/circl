@@ -155,7 +155,7 @@ func MarshalPEMPrivateKey(sk sign.PrivateKey) ([]byte, error) {
 		return nil, err
 	}
 	str := pem.EncodeToMemory(&pem.Block{
-		Type:  fmt.Sprintf("%s PRIVATE KEY", sk.Scheme().Name()),
+		Type:  sk.Scheme().Name() + " PRIVATE KEY",
 		Bytes: data,
 	},
 	)
