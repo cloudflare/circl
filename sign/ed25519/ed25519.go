@@ -45,6 +45,8 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+
+	"github.com/cloudflare/circl/sign"
 )
 
 const (
@@ -95,17 +97,14 @@ type PrivateKey []byte
 // Equal reports whether priv and x have the same value.
 func (priv PrivateKey) Equal(x crypto.PrivateKey) bool {
 	xx, ok := x.(PrivateKey)
-	if !ok {
-		return false
-	}
-	return subtle.ConstantTimeCompare(priv, xx) == 1
+	return ok && subtle.ConstantTimeCompare(priv, xx) == 1
 }
 
 // Public returns the PublicKey corresponding to priv.
 func (priv PrivateKey) Public() crypto.PublicKey {
-	publicKey := make([]byte, PublicKeySize)
+	publicKey := make(PublicKey, PublicKeySize)
 	copy(publicKey, priv[SeedSize:])
-	return PublicKey(publicKey)
+	return publicKey
 }
 
 // Seed returns the private key seed corresponding to priv. It is provided for
@@ -115,6 +114,28 @@ func (priv PrivateKey) Seed() []byte {
 	seed := make([]byte, SeedSize)
 	copy(seed, priv[:SeedSize])
 	return seed
+}
+
+func (priv PrivateKey) Scheme() sign.Scheme { return Scheme }
+
+func (pub PublicKey) Scheme() sign.Scheme { return Scheme }
+
+func (priv PrivateKey) MarshalBinary() (data []byte, err error) {
+	privateKey := make(PrivateKey, PrivateKeySize)
+	copy(privateKey, priv)
+	return privateKey, nil
+}
+
+func (pub PublicKey) MarshalBinary() (data []byte, err error) {
+	publicKey := make(PublicKey, PublicKeySize)
+	copy(publicKey, pub)
+	return publicKey, nil
+}
+
+// Equal reports whether pub and x have the same value.
+func (pub PublicKey) Equal(x crypto.PublicKey) bool {
+	xx, ok := x.(PublicKey)
+	return ok && bytes.Equal(pub, xx)
 }
 
 // Sign creates a signature of a message with priv key.
@@ -164,7 +185,7 @@ func GenerateKey(rand io.Reader) (PublicKey, PrivateKey, error) {
 	}
 
 	privateKey := NewKeyFromSeed(seed)
-	publicKey := make([]byte, PublicKeySize)
+	publicKey := make(PublicKey, PublicKeySize)
 	copy(publicKey, privateKey[SeedSize:])
 
 	return publicKey, privateKey, nil
@@ -175,7 +196,7 @@ func GenerateKey(rand io.Reader) (PublicKey, PrivateKey, error) {
 // with RFC 8032. RFC 8032's private keys correspond to seeds in this
 // package.
 func NewKeyFromSeed(seed []byte) PrivateKey {
-	privateKey := make([]byte, PrivateKeySize)
+	privateKey := make(PrivateKey, PrivateKeySize)
 	newKeyFromSeed(privateKey, seed)
 	return privateKey
 }
@@ -193,7 +214,7 @@ func newKeyFromSeed(privateKey, seed []byte) {
 	_ = P.ToBytes(privateKey[SeedSize:])
 }
 
-func sign(signature []byte, privateKey PrivateKey, message, ctx []byte, preHash bool) {
+func signAll(signature []byte, privateKey PrivateKey, message, ctx []byte, preHash bool) {
 	if l := len(privateKey); l != PrivateKeySize {
 		panic("ed25519: bad private key length: " + strconv.Itoa(l))
 	}
@@ -260,7 +281,7 @@ func sign(signature []byte, privateKey PrivateKey, message, ctx []byte, preHash 
 // It will panic if len(privateKey) is not PrivateKeySize.
 func Sign(privateKey PrivateKey, message []byte) []byte {
 	signature := make([]byte, SignatureSize)
-	sign(signature, privateKey, message, []byte(""), false)
+	signAll(signature, privateKey, message, []byte(""), false)
 	return signature
 }
 
@@ -277,7 +298,7 @@ func SignPh(privateKey PrivateKey, message []byte, ctx string) []byte {
 	}
 
 	signature := make([]byte, SignatureSize)
-	sign(signature, privateKey, message, []byte(ctx), true)
+	signAll(signature, privateKey, message, []byte(ctx), true)
 	return signature
 }
 
@@ -293,7 +314,7 @@ func SignWithCtx(privateKey PrivateKey, message []byte, ctx string) []byte {
 	}
 
 	signature := make([]byte, SignatureSize)
-	sign(signature, privateKey, message, []byte(ctx), false)
+	signAll(signature, privateKey, message, []byte(ctx), false)
 	return signature
 }
 

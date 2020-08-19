@@ -86,13 +86,16 @@ func TestSignThenVerifyAndPkSkPacking(t *testing.T) {
 	var seed [common.SeedSize]byte
 	var sig [SignatureSize]byte
 	var msg [8]byte
-	var pkb1, pkb2 [PublicKeySize]byte
-	var skb1, skb2 [PrivateKeySize]byte
+	var pkb [PublicKeySize]byte
+	var skb [PrivateKeySize]byte
 	var pk2 PublicKey
 	var sk2 PrivateKey
 	for i := uint64(0); i < 100; i++ {
 		binary.LittleEndian.PutUint64(seed[:], i)
 		pk, sk := NewKeyFromSeed(&seed)
+		if !sk.Equal(sk) {
+			t.Fatal()
+		}
 		for j := uint64(0); j < 10; j++ {
 			binary.LittleEndian.PutUint64(msg[:], j)
 			SignTo(sk, msg[:], sig[:])
@@ -100,16 +103,14 @@ func TestSignThenVerifyAndPkSkPacking(t *testing.T) {
 				t.Fatal()
 			}
 		}
-		pk.Pack(&pkb1)
-		pk2.Unpack(&pkb1)
-		pk2.Pack(&pkb2)
-		if pkb1 != pkb2 {
+		pk.Pack(&pkb)
+		pk2.Unpack(&pkb)
+		if !pk.Equal(&pk2) {
 			t.Fatal()
 		}
-		sk.Pack(&skb1)
-		sk2.Unpack(&skb1)
-		sk2.Pack(&skb2)
-		if skb1 != skb2 {
+		sk.Pack(&skb)
+		sk2.Unpack(&skb)
+		if !sk.Equal(&sk2) {
 			t.Fatal()
 		}
 	}
@@ -121,10 +122,7 @@ func TestPublicFromPrivate(t *testing.T) {
 		binary.LittleEndian.PutUint64(seed[:], i)
 		pk, sk := NewKeyFromSeed(&seed)
 		pk2 := sk.Public()
-		var pkb1, pkb2 [PublicKeySize]byte
-		pk.Pack(&pkb1)
-		pk2.Pack(&pkb2)
-		if pkb1 != pkb2 {
+		if !pk.Equal(pk2) {
 			t.Fatal()
 		}
 	}

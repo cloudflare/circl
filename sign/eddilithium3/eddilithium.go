@@ -8,6 +8,7 @@ import (
 	"io"
 
 	"github.com/cloudflare/circl/internal/shake"
+	"github.com/cloudflare/circl/sign"
 	"github.com/cloudflare/circl/sign/dilithium/mode3"
 	"github.com/cloudflare/circl/sign/ed25519"
 )
@@ -183,6 +184,25 @@ func (sk *PrivateKey) UnmarshalBinary(data []byte) error {
 	copy(buf[:], data)
 	sk.Unpack(&buf)
 	return nil
+}
+
+func (sk *PrivateKey) Scheme() sign.Scheme { return Scheme }
+func (pk *PublicKey) Scheme() sign.Scheme  { return Scheme }
+
+func (sk *PrivateKey) Equal(other crypto.PrivateKey) bool {
+	castOther, ok := other.(*PrivateKey)
+	if !ok {
+		return false
+	}
+	return castOther.e.Equal(sk.e) && castOther.d.Equal(&sk.d)
+}
+
+func (pk *PublicKey) Equal(other crypto.PublicKey) bool {
+	castOther, ok := other.(*PublicKey)
+	if !ok {
+		return false
+	}
+	return castOther.e.Equal(pk.e) && castOther.d.Equal(&pk.d)
 }
 
 // Sign signs the given message.

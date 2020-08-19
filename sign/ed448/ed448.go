@@ -35,6 +35,7 @@ import (
 
 	"github.com/cloudflare/circl/ecc/goldilocks"
 	sha3 "github.com/cloudflare/circl/internal/shake"
+	"github.com/cloudflare/circl/sign"
 )
 
 const (
@@ -83,10 +84,7 @@ type PublicKey []byte
 // Equal reports whether pub and x have the same value.
 func (pub PublicKey) Equal(x crypto.PublicKey) bool {
 	xx, ok := x.(PublicKey)
-	if !ok {
-		return false
-	}
-	return bytes.Equal(pub, xx)
+	return ok && bytes.Equal(pub, xx)
 }
 
 // PrivateKey is the type of Ed448 private keys. It implements crypto.Signer.
@@ -95,10 +93,7 @@ type PrivateKey []byte
 // Equal reports whether priv and x have the same value.
 func (priv PrivateKey) Equal(x crypto.PrivateKey) bool {
 	xx, ok := x.(PrivateKey)
-	if !ok {
-		return false
-	}
-	return subtle.ConstantTimeCompare(priv, xx) == 1
+	return ok && subtle.ConstantTimeCompare(priv, xx) == 1
 }
 
 // Public returns the PublicKey corresponding to priv.
@@ -115,6 +110,22 @@ func (priv PrivateKey) Seed() []byte {
 	seed := make([]byte, SeedSize)
 	copy(seed, priv[:SeedSize])
 	return seed
+}
+
+func (priv PrivateKey) Scheme() sign.Scheme { return Scheme }
+
+func (pub PublicKey) Scheme() sign.Scheme { return Scheme }
+
+func (priv PrivateKey) MarshalBinary() (data []byte, err error) {
+	privateKey := make(PrivateKey, PrivateKeySize)
+	copy(privateKey, priv)
+	return privateKey, nil
+}
+
+func (pub PublicKey) MarshalBinary() (data []byte, err error) {
+	publicKey := make(PublicKey, PublicKeySize)
+	copy(publicKey, pub)
+	return publicKey, nil
 }
 
 // Sign creates a signature of a message given a key pair.
@@ -192,7 +203,7 @@ func newKeyFromSeed(privateKey, seed []byte) {
 	_ = goldilocks.Curve{}.ScalarBaseMult(s).ToBytes(privateKey[SeedSize:])
 }
 
-func sign(signature []byte, privateKey PrivateKey, message, ctx []byte, preHash bool) {
+func signAll(signature []byte, privateKey PrivateKey, message, ctx []byte, preHash bool) {
 	if len(ctx) > ContextMaxSize {
 		panic(fmt.Errorf("ed448: bad context length: " + strconv.Itoa(len(ctx))))
 	}
@@ -264,7 +275,7 @@ func sign(signature []byte, privateKey PrivateKey, message, ctx []byte, preHash 
 // It will panic if len(privateKey) is not PrivateKeySize.
 func Sign(priv PrivateKey, message []byte, ctx string) []byte {
 	signature := make([]byte, SignatureSize)
-	sign(signature, priv, message, []byte(ctx), false)
+	signAll(signature, priv, message, []byte(ctx), false)
 	return signature
 }
 
@@ -275,7 +286,7 @@ func Sign(priv PrivateKey, message []byte, ctx string) []byte {
 // 255. It can be empty.
 func SignPh(priv PrivateKey, message []byte, ctx string) []byte {
 	signature := make([]byte, SignatureSize)
-	sign(signature, priv, message, []byte(ctx), true)
+	signAll(signature, priv, message, []byte(ctx), true)
 	return signature
 }
 

@@ -66,8 +66,8 @@ func TestSignThenVerifyAndPkSkPacking(t *testing.T) {
 	var seed [eddilithium3.SeedSize]byte
 	var sig [eddilithium3.SignatureSize]byte
 	var msg [8]byte
-	var pkb1, pkb2 [eddilithium3.PublicKeySize]byte
-	var skb1, skb2 [eddilithium3.PrivateKeySize]byte
+	var pkb [eddilithium3.PublicKeySize]byte
+	var skb [eddilithium3.PrivateKeySize]byte
 	var pk2 eddilithium3.PublicKey
 	var sk2 eddilithium3.PrivateKey
 	for i := uint64(0); i < 100; i++ {
@@ -80,16 +80,14 @@ func TestSignThenVerifyAndPkSkPacking(t *testing.T) {
 				t.Fatal()
 			}
 		}
-		pk.Pack(&pkb1)
-		pk2.Unpack(&pkb1)
-		pk2.Pack(&pkb2)
-		if pkb1 != pkb2 {
+		pk.Pack(&pkb)
+		pk2.Unpack(&pkb)
+		if !pk.Equal(&pk2) {
 			t.Fatal()
 		}
-		sk.Pack(&skb1)
-		sk2.Unpack(&skb1)
-		sk2.Pack(&skb2)
-		if skb1 != skb2 {
+		sk.Pack(&skb)
+		sk2.Unpack(&skb)
+		if !sk.Equal(&sk2) {
 			t.Fatal()
 		}
 	}
