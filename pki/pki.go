@@ -5,7 +5,6 @@ import (
 	"encoding/asn1"
 	"encoding/pem"
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/cloudflare/circl/sign"
@@ -23,14 +22,11 @@ type pkixPrivKey struct {
 
 func init() {
 	allSchemesByOID = make(map[string]sign.Scheme)
+	allSchemesByTLS = make(map[uint]sign.Scheme)
 	for _, scheme := range schemes.All() {
 		if cert, ok := scheme.(CertificateScheme); ok {
 			allSchemesByOID[cert.Oid().String()] = scheme
 		}
-	}
-
-	allSchemesByTLS = make(map[uint]sign.Scheme)
-	for _, scheme := range schemes.All() {
 		if tlsScheme, ok := scheme.(TLSScheme); ok {
 			allSchemesByTLS[tlsScheme.TLSIdentifier()] = scheme
 		}
