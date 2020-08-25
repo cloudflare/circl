@@ -46,12 +46,13 @@ func (P *Point) Double() {
 	fp.Add(c, c, c)   // C = 2*z^2
 	fp.Add(h, a, b)   // H = A+B
 	fp.Sqr(e, e)      // (x+y)^2
-	fp.Sub(e, e, h)   // E = (x+y)^2-A-B
+	fp.Sub(e, e, h)   // E = (x+y)^2-A-B = 2xy
 	fp.Sub(g, b, a)   // G = B-A
-	fp.Sub(f, c, g)   // F = C-G
-	fp.Mul(Pz, f, g)  // Z = F * G
-	fp.Mul(Px, e, f)  // X = E * F
-	fp.Mul(Py, g, h)  // Y = G * H, T = E * H
+	fp.Sub(f, c, g)   // F = C-G = 2z^2-y^2+x^2
+	fp.Mul(Pz, f, g)  // Z = F * G = (y^2-x^2)(2z^2-y^2+x^2)
+	fp.Mul(Px, e, f)  // X = E * F = 2xy(2z^2-y^2+x^2)
+	fp.Mul(Py, g, h)  // Y = G * H = (x^2-y^2)(x^2+y^2)
+	// T = E * H = 2xy(x^2+y^2)
 }
 
 // mixAdd calulates P= P+Q, where Q is a precomputed448 point with Z_Q = 1.

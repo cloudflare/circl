@@ -1,7 +1,6 @@
 package ted448
 
 import (
-	"crypto/rand"
 	"encoding/binary"
 	"math/bits"
 
@@ -202,32 +201,41 @@ func (z *Scalar) Sub(x, y *Scalar) {
 // Mul calculates z = x*y mod order.
 func (z *Scalar) Mul(x, y *Scalar) {
 	var z64, x64, y64 scalar64
-	prod := (&[_N + 1]uint64{})[:]
 	x64.fromScalar(x)
 	y64.fromScalar(y)
-	mulWord(prod, x64[:], y64[_N-1])
-	copy(z64[:], prod[:_N])
-	z64.reduceOneWord(prod[_N])
-	for i := _N - 2; i >= 0; i-- {
-		h := z64.leftShift(0)
-		z64.reduceOneWord(h)
-		mulWord(prod, x64[:], y64[i])
-		c := add(z64[:], z64[:], prod[:_N])
-		z64.reduceOneWord(prod[_N] + c)
-	}
+	coremul(&z64, &x64, &y64)
 	z64.modOrder()
 	z64.toScalar(z)
 }
 
+func coremul(z64, x64, y64 *scalar64) {
+	var p64 scalar64
+	prod := (&[_N + 1]uint64{})[:]
+	mulWord(prod, x64[:], y64[_N-1])
+	copy(p64[:], prod[:_N])
+	p64.reduceOneWord(prod[_N])
+	for i := _N - 2; i >= 0; i-- {
+		h := p64.leftShift(0)
+		p64.reduceOneWord(h)
+		mulWord(prod, x64[:], y64[i])
+		c := add(p64[:], p64[:], prod[:_N])
+		p64.reduceOneWord(prod[_N] + c)
+	}
+	*z64 = p64
+}
+
 // Inv calculates z = 1/x mod order.
 func (z *Scalar) Inv(x *Scalar) {
-	var t, r Scalar
-	_, _ = rand.Read(r[:])
-	r.Red()
-	t.Mul(x, &r)
-	bigT := conv.BytesLe2BigInt(t[:])
-	bigOrder := conv.BytesLe2BigInt(order[:])
-	bigT.ModInverse(bigT, bigOrder)
-	conv.BigInt2BytesLe(z[:], bigT)
-	z.Mul(z, &r)
+	var x64 scalar64
+	x64.fromScalar(x)
+	t := &scalar64{1}
+	for i := 8*len(orderMinusTwo) - 1; i >= 0; i-- {
+		coremul(t, t, t)
+		b := (orderMinusTwo[i/8] >> uint(i%8)) & 1
+		if b != 0 {
+			coremul(t, t, &x64)
+		}
+	}
+	t.modOrder()
+	t.toScalar(z)
 }

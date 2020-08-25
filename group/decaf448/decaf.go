@@ -84,7 +84,7 @@ func (e *Elt) IsIdentity() bool {
 	b0 := fp.IsZero(&e.p.X)
 	b1 := 1 - fp.IsZero(&e.p.Y)
 	b2 := 1 - fp.IsZero(&e.p.Z)
-	return subtle.ConstantTimeEq(int32(4*b2+2*b1+b0), 0x7) == 1
+	return (b0 & b1 & b2) == 1
 }
 
 // IsEqual returns True if e=a, where = is an equivalence relation.
