@@ -1,9 +1,10 @@
 package csidh
 
 import (
+	"crypto/rand"
+	"encoding/binary"
 	"fmt"
 	"math/big"
-	mrand "math/rand"
 )
 
 var (
@@ -50,12 +51,9 @@ func zero(v *fp) {
 }
 
 // returns random value in a range (0,p).
-func randomFp() fp {
-	var u fp
-	for i := 0; i < 8; i++ {
-		u[i] = mrand.Uint64()
-	}
-	return u
+func randomFp() (u fp) {
+	_ = binary.Read(rand.Reader, binary.LittleEndian, &u)
+	return
 }
 
 // return x==y for fp.

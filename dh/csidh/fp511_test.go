@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"math/big"
 	"testing"
+
+	"github.com/cloudflare/circl/internal/test"
 )
 
 func testFp512Mul3Nominal(t *testing.T, f func(*fp, *fp, uint64)) {
@@ -27,7 +29,7 @@ func testFp512Mul3Nominal(t *testing.T, f func(*fp, *fp, uint64)) {
 		res, _ := new(big.Int).SetString(fp2S(fV), 16)
 
 		if exp.Cmp(res) != 0 {
-			t.Errorf("%X != %X", exp, res)
+			test.ReportError(t, exp, res, fV)
 		}
 	}
 }
@@ -58,7 +60,7 @@ func TestAddRdcRandom(t *testing.T) {
 		bigA.Mod(bigA, modulus)
 
 		if bigRet.Cmp(bigA) != 0 {
-			t.Errorf("%X != %X", bigRet, bigA)
+			test.ReportError(t, bigRet, bigA, a, b)
 		}
 	}
 }
@@ -111,7 +113,7 @@ func TestFp512Sub3_Nominal(t *testing.T) {
 		bigA.Mod(bigA, &mod)
 
 		if bigRet.Cmp(bigA) != 0 {
-			t.Errorf("%X != %X", bigRet, bigA)
+			test.ReportError(t, bigRet, bigA, a, b)
 		}
 	}
 }
@@ -293,7 +295,7 @@ func TestModExp(t *testing.T) {
 		modExpRdc512(&resFp, &baseFp, &expFp)
 
 		if !eqFp(&resFp, &resFpExp) {
-			t.Errorf("Wrong value\n%X!=%X", resFp, intGetU64(&resExp))
+			test.ReportError(t, resFp, intGetU64(&resExp), base, exp)
 		}
 	}
 }
