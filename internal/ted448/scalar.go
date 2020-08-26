@@ -60,6 +60,39 @@ func (z *scalar64) cmov(x *scalar64, b uint64) {
 	}
 }
 
+// mul calculates z = x * y.
+func (z *scalar64) mul(x, y *scalar64) *scalar64 {
+	var t scalar64
+	prod := (&[_N + 1]uint64{})[:]
+	mulWord(prod, x[:], y[_N-1])
+	copy(t[:], prod[:_N])
+	t.reduceOneWord(prod[_N])
+	for i := _N - 2; i >= 0; i-- {
+		h := t.leftShift(0)
+		t.reduceOneWord(h)
+		mulWord(prod, x[:], y[i])
+		c := add(t[:], t[:], prod[:_N])
+		t.reduceOneWord(prod[_N] + c)
+	}
+	*z = t
+	return z
+}
+
+// sqrn calculates z = x^(2^n).
+func (z *scalar64) sqrn(x *scalar64, n uint) *scalar64 {
+	t := *x
+	for i := uint(0); i < n; i++ {
+		t.mul(&t, &t)
+	}
+	*z = t
+	return z
+}
+
+// sqrnmul calculates z = x^(2^n) * y.
+func (z *scalar64) sqrnmul(x *scalar64, n uint, y *scalar64) *scalar64 {
+	return z.mul(z.sqrn(x, n), y)
+}
+
 // add calculates z = x + y. Assumes len(z) > max(len(x),len(y)).
 func add(z, x, y []uint64) uint64 {
 	l, L, zz := len(x), len(y), y
@@ -203,39 +236,61 @@ func (z *Scalar) Mul(x, y *Scalar) {
 	var z64, x64, y64 scalar64
 	x64.fromScalar(x)
 	y64.fromScalar(y)
-	coremul(&z64, &x64, &y64)
+	z64.mul(&x64, &y64)
 	z64.modOrder()
 	z64.toScalar(z)
-}
-
-func coremul(z64, x64, y64 *scalar64) {
-	var p64 scalar64
-	prod := (&[_N + 1]uint64{})[:]
-	mulWord(prod, x64[:], y64[_N-1])
-	copy(p64[:], prod[:_N])
-	p64.reduceOneWord(prod[_N])
-	for i := _N - 2; i >= 0; i-- {
-		h := p64.leftShift(0)
-		p64.reduceOneWord(h)
-		mulWord(prod, x64[:], y64[i])
-		c := add(p64[:], p64[:], prod[:_N])
-		p64.reduceOneWord(prod[_N] + c)
-	}
-	*z64 = p64
 }
 
 // Inv calculates z = 1/x mod order.
 func (z *Scalar) Inv(x *Scalar) {
 	var x64 scalar64
 	x64.fromScalar(x)
-	t := &scalar64{1}
-	for i := 8*len(orderMinusTwo) - 1; i >= 0; i-- {
-		coremul(t, t, t)
-		b := (orderMinusTwo[i/8] >> uint(i%8)) & 1
-		if b != 0 {
-			coremul(t, t, &x64)
-		}
-	}
-	t.modOrder()
-	t.toScalar(z)
+
+	x10 := (&scalar64{}).mul(&x64, &x64)            // x10 = 2 * 1
+	x11 := (&scalar64{}).mul(x10, &x64)             // x11 = 1 + x10
+	x100 := (&scalar64{}).mul(x11, &x64)            // x100 = 1 + x11
+	x101 := (&scalar64{}).mul(x100, &x64)           // x101 = 1 + x100
+	x1001 := (&scalar64{}).mul(x100, x101)          // x1001 = x100 + x101
+	x1011 := (&scalar64{}).mul(x10, x1001)          // x1011 = x10 + x1001
+	x1101 := (&scalar64{}).mul(x10, x1011)          // x1101 = x10 + x1011
+	x1111 := (&scalar64{}).mul(x10, x1101)          // x1111 = x10 + x1101
+	x10001 := (&scalar64{}).mul(x10, x1111)         // x10001 = x10 + x1111
+	x10011 := (&scalar64{}).mul(x10, x10001)        // x10011 = x10 + x10001
+	x10101 := (&scalar64{}).mul(x10, x10011)        // x10101 = x10 + x10011
+	x10111 := (&scalar64{}).mul(x10, x10101)        // x10111 = x10 + x10101
+	x11001 := (&scalar64{}).mul(x10, x10111)        // x11001 = x10 + x10111
+	x11011 := (&scalar64{}).mul(x10, x11001)        // x11011 = x10 + x11001
+	x11101 := (&scalar64{}).mul(x10, x11011)        // x11101 = x10 + x11011
+	x11111 := (&scalar64{}).mul(x10, x11101)        // x11111 = x10 + x11101
+	x111110 := (&scalar64{}).mul(x11111, x11111)    // x111110 = 2 * x11111
+	x1111100 := (&scalar64{}).mul(x111110, x111110) // x1111100 = 2 * x111110
+	var i24, i41, i73, i129, t = &scalar64{}, &scalar64{}, &scalar64{},
+		&scalar64{}, &scalar64{}
+	var x222, i262, i279, i298, i312, i331, i343, i365,
+		i375, i396, i411, i431, i444, i464, i478, i498, iret *scalar64 = t, t,
+		t, t, t, t, t, t, t, t, t, t, t, t, t, t, t
+
+	i24.sqrnmul(x1111100, 5, x1111100)                                       // i24  = x1111100 << 5 + x1111100
+	i41.sqrnmul(i41.sqrnmul(i24, 4, x111110), 11, i24)                       // i41  = (i24 << 4 + x111110) << 11 + i24
+	i73.sqrnmul(i73.sqrnmul(i41, 4, x111110), 26, i41)                       // i73  = (i41 << 4 + x111110) << 26 + i41
+	i129.sqrnmul(i73, 55, i73)                                               // i129 = i73 << 55 + i73
+	x222.mul(x222.sqrnmul(i129, 110, x11), i129)                             // x222 = i129 << 110 + x11 + i129
+	i262.sqrn(i262.sqrnmul(i262.sqrnmul(x222, 6, x11111), 7, x11001), 6)     // i262 = ((x222 << 6 + x11111) << 7 + x11001) << 6
+	i279.sqrnmul(i279.sqrnmul(i279.mul(x10001, i262), 8, x11111), 6, x10011) // i279 = ((x10001 + i262) << 8 + x11111) << 6 + x10011
+	i298.sqrn(i298.sqrnmul(i298.sqrnmul(i279, 5, x10001), 8, x10011), 4)     // i298 = ((i279 << 5 + x10001) << 8 + x10011) << 4
+	i312.sqrnmul(i312.sqrnmul(i312.mul(x1011, i298), 6, x11011), 5, x1001)   // i312 = ((x1011 + i298) << 6 + x11011) << 5 + x1001
+	i331.sqrn(i331.sqrnmul(i331.sqrnmul(i312, 6, x1101), 6, x11101), 5)      // i331 = ((i312 << 6 + x1101) << 6 + x11101) << 5
+	i343.sqrnmul(i343.sqrnmul(i343.mul(x10101, i331), 5, x10001), 4, x1011)  // i343 = ((x10101 + i331) << 5 + x10001) << 4 + x1011
+	i365.sqrn(i365.sqrnmul(i365.sqrnmul(i343, 5, x1001), 7, &x64), 8)        // i365 = ((i343 << 5 + x1001) << 7 + 1) << 8
+	i375.sqrnmul(i375.sqrnmul(i375.mul(x1011, i365), 6, x11001), 1, &x64)    // i375 = 2*((x1011 + i365) << 6 + x11001) + 1
+	i396.sqrn(i396.sqrnmul(i396.sqrnmul(i375, 9, x10011), 4, x1001), 6)      // i396 = ((i375 << 9 + x10011) << 4 + x1001) << 6
+	i411.sqrnmul(i411.sqrnmul(i411.mul(x10001, i396), 5, x10111), 7, x1011)  // i411 = ((x10001 + i396) << 5 + x10111) << 7 + x1011
+	i431.sqrn(i431.sqrnmul(i431.sqrnmul(i411, 7, x1111), 6, x10101), 5)      // i431 = ((i411 << 7 + x1111) << 6 + x10101) << 5
+	i444.sqrnmul(i444.sqrnmul(i444.mul(x1001, i431), 8, x11011), 2, x11)     // i444 = ((x1001 + i431) << 8 + x11011) << 2 + x11
+	i464.sqrn(i464.sqrnmul(i464.sqrnmul(i444, 5, x11), 7, x101), 6)          // i464 = ((i444 << 5 + x11) << 7 + x101) << 6
+	i478.sqrnmul(i478.sqrnmul(i478.mul(x1001, i464), 6, x10101), 5, x1101)   // i478 = ((x1001 + i464) << 6 + x10101) << 5 + x1101
+	i498.sqrn(i498.sqrnmul(i498.sqrnmul(i478, 3, x11), 9, x10001), 6)        // i498 = ((i478 << 3 + x11) << 9 + x10001) << 6
+	iret.sqrnmul(iret.mul(x1111, i498), 4, &x64)                             // z    = (x1111 + i498) << 4 + 1
+	iret.modOrder()
+	iret.toScalar(z)
 }
