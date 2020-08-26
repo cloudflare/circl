@@ -8,7 +8,7 @@ ETC_DIR      = $(PRJ_DIR)/.etc
 OPTS         ?=
 NOASM        ?=
 GO           ?= go
-GOLANGCILINT ?= $(TOOLS_DIR)/golangci-lint
+GOLANGCILINT ?= golangci-lint
 # -run="^_" as we want to avoid running tests by 'bench' and there never be a test starting with _
 BENCH_OPTS   ?= -bench=. -run="^_" -benchmem
 V            ?= 1
@@ -24,7 +24,7 @@ ifeq ($(V),1)
 endif
 
 lint:
-	$(GOLANGCILINT) run --config $(ETC_DIR)/golangci.yml ./... -v
+	$(GOLANGCILINT) run --config $(ETC_DIR)/golangci.yml ./...
 
 build:
 	$(GO) build ./...
