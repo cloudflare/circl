@@ -6,7 +6,10 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
+	"os"
+	"path"
 	"strings"
 	"text/template"
 )
@@ -148,6 +151,7 @@ func main() {
 	generateModePackageFiles()
 	generateModeToplevelFiles()
 	generateParamsFiles()
+	generateSourceFiles()
 }
 
 // Generates modeX/internal/params.go from templates/params.templ.go
@@ -227,4 +231,86 @@ func generateModePackageFiles() {
 			panic(err)
 		}
 	}
+}
+
+// Copies mode3 source files to other modes
+func generateSourceFiles() {
+	files := make(map[string][]byte)
+
+	// Ignore mode specific files.
+	ignored := func(x string) bool {
+		return x == "params.go" || x == "params_test.go"
+	}
+
+	fs, err := ioutil.ReadDir("mode3/internal")
+	if err != nil {
+		panic(err)
+	}
+
+	// Read files
+	for _, f := range fs {
+		name := f.Name()
+		if ignored(name) {
+			continue
+		}
+		files[name], err = ioutil.ReadFile(path.Join("mode3/internal", name))
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	// Go over modes
+	for _, mode := range Modes {
+		if mode.Name == "Dilithium3" {
+			continue
+		}
+
+		fs, err = ioutil.ReadDir(path.Join(mode.Pkg(), "internal"))
+		for _, f := range fs {
+			name := f.Name()
+			fn := path.Join(mode.Pkg(), "internal", name)
+			if ignored(name) {
+				continue
+			}
+			_, ok := files[name]
+			if !ok {
+				fmt.Printf("Removing superfluous file: %s", fn)
+				err = os.Remove(fn)
+				if err != nil {
+					panic(err)
+				}
+			}
+			if f.Mode().IsDir() {
+				panic(fmt.Sprintf("%s: is a directory", fn))
+			}
+			if f.Mode()&os.ModeSymlink != 0 {
+				fmt.Printf("Removing symlink: %s\n", fn)
+				err = os.Remove(fn)
+				if err != nil {
+					panic(err)
+				}
+			}
+		}
+		for name, expected := range files {
+			fn := path.Join(mode.Pkg(), "internal", name)
+			expected = []byte(fmt.Sprintf(
+				"%s mode3/internal/%s by gen.go\n\n%s",
+				TemplateWarning,
+				name,
+				string(expected),
+			))
+			got, err := ioutil.ReadFile(fn)
+			if err == nil {
+				if bytes.Equal(got, expected) {
+					continue
+				}
+			}
+			fmt.Printf("Updating %s\n", fn)
+			err = ioutil.WriteFile(fn, expected, 0644)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+
 }
