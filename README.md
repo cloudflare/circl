@@ -35,11 +35,12 @@ Version numbers are [Semvers](https://semver.org/). We release a minor version f
 | PQ Key Exchange | SIDH | SIDH provide key exchange mechanisms using ephemeral keys. | Post-quantum key exchange in TLS |
 | PQ Key Exchange | cSIDH | Isogeny based drop-in replacement for Diffie–Hellman | Post-Quantum Key exchange. |
 | PQ KEM | SIKE | SIKE is a key encapsulation mechanism (KEM). | Post-quantum key exchange in TLS |
+| PQ Digital Signatures | Dilithium, Hybrid modes | Lattice (Module LWE) based signature scheme | Post-Quantum PKI |
 | Key Exchange | X25519, X448 | RFC-7748 provides new key exchange mechanisms based on Montgomery elliptic curves. | TLS 1.3. Secure Shell. |
 | Key Exchange | FourQ | One of the fastest elliptic curves at 128-bit security level. | Experimental for key agreement and digital signatures. |
 | Key Exchange / Digital signatures | P-384 | Our optimizations reduce the burden when moving from P-256 to P-384. |  ECDSA and ECDH using Suite B at top secret level. |
 | Digital Signatures | Ed25519, Ed448 | RFC-8032 provides new signature schemes based on Edwards curves. | Digital certificates and authentication. |
-| PQ Digital Signatures | Dilithium, Hybrid modes | Lattice (Module LWE) based signature scheme | Post-Quantum PKI |
+| Groups | Decaf | Prime-order groups. | Protocols based on the Discrete Logarithm Problem. |
 
 ### Work in Progress
 
