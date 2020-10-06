@@ -91,8 +91,7 @@ func (v *Vec) Unpack(buf []byte) {
 func (v *Vec) CompressTo(m []byte, d int) {
 	size := compressedPolySize(d)
 	for i := 0; i < K; i++ {
-		v[i].CompressTo(m, d)
-		m = m[size:]
+		v[i].CompressTo(m[size*i:], d)
 	}
 }
 
@@ -102,8 +101,7 @@ func (v *Vec) CompressTo(m []byte, d int) {
 func (v *Vec) Decompress(m []byte, d int) {
 	size := compressedPolySize(d)
 	for i := 0; i < K; i++ {
-		v[i].Decompress(m, d)
-		m = m[size:]
+		v[i].Decompress(m[size*i:], d)
 	}
 }
 

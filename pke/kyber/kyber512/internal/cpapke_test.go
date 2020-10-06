@@ -33,8 +33,8 @@ func TestEncryptThenDecrypt(t *testing.T) {
 			_, _ = rand.Read(msg[:])
 			_, _ = rand.Read(coin[:])
 
-			pk.EncryptTo(msg[:], coin[:], ct[:])
-			sk.DecryptTo(ct[:], msg2[:])
+			pk.EncryptTo(ct[:], coin[:], msg[:])
+			sk.DecryptTo(msg2[:], ct[:])
 
 			if msg != msg2 {
 				t.Fatalf("%v %v %v", ct, msg, msg2)

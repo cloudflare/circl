@@ -93,7 +93,7 @@ func NewKeyFromSeed(seed []byte) (*PublicKey, *PrivateKey) {
 }
 
 // Decrypts ciphertext ct meant for private key sk to plaintext pt.
-func (sk *PrivateKey) DecryptTo(ct []byte, pt []byte) {
+func (sk *PrivateKey) DecryptTo(pt, ct []byte) {
 	var u Vec
 	var v, m common.Poly
 
@@ -116,8 +116,7 @@ func (sk *PrivateKey) DecryptTo(ct []byte, pt []byte) {
 //
 // seed has to be of length SeedSize, pt of PlaintextSize and ct of
 // CiphertextSize.
-func (pk *PublicKey) EncryptTo(pt []byte, seed []byte,
-	ct []byte) {
+func (pk *PublicKey) EncryptTo(ct, seed, pt []byte) {
 	var rh, e1, u Vec
 	var e2, v, m common.Poly
 
@@ -167,5 +166,11 @@ func (pk *PublicKey) EncryptTo(pt []byte, seed []byte,
 
 // Returns whether sk equals other.
 func (sk *PrivateKey) Equal(other *PrivateKey) bool {
-	return sk.sh == other.sh
+	ret := int16(0)
+	for i := 0; i < K; i++ {
+		for j := 0; j < common.N; j++ {
+			ret |= sk.sh[i][j] ^ other.sh[i][j]
+		}
+	}
+	return ret == 0
 }
