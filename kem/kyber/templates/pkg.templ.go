@@ -8,7 +8,7 @@
 // {{.Name}}.CCAKEM as submitted to round2 of the NIST PQC competition and
 // described in
 //
-// https://pq-crystals.org/dilithium/data/dilithium-specification-round2.pdf
+// https://pq-crystals.org/kyber/data/kyber-specification-round2.pdf
 package {{.Pkg}}
 
 import (
@@ -67,7 +67,7 @@ func NewKeyFromSeed(seed []byte) (*PublicKey, *PrivateKey) {
 	var pk PublicKey
 
 	if len(seed) != KeySeedSize {
-		panic("seed must ne of length KeySeedSize")
+		panic("seed must be of length KeySeedSize")
 	}
 
 	pk.pk, sk.sk = cpapke.NewKeyFromSeed(seed[:cpapke.KeySeedSize])
@@ -110,10 +110,10 @@ func GenerateKey(rand io.Reader) (*PublicKey, *PrivateKey, error) {
 // seed may be nil, in which case crypto/rand.Reader is used to generate one.
 func (pk *PublicKey) EncapsulateTo(ss []byte, ct []byte, seed []byte) {
 	if seed == nil {
-		seed := make([]byte, 32)
+		seed := make([]byte, EncapsulationSeedSize)
 		cryptoRand.Read(seed[:])
 	} else {
-		if len(seed) != 32 {
+		if len(seed) != EncapsulationSeedSize {
 			panic("seed must be of length EncapsulationSeedSize")
 		}
 	}
@@ -140,7 +140,7 @@ func (pk *PublicKey) EncapsulateTo(ss []byte, ct []byte, seed []byte) {
 	g.Sum(kr[:0])
 
 	// c = Kyber.CPAPKE.Enc(pk, m, r)
-	pk.pk.EncryptTo(m[:], kr[32:], ct)
+	pk.pk.EncryptTo(ct, kr[32:], m[:])
 
 	// Compute H(c) and put in second slot of kr, which will be (K', H(c)).
 	h.Reset()
@@ -169,7 +169,7 @@ func (sk *PrivateKey) DecapsulateTo(ct []byte, ss []byte) {
 
 	// m' = Kyber.CPAPKE.Dec(sk, ct)
 	var m2 [32]byte
-	sk.sk.DecryptTo(ct, m2[:])
+	sk.sk.DecryptTo(m2[:], ct)
 
 	// (K'', r') = G(m' ‖ H(pk))
 	var kr2 [64]byte
@@ -180,7 +180,7 @@ func (sk *PrivateKey) DecapsulateTo(ct []byte, ss []byte) {
 
 	// c' = Kyber.CPAPKE.Enc(pk, m', r')
 	var ct2 [CiphertextSize]byte
-	sk.pk.EncryptTo(m2[:], kr2[32:], ct2[:])
+	sk.pk.EncryptTo(ct2[:], kr2[32:], m2[:])
 
 	// Compute H(c) and put in second slot of kr2, which will be (K'', H(c)).
 	h := sha3.New256()

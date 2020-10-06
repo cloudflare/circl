@@ -4,7 +4,7 @@
 // scheme Kyber768.CPAPKE as submitted to round2 of the NIST PQC competition
 // and described in
 //
-// https://pq-crystals.org/dilithium/data/dilithium-specification-round2.pdf
+// https://pq-crystals.org/kyber/data/kyber-specification-round2.pdf
 package kyber768
 
 import (
@@ -71,7 +71,7 @@ func NewKeyFromSeed(seed []byte) (*PublicKey, *PrivateKey) {
 //
 // This function panics if the lengths of pt, seed and ct are not
 // PlaintextSize, EncryptionSeedSize and CiphertextSize respectively.
-func (pk *PublicKey) EncryptTo(pt []byte, seed []byte, ct []byte) {
+func (pk *PublicKey) EncryptTo(ct []byte, pt []byte, seed []byte) {
 	if len(pt) != PlaintextSize {
 		panic("pt must be of length PlaintextSize")
 	}
@@ -81,7 +81,7 @@ func (pk *PublicKey) EncryptTo(pt []byte, seed []byte, ct []byte) {
 	if len(seed) != EncryptionSeedSize {
 		panic("seed must be of length EncryptionSeedSize")
 	}
-	(*internal.PublicKey)(pk).EncryptTo(pt, seed, ct)
+	(*internal.PublicKey)(pk).EncryptTo(ct, pt, seed)
 }
 
 // DecryptTo decrypts message ct for the private key and writes the
@@ -89,14 +89,14 @@ func (pk *PublicKey) EncryptTo(pt []byte, seed []byte, ct []byte) {
 //
 // This function panics if the lengths of ct and pt are not
 // CiphertextSize and PlaintextSize respectively.
-func (sk *PrivateKey) DecryptTo(ct []byte, pt []byte) {
+func (sk *PrivateKey) DecryptTo(pt []byte, ct []byte) {
 	if len(pt) != PlaintextSize {
 		panic("pt must be of length PlaintextSize")
 	}
 	if len(ct) != CiphertextSize {
 		panic("ct must be of length CiphertextSize")
 	}
-	(*internal.PrivateKey)(sk).DecryptTo(ct, pt)
+	(*internal.PrivateKey)(sk).DecryptTo(pt, ct)
 }
 
 // Packs pk into the given buffer.

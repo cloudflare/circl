@@ -245,6 +245,8 @@ func (p *Poly) Decompress(m []byte, d int) {
 
 			idx += 11
 		}
+	default:
+		panic("unsupported d")
 	}
 }
 
@@ -337,5 +339,7 @@ func (p *Poly) CompressTo(m []byte, d int) {
 			m[idx+10] = byte(t[7] >> 3)
 			idx += 11
 		}
+	default:
+		panic("unsupported d")
 	}
 }
