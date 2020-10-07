@@ -108,7 +108,7 @@ func GenerateKey(rand io.Reader) (*PublicKey, *PrivateKey, error) {
 // and EncapsulationSeedSize respectively.
 //
 // seed may be nil, in which case crypto/rand.Reader is used to generate one.
-func (pk *PublicKey) EncapsulateTo(ss []byte, ct []byte, seed []byte) {
+func (pk *PublicKey) EncapsulateTo(ct, ss []byte, seed []byte) {
 	if seed == nil {
 		seed := make([]byte, EncapsulationSeedSize)
 		cryptoRand.Read(seed[:])
@@ -158,7 +158,7 @@ func (pk *PublicKey) EncapsulateTo(ss []byte, ct []byte, seed []byte) {
 //
 // Panics if ct or ss are not of length CiphertextSize and SharedKeySize
 // respectively.
-func (sk *PrivateKey) DecapsulateTo(ct []byte, ss []byte) {
+func (sk *PrivateKey) DecapsulateTo(ss, ct []byte) {
 	if len(ct) != CiphertextSize {
 		panic("ct must be of length CiphertextSize")
 	}
@@ -342,7 +342,7 @@ func (*scheme) Encapsulate(pk kem.PublicKey) (ct []byte, ss []byte) {
 	if !ok {
 		panic(kem.ErrTypeMismatch)
 	}
-	pub.EncapsulateTo(ss, ct, nil)
+	pub.EncapsulateTo(ct, ss, nil)
 	return
 }
 
@@ -356,7 +356,7 @@ func (*scheme) Decapsulate(sk kem.PrivateKey, ct []byte) []byte {
 		panic(kem.ErrTypeMismatch)
 	}
 	ss := make([]byte, SharedKeySize)
-	priv.DecapsulateTo(ct, ss)
+	priv.DecapsulateTo(ss, ct)
 	return ss
 }
 
