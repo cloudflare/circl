@@ -27,7 +27,7 @@ const (
 	EncapsulationSeedSize = 32
 
 	// Size of the established shared key.
-	SharedKeySize = 64
+	SharedKeySize = 32
 
 	// Size of the encapsulated shared key.
 	CiphertextSize = cpapke.CiphertextSize
@@ -141,7 +141,7 @@ func (pk *PublicKey) EncapsulateTo(ct, ss []byte, seed []byte) {
 	// Compute H(c) and put in second slot of kr, which will be (K', H(c)).
 	h.Reset()
 	h.Write(ct[:CiphertextSize])
-	h.Sum(kr[32:])
+	h.Sum(kr[32:32])
 
 	// K = KDF(K' ‖ H(c))
 	kdf := sha3.NewShake256()
@@ -181,7 +181,7 @@ func (sk *PrivateKey) DecapsulateTo(ss, ct []byte) {
 	// Compute H(c) and put in second slot of kr2, which will be (K'', H(c)).
 	h := sha3.New256()
 	h.Write(ct[:CiphertextSize])
-	h.Sum(kr2[32:])
+	h.Sum(kr2[32:32])
 
 	// Replace K'' by  z in the first slot of kr2 if c ≠ c'.
 	subtle.ConstantTimeCopy(
@@ -265,12 +265,13 @@ type scheme struct{}
 
 var Scheme kem.Scheme = &scheme{}
 
-func (*scheme) Name() string        { return "Kyber512" }
-func (*scheme) PublicKeySize() int  { return PublicKeySize }
-func (*scheme) PrivateKeySize() int { return PrivateKeySize }
-func (*scheme) SeedSize() int       { return KeySeedSize }
-func (*scheme) SharedKeySize() int  { return SharedKeySize }
-func (*scheme) CiphertextSize() int { return CiphertextSize }
+func (*scheme) Name() string               { return "Kyber512" }
+func (*scheme) PublicKeySize() int         { return PublicKeySize }
+func (*scheme) PrivateKeySize() int        { return PrivateKeySize }
+func (*scheme) SeedSize() int              { return KeySeedSize }
+func (*scheme) SharedKeySize() int         { return SharedKeySize }
+func (*scheme) CiphertextSize() int        { return CiphertextSize }
+func (*scheme) EncapsulationSeedSize() int { return EncapsulationSeedSize }
 
 func (sk *PrivateKey) Scheme() kem.Scheme { return Scheme }
 func (pk *PublicKey) Scheme() kem.Scheme  { return Scheme }
@@ -339,6 +340,23 @@ func (*scheme) Encapsulate(pk kem.PublicKey) (ct []byte, ss []byte) {
 		panic(kem.ErrTypeMismatch)
 	}
 	pub.EncapsulateTo(ct, ss, nil)
+	return
+}
+
+func (*scheme) EncapsulateDeterministically(pk kem.PublicKey, seed []byte) (
+	ct []byte, ss []byte) {
+	if len(seed) != EncapsulationSeedSize {
+		panic(kem.ErrSeedSize)
+	}
+
+	ct = make([]byte, CiphertextSize)
+	ss = make([]byte, SharedKeySize)
+
+	pub, ok := pk.(*PublicKey)
+	if !ok {
+		panic(kem.ErrTypeMismatch)
+	}
+	pub.EncapsulateTo(ct, ss, seed)
 	return
 }
 

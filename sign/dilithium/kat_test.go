@@ -4,69 +4,12 @@ package dilithium
 // See PQCsignKAT_sign.c and randombytes.c in the reference implementation.
 
 import (
-	"crypto/aes"
 	"crypto/sha256"
 	"fmt"
 	"testing"
+
+	"github.com/cloudflare/circl/internal/nist"
 )
-
-// See NIST's PQCgenKAT.c.
-type DRBG struct {
-	key [32]byte
-	v   [16]byte
-}
-
-func (g *DRBG) incV() {
-	for j := 15; j >= 0; j-- {
-		if g.v[j] == 255 {
-			g.v[j] = 0
-		} else {
-			g.v[j]++
-			break
-		}
-	}
-}
-
-// AES256_CTR_DRBG_Update(pd, &g.key, &g.v).
-func (g *DRBG) update(pd *[48]byte) {
-	var buf [48]byte
-	b, _ := aes.NewCipher(g.key[:])
-	for i := 0; i < 3; i++ {
-		g.incV()
-		b.Encrypt(buf[i*16:(i+1)*16], g.v[:])
-	}
-	if pd != nil {
-		for i := 0; i < 48; i++ {
-			buf[i] ^= pd[i]
-		}
-	}
-	copy(g.key[:], buf[:32])
-	copy(g.v[:], buf[32:])
-}
-
-// randombyte_init(seed, NULL, 256).
-func NewDRBG(seed *[48]byte) (g DRBG) {
-	g.update(seed)
-	return
-}
-
-// randombytes.
-func (g *DRBG) Fill(x []byte) {
-	var block [16]byte
-
-	b, _ := aes.NewCipher(g.key[:])
-	for len(x) > 0 {
-		g.incV()
-		b.Encrypt(block[:], g.v[:])
-		if len(x) < 16 {
-			copy(x[:], block[:len(x)])
-			break
-		}
-		copy(x[:], block[:])
-		x = x[16:]
-	}
-	g.update(nil)
-}
 
 func TestPQCgenKATSign(t *testing.T) {
 	// From SHA256SUMS in the reference implementation.
@@ -92,7 +35,7 @@ func testPQCgenKATSign(t *testing.T, name, expected string) {
 		seed[i] = byte(i)
 	}
 	f := sha256.New()
-	g := NewDRBG(&seed)
+	g := nist.NewDRBG(&seed)
 	fmt.Fprintf(f, "# %s\n\n", name)
 	for i := 0; i < 100; i++ {
 		mlen := 33 * (i + 1)
@@ -103,7 +46,7 @@ func testPQCgenKATSign(t *testing.T, name, expected string) {
 		fmt.Fprintf(f, "seed = %X\n", seed)
 		fmt.Fprintf(f, "mlen = %d\n", mlen)
 		fmt.Fprintf(f, "msg = %X\n", msg)
-		g2 := NewDRBG(&seed)
+		g2 := nist.NewDRBG(&seed)
 		g2.Fill(eseed[:])
 		pk, sk := mode.NewKeyFromExpandedSeed(&eseed)
 		fmt.Fprintf(f, "pk = %X\n", pk.Bytes())
