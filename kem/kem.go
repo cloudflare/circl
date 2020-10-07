@@ -67,11 +67,21 @@ type Scheme interface {
 	// Deterministicallly derives a keypair from a seed.  If you're unsure,
 	// you're better off using GenerateKey().
 	//
-	// Panics if seed is not of length SeedSize()
+	// Panics if seed is not of length SeedSize().
 	DeriveKey(seed []byte) (PublicKey, PrivateKey)
 
 	// Size of seed used in DeriveKey
 	SeedSize() int
+
+	// EncapsulateDeterministically generates a shared key ss for the public
+	// key deterministically from the given seed and encapsulates it into
+	// a ciphertext ct.  If unsure, you're better off using Encapsulate().
+	//
+	// Panics if seed is not of length EncapsulationSeedSize().
+	EncapsulateDeterministically(pk PublicKey, seed []byte) (ct, ss []byte)
+
+	// Size of seed used in EncapsulateDeterministically().
+	EncapsulationSeedSize() int
 }
 
 var (
