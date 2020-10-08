@@ -75,11 +75,7 @@ func TestServerEvaluation(t *testing.T) {
 		t.Fatal("invalid blinding of client: " + err.Error())
 	}
 
-	eval, err := srv.Evaluate(bToken)
-	if err != nil {
-		t.Fatal("invalid evaluation of server: " + err.Error())
-	}
-
+	eval := srv.Evaluate(bToken)
 	if eval == nil {
 		t.Fatal("invalid evaluation of server: no evaluation.")
 	}
@@ -104,11 +100,7 @@ func TestClientUnblind(t *testing.T) {
 		t.Fatal("invalid blinding of client: " + err.Error())
 	}
 
-	eval, err := srv.Evaluate(bToken)
-	if err != nil {
-		t.Fatal("invalid evaluation of server: " + err.Error())
-	}
-
+	eval := srv.Evaluate(bToken)
 	if eval == nil {
 		t.Fatal("invalid evaluation of server: no evaluation.")
 	}
@@ -142,13 +134,9 @@ func TestClientFinalize(t *testing.T) {
 		t.Fatal("invalid blinding of client: " + err.Error())
 	}
 
-	eval, err := srv.Evaluate(bToken)
-	if err != nil {
-		t.Fatal("invalid evaluation of server: " + err.Error())
-	}
-
+	eval := srv.Evaluate(bToken)
 	if eval == nil {
-		t.Fatal("invalid evaluate of server: no evaluation.")
+		t.Fatal("invalid evaluation of server: no evaluation")
 	}
 
 	iToken, err := client.Unblind(token, eval)

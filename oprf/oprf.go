@@ -91,7 +91,7 @@ type Server struct {
 // TODO: add FullEvaluate
 type ServerContext interface {
 	// Evaluate evaluates the token.
-	Evaluate(b BlindToken) (*Evaluation, error)
+	Evaluate(b BlindToken) *Evaluation
 }
 
 func generateCtx(suiteID uint16) string {
@@ -106,10 +106,7 @@ func generateKeys(suite *group.Ciphersuite) (*KeyPair, error) {
 		return nil, err
 	}
 
-	pubK, err := suite.ScalarMultBase(privK)
-	if err != nil {
-		return nil, err
-	}
+	pubK := suite.ScalarMultBase(privK)
 
 	return &KeyPair{pubK, privK}, nil
 }
@@ -159,25 +156,15 @@ func NewServer(suiteID uint16) (*Server, error) {
 }
 
 // Evaluate creates an evaluation of the blided token.
-func (s *Server) Evaluate(b BlindToken) (*Evaluation, error) {
+func (s *Server) Evaluate(b BlindToken) *Evaluation {
 	p := group.NewPoint(s.suite)
-	err := p.Deserialize(b)
-	if err != nil {
-		return nil, err
-	}
+	p.Deserialize(b)
 
-	z, err := p.ScalarMult(s.K.PrivK)
-	if err != nil {
-		return nil, err
-	}
-
-	ser, err := z.Serialize()
-	if err != nil {
-		return nil, err
-	}
+	z := p.ScalarMult(s.K.PrivK)
+	ser := z.Serialize()
 
 	eval := &Evaluation{ser}
-	return eval, nil
+	return eval
 }
 
 // NewClient creates a new instantiation of a Client.
@@ -208,15 +195,8 @@ func (c *Client) Blind(in []byte) (*Token, BlindToken, error) {
 		return nil, nil, errors.New("failed at blinding")
 	}
 
-	t, err := p.ScalarMult(r)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	bToken, err := t.Serialize()
-	if err != nil {
-		return nil, nil, err
-	}
+	t := p.ScalarMult(r)
+	bToken := t.Serialize()
 
 	token := &Token{in, r}
 	return token, bToken, nil
@@ -225,23 +205,13 @@ func (c *Client) Blind(in []byte) (*Token, BlindToken, error) {
 // Unblind unblinds the server response.
 func (c *Client) Unblind(t *Token, e *Evaluation) (IssuedToken, error) {
 	p := group.NewPoint(c.suite)
-	err := p.Deserialize(e.element)
-	if err != nil {
-		return nil, err
-	}
+	p.Deserialize(e.element)
 
 	r := t.blind
 	rInv := r.Inv()
 
-	tt, err := p.ScalarMult(rInv)
-	if err != nil {
-		return nil, err
-	}
-
-	iToken, err := tt.Serialize()
-	if err != nil {
-		return nil, err
-	}
+	tt := p.ScalarMult(rInv)
+	iToken := tt.Serialize()
 
 	return IssuedToken(iToken), nil
 }

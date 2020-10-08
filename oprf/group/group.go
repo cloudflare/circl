@@ -1,7 +1,6 @@
 package group
 
 import (
-	"errors"
 	"math/big"
 )
 
@@ -24,14 +23,14 @@ type Element interface {
 
 	// Performs a scalar multiplication of the Point with some scalar
 	// input
-	ScalarMult(*Scalar) (*Point, error)
+	ScalarMult(*Scalar) *Point
 
 	// Performs the addition operation on the calling Point object
 	// along with a separate Point provided as input
-	Add(*Point) (*Point, error)
+	Add(*Point) *Point
 
 	// Performs the negation operation on the calling Point object
-	Neg() (*Point, error)
+	Neg() *Point
 
 	// Serializes the Point into a byte slice
 	Serialize() ([]byte, error)
@@ -55,48 +54,32 @@ func (p *Point) IsValid() bool {
 }
 
 // ScalarMult multiplies a Point by the provided Scalar value
-func (p *Point) ScalarMult(s *Scalar) (*Point, error) {
-	if !p.IsValid() {
-		return nil, errors.New("invalid point")
-	}
-
+func (p *Point) ScalarMult(s *Scalar) *Point {
 	q := NewPoint(p.c)
 	q.x, q.y = p.c.curve.ScalarMult(p.x, p.y, s.Serialize())
 
-	return q, nil
+	return q
 }
 
 // Add performs the addition operation on the calling Point object
 // along with a separate Point provided as input
-func (p *Point) Add(q *Point) (*Point, error) {
-	if !p.IsValid() || !q.IsValid() {
-		return nil, errors.New("invalid point")
-	}
-
+func (p *Point) Add(q *Point) *Point {
 	r := NewPoint(p.c)
 	r.x, r.y = p.c.curve.Add(p.x, p.y, q.x, q.y)
 
-	return r, nil
+	return r
 }
 
 // Neg performs the negation operation on the calling Point object
 // TODO: check opaque to see what is needed
-func (p *Point) Neg() (*Point, error) {
-	if !p.IsValid() {
-		return nil, errors.New("invalid point")
-	}
-
+func (p *Point) Neg() *Point {
 	r := NewPoint(p.c)
-	return r, nil
+	return r
 }
 
 // Serialize the Point into a byte slice.
 // TODO: does not handle compressed points.. do we need it?
-func (p *Point) Serialize() ([]byte, error) {
-	if !p.IsValid() {
-		return nil, errors.New("invalid point")
-	}
-
+func (p *Point) Serialize() []byte {
 	x, y := p.x.Bytes(), p.y.Bytes()
 
 	// append zeroes to the front if the bytes are not filled up
@@ -106,29 +89,19 @@ func (p *Point) Serialize() ([]byte, error) {
 	b := append(x, y...)
 	tag := 4
 
-	return append([]byte{byte(tag)}, b...), nil
+	return append([]byte{byte(tag)}, b...)
 }
 
 // Deserialize an octet-string into a valid Point object.
-func (p *Point) Deserialize(in []byte) error {
+func (p *Point) Deserialize(in []byte) {
 	byteLength := p.c.ByteLength()
 
 	p.x = new(big.Int).SetBytes(in[1 : byteLength+1])
 	p.y = new(big.Int).SetBytes(in[byteLength+1:])
-
-	if !p.IsValid() {
-		return errors.New("invalid point")
-	}
-
-	return nil
 }
 
 // Equal returns a bool indicating whether two Points are equal.
 func (p *Point) Equal(q *Point) bool {
-	if !p.IsValid() || !q.IsValid() {
-		return false
-	}
-
 	return (p.x.Cmp(q.x) == 0) && (p.y.Cmp(q.y) == 0)
 }
 

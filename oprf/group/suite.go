@@ -58,7 +58,7 @@ type Suite interface {
 
 	// Performs a scalar multiplication of the Generator with some scalar
 	// input
-	ScalarMultBase(*Scalar) (*Point, error)
+	ScalarMultBase(*Scalar) *Point
 
 	// Returns the ByteLength of objects associated with the Ciphersuite
 	ByteLength() int
@@ -182,7 +182,7 @@ func (c *Ciphersuite) RandomScalar() (*Scalar, error) {
 
 // ScalarMultBase performs a scalar multiplication of the Generator with some scalar
 // input
-func (c *Ciphersuite) ScalarMultBase(s *Scalar) (*Point, error) {
+func (c *Ciphersuite) ScalarMultBase(s *Scalar) *Point {
 	gen := c.Generator()
 
 	return gen.ScalarMult(s)
