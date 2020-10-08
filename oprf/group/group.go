@@ -14,7 +14,7 @@ type Point struct {
 
 // Element is the interface that represents points in a given
 // Ciphersuite instantiation.
-type Element interface {
+type element interface {
 	// Returns a bool indicating that the Point is valid
 	IsValid() bool
 
@@ -111,9 +111,9 @@ type Scalar struct {
 	x *big.Int
 }
 
-// FieldElement is the interface that represents scalars in a given
+// scalar is the interface that represents scalars in a given
 // Ciphersuite instantiation.
-type FieldElement interface {
+type scalar interface {
 	// Sets the Scalar to its multiplicative inverse.
 	Inv(*Scalar) *Scalar
 

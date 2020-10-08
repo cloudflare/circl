@@ -50,16 +50,10 @@ type Evaluation struct {
 	element []byte
 }
 
-// PublicKey is a struct representing a public key.
-type PublicKey *group.Point
-
-// PrivateKey is a struct representing a private key.
-type PrivateKey *group.Scalar
-
 // KeyPair is an struct containing a public and private key.
 type KeyPair struct {
-	PubK  PublicKey
-	PrivK PrivateKey
+	PubK  *group.Point
+	PrivK *group.Scalar
 }
 
 // Client is a representation of a Client during protocol execution.
@@ -161,6 +155,7 @@ func (s *Server) Evaluate(b BlindToken) *Evaluation {
 	p.Deserialize(b)
 
 	z := p.ScalarMult(s.K.PrivK)
+
 	ser := z.Serialize()
 
 	eval := &Evaluation{ser}
