@@ -14,7 +14,7 @@ type Point struct {
 
 // Element is the interface that represents points in a given
 // Ciphersuite instantiation.
-type element interface {
+type element interface { //nolint:deadcode
 	// Returns a bool indicating that the Point is valid
 	IsValid() bool
 
@@ -113,7 +113,7 @@ type Scalar struct {
 
 // scalar is the interface that represents scalars in a given
 // Ciphersuite instantiation.
-type scalar interface {
+type scalar interface { //nolint:deadcode
 	// Sets the Scalar to its multiplicative inverse.
 	Inv(*Scalar) *Scalar
 
