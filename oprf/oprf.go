@@ -217,22 +217,22 @@ func (c *Client) Finalize(t *Token, issuedT IssuedToken, info []byte) []byte {
 
 	lenBuf := make([]byte, 2)
 	binary.BigEndian.PutUint16(lenBuf, uint16(len(t.data)))
-	h.Write(lenBuf) //nolint:errcheck
-	h.Write(t.data) //nolint:errcheck
+	_, _ = h.Write(lenBuf)
+	_, _ = h.Write(t.data)
 
 	binary.BigEndian.PutUint16(lenBuf, uint16(len(issuedT)))
-	h.Write(lenBuf)  //nolint:errcheck
-	h.Write(issuedT) //nolint:errcheck
+	_, _ = h.Write(lenBuf)
+	_, _ = h.Write(issuedT)
 
 	binary.BigEndian.PutUint16(lenBuf, uint16(len(info)))
-	h.Write(lenBuf) //nolint:errcheck
-	h.Write(info)   //nolint:errcheck
+	_, _ = h.Write(lenBuf)
+	_, _ = h.Write(info)
 
 	dst := []byte("RFCXXXX-Finalize")
 	dst = append(dst, c.ctx...)
 	binary.BigEndian.PutUint16(lenBuf, uint16(len(dst)))
-	h.Write(lenBuf) //nolint:errcheck
-	h.Write(dst)    //nolint:errcheck
+	_, _ = h.Write(lenBuf)
+	_, _ = h.Write(dst)
 
 	return h.Sum(nil)
 }
