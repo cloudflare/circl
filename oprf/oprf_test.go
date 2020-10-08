@@ -1,20 +1,18 @@
-package oprf
+package oprf_test
 
 import (
 	"testing"
+
+	"github.com/cloudflare/circl/oprf"
 )
 
 func TestServerSetUp(t *testing.T) {
-	srv, err := NewServer(OPRFP256)
+	srv, err := oprf.NewServer(oprf.OPRFP256)
 	if err != nil {
 		t.Fatal("invalid setup of server: " + err.Error())
 	}
 	if srv == nil {
 		t.Fatal("invalid setup of server: no server.")
-	}
-
-	if srv.ctx != "0003" {
-		t.Fatal("invalid setup of server: no context")
 	}
 
 	if srv.K == nil {
@@ -23,21 +21,17 @@ func TestServerSetUp(t *testing.T) {
 }
 
 func TestClientSetUp(t *testing.T) {
-	client, err := NewClient(OPRFP256)
+	client, err := oprf.NewClient(oprf.OPRFP256)
 	if err != nil {
 		t.Fatal("invalid setup of client: " + err.Error())
 	}
 	if client == nil {
 		t.Fatal("invalid setup of client: no server.")
 	}
-
-	if client.ctx != "0003" {
-		t.Fatal("invalid setup of client: no context")
-	}
 }
 
 func TestClientBlind(t *testing.T) {
-	client, err := NewClient(OPRFP256)
+	client, err := oprf.NewClient(oprf.OPRFP256)
 	if err != nil {
 		t.Fatal("invalid setup of client: " + err.Error())
 	}
@@ -57,7 +51,7 @@ func TestClientBlind(t *testing.T) {
 }
 
 func TestServerEvaluation(t *testing.T) {
-	srv, err := NewServer(OPRFP256)
+	srv, err := oprf.NewServer(oprf.OPRFP256)
 	if err != nil {
 		t.Fatal("invalid setup of server: " + err.Error())
 	}
@@ -65,7 +59,7 @@ func TestServerEvaluation(t *testing.T) {
 		t.Fatal("invalid setup of server: no server.")
 	}
 
-	client, err := NewClient(OPRFP256)
+	client, err := oprf.NewClient(oprf.OPRFP256)
 	if err != nil {
 		t.Fatal("invalid setup of client: " + err.Error())
 	}
@@ -82,7 +76,7 @@ func TestServerEvaluation(t *testing.T) {
 }
 
 func TestClientUnblind(t *testing.T) {
-	srv, err := NewServer(OPRFP256)
+	srv, err := oprf.NewServer(oprf.OPRFP256)
 	if err != nil {
 		t.Fatal("invalid setup of server: " + err.Error())
 	}
@@ -90,7 +84,7 @@ func TestClientUnblind(t *testing.T) {
 		t.Fatal("invalid setup of server: no server.")
 	}
 
-	client, err := NewClient(OPRFP256)
+	client, err := oprf.NewClient(oprf.OPRFP256)
 	if err != nil {
 		t.Fatal("invalid setup of client: " + err.Error())
 	}
@@ -116,7 +110,7 @@ func TestClientUnblind(t *testing.T) {
 }
 
 func TestClientFinalize(t *testing.T) {
-	srv, err := NewServer(OPRFP256)
+	srv, err := oprf.NewServer(oprf.OPRFP256)
 	if err != nil {
 		t.Fatal("invalid setup of server: " + err.Error())
 	}
@@ -124,7 +118,7 @@ func TestClientFinalize(t *testing.T) {
 		t.Fatal("invalid setup of server: no server.")
 	}
 
-	client, err := NewClient(OPRFP256)
+	client, err := oprf.NewClient(oprf.OPRFP256)
 	if err != nil {
 		t.Fatal("invalid setup of client: " + err.Error())
 	}
