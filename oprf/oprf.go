@@ -52,7 +52,7 @@ type Evaluation struct {
 
 // KeyPair is an struct containing a public and private key.
 type KeyPair struct {
-	PubK  *group.Point
+	PubK  *group.Element
 	PrivK *group.Scalar
 }
 
@@ -151,7 +151,7 @@ func NewServer(suiteID uint16) (*Server, error) {
 
 // Evaluate creates an evaluation of the blided token.
 func (s *Server) Evaluate(b BlindToken) *Evaluation {
-	p := group.NewPoint(s.suite)
+	p := group.NewElement(s.suite)
 	p.Deserialize(b)
 
 	z := p.ScalarMult(s.K.PrivK)
@@ -199,7 +199,7 @@ func (c *Client) Blind(in []byte) (*Token, BlindToken, error) {
 
 // Unblind unblinds the server response.
 func (c *Client) Unblind(t *Token, e *Evaluation) (IssuedToken, error) {
-	p := group.NewPoint(c.suite)
+	p := group.NewElement(c.suite)
 	p.Deserialize(e.element)
 
 	r := t.blind

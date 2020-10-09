@@ -38,14 +38,14 @@ type Suite interface {
 	Name() string
 
 	// Returns the canonical (fixed) generator for defined group
-	Generator() *Point
+	Generator() *Element
 
 	// Returns the order of the canonical generator in the group.
 	Order() *Scalar
 
 	// Performs a transformation to encode bytes as a Element object in the
 	// group.
-	HashToGroup([]byte) (*Point, error)
+	HashToGroup([]byte) (*Element, error)
 
 	// Performs a transformation to encode bytes as a Scalar object in the
 	// appropriate group.
@@ -58,7 +58,7 @@ type Suite interface {
 
 	// Performs a scalar multiplication of the Generator with some scalar
 	// input
-	ScalarMultBase(*Scalar) *Point
+	ScalarMultBase(*Scalar) *Element
 
 	// Returns the ByteLength of objects associated with the Ciphersuite
 	ByteLength() int
@@ -70,8 +70,8 @@ func (c *Ciphersuite) Name() string {
 }
 
 // Generator returns the canonical (fixed) generator for the defined group.
-func (c *Ciphersuite) Generator() *Point {
-	return &Point{c, c.curve.Params().Gx, c.curve.Params().Gy}
+func (c *Ciphersuite) Generator() *Element {
+	return &Element{c, c.curve.Params().Gx, c.curve.Params().Gy}
 }
 
 // Order returns the order of the canonical generator in the group.
@@ -103,7 +103,7 @@ func getH2CSuite(c *Ciphersuite) (HashToPoint, error) {
 
 // HashToPoint produces a new point by hashing the input message.
 type HashToPoint interface {
-	Hash(msg []byte) (*Point, error)
+	Hash(msg []byte) (*Element, error)
 }
 
 type eccHasher struct {
@@ -111,12 +111,12 @@ type eccHasher struct {
 	hasher h2c.HashToPoint
 }
 
-func (h eccHasher) Hash(in []byte) (*Point, error) {
+func (h eccHasher) Hash(in []byte) (*Element, error) {
 	q := h.hasher.Hash(in)
 	x := q.X().Polynomial()
 	y := q.Y().Polynomial()
 
-	p := &Point{h.suite, new(big.Int), new(big.Int)}
+	p := &Element{h.suite, new(big.Int), new(big.Int)}
 	p.x.Set(x[0])
 	p.y.Set(y[0])
 
@@ -130,7 +130,7 @@ func (h eccHasher) Hash(in []byte) (*Point, error) {
 
 // HashToGroup performs a transformation to encode bytes as a Element object in the
 // group.
-func (c *Ciphersuite) HashToGroup(in []byte) (*Point, error) {
+func (c *Ciphersuite) HashToGroup(in []byte) (*Element, error) {
 	hasher, err := getH2CSuite(c)
 	if err != nil {
 		return nil, err
@@ -182,7 +182,7 @@ func (c *Ciphersuite) RandomScalar() (*Scalar, error) {
 
 // ScalarMultBase performs a scalar multiplication of the Generator with some scalar
 // input
-func (c *Ciphersuite) ScalarMultBase(s *Scalar) *Point {
+func (c *Ciphersuite) ScalarMultBase(s *Scalar) *Element {
 	gen := c.Generator()
 
 	return gen.ScalarMult(s)
