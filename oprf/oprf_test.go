@@ -15,7 +15,7 @@ func TestServerSetUp(t *testing.T) {
 		t.Fatal("invalid setup of server: no server.")
 	}
 
-	if srv.K == nil {
+	if srv.Keys == nil {
 		t.Fatal("invalid setup of server: no keypair")
 	}
 }

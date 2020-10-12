@@ -9,10 +9,6 @@ import (
 )
 
 const (
-	// OPRFCurve25519 is the constant to represent the OPRF curve25519 with SHA-512 (ELL2-RO) group.
-	OPRFCurve25519 uint16 = 0x0001
-	// OPRFCurve448 is the constant to represent the OPRF curve448 with SHA-512 (ELL2-RO) group.
-	OPRFCurve448 uint16 = 0x0002
 	// OPRFP256 is the constant to represent the OPRF P-256 with SHA-512 (SSWU-RO) group.
 	OPRFP256 uint16 = 0x0003
 	// OPRFP384 is the constant to represent the OPRF P-384 with SHA-512 (SSWU-RO) group.
@@ -78,7 +74,7 @@ type ClientContext interface {
 type Server struct {
 	suite *group.Ciphersuite
 	ctx   string
-	K     *KeyPair
+	Keys  *KeyPair
 }
 
 // ServerContext implements the functionality of a Server.
@@ -88,20 +84,14 @@ type ServerContext interface {
 }
 
 func generateCtx(suiteID uint16) string {
-	ctx := OPRFMode + fmt.Sprintf("%x", suiteID)
-
-	return ctx
+	return OPRFMode + fmt.Sprintf("%x", suiteID)
 }
 
-func generateKeys(suite *group.Ciphersuite) (*KeyPair, error) {
-	privK, err := suite.RandomScalar()
-	if err != nil {
-		return nil, err
-	}
-
+func generateKeyPair(suite *group.Ciphersuite) *KeyPair {
+	privK := suite.RandomScalar()
 	pubK := suite.ScalarMultBase(privK)
 
-	return &KeyPair{pubK, privK}, nil
+	return &KeyPair{pubK, privK}
 }
 
 func suiteFromID(suiteID uint16) (*group.Ciphersuite, error) {
@@ -134,15 +124,12 @@ func NewServer(suiteID uint16) (*Server, error) {
 
 	ctx := generateCtx(suiteID)
 
-	keyPair, err := generateKeys(suite)
-	if err != nil {
-		return nil, err
-	}
+	keyPair := generateKeyPair(suite)
 
 	server := &Server{}
 	server.suite = suite
 	server.ctx = ctx
-	server.K = keyPair
+	server.Keys = keyPair
 
 	return server, nil
 }
@@ -152,12 +139,11 @@ func (s *Server) Evaluate(b BlindToken) *Evaluation {
 	p := group.NewElement(s.suite)
 	p.Deserialize(b)
 
-	z := p.ScalarMult(s.K.PrivK)
+	z := p.ScalarMult(s.Keys.PrivK)
 
 	ser := z.Serialize()
 
-	eval := &Evaluation{ser}
-	return eval
+	return &Evaluation{ser}
 }
 
 // NewClient creates a new instantiation of a Client.
@@ -173,15 +159,15 @@ func NewClient(suiteID uint16) (*Client, error) {
 	client.suite = suite
 	client.ctx = ctx
 
-	return client, nil
+	return &Client{
+		suite: suite,
+		ctx:   ctx,
+	}, nil
 }
 
 // Blind generates a token and blinded data.
 func (c *Client) Blind(in []byte) (*Token, BlindToken, error) {
-	r, err := c.suite.RandomScalar()
-	if err != nil {
-		return nil, nil, errors.New("failed at blinding")
-	}
+	r := c.suite.RandomScalar()
 
 	p, err := c.suite.HashToGroup(in)
 	if err != nil {

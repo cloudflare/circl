@@ -54,7 +54,7 @@ type Suite interface {
 
 	// Samples a random scalar value from the field of scalars defined by the
 	// group order.
-	RandomScalar() (*Scalar, error)
+	RandomScalar() *Scalar
 
 	// Performs a scalar multiplication of the Generator with some scalar
 	// input
@@ -153,7 +153,7 @@ func (c *Ciphersuite) HashToScalar([]byte) (*Scalar, error) {
 // RandomScalar samples a random scalar value from the field of scalars defined by the
 // group order.
 // TODO: not constant time
-func (c *Ciphersuite) RandomScalar() (*Scalar, error) {
+func (c *Ciphersuite) RandomScalar() *Scalar {
 	N := c.Order()
 	bitLen := N.x.BitLen()
 	byteLen := (bitLen + 7) >> 3
@@ -163,7 +163,7 @@ func (c *Ciphersuite) RandomScalar() (*Scalar, error) {
 	for {
 		_, err := io.ReadFull(rand.Reader, buf)
 		if err != nil {
-			return nil, errors.New("scalar generation failed")
+			panic("scalar generation failed")
 		}
 		// Mask to account for field sizes that are not a whole number of bytes.
 		var mask = []byte{0xff, 0x1, 0x3, 0x7, 0xf, 0x1f, 0x3f, 0x7f}
@@ -177,7 +177,7 @@ func (c *Ciphersuite) RandomScalar() (*Scalar, error) {
 	}
 
 	x := new(big.Int).SetBytes(buf)
-	return &Scalar{c, x}, nil
+	return &Scalar{c, x}
 }
 
 // ScalarMultBase performs a scalar multiplication of the Generator with some scalar
