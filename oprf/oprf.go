@@ -82,7 +82,6 @@ type Server struct {
 }
 
 // ServerContext implements the functionality of a Server.
-// TODO: add FullEvaluate
 type ServerContext interface {
 	// Evaluate evaluates the token.
 	Evaluate(b BlindToken) *Evaluation
@@ -109,7 +108,6 @@ func suiteFromID(suiteID uint16) (*group.Ciphersuite, error) {
 	var err error
 	var suite *group.Ciphersuite
 
-	// TODO: add other suites
 	switch suiteID {
 	case OPRFP256:
 		suite, err = group.NewSuite("P-256")
