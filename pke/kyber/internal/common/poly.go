@@ -7,14 +7,14 @@ package common
 type Poly [N]int16
 
 // Sets p to a + b.  Does not normalize coefficients.
-func (p *Poly) Add(a, b *Poly) {
+func (p *Poly) addGeneric(a, b *Poly) {
 	for i := 0; i < N; i++ {
 		p[i] = a[i] + b[i]
 	}
 }
 
 // Sets p to a - b.  Does not normalize coefficients.
-func (p *Poly) Sub(a, b *Poly) {
+func (p *Poly) subGeneric(a, b *Poly) {
 	for i := 0; i < N; i++ {
 		p[i] = a[i] - b[i]
 	}

@@ -124,3 +124,57 @@ func TestMulHat(t *testing.T) {
 		}
 	}
 }
+
+func TestAddAgainstGeneric(t *testing.T) {
+    for k := 0; k < 1000; k++ {
+        var p1, p2, a, b Poly
+        a.RandAbsLeQ()
+        b.RandAbsLeQ()
+        p1.Add(&a, &b)
+        p2.addGeneric(&a, &b)
+        if p1 != p2 {
+            t.Fatalf("Add(%v, %v) = \n%v \n!= %v", a, b, p1, p2)
+        }
+    }
+}
+
+func BenchmarkAdd(b * testing.B) {
+    var p Poly
+    for i := 0; i < b.N; i++ {
+        p.Add(&p, &p)
+    }
+}
+
+func BenchmarkAddGeneric(b * testing.B) {
+    var p Poly
+    for i := 0; i < b.N; i++ {
+        p.addGeneric(&p, &p)
+    }
+}
+
+func TestSubAgainstGeneric(t *testing.T) {
+    for k := 0; k < 1000; k++ {
+        var p1, p2, a, b Poly
+        a.RandAbsLeQ()
+        b.RandAbsLeQ()
+        p1.Sub(&a, &b)
+        p2.subGeneric(&a, &b)
+        if p1 != p2 {
+            t.Fatalf("Sub(%v, %v) = \n%v \n!= %v", a, b, p1, p2)
+        }
+    }
+}
+
+func BenchmarkSub(b * testing.B) {
+    var p Poly
+    for i := 0; i < b.N; i++ {
+        p.Sub(&p, &p)
+    }
+}
+
+func BenchmarkSubGeneric(b * testing.B) {
+    var p Poly
+    for i := 0; i < b.N; i++ {
+        p.subGeneric(&p, &p)
+    }
+}
