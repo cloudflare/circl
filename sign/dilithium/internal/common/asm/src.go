@@ -724,7 +724,7 @@ func addAVX2() {
 			VMOVDQU(Mem{Base: bPtr, Disp: 32 * (8*j + i)}, b[i])
 		}
 		for i := 0; i < 8; i++ {
-			VPADDQ(a[i], b[i], b[i])
+			VPADDD(a[i], b[i], b[i])
 		}
 		for i := 0; i < 8; i++ {
 			VMOVDQU(b[i], Mem{Base: pPtr, Disp: 32 * (8*j + i)})
@@ -763,7 +763,7 @@ func subAVX2() {
 			VPSUBD(b[i], doubleQ, b[i])
 		}
 		for i := 0; i < 4; i++ {
-			VPADDQ(a[i], b[i], b[i])
+			VPADDD(a[i], b[i], b[i])
 		}
 		for i := 0; i < 4; i++ {
 			VMOVDQU(b[i], Mem{Base: pPtr, Disp: 32 * (4*j + i)})
