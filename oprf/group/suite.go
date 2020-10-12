@@ -155,7 +155,7 @@ func (c *Ciphersuite) HashToScalar([]byte) (*Scalar, error) {
 // TODO: not constant time
 func (c *Ciphersuite) RandomScalar() *Scalar {
 	N := c.Order()
-	bitLen := N.x.BitLen()
+	bitLen := N.X.BitLen()
 	byteLen := (bitLen + 7) >> 3
 	buf := make([]byte, byteLen)
 
@@ -170,7 +170,7 @@ func (c *Ciphersuite) RandomScalar() *Scalar {
 		buf[0] = buf[0] & mask[bitLen%8]
 
 		// Check if scalar is in the correct range.
-		if new(big.Int).SetBytes(buf).Cmp(N.x) >= 0 {
+		if new(big.Int).SetBytes(buf).Cmp(N.X) >= 0 {
 			continue
 		}
 		break
