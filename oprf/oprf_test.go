@@ -73,6 +73,10 @@ func TestServerEvaluation(t *testing.T) {
 	}
 
 	eval, err := srv.Evaluate(bToken)
+	if err != nil {
+		t.Fatal("invalid evaluation of server: " + err.Error())
+	}
+
 	if eval == nil {
 		t.Fatal("invalid evaluation of server: no evaluation.")
 	}
@@ -98,6 +102,9 @@ func TestClientUnblind(t *testing.T) {
 	}
 
 	eval, err := srv.Evaluate(bToken)
+	if err != nil {
+		t.Fatal("invalid evaluation of server: " + err.Error())
+	}
 	if eval == nil {
 		t.Fatal("invalid evaluation of server: no evaluation.")
 	}
@@ -132,6 +139,9 @@ func TestClientFinalize(t *testing.T) {
 	}
 
 	eval, err := srv.Evaluate(bToken)
+	if err != nil {
+		t.Fatal("invalid evaluation of server: " + err.Error())
+	}
 	if eval == nil {
 		t.Fatal("invalid evaluation of server: no evaluation")
 	}
@@ -183,8 +193,7 @@ func TestClientBlindVector(t *testing.T) {
 
 	// From the test vectors
 	testBToken, _ := hex.DecodeString("02fb7eadba79acefca3e5401e291f2face38f4f3c159e8d636b29f650d96dfc3f1")
-
-	if (bytes.Compare(testBToken[:], bToken[:])) != 0 {
+	if !bytes.Equal(testBToken[:], bToken[:]) {
 		t.Errorf("blind elements are not equal: vectorToken: %x blindToken: %x", testBToken[:], bToken[:])
 	}
 }
@@ -207,7 +216,7 @@ func TestServerEvaluationVector(t *testing.T) {
 
 	_, bToken := blindTest(client.suite, []byte{00})
 
-	eval, err := srv.Evaluate(bToken)
+	eval, _ := srv.Evaluate(bToken)
 	if eval == nil {
 		t.Fatal("invalid evaluation of server: no evaluation.")
 	}
@@ -215,7 +224,7 @@ func TestServerEvaluationVector(t *testing.T) {
 	// From the test vectors
 	testEval, _ := hex.DecodeString("02449231545a1770f3e3995e7a0f0a29a51995bf068c833dd1269295641e289cda")
 
-	if (bytes.Compare(testEval[:], eval.element[:])) != 0 {
+	if !bytes.Equal(testEval[:], eval.element[:]) {
 		t.Errorf("eval elements are not equal: vectorEval: %x eval: %x", testEval[:], eval.element[:])
 	}
 }
@@ -238,17 +247,17 @@ func TestClientUnblindVector(t *testing.T) {
 
 	token, bToken := blindTest(client.suite, []byte{00})
 
-	eval, err := srv.Evaluate(bToken)
+	eval, _ := srv.Evaluate(bToken)
 	if eval == nil {
 		t.Fatal("invalid evaluation of server: no evaluation.")
 	}
 
-	iToken, err := client.Unblind(token, eval)
+	iToken, _ := client.Unblind(token, eval)
 
 	// From the test vectors
 	testIToken, _ := hex.DecodeString("0277f2ded1d0cbbc9a71504f94dd0aa997709f7adb3368631392313164273eb340")
 
-	if (bytes.Compare(testIToken[:], iToken[:])) != 0 {
+	if !bytes.Equal(testIToken[:], iToken[:]) {
 		t.Errorf("unblind elements are not equal: vectorIToken: %x Issued Token: %x", testIToken[:], iToken[:])
 	}
 }
@@ -271,7 +280,7 @@ func TestClientFinalizeVector(t *testing.T) {
 
 	token, bToken := blindTest(client.suite, []byte{00})
 
-	eval, err := srv.Evaluate(bToken)
+	eval, _ := srv.Evaluate(bToken)
 	if eval == nil {
 		t.Fatal("invalid evaluation of server: no evaluation.")
 	}
@@ -290,7 +299,7 @@ func TestClientFinalizeVector(t *testing.T) {
 	info := []byte("test information")
 	h := client.Finalize(token, iToken, info)
 
-	if (bytes.Compare(testOutput[:], h[:])) != 0 {
+	if !bytes.Equal(testOutput[:], h[:]) {
 		t.Errorf("finalize elements are not equal: vectorHash: %x hash: %x", testOutput[:], h[:])
 	}
 }
