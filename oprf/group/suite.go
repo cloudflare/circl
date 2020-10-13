@@ -71,7 +71,7 @@ func (c *Ciphersuite) Name() string {
 
 // Generator returns the canonical (fixed) generator for the defined group.
 func (c *Ciphersuite) Generator() *Element {
-	return &Element{c, c.curve.Params().Gx, c.curve.Params().Gy}
+	return &Element{c, c.curve.Params().Gx, c.curve.Params().Gy, true}
 }
 
 // Order returns the order of the canonical generator in the group.
@@ -116,7 +116,7 @@ func (h eccHasher) Hash(in []byte) (*Element, error) {
 	x := q.X().Polynomial()
 	y := q.Y().Polynomial()
 
-	p := &Element{h.suite, new(big.Int), new(big.Int)}
+	p := &Element{h.suite, new(big.Int), new(big.Int), true}
 	p.x.Set(x[0])
 	p.y.Set(y[0])
 

@@ -1,20 +1,23 @@
 package group
 
 import (
+	"crypto/subtle"
+	"errors"
 	"math/big"
 )
 
 // Element is a representation of a group element. It has two coordinates of
 // *big.Int type.
 type Element struct {
-	c *Ciphersuite
-	x *big.Int
-	y *big.Int
+	c   *Ciphersuite
+	x   *big.Int
+	y   *big.Int
+	com bool // use compression when serialiazing, be default set to true
 }
 
 // NewElement generates a new point.
 func NewElement(c *Ciphersuite) *Element {
-	p := &Element{c, new(big.Int), new(big.Int)}
+	p := &Element{c, new(big.Int), new(big.Int), true}
 	return p
 }
 
@@ -56,18 +59,87 @@ func (p *Element) Serialize() []byte {
 	x = append(make([]byte, p.c.ByteLength()-len(x)), x...)
 	y = append(make([]byte, p.c.ByteLength()-len(y)), y...)
 
-	b := append(x, y...)
-	tag := 4
+	var b []byte
+	var tag int
+	if !p.com {
+		b = append(x, y...)
+		tag = 4
+	} else {
+		b = x
+		sign := Sgn0(p.y)
+		// select correct tag
+		e := int(Equals(sign, One).Int64())
+		tag = subtle.ConstantTimeSelect(e, 2, 3)
+	}
 
 	return append([]byte{byte(tag)}, b...)
 }
 
-// Deserialize an octet-string into a valid Element object.
-func (p *Element) Deserialize(in []byte) {
-	byteLength := p.c.ByteLength()
+// checkBytes checks that the number of bytes corresponds to the correct
+// curve type and serialization tag that is present
+func isCompressed(in []byte, expLen int) (bool, error) {
+	tag := in[0]
+	com := false
 
-	p.x = new(big.Int).SetBytes(in[1 : byteLength+1])
-	p.y = new(big.Int).SetBytes(in[byteLength+1:])
+	switch tag {
+	case 2, 3:
+		if expLen < len(in)-1 {
+			return false, errors.New("error deserializing group element")
+		}
+		com = true
+	case 4:
+		if expLen*2 < len(in)-1 {
+			return false, errors.New("error deserializing group element")
+		}
+	default:
+		return false, errors.New("error deserializing group element")
+	}
+
+	return com, nil
+}
+
+// Deserialize an octet-string into a valid Element object.
+func (p *Element) Deserialize(in []byte) error {
+	byteLen := p.c.ByteLength()
+
+	com, err := isCompressed(in, byteLen)
+	if err != nil {
+		return err
+	}
+
+	if !com {
+		p.x = new(big.Int).SetBytes(in[1 : byteLen+1])
+		p.y = new(big.Int).SetBytes(in[byteLen+1:])
+	} else {
+		order := p.c.curve.Params().P
+		var y2 *big.Int
+		x := new(big.Int).SetBytes(in[1:])
+
+		x2 := new(big.Int).Exp(x, Two, order)
+		x2a := new(big.Int).Add(x2, big.NewInt(-3))
+		x3 := new(big.Int).Mul(x2a, x)
+		x3ab := new(big.Int).Add(x3, p.c.curve.Params().B)
+		y2 = new(big.Int).Mod(x3ab, order)
+
+		sqrtExp := new(big.Int).Mod(new(big.Int).Mul(new(big.Int).Add(p.c.curve.Params().P, One), new(big.Int).ModInverse(big.NewInt(4), p.c.curve.Params().P)), p.c.curve.Params().P)
+
+		// construct y coordinate with correct sign
+		y := new(big.Int).Exp(y2, sqrtExp, order)
+		parity := Equals(big.NewInt(int64(in[0])), Two)
+		yParity := Equals(Sgn0(y), One)
+		y = cMov(new(big.Int).Mul(y, MinusOne), y, Equals(parity, yParity))
+
+		p.x = new(big.Int).Mod(x, order)
+		p.y = new(big.Int).Mod(y, order)
+
+		if !p.IsValid() {
+			return errors.New("invalid deserialization")
+		}
+
+		p.com = true
+	}
+
+	return nil
 }
 
 // Equal returns a bool indicating whether two Elements are equal.
