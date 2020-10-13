@@ -2,7 +2,6 @@ package oprf
 
 import (
 	"crypto/subtle"
-	"encoding/binary"
 	"errors"
 	"math/big"
 
@@ -224,27 +223,7 @@ func (c *Client) Finalize(t *Token, e *Evaluation, info []byte) (IssuedToken, []
 	tt := p.ScalarMult(rInv)
 	iToken := tt.Serialize()
 
-	h := c.suite.Hash
-	lenBuf := make([]byte, 2)
+	h := group.FinalizeHash(c.suite, t.data, iToken, info, c.ctx)
 
-	binary.BigEndian.PutUint16(lenBuf, uint16(len(t.data)))
-	_, _ = h.Write(lenBuf)
-	_, _ = h.Write(t.data)
-
-	binary.BigEndian.PutUint16(lenBuf, uint16(len(iToken)))
-	_, _ = h.Write(lenBuf)
-	_, _ = h.Write(iToken)
-
-	binary.BigEndian.PutUint16(lenBuf, uint16(len(info)))
-	_, _ = h.Write(lenBuf)
-	_, _ = h.Write(info)
-
-	dst := []byte("RFCXXXX-Finalize-")
-	dst = append(dst, c.ctx...)
-
-	binary.BigEndian.PutUint16(lenBuf, uint16(len(dst)))
-	_, _ = h.Write(lenBuf)
-	_, _ = h.Write(dst)
-
-	return iToken, h.Sum(nil), nil
+	return iToken, h, nil
 }

@@ -4,6 +4,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha512"
+	"encoding/binary"
 	"errors"
 	"hash"
 	"io"
@@ -25,7 +26,7 @@ type Ciphersuite struct {
 	dst string
 
 	// hash defines the hash function to be used.
-	Hash hash.Hash
+	hash hash.Hash
 
 	curve elliptic.Curve
 }
@@ -155,7 +156,7 @@ func (c *Ciphersuite) HashToScalar([]byte) (*Scalar, error) {
 // TODO: not constant time
 func (c *Ciphersuite) RandomScalar() *Scalar {
 	N := c.Order()
-	bitLen := N.X.BitLen()
+	bitLen := N.x.BitLen()
 	byteLen := (bitLen + 7) >> 3
 	buf := make([]byte, byteLen)
 
@@ -170,7 +171,7 @@ func (c *Ciphersuite) RandomScalar() *Scalar {
 		buf[0] = buf[0] & mask[bitLen%8]
 
 		// Check if scalar is in the correct range.
-		if new(big.Int).SetBytes(buf).Cmp(N.X) >= 0 {
+		if new(big.Int).SetBytes(buf).Cmp(N.x) >= 0 {
 			continue
 		}
 		break
@@ -193,6 +194,33 @@ func (c *Ciphersuite) ByteLength() int {
 	return (c.curve.Params().BitSize + 7) / 8
 }
 
+// FinalizeHash computes the final hash for the suite
+func FinalizeHash(c *Ciphersuite, data, iToken, info, ctx []byte) []byte {
+	h := c.hash
+	lenBuf := make([]byte, 2)
+
+	binary.BigEndian.PutUint16(lenBuf, uint16(len(data)))
+	_, _ = h.Write(lenBuf)
+	_, _ = h.Write(data)
+
+	binary.BigEndian.PutUint16(lenBuf, uint16(len(iToken)))
+	_, _ = h.Write(lenBuf)
+	_, _ = h.Write(iToken)
+
+	binary.BigEndian.PutUint16(lenBuf, uint16(len(info)))
+	_, _ = h.Write(lenBuf)
+	_, _ = h.Write(info)
+
+	dst := []byte("RFCXXXX-Finalize-")
+	dst = append(dst, ctx...)
+
+	binary.BigEndian.PutUint16(lenBuf, uint16(len(dst)))
+	_, _ = h.Write(lenBuf)
+	_, _ = h.Write(dst)
+
+	return h.Sum(nil)
+}
+
 // NewSuite creates a new ciphersuite for the requested name.
 func NewSuite(name string) (*Ciphersuite, error) {
 	cSuite := &Ciphersuite{}
@@ -201,18 +229,18 @@ func NewSuite(name string) (*Ciphersuite, error) {
 	case "P-256":
 		cSuite.name = "OPRFP256-SHA512-ELL2-RO"
 		cSuite.dst = "RFCXXXX-P256_XMD:SHA-512_SSWU_RO_"
-		cSuite.Hash = sha512.New() // TODO: maybe it is too early to init it as the compiler might release it in a weird way..
+		cSuite.hash = sha512.New() // TODO: maybe it is too early to init it as the compiler might release it in a weird way..
 		cSuite.curve = elliptic.P256()
 	// TODO: might be good to use the circl one as well
 	case "P-384":
 		cSuite.name = "OPRFP384-SHA512-ELL2-RO"
 		cSuite.dst = "RFCXXXX-P384_XMD:SHA-512_SSWU_RO_"
-		cSuite.Hash = sha512.New()
+		cSuite.hash = sha512.New()
 		cSuite.curve = elliptic.P384()
 	case "P-521":
 		cSuite.name = "OPRFP521-SHA512-ELL2-RO"
 		cSuite.dst = "RFCXXXX-P521_XMD:SHA-512_SSWU_RO_"
-		cSuite.Hash = sha512.New()
+		cSuite.hash = sha512.New()
 		cSuite.curve = elliptic.P521()
 	// TODO: what other libraries should be used?
 	default:

@@ -3,7 +3,6 @@ package oprf
 import (
 	"bytes"
 	"encoding/hex"
-	"math/big"
 	"testing"
 
 	"github.com/cloudflare/circl/oprf/group"
@@ -125,8 +124,8 @@ func TestClientFinalize(t *testing.T) {
 
 func blindTest(c *group.Ciphersuite, in []byte) (*Token, BlindToken) {
 	bytes, _ := hex.DecodeString("e6db3004c35ec2cf97c4d462e4690e9859741c186b8e1138b977d547ad166951")
-	x := new(big.Int).SetBytes(bytes)
-	s := &group.Scalar{C: c, X: x}
+	s := group.NewScalar(c)
+	s.Set(bytes)
 
 	p, _ := c.HashToGroup(in)
 	t := p.ScalarMult(s)
@@ -168,7 +167,7 @@ func TestServerEvaluationVector(t *testing.T) {
 		t.Fatal("invalid setup of server: no server.")
 	}
 	privKey, _ := hex.DecodeString("7331fb3bfbc4a786af3a35e33b2d75db3929b4c033998526dc66d60f6531a255")
-	srv.Keys.PrivK.X.SetBytes(privKey)
+	srv.Keys.PrivK.Set(privKey)
 
 	client, err := NewClient(OPRFP256)
 	if err != nil {
@@ -199,7 +198,7 @@ func TestClientUnblindVector(t *testing.T) {
 		t.Fatal("invalid setup of server: no server.")
 	}
 	privKey, _ := hex.DecodeString("7331fb3bfbc4a786af3a35e33b2d75db3929b4c033998526dc66d60f6531a255")
-	srv.Keys.PrivK.X.SetBytes(privKey)
+	srv.Keys.PrivK.Set(privKey)
 
 	client, err := NewClient(OPRFP256)
 	if err != nil {

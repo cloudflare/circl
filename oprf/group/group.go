@@ -149,8 +149,8 @@ func (p *Element) Equal(q *Element) bool {
 
 // Scalar is an struct representing a field element
 type Scalar struct {
-	C *Ciphersuite
-	X *big.Int
+	c *Ciphersuite
+	x *big.Int
 }
 
 // NewScalar generates a new scalar.
@@ -159,21 +159,27 @@ func NewScalar(c *Ciphersuite) *Scalar {
 	return s
 }
 
+// Set sets the scalar to a value.
+func (s *Scalar) Set(x []byte) *Scalar {
+	s.x.SetBytes(x)
+	return s
+}
+
 // Inv sets the Scalar to its multiplicative inverse.
 func (s *Scalar) Inv() *Scalar {
-	n := s.C.Order()
-	inv := new(big.Int).ModInverse(s.X, n.X)
+	n := s.c.Order()
+	inv := new(big.Int).ModInverse(s.x, n.x)
 
-	rInv := NewScalar(s.C)
-	rInv.X.Set(inv)
+	rInv := NewScalar(s.c)
+	rInv.x.Set(inv)
 
 	return rInv
 }
 
 // Serialize the Scalar into a byte slice.
 func (s *Scalar) Serialize() []byte {
-	l := s.C.ByteLength()
-	bytes := s.X.Bytes()
+	l := s.c.ByteLength()
+	bytes := s.x.Bytes()
 	if len(bytes) < l {
 		arr := make([]byte, l-len(bytes))
 		bytes = append(arr, bytes...)
@@ -184,7 +190,7 @@ func (s *Scalar) Serialize() []byte {
 
 // Deserialize an octet-string into a valid Scalar object.
 func (s *Scalar) Deserialize(in []byte) {
-	byteLength := s.C.ByteLength()
+	byteLength := s.c.ByteLength()
 
-	s.X = new(big.Int).SetBytes(in[1 : byteLength+1])
+	s.x = new(big.Int).SetBytes(in[1 : byteLength+1])
 }
