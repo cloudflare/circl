@@ -44,14 +44,17 @@ func (p *Element) Add(q *Element) *Element {
 }
 
 // Neg performs the negation operation on the calling Element object
-// TODO: check opaque to see what is needed
 func (p *Element) Neg() *Element {
+	xInv := new(big.Int).ModInverse(p.x, p.c.curve.Params().N)
+
 	r := NewElement(p.c)
+	r.x.Set(xInv)
+	r.y.Set(p.y)
+
 	return r
 }
 
 // Serialize the Element into a byte slice.
-// TODO: does not handle compressed points.. do we need it?
 func (p *Element) Serialize() []byte {
 	x, y := p.x.Bytes(), p.y.Bytes()
 
@@ -121,7 +124,10 @@ func (p *Element) Deserialize(in []byte) error {
 		x3ab := new(big.Int).Add(x3, p.c.curve.Params().B)
 		y2 = new(big.Int).Mod(x3ab, order)
 
-		sqrtExp := new(big.Int).Mod(new(big.Int).Mul(new(big.Int).Add(p.c.curve.Params().P, One), new(big.Int).ModInverse(big.NewInt(4), p.c.curve.Params().P)), p.c.curve.Params().P)
+		a1 := new(big.Int).Add(p.c.curve.Params().P, One)
+		a2 := new(big.Int).ModInverse(big.NewInt(4), p.c.curve.Params().P)
+		m := new(big.Int).Mul(a1, a2)
+		sqrtExp := new(big.Int).Mod(m, p.c.curve.Params().P)
 
 		// construct y coordinate with correct sign
 		y := new(big.Int).Exp(y2, sqrtExp, order)

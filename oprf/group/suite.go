@@ -50,7 +50,6 @@ type Suite interface {
 
 	// Performs a transformation to encode bytes as a Scalar object in the
 	// appropriate group.
-	// TODO: should we keep it? Seems only be used on the Verified case..
 	HashToScalar([]byte) (Scalar, error)
 
 	// Samples a random scalar value from the field of scalars defined by the
@@ -121,7 +120,6 @@ func (h eccHasher) Hash(in []byte) (*Element, error) {
 	p.x.Set(x[0])
 	p.y.Set(y[0])
 
-	// TODO: failing here
 	if !p.IsValid() {
 		return nil, errors.New("invalid point")
 	}
