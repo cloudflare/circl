@@ -61,14 +61,11 @@ type Client struct {
 
 // ClientContext implements the functionality of a Client.
 type ClientContext interface {
-	// Blind generates a token and blinded data.
-	Blind(in []byte) (*Token, *BlindToken, error)
+	// Request generates a token and blinded data.
+	Request(in []byte) (*Token, *BlindToken, error)
 
-	// Unblind unblinds the server response.
-	Unblind(t *Token, e *Evaluation) (IssuedToken, error)
-
-	// Finalize outputs a byte array that corresponds to its input.
-	Finalize(t *Token, issuedT IssuedToken, info []byte) []byte
+	// Finalize unblinds the server response and outputs a byte array that corresponds to its input.
+	Finalize(t *Token, e *Evaluation, info []byte) (IssuedToken, []byte, error)
 }
 
 // Server is a representation of a Server during protocol execution.
@@ -213,12 +210,12 @@ func (c *Client) Blind(in []byte) (*Token, BlindToken, error) {
 	return token, bToken, nil
 }
 
-// Unblind unblinds the server response.
-func (c *Client) Unblind(t *Token, e *Evaluation) (IssuedToken, error) {
+// Finalize unblinds the server response and outputs a byte array that corresponds to the client input.
+func (c *Client) Finalize(t *Token, e *Evaluation, info []byte) (IssuedToken, []byte, error) {
 	p := group.NewElement(c.suite)
 	err := p.Deserialize(e.element)
 	if err != nil {
-		return nil, err
+		return nil, []byte{}, err
 	}
 
 	r := t.blind
@@ -227,11 +224,6 @@ func (c *Client) Unblind(t *Token, e *Evaluation) (IssuedToken, error) {
 	tt := p.ScalarMult(rInv)
 	iToken := tt.Serialize()
 
-	return IssuedToken(iToken), nil
-}
-
-// Finalize outputs a byte array that corresponds to the client input.
-func (c *Client) Finalize(t *Token, issuedT IssuedToken, info []byte) []byte {
 	h := c.suite.Hash
 	lenBuf := make([]byte, 2)
 
@@ -239,9 +231,9 @@ func (c *Client) Finalize(t *Token, issuedT IssuedToken, info []byte) []byte {
 	_, _ = h.Write(lenBuf)
 	_, _ = h.Write(t.data)
 
-	binary.BigEndian.PutUint16(lenBuf, uint16(len(issuedT)))
+	binary.BigEndian.PutUint16(lenBuf, uint16(len(iToken)))
 	_, _ = h.Write(lenBuf)
-	_, _ = h.Write(issuedT)
+	_, _ = h.Write(iToken)
 
 	binary.BigEndian.PutUint16(lenBuf, uint16(len(info)))
 	_, _ = h.Write(lenBuf)
@@ -254,5 +246,5 @@ func (c *Client) Finalize(t *Token, issuedT IssuedToken, info []byte) []byte {
 	_, _ = h.Write(lenBuf)
 	_, _ = h.Write(dst)
 
-	return h.Sum(nil)
+	return iToken, h.Sum(nil), nil
 }
