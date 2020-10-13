@@ -1,9 +1,10 @@
 package oprf
 
 import (
+	"crypto/subtle"
 	"encoding/binary"
 	"errors"
-	"fmt"
+	"math/big"
 
 	"github.com/cloudflare/circl/oprf/group"
 )
@@ -17,9 +18,9 @@ const (
 	OPRFP521 uint16 = 0x0005
 )
 
-const (
+var (
 	// OPRFMode is the context string to define a OPRF.
-	OPRFMode string = "000"
+	OPRFMode *big.Int = big.NewInt(0)
 )
 
 var (
@@ -55,7 +56,7 @@ type KeyPair struct {
 // Client is a representation of a Client during protocol execution.
 type Client struct {
 	suite *group.Ciphersuite
-	ctx   string
+	ctx   []byte
 }
 
 // ClientContext implements the functionality of a Client.
@@ -73,7 +74,7 @@ type ClientContext interface {
 // Server is a representation of a Server during protocol execution.
 type Server struct {
 	suite *group.Ciphersuite
-	ctx   string
+	ctx   []byte
 	Keys  *KeyPair
 }
 
@@ -83,8 +84,35 @@ type ServerContext interface {
 	Evaluate(b BlindToken) *Evaluation
 }
 
-func generateCtx(suiteID uint16) string {
-	return OPRFMode + fmt.Sprintf("%x", suiteID)
+// i2OSP converts a nonnegative integer to an octet string of a
+// specified length.
+func i2OSP(b *big.Int, n int) []byte {
+	var (
+		octetString     = b.Bytes()
+		octetStringSize = len(octetString)
+		result          = make([]byte, n)
+	)
+	if !(b.Sign() == 0 || b.Sign() == 1) {
+		panic("I2OSP error: integer must be zero or positive")
+	}
+	if n == 0 || octetStringSize > n {
+		panic("I2OSP error: integer too large")
+	}
+
+	subtle.ConstantTimeCopy(1, result[:n-octetStringSize], result[:n-octetStringSize])
+	subtle.ConstantTimeCopy(1, result[n-octetStringSize:], octetString)
+	return result
+}
+
+func generateCtx(suiteID uint16) []byte {
+	mode := i2OSP(OPRFMode, 1)
+	tmp := big.NewInt(int64(byte(suiteID)))
+	id := i2OSP(tmp, 2)
+
+	var ctx []byte
+	ctx = append(ctx, mode...)
+	ctx = append(ctx, id...)
+	return ctx
 }
 
 func generateKeyPair(suite *group.Ciphersuite) *KeyPair {
@@ -175,6 +203,7 @@ func (c *Client) Blind(in []byte) (*Token, BlindToken, error) {
 	}
 
 	t := p.ScalarMult(r)
+
 	bToken := t.Serialize()
 
 	token := &Token{in, r}
@@ -198,8 +227,8 @@ func (c *Client) Unblind(t *Token, e *Evaluation) (IssuedToken, error) {
 // Finalize outputs a byte array that corresponds to the client input.
 func (c *Client) Finalize(t *Token, issuedT IssuedToken, info []byte) []byte {
 	h := c.suite.Hash
-
 	lenBuf := make([]byte, 2)
+
 	binary.BigEndian.PutUint16(lenBuf, uint16(len(t.data)))
 	_, _ = h.Write(lenBuf)
 	_, _ = h.Write(t.data)
@@ -212,8 +241,9 @@ func (c *Client) Finalize(t *Token, issuedT IssuedToken, info []byte) []byte {
 	_, _ = h.Write(lenBuf)
 	_, _ = h.Write(info)
 
-	dst := []byte("RFCXXXX-Finalize")
+	dst := []byte("RFCXXXX-Finalize-")
 	dst = append(dst, c.ctx...)
+
 	binary.BigEndian.PutUint16(lenBuf, uint16(len(dst)))
 	_, _ = h.Write(lenBuf)
 	_, _ = h.Write(dst)
