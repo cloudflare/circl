@@ -153,9 +153,9 @@ func TestClientFinalize(t *testing.T) {
 }
 
 func blindTest(c *group.Ciphersuite, in []byte) (*Token, BlindToken) {
-	bytes, _ := hex.DecodeString("4c9b51eb104a0537de74f95aec979273cbeff69309db899e9dcc84f8b653cd26")
+	bytes, _ := hex.DecodeString("e6db3004c35ec2cf97c4d462e4690e9859741c186b8e1138b977d547ad166951")
 	x := new(big.Int).SetBytes(bytes)
-	s := &group.Scalar{c, x}
+	s := &group.Scalar{C: c, X: x}
 
 	p, _ := c.HashToGroup(in)
 	t := p.ScalarMult(s)
@@ -182,11 +182,10 @@ func TestClientBlindVector(t *testing.T) {
 	_, bToken := blindTest(client.suite, []byte{00})
 
 	// From the test vectors
-	testBToken, _ := hex.DecodeString("9d62b0aeca1dd7a60c57bc280e3c38fdebd0091b4631db42a7a310d4a3a98440")
+	testBToken, _ := hex.DecodeString("02fb7eadba79acefca3e5401e291f2face38f4f3c159e8d636b29f650d96dfc3f1")
 
-	// Comparing this way due to the serialization differences in the sage poc
-	if (bytes.Compare(testBToken[0:32], bToken[1:33])) != 0 {
-		t.Errorf("blind elements are not equal: vectorToken: %x blindToken: %x", testBToken[0:32], bToken[1:33])
+	if (bytes.Compare(testBToken[:], bToken[:])) != 0 {
+		t.Errorf("blind elements are not equal: vectorToken: %x blindToken: %x", testBToken[:], bToken[:])
 	}
 }
 
@@ -198,7 +197,7 @@ func TestServerEvaluationVector(t *testing.T) {
 	if srv == nil {
 		t.Fatal("invalid setup of server: no server.")
 	}
-	privKey, _ := hex.DecodeString("09f62b2ca2092229af9f6cfd594c10540773b0ab5c549f38960a78ef429a480f")
+	privKey, _ := hex.DecodeString("7331fb3bfbc4a786af3a35e33b2d75db3929b4c033998526dc66d60f6531a255")
 	srv.Keys.PrivK.X.SetBytes(privKey)
 
 	client, err := NewClient(OPRFP256)
@@ -214,15 +213,14 @@ func TestServerEvaluationVector(t *testing.T) {
 	}
 
 	// From the test vectors
-	testEval, _ := hex.DecodeString("cf132894788f5fa25863be4b52cf9526e6c0391db964f011b239104571a9b757")
+	testEval, _ := hex.DecodeString("02449231545a1770f3e3995e7a0f0a29a51995bf068c833dd1269295641e289cda")
 
-	// Comparing this way due to the serialization differences in the sage poc
-	if (bytes.Compare(testEval[:], eval.element[1:33])) != 0 {
-		t.Errorf("eval elements are not equal: vectorEval: %x eval: %x", testEval[:], eval.element[1:33])
+	if (bytes.Compare(testEval[:], eval.element[:])) != 0 {
+		t.Errorf("eval elements are not equal: vectorEval: %x eval: %x", testEval[:], eval.element[:])
 	}
 }
 
-func TestClienUnblind(t *testing.T) {
+func TestClientUnblindVector(t *testing.T) {
 	srv, err := NewServer(OPRFP256)
 	if err != nil {
 		t.Fatal("invalid setup of server: " + err.Error())
@@ -230,7 +228,7 @@ func TestClienUnblind(t *testing.T) {
 	if srv == nil {
 		t.Fatal("invalid setup of server: no server.")
 	}
-	privKey, _ := hex.DecodeString("09f62b2ca2092229af9f6cfd594c10540773b0ab5c549f38960a78ef429a480f")
+	privKey, _ := hex.DecodeString("7331fb3bfbc4a786af3a35e33b2d75db3929b4c033998526dc66d60f6531a255")
 	srv.Keys.PrivK.X.SetBytes(privKey)
 
 	client, err := NewClient(OPRFP256)
@@ -248,10 +246,51 @@ func TestClienUnblind(t *testing.T) {
 	iToken, err := client.Unblind(token, eval)
 
 	// From the test vectors
-	testIToken, _ := hex.DecodeString("69146bc29e995590ab94335994b10230ed5c6c94f46475927ecad353b708597b")
+	testIToken, _ := hex.DecodeString("0277f2ded1d0cbbc9a71504f94dd0aa997709f7adb3368631392313164273eb340")
 
-	// Comparing this way due to the serialization differences in the sage poc
-	if (bytes.Compare(testIToken[:], iToken[1:33])) != 0 {
-		t.Errorf("unblind elements are not equal: vectorIToken: %x Issued Token: %x", testIToken[:], iToken[1:33])
+	if (bytes.Compare(testIToken[:], iToken[:])) != 0 {
+		t.Errorf("unblind elements are not equal: vectorIToken: %x Issued Token: %x", testIToken[:], iToken[:])
+	}
+}
+
+func TestClientFinalizeVector(t *testing.T) {
+	srv, err := NewServer(OPRFP256)
+	if err != nil {
+		t.Fatal("invalid setup of server: " + err.Error())
+	}
+	if srv == nil {
+		t.Fatal("invalid setup of server: no server.")
+	}
+	privKey, _ := hex.DecodeString("7331fb3bfbc4a786af3a35e33b2d75db3929b4c033998526dc66d60f6531a255")
+	srv.Keys.PrivK.X.SetBytes(privKey)
+
+	client, err := NewClient(OPRFP256)
+	if err != nil {
+		t.Fatal("invalid setup of client: " + err.Error())
+	}
+
+	token, bToken := blindTest(client.suite, []byte{00})
+
+	eval := srv.Evaluate(bToken)
+	if eval == nil {
+		t.Fatal("invalid evaluation of server: no evaluation.")
+	}
+
+	iToken, err := client.Unblind(token, eval)
+	if err != nil {
+		t.Fatal("invalid unblinding of client: " + err.Error())
+	}
+
+	if iToken == nil {
+		t.Fatal("invalid unblinding of client: no issued Token.")
+	}
+
+	testOutput, _ := hex.DecodeString("dafd07b7ae978c791481d3cf6c3f6340742eab67f5771279f535ae6daf9df51b74dce7b28da84b6d6bca969b951a317449783acd18ba4cb748d70821e01e7230")
+
+	info := []byte("test information")
+	h := client.Finalize(token, iToken, info)
+
+	if (bytes.Compare(testOutput[:], h[:])) != 0 {
+		t.Errorf("finalize elements are not equal: vectorHash: %x hash: %x", testOutput[:], h[:])
 	}
 }
