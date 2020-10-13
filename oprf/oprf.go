@@ -81,7 +81,7 @@ type Server struct {
 // ServerContext implements the functionality of a Server.
 type ServerContext interface {
 	// Evaluate evaluates the token.
-	Evaluate(b BlindToken) *Evaluation
+	Evaluate(b BlindToken) (*Evaluation, error)
 }
 
 // i2OSP converts a nonnegative integer to an octet string of a
@@ -163,15 +163,18 @@ func NewServer(suiteID uint16) (*Server, error) {
 }
 
 // Evaluate creates an evaluation of the blided token.
-func (s *Server) Evaluate(b BlindToken) *Evaluation {
+func (s *Server) Evaluate(b BlindToken) (*Evaluation, error) {
 	p := group.NewElement(s.suite)
-	p.Deserialize(b)
+	err := p.Deserialize(b)
+	if err != nil {
+		return nil, err
+	}
 
 	z := p.ScalarMult(s.Keys.PrivK)
 
 	ser := z.Serialize()
 
-	return &Evaluation{ser}
+	return &Evaluation{ser}, nil
 }
 
 // NewClient creates a new instantiation of a Client.
@@ -199,7 +202,7 @@ func (c *Client) Blind(in []byte) (*Token, BlindToken, error) {
 
 	p, err := c.suite.HashToGroup(in)
 	if err != nil {
-		return nil, nil, errors.New("failed at blinding")
+		return nil, nil, err
 	}
 
 	t := p.ScalarMult(r)
@@ -213,7 +216,10 @@ func (c *Client) Blind(in []byte) (*Token, BlindToken, error) {
 // Unblind unblinds the server response.
 func (c *Client) Unblind(t *Token, e *Evaluation) (IssuedToken, error) {
 	p := group.NewElement(c.suite)
-	p.Deserialize(e.element)
+	err := p.Deserialize(e.element)
+	if err != nil {
+		return nil, err
+	}
 
 	r := t.blind
 	rInv := r.Inv()
