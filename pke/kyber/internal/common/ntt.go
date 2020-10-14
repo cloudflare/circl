@@ -7,14 +7,12 @@ package common
 //
 // where ζ = 17, brv(i) is the bitreversal of a 7-bit number and R=2¹⁶ mod q.
 //
-// The following Python code generates the Zetas (and InvZetas) arrays:
+// The following Python code generates the Zetas arrays:
 //
 //    q = 13*2**8 + 1; zeta = 17
 //    R = 2**16 % q # Montgomery const.
 //    def brv(x): return int(''.join(reversed(bin(x)[2:].zfill(7))),2)
-//    def inv(x): return pow(x, q-2, q) # inverse in F(q)
 //    print([(pow(zeta, brv(i), q)*R)%q for i in range(128)])
-//    print([(pow(inv(zeta), -(brv(127-i)-128), q)*R)%q for i in range(128)])
 var Zetas = [128]int16{
 	2285, 2571, 2970, 1812, 1493, 1422, 287, 202, 3158, 622, 1577, 182,
 	962, 2127, 1855, 1468, 573, 2004, 264, 383, 2500, 1458, 1727, 3199,
@@ -27,29 +25,6 @@ var Zetas = [128]int16{
 	3254, 817, 1097, 603, 610, 1322, 2044, 1864, 384, 2114, 3193, 1218,
 	1994, 2455, 220, 2142, 1670, 2144, 1799, 2051, 794, 1819, 2475,
 	2459, 478, 3221, 3021, 996, 991, 958, 1869, 1522, 1628,
-}
-
-// InvZetas lists precomputed powers of the inverse root of unity in
-// Montgomery representation used for the inverse NTT:
-//
-//  InvZetas[i] = ζᵇʳᵛ⁽¹²⁷⁻ⁱ⁾⁻¹²⁸ R mod q
-//
-// where ζ = 17, brv(i) is the bitreversal of a 7-bit number and R=2¹⁶ mod q.
-// See Zetas for Python code that also generates this list.
-var InvZetas = [128]int16{
-	1701, 1807, 1460, 2371, 2338, 2333, 308, 108, 2851, 870,
-	854, 1510, 2535, 1278, 1530, 1185, 1659, 1187, 3109, 874,
-	1335, 2111, 136, 1215, 2945, 1465, 1285, 2007, 2719, 2726,
-	2232, 2512, 75, 156, 3000, 2911, 2980, 872, 2685, 1590,
-	2210, 602, 1846, 777, 147, 2170, 2551, 246, 1676, 1755,
-	460, 291, 235, 3152, 2742, 2907, 3224, 1779, 2458, 1251,
-	2486, 2774, 2899, 1103, 1275, 2652, 1065, 2881, 725, 1508,
-	2368, 398, 951, 247, 1421, 3222, 2499, 271, 90, 853, 1860,
-	3203, 1162, 1618, 666, 320, 8, 2813, 1544, 282, 1838, 1293,
-	2314, 552, 2677, 2106, 1571, 205, 2918, 1542, 2721, 2597,
-	2312, 681, 130, 1602, 1871, 829, 2946, 3065, 1325, 2756,
-	1861, 1474, 1202, 2367, 3147, 1752, 2707, 171, 3127, 3042,
-	1907, 1836, 1517, 359, 758, 1044,
 }
 
 // Executes an in-place forward "NTT" on p.
@@ -143,7 +118,7 @@ func (p *Poly) NTT() {
 // form, then the result is in Montgomery form and so (by linearity)
 // if the input is in regular form, then the result is also in regular form.
 func (p *Poly) InvNTT() {
-	k := 0 // Index into InvZetas
+	k := 127 // Index into Zetas
 
 	// We basically do the oppposite of NTT, but postpone dividing by 2 in the
 	// inverse of the Cooley-Tukey butterfly and accumulate that into a big
@@ -156,8 +131,13 @@ func (p *Poly) InvNTT() {
 		// XXX Get rid of Barrett reduction?
 
 		for offset := 0; offset < N-l; offset += 2 * l {
-			zeta := int32(InvZetas[k])
-			k++
+			// As we're inverting, we need powers of ζ⁻¹ (instead of
+			// ζ).  To be precise, we need ζᵇʳᵛ⁽ᵏ⁾⁻¹²⁸. However, as
+			// ζ⁻¹²⁸ = -1, we can use the existing Zetas table instead of
+			// keeping a separate InvZetas table as in Dilithium.
+
+			zeta := -int32(Zetas[k])
+			k--
 
 			for j := offset; j < offset+l; j++ {
 				t := barrettReduce(p[j]) // Gentleman-Sande butterfly
