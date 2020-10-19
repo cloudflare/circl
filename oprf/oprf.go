@@ -1,9 +1,7 @@
 package oprf
 
 import (
-	"crypto/subtle"
 	"errors"
-	"math/big"
 
 	"github.com/cloudflare/circl/oprf/group"
 )
@@ -68,26 +66,6 @@ type Server struct {
 	Keys  *KeyPair
 }
 
-// i2OSP converts a nonnegative integer to an octet string of a
-// specified length.
-func i2OSP(b *big.Int, n int) []byte {
-	var (
-		octetString     = b.Bytes()
-		octetStringSize = len(octetString)
-		result          = make([]byte, n)
-	)
-	if !(b.Sign() == 0 || b.Sign() == 1) {
-		panic("I2OSP error: integer must be zero or positive")
-	}
-	if n == 0 || octetStringSize > n {
-		panic("I2OSP error: integer too large")
-	}
-
-	subtle.ConstantTimeCopy(1, result[:n-octetStringSize], result[:n-octetStringSize])
-	subtle.ConstantTimeCopy(1, result[n-octetStringSize:], octetString)
-	return result
-}
-
 func generateCtx(id SuiteID) []byte {
 	ctx := [3]byte{OPRFMode, 0, byte(id)}
 
@@ -126,7 +104,10 @@ func GenerateKeyPair(suite *group.Ciphersuite) *KeyPair {
 
 func assignKeyPair(suite *group.Ciphersuite, privK, pubK []byte) (*KeyPair, error) {
 	kp := &KeyPair{}
-	kp.Deserialize(suite, privK, pubK)
+	err := kp.Deserialize(suite, privK, pubK)
+	if err != nil {
+		return nil, err
+	}
 
 	return kp, nil
 }
