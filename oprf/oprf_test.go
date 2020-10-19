@@ -32,13 +32,13 @@ func TestClientSetUp(t *testing.T) {
 	}
 }
 
-func TestClientBlind(t *testing.T) {
+func TestClientRequest(t *testing.T) {
 	client, err := NewClient(OPRFP256)
 	if err != nil {
 		t.Fatal("invalid setup of client: " + err.Error())
 	}
 
-	token, bToken, err := client.Blind([]byte{00})
+	token, bToken, err := client.Request([]byte{00})
 
 	if err != nil {
 		t.Fatal("invalid blinding of client: " + err.Error())
@@ -66,7 +66,7 @@ func TestServerEvaluation(t *testing.T) {
 		t.Fatal("invalid setup of client: " + err.Error())
 	}
 
-	_, bToken, err := client.Blind([]byte{00})
+	_, bToken, err := client.Request([]byte{00})
 	if err != nil {
 		t.Fatal("invalid blinding of client: " + err.Error())
 	}
@@ -95,7 +95,7 @@ func TestClientFinalize(t *testing.T) {
 		t.Fatal("invalid setup of client: " + err.Error())
 	}
 
-	token, bToken, err := client.Blind([]byte{00})
+	token, bToken, err := client.Request([]byte{00})
 	if err != nil {
 		t.Fatal("invalid blinding of client: " + err.Error())
 	}
@@ -135,7 +135,7 @@ func blindTest(c *group.Ciphersuite, in []byte) (*Token, BlindToken) {
 	return token, bToken
 }
 
-func TestClientBlindVector(t *testing.T) {
+func TestClientRequestVector(t *testing.T) {
 	srv, err := NewServer(OPRFP256)
 	if err != nil {
 		t.Fatal("invalid setup of server: " + err.Error())

@@ -8,18 +8,21 @@ import (
 	"github.com/cloudflare/circl/oprf/group"
 )
 
+// SuiteID is a type that represents the ID of a Suite.
+type SuiteID uint16
+
 const (
 	// OPRFP256 is the constant to represent the OPRF P-256 with SHA-512 (SSWU-RO) group.
-	OPRFP256 uint16 = 0x0003
+	OPRFP256 SuiteID = 0x0003
 	// OPRFP384 is the constant to represent the OPRF P-384 with SHA-512 (SSWU-RO) group.
-	OPRFP384 uint16 = 0x0004
+	OPRFP384 SuiteID = 0x0004
 	// OPRFP521 is the constant to represent the OPRF P-521 with SHA-512 (SSWU-RO) group.
-	OPRFP521 uint16 = 0x0005
+	OPRFP521 SuiteID = 0x0005
 )
 
 var (
 	// OPRFMode is the context string to define a OPRF.
-	OPRFMode *big.Int = big.NewInt(0)
+	OPRFMode byte = 0x00
 )
 
 var (
@@ -48,7 +51,7 @@ type Evaluation struct {
 
 // KeyPair is an struct containing a public and private key.
 type KeyPair struct {
-	PubK  *group.Element
+	pubK  *group.Element
 	PrivK *group.Scalar
 }
 
@@ -60,10 +63,11 @@ type Client struct {
 
 // ClientContext implements the functionality of a Client.
 type ClientContext interface {
-	// Request generates a token and blinded data.
+	// Request generates a token its blinded version.
 	Request(in []byte) (*Token, *BlindToken, error)
 
-	// Finalize unblinds the server response and outputs a byte array that corresponds to its input.
+	// Finalize returns a signed token from a server Evaluation together
+	// with the output of the OPRF protocol.
 	Finalize(t *Token, e *Evaluation, info []byte) (IssuedToken, []byte, error)
 }
 
@@ -76,7 +80,7 @@ type Server struct {
 
 // ServerContext implements the functionality of a Server.
 type ServerContext interface {
-	// Evaluate evaluates the token.
+	// Evaluate blindly signs a client token.
 	Evaluate(b BlindToken) (*Evaluation, error)
 }
 
@@ -100,15 +104,10 @@ func i2OSP(b *big.Int, n int) []byte {
 	return result
 }
 
-func generateCtx(suiteID uint16) []byte {
-	mode := i2OSP(OPRFMode, 1)
-	tmp := big.NewInt(int64(byte(suiteID)))
-	id := i2OSP(tmp, 2)
+func generateCtx(id SuiteID) []byte {
+	ctx := [3]byte{OPRFMode, 0, byte(id)}
 
-	var ctx []byte
-	ctx = append(ctx, mode...)
-	ctx = append(ctx, id...)
-	return ctx
+	return ctx[:]
 }
 
 func generateKeyPair(suite *group.Ciphersuite) *KeyPair {
@@ -118,11 +117,11 @@ func generateKeyPair(suite *group.Ciphersuite) *KeyPair {
 	return &KeyPair{pubK, privK}
 }
 
-func suiteFromID(suiteID uint16) (*group.Ciphersuite, error) {
+func suiteFromID(id SuiteID) (*group.Ciphersuite, error) {
 	var err error
 	var suite *group.Ciphersuite
 
-	switch suiteID {
+	switch id {
 	case OPRFP256:
 		suite, err = group.NewSuite("P-256")
 	case OPRFP384:
@@ -136,17 +135,17 @@ func suiteFromID(suiteID uint16) (*group.Ciphersuite, error) {
 		return nil, err
 	}
 
-	return suite, nil
+	return suite, err
 }
 
 // NewServer creates a new instantiation of a Server.
-func NewServer(suiteID uint16) (*Server, error) {
-	suite, err := suiteFromID(suiteID)
+func NewServer(id SuiteID) (*Server, error) {
+	suite, err := suiteFromID(id)
 	if err != nil {
 		return nil, err
 	}
 
-	ctx := generateCtx(suiteID)
+	ctx := generateCtx(id)
 
 	keyPair := generateKeyPair(suite)
 
@@ -174,13 +173,13 @@ func (s *Server) Evaluate(b BlindToken) (*Evaluation, error) {
 }
 
 // NewClient creates a new instantiation of a Client.
-func NewClient(suiteID uint16) (*Client, error) {
-	suite, err := suiteFromID(suiteID)
+func NewClient(id SuiteID) (*Client, error) {
+	suite, err := suiteFromID(id)
 	if err != nil {
 		return nil, err
 	}
 
-	ctx := generateCtx(suiteID)
+	ctx := generateCtx(id)
 
 	client := &Client{}
 	client.suite = suite
@@ -192,8 +191,8 @@ func NewClient(suiteID uint16) (*Client, error) {
 	}, nil
 }
 
-// Blind generates a token and blinded data.
-func (c *Client) Blind(in []byte) (*Token, BlindToken, error) {
+// Request generates a token and blinded data.
+func (c *Client) Request(in []byte) (*Token, BlindToken, error) {
 	r := c.suite.RandomScalar()
 
 	p, err := c.suite.HashToGroup(in)
