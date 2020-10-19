@@ -113,6 +113,10 @@ func (p *Element) Deserialize(in []byte) error {
 	if !com {
 		p.x = new(big.Int).SetBytes(in[1 : byteLen+1])
 		p.y = new(big.Int).SetBytes(in[byteLen+1:])
+
+		if !p.IsValid() {
+			return errors.New("invalid deserialization")
+		}
 	} else {
 		order := p.c.curve.Params().P
 		var y2 *big.Int
