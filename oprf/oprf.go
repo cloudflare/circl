@@ -63,7 +63,7 @@ type Client struct {
 type Server struct {
 	suite *group.Ciphersuite
 	ctx   []byte
-	Keys  *KeyPair
+	Kp    *KeyPair
 }
 
 func generateCtx(id SuiteID) []byte {
@@ -153,12 +153,11 @@ func NewServer(id SuiteID, privK, pubK []byte) (*Server, error) {
 		}
 	}
 
-	server := &Server{}
-	server.suite = suite
-	server.ctx = ctx
-	server.Keys = keyPair
-
-	return server, nil
+	return &Server{
+			suite: suite,
+			ctx:   ctx,
+			Kp:    keyPair},
+		nil
 }
 
 // Evaluate blindly signs a client token.
@@ -169,7 +168,7 @@ func (s *Server) Evaluate(b BlindToken) (*Evaluation, error) {
 		return nil, err
 	}
 
-	z := p.ScalarMult(s.Keys.PrivK)
+	z := p.ScalarMult(s.Kp.PrivK)
 
 	ser := z.Serialize()
 
@@ -205,11 +204,9 @@ func (c *Client) Request(in []byte) (*Token, BlindToken, error) {
 	}
 
 	t := p.ScalarMult(r)
-
 	bToken := t.Serialize()
 
-	token := &Token{in, r}
-	return token, bToken, nil
+	return &Token{in, r}, bToken, nil
 }
 
 // Finalize returns a signed token from a server Evaluation together
