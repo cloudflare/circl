@@ -94,7 +94,30 @@ func generateCtx(id SuiteID) []byte {
 	return ctx[:]
 }
 
-func generateKeyPair(suite *group.Ciphersuite) *KeyPair {
+// Serialize serializes a KeyPair elements into byte arrays.
+func (kp *KeyPair) Serialize() ([]byte, []byte) {
+	pubK := kp.pubK.Serialize()
+	privK := kp.PrivK.Serialize()
+
+	return pubK, privK
+}
+
+// Deserialize deserializes a KeyPair into an element and field element of the group.
+func (kp *KeyPair) Deserialize(suite *group.Ciphersuite, privK, pubK []byte) error {
+	priv := group.NewScalar(suite)
+	priv.Deserialize(privK)
+
+	pub := group.NewElement(suite)
+	err := pub.Deserialize(pubK)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+//GenerateKeyPair generates a KeyPair in accordance with the group.
+func GenerateKeyPair(suite *group.Ciphersuite) *KeyPair {
 	privK := suite.RandomScalar()
 	pubK := suite.ScalarMultBase(privK)
 
@@ -102,16 +125,10 @@ func generateKeyPair(suite *group.Ciphersuite) *KeyPair {
 }
 
 func assignKeyPair(suite *group.Ciphersuite, privK, pubK []byte) (*KeyPair, error) {
-	priv := group.NewScalar(suite)
-	priv.Deserialize(privK)
+	kp := &KeyPair{}
+	kp.Deserialize(suite, privK, pubK)
 
-	pub := group.NewElement(suite)
-	err := pub.Deserialize(pubK)
-	if err != nil {
-		return nil, err
-	}
-
-	return &KeyPair{pub, priv}, nil
+	return kp, nil
 }
 
 func suiteFromID(id SuiteID) (*group.Ciphersuite, error) {
@@ -147,7 +164,7 @@ func NewServer(id SuiteID, privK, pubK []byte) (*Server, error) {
 
 	var keyPair *KeyPair
 	if privK == nil || pubK == nil {
-		keyPair = generateKeyPair(suite)
+		keyPair = GenerateKeyPair(suite)
 	} else {
 		keyPair, err = assignKeyPair(suite, privK, pubK)
 		if err != nil {
