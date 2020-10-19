@@ -61,27 +61,11 @@ type Client struct {
 	ctx   []byte
 }
 
-// ClientContext implements the functionality of a Client.
-type ClientContext interface {
-	// Request generates a token its blinded version.
-	Request(in []byte) (*Token, *BlindToken, error)
-
-	// Finalize returns a signed token from a server Evaluation together
-	// with the output of the OPRF protocol.
-	Finalize(t *Token, e *Evaluation, info []byte) (IssuedToken, []byte, error)
-}
-
 // Server is a representation of a Server during protocol execution.
 type Server struct {
 	suite *group.Ciphersuite
 	ctx   []byte
 	Keys  *KeyPair
-}
-
-// ServerContext implements the functionality of a Server.
-type ServerContext interface {
-	// Evaluate blindly signs a client token.
-	Evaluate(b BlindToken) (*Evaluation, error)
 }
 
 // i2OSP converts a nonnegative integer to an octet string of a
@@ -157,7 +141,7 @@ func NewServer(id SuiteID) (*Server, error) {
 	return server, nil
 }
 
-// Evaluate creates an evaluation of the blided token.
+// Evaluate blindly signs a client token.
 func (s *Server) Evaluate(b BlindToken) (*Evaluation, error) {
 	p := group.NewElement(s.suite)
 	err := p.Deserialize(b)
@@ -191,7 +175,7 @@ func NewClient(id SuiteID) (*Client, error) {
 	}, nil
 }
 
-// Request generates a token and blinded data.
+// Request generates a token and its blinded version.
 func (c *Client) Request(in []byte) (*Token, BlindToken, error) {
 	r := c.suite.RandomScalar()
 
@@ -208,7 +192,8 @@ func (c *Client) Request(in []byte) (*Token, BlindToken, error) {
 	return token, bToken, nil
 }
 
-// Finalize unblinds the server response and outputs a byte array that corresponds to the client input.
+// Finalize returns a signed token from a server Evaluation together
+// with the output of the OPRF protocol.
 func (c *Client) Finalize(t *Token, e *Evaluation, info []byte) (IssuedToken, []byte, error) {
 	p := group.NewElement(c.suite)
 	err := p.Deserialize(e.element)
