@@ -1,7 +1,7 @@
 package params
 
-// We put these parameters in a separate package so that the Go code,            
-// such as asm/src.go, that generates assembler can import it.             
+// We put these parameters in a separate package so that the Go code,
+// such as asm/src.go, that generates assembler can import it.
 
 const (
 	// Q is the parameter q ≡ 3329 = 2¹¹ + 2¹⁰ + 2⁸ + 1.
