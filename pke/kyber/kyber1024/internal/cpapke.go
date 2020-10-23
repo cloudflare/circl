@@ -44,6 +44,7 @@ func (pk *PublicKey) Unpack(buf []byte) {
 	pk.th.Unpack(buf)
 	pk.th.Normalize()
 	copy(pk.rho[:], buf[K*common.PolySize:])
+	pk.aT.Derive(&pk.rho, true)
 }
 
 // Derives a new Kyber.CPAPKE keypair from the given seed.

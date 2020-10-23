@@ -63,7 +63,7 @@ func TestApi(t *testing.T) {
 				t.Fatal()
 			}
 
-			ct, ss := scheme.Encapsulate(pk)
+			ct, ss := scheme.Encapsulate(pk2)
 
 			if len(ct) != scheme.CiphertextSize() {
 				t.Fatal()
@@ -72,7 +72,7 @@ func TestApi(t *testing.T) {
 				t.Fatal()
 			}
 
-			ss2 := scheme.Decapsulate(sk, ct)
+			ss2 := scheme.Decapsulate(sk2, ct)
 			if !bytes.Equal(ss, ss2) {
 				t.Fatal()
 			}
