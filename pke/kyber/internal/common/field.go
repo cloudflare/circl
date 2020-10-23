@@ -1,6 +1,6 @@
 package common
 
-// Given 2¹⁵ q ≤ x < 2¹⁵ q, returns -q < y < q with x 2⁻¹⁶ = y (mod q).
+// Given -2¹⁵ q ≤ x < 2¹⁵ q, returns -q < y < q with x 2⁻¹⁶ = y (mod q).
 func montReduce(x int32) int16 {
 	// This is Montgomery reduction with R=2¹⁶.
 	//
@@ -31,11 +31,11 @@ func montReduce(x int32) int16 {
 	return int16(uint32(x-int32(m)*int32(Q)) >> 16)
 }
 
-// Given any x, returns x R mod q where R=2^{16}.
+// Given any x, returns x R mod q where R=2¹⁶.
 func toMont(x int16) int16 {
-	// Note |1353 x| ≤ 1353 2^{15} ≤ 13318 q ≤ 2^15 q and so we're within
+	// Note |1353 x| ≤ 1353 2¹⁵ ≤ 13318 q ≤ 2¹⁵ q and so we're within
 	// the bounds of montReduce.
-	return montReduce(int32(x) * 1353) // 1353 = R^{2} mod q.
+	return montReduce(int32(x) * 1353) // 1353 = R² mod q.
 }
 
 // Given any x, compute 0 ≤ y ≤ q with x = y (mod q).
