@@ -33,7 +33,7 @@ var Zetas = [128]int16{
 // coefficients are in absolute value ≤7q.  If the input is in Montgomery
 // form, then the result is in Montgomery form and so (by linearity of the NTT)
 // if the input is in regular form, then the result is also in regular form.
-func (p *Poly) NTT() {
+func (p *Poly) nttGeneric() {
 	// Note that ℤ_q does not have a primitive 512ᵗʰ root of unity (as 512
 	// does not divide into q) and so we cannot do a regular NTT.  ℤ_q
 	// does have a primitive 256ᵗʰ root of unity, the smallest of which

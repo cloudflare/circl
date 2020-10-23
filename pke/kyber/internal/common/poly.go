@@ -3,6 +3,9 @@ package common
 // An element of our base ring R which are polynomials over ℤ_q
 // modulo the equation Xᴺ = -1, where q=3329 and N=256.
 //
+// This type is also used to store NTT-transformed polynomials,
+// see Poly.NTT().
+//
 // Coefficients aren't always reduced.  See Normalize().
 type Poly [N]int16
 
@@ -62,7 +65,7 @@ func (p *Poly) MulHat(a, b *Poly) {
 	// we multiply the 128 pairs of degree-one polynomials modulo the
 	// right equation:
 	//
-	//  (a₁ + a_2x)(b₁ + b_2x) = a_1b_1 + a_2b_2ζ' + (a_1b_2 + a_2b_1)x,
+	//  (a₁ + a₂x)(b₁ + b₂x) = a₁b₁ + a₂b₂ζ' + (a₁b₂ + a₂b₁)x,
 	//
 	// where ζ' is the appropriate power of ζ.
 

@@ -49,7 +49,7 @@ func TestToMontFull(t *testing.T) {
 	if !*runVeryLongTest {
 		t.SkipNow()
 	}
-	for x := -1 << 15; x < 1<<15; x++ {
+	for x := -(1 << 15); x < 1<<15; x++ {
 		y := toMont(int16(x))
 		if modQ32(int32(y)) != modQ32(int32(x*2285)) {
 			t.Fatalf("%d", x)
