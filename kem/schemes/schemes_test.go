@@ -13,6 +13,45 @@ func TestCaseSensitivity(t *testing.T) {
 	}
 }
 
+func BenchmarkGenerateKey(b *testing.B) {
+	allSchemes := schemes.All()
+	for _, scheme := range allSchemes {
+		scheme := scheme
+		b.Run(scheme.Name(), func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				_, _, _ = scheme.GenerateKey()
+			}
+		})
+	}
+}
+
+func BenchmarkEncapsulate(b *testing.B) {
+	allSchemes := schemes.All()
+	for _, scheme := range allSchemes {
+		scheme := scheme
+		pk, _, _ := scheme.GenerateKey()
+		b.Run(scheme.Name(), func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				_, _ = scheme.Encapsulate(pk)
+			}
+		})
+	}
+}
+
+func BenchmarkDecapsulate(b *testing.B) {
+	allSchemes := schemes.All()
+	for _, scheme := range allSchemes {
+		scheme := scheme
+		pk, sk, _ := scheme.GenerateKey()
+		ct, _ := scheme.Encapsulate(pk)
+		b.Run(scheme.Name(), func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				scheme.Decapsulate(sk, ct)
+			}
+		})
+	}
+}
+
 func TestApi(t *testing.T) {
 	allSchemes := schemes.All()
 	for _, scheme := range allSchemes {
