@@ -161,9 +161,7 @@ func nttAVX2() {
 
 	// A diagram of the order of butterflies and swaps can be found here:
 	//
-	//  http://westerbaan.name/~bas/images/kyberavx2.svg.gz
-	//
-	// (XXX #167: put this image under a Cloudflare repo.)
+	//  https://github.com/cloudflare/circl/wiki/images/kyber-ntt-avx2.svg
 	//
 	// The vertical lines with circles on the end represent butterflies.
 	// The number in those butterflies refers to the index into the Zetas
