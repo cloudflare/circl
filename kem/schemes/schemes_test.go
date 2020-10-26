@@ -2,6 +2,7 @@ package schemes_test
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/cloudflare/circl/kem/schemes"
@@ -13,13 +14,13 @@ func TestCaseSensitivity(t *testing.T) {
 	}
 }
 
-func BenchmarkGenerateKey(b *testing.B) {
+func BenchmarkGenerateKeyPair(b *testing.B) {
 	allSchemes := schemes.All()
 	for _, scheme := range allSchemes {
 		scheme := scheme
 		b.Run(scheme.Name(), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
-				_, _, _ = scheme.GenerateKey()
+				_, _, _ = scheme.GenerateKeyPair()
 			}
 		})
 	}
@@ -29,7 +30,7 @@ func BenchmarkEncapsulate(b *testing.B) {
 	allSchemes := schemes.All()
 	for _, scheme := range allSchemes {
 		scheme := scheme
-		pk, _, _ := scheme.GenerateKey()
+		pk, _, _ := scheme.GenerateKeyPair()
 		b.Run(scheme.Name(), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				_, _, _ = scheme.Encapsulate(pk)
@@ -42,7 +43,7 @@ func BenchmarkDecapsulate(b *testing.B) {
 	allSchemes := schemes.All()
 	for _, scheme := range allSchemes {
 		scheme := scheme
-		pk, sk, _ := scheme.GenerateKey()
+		pk, sk, _ := scheme.GenerateKeyPair()
 		ct, _, _ := scheme.Encapsulate(pk)
 		b.Run(scheme.Name(), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
@@ -61,7 +62,7 @@ func TestApi(t *testing.T) {
 				t.Fatal()
 			}
 
-			pk, sk, err := scheme.GenerateKey()
+			pk, sk, err := scheme.GenerateKeyPair()
 			if err != nil {
 				t.Fatal()
 			}
@@ -122,4 +123,24 @@ func TestApi(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Example_schemes() {
+	// import "github.com/cloudflare/circl/kem/schemes"
+
+	for _, sch := range schemes.All() {
+		fmt.Println(sch.Name())
+	}
+	// Output:
+	// HpkeDHKemP256HkdfSha256
+	// HpkeDHKemP384HkdfSha384
+	// HpkeDHKemP521HkdfSha512
+	// HpkeDHKemX25519HkdfSha256
+	// HpkeDHKemX448HkdfSha512
+	// Kyber512
+	// Kyber768
+	// Kyber1024
+	// SIKEp434
+	// SIKEp503
+	// SIKEp751
 }

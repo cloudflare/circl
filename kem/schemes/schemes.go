@@ -1,9 +1,20 @@
 // Package schemes contains a register of KEM schemes.
+//
+// Schemes Implemented
+//
+// Based on standard elliptic curves:
+//  HpkeDHKemP256HkdfSha256, HpkeDHKemP384HkdfSha384, HpkeDHKemP521HkdfSha512
+// Based on standard Diffie-Hellman functions:
+//  HpkeDHKemX25519HkdfSha256, HpkeDHKemX448HkdfSha512
+// Post-quantum kems:
+//  Kyber512, Kyber768, Kyber1024
+//  SIKEp434, SIKEp503, SIKEp751
 package schemes
 
 import (
 	"strings"
 
+	"github.com/cloudflare/circl/hpke"
 	"github.com/cloudflare/circl/kem"
 	"github.com/cloudflare/circl/kem/kyber/kyber1024"
 	"github.com/cloudflare/circl/kem/kyber/kyber512"
@@ -14,6 +25,11 @@ import (
 )
 
 var allSchemes = [...]kem.Scheme{
+	hpke.DHKemP256HkdfSha256.Scheme(),
+	hpke.DHKemP384HkdfSha384.Scheme(),
+	hpke.DHKemP521HkdfSha512.Scheme(),
+	hpke.DHKemX25519HkdfSha256.Scheme(),
+	hpke.DHKemX448HkdfSha512.Scheme(),
 	kyber512.Scheme(),
 	kyber768.Scheme(),
 	kyber1024.Scheme(),
