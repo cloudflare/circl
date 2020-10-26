@@ -59,7 +59,7 @@ func testPQCgenKATKem(t *testing.T, name, expected string) {
 		g2.Fill(kseed[32:])
 
 		g2.Fill(eseed)
-		pk, sk := scheme.DeriveKey(kseed)
+		pk, sk := scheme.DeriveKeyPair(kseed)
 		ppk, _ := pk.MarshalBinary()
 		psk, _ := sk.MarshalBinary()
 		ct, ss, _ := scheme.EncapsulateDeterministically(pk, eseed)
