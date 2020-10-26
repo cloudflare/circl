@@ -95,6 +95,7 @@ func TestMulHat(t *testing.T) {
 		ah.NTT()
 		bh.NTT()
 		ph.MulHat(&ah, &bh)
+		ph.BarrettReduce()
 		ph.InvNTT()
 
 		for i := 0; i < N; i++ {

@@ -58,3 +58,37 @@ func TestNTT(t *testing.T) {
 		}
 	}
 }
+
+func TestInvNTTReductions(t *testing.T) {
+	// Simulates bounds on coefficients in InvNTT.
+
+	xs := [256]int{}
+	for i := 0; i < 256; i++ {
+		xs[i] = 1
+	}
+
+	r := -1
+	for layer := 1; layer < 8; layer++ {
+		w := 1 << uint(layer)
+		i := 0
+		for i+w < 256 {
+			xs[i] = xs[i] + xs[i+w]
+			if xs[i] > 9 {
+				t.Fatal()
+			}
+			xs[i+w] = 1
+			i++
+			if i%w == 0 {
+				i += w
+			}
+		}
+		for {
+			r++
+			i := InvNTTReductions[r]
+			if i < 0 {
+				break
+			}
+			xs[i] = 1
+		}
+	}
+}
