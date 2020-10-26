@@ -56,7 +56,7 @@ func (p *Poly) ToMont() {
 // That is: InvNTT(p) = InvNTT(a) * InvNTT(b).  Assumes a and b are in
 // Montgomery form.  Products between coefficients of a and b must be strictly
 // bounded in absolute value by 2¹⁵q.  p will be in Montgomery form and
-// bounded in absolute value by q.
+// bounded in absolute value by 2q.
 func (p *Poly) MulHat(a, b *Poly) {
 	// Recall from the discussion in NTT(), that a transformed polynomial is
 	// an element of ℤ_q[x]/(x²-ζ) x … x  ℤ_q[x]/(x²+ζ¹²⁷);

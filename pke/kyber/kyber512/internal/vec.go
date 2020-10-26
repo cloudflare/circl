@@ -19,7 +19,7 @@ func (v *Vec) DeriveNoise(seed []byte, nonce uint8) {
 //
 // See MulHat() and NTT() for a description of the multiplication.
 // Assumes a and b are in Montgomery form.  p will be in Montgomery form,
-// and its coefficients will be bounded in absolute value by kq.
+// and its coefficients will be bounded in absolute value by 2kq.
 // If a and b are not in Montgomery form, then the action is the same
 // as "pointwise" multiplication followed by multiplying by R⁻¹, the inverse
 // of the Montgomery factor.

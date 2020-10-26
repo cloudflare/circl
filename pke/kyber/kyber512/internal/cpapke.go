@@ -104,6 +104,7 @@ func (sk *PrivateKey) DecryptTo(pt, ct []byte) {
 	// Compute m = v - <s, u>
 	u.NTT()
 	PolyDotHat(&m, &sk.sh, &u)
+	m.BarrettReduce()
 	m.InvNTT()
 	m.Sub(&v, &m)
 	m.Normalize()
@@ -137,8 +138,6 @@ func (pk *PublicKey) EncryptTo(ct, seed, pt []byte) {
 		PolyDotHat(&u[i], &pk.aT[i], &rh)
 	}
 
-	// XXX InvNTT actually works with inputs only bounded by ~3q so we might
-	//     be able to remove this reduction for some K.
 	u.BarrettReduce()
 
 	// Aᵀ and r were not in Montgomery form, so the Montgomery
