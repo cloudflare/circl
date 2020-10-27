@@ -137,7 +137,7 @@ func (p *Poly) nttGeneric() {
 // coefficients are in absolute value ≤q.  If the input is in Montgomery
 // form, then the result is in Montgomery form and so (by linearity)
 // if the input is in regular form, then the result is also in regular form.
-func (p *Poly) InvNTT() {
+func (p *Poly) invNTTGeneric() {
 	k := 127 // Index into Zetas
 	r := -1  // Index into InvNTTReductions.
 
@@ -152,14 +152,14 @@ func (p *Poly) InvNTT() {
 			// we can use the existing Zetas table instead of
 			// keeping a separate InvZetas table as in Dilithium.
 
-			zeta := -int32(Zetas[k])
+			minZeta := int32(Zetas[k])
 			k--
 
 			for j := offset; j < offset+l; j++ {
-				t := p[j] // Gentleman-Sande butterfly: (a, b) ↦ (a + b, ζ(a-b))
-				p[j] = t + p[j+l]
-				t -= p[j+l]
-				p[j+l] = montReduce(zeta * int32(t))
+				// Gentleman-Sande butterfly: (a, b) ↦ (a + b, ζ(a-b))
+				t := p[j+l] - p[j]
+				p[j] += p[j+l]
+				p[j+l] = montReduce(minZeta * int32(t))
 
 				// Note that if we had |a| < αq and |b| < βq before the
 				// butterfly, then now we have |a| < (α+β)q and |b| < q.
