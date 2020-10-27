@@ -12,3 +12,6 @@ func subAVX2(p *[256]int16, a *[256]int16, b *[256]int16)
 
 //go:noescape
 func nttAVX2(p *[256]int16)
+
+//go:noescape
+func invNttAVX2(p *[256]int16)
