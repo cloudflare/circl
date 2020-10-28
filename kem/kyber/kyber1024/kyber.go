@@ -1,10 +1,10 @@
 // Code generated from pkg.templ.go. DO NOT EDIT.
 
 // kyber1024 implements the IND-CCA2 secure key encapsulation mechanism
-// Kyber1024.CCAKEM as submitted to round2 of the NIST PQC competition and
+// Kyber1024.CCAKEM as submitted to round 3 of the NIST PQC competition and
 // described in
 //
-// https://pq-crystals.org/kyber/data/kyber-specification-round2.pdf
+// https://pq-crystals.org/kyber/data/kyber-specification-round3.pdf
 package kyber1024
 
 import (

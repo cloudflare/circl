@@ -5,10 +5,10 @@
 // Code generated from pkg.templ.go. DO NOT EDIT.
 
 // {{.Pkg}} implements the IND-CCA2 secure key encapsulation mechanism
-// {{.Name}}.CCAKEM as submitted to round2 of the NIST PQC competition and
+// {{.Name}}.CCAKEM as submitted to round 3 of the NIST PQC competition and
 // described in
 //
-// https://pq-crystals.org/kyber/data/kyber-specification-round2.pdf
+// https://pq-crystals.org/kyber/data/kyber-specification-round3.pdf
 package {{.Pkg}}
 
 import (

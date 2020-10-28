@@ -4,16 +4,8 @@ package internal
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"testing"
-
-	"golang.org/x/crypto/sha3"
 )
-
-func hexHash(in []byte) string {
-	h := sha3.Sum256(in)
-	return hex.EncodeToString(h[:8])
-}
 
 func TestEncryptThenDecrypt(t *testing.T) {
 	var seed [32]byte

@@ -1,10 +1,10 @@
 // Code generated from modePkg.templ.go. DO NOT EDIT.
 
 // kyber1024 implements the IND-CPA-secure Public Key Encryption
-// scheme Kyber1024.CPAPKE as submitted to round2 of the NIST PQC competition
+// scheme Kyber1024.CPAPKE as submitted to round 3 of the NIST PQC competition
 // and described in
 //
-// https://pq-crystals.org/kyber/data/kyber-specification-round2.pdf
+// https://pq-crystals.org/kyber/data/kyber-specification-round3.pdf
 package kyber1024
 
 import (

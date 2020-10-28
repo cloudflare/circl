@@ -8,6 +8,7 @@ import (
 
 const (
 	K             = 4
+	Eta1          = 2
 	DU            = 11
 	DV            = 5
 	PublicKeySize = 32 + K*common.PolySize
