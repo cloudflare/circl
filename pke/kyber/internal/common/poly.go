@@ -164,26 +164,6 @@ func (p *Poly) Decompress(m []byte, d int) {
 	//                    = ⌊(qx + 2ᵈ⁻¹)/2ᵈ⌋
 	//                    = (qx + (1<<(d-1))) >> d
 	switch d {
-	case 3:
-		var t [8]uint16
-		idx := 0
-		for i := 0; i < N/8; i++ {
-			t[0] = uint16(m[idx])
-			t[1] = uint16(m[idx]) >> 3
-			t[2] = (uint16(m[idx]) >> 6) | (uint16(m[idx+1]) << 2)
-			t[3] = (uint16(m[idx+1]) >> 1)
-			t[4] = (uint16(m[idx+1]) >> 4)
-			t[5] = (uint16(m[idx+1]) >> 7) | (uint16(m[idx+2] << 1))
-			t[6] = uint16(m[idx+2]) >> 2
-			t[7] = uint16(m[idx+2]) >> 5
-
-			for j := 0; j < 8; j++ {
-				p[8*i+j] = int16(((1 << 2) +
-					uint32(t[j]&((1<<3)-1))*uint32(Q)) >> 3)
-			}
-
-			idx += 3
-		}
 	case 4:
 		for i := 0; i < N/2; i++ {
 			p[2*i] = int16(((1 << 3) +
@@ -262,19 +242,6 @@ func (p *Poly) CompressTo(m []byte, d int) {
 	//					= ⌊((x << d) + q/2) / q⌋ mod⁺ 2ᵈ
 	//					= DIV((x << d) + q/2, q) & ((1<<d) - 1)
 	switch d {
-	case 3:
-		var t [8]uint16
-		idx := 0
-		for i := 0; i < N/8; i++ {
-			for j := 0; j < 8; j++ {
-				t[j] = uint16(((uint32(p[8*i+j])<<3)+uint32(Q)/2)/
-					uint32(Q)) & ((1 << 3) - 1)
-			}
-			m[idx] = byte(t[0]) | byte(t[1]<<3) | byte(t[2]<<6)
-			m[idx+1] = byte(t[2]>>2) | byte(t[3]<<1) | byte(t[4]<<4) | byte(t[5]<<7)
-			m[idx+2] = byte(t[5]>>1) | byte(t[6]<<2) | byte(t[7]<<5)
-			idx += 3
-		}
 	case 4:
 		var t [8]uint16
 		idx := 0

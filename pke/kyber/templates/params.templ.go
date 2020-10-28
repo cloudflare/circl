@@ -12,6 +12,7 @@ import (
 
 const (
 	K             = {{ .K }}
+	Eta1          = {{ .Eta1 }}
 	DU            = {{ .DU }}
 	DV            = {{ .DV }}
 	PublicKeySize = 32 + K*common.PolySize

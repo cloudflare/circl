@@ -8,13 +8,14 @@ import (
 
 const (
 	K             = 2
+	Eta1          = 3
 	DU            = 10
-	DV            = 3
+	DV            = 4
 	PublicKeySize = 32 + K*common.PolySize
 
 	PrivateKeySize = K * common.PolySize
 
 	PlaintextSize  = common.PlaintextSize
 	SeedSize       = 32
-	CiphertextSize = 736
+	CiphertextSize = 768
 )

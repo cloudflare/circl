@@ -14,10 +14,21 @@ import (
 )
 
 func TestPQCgenKATKem(t *testing.T) {
-	// Computed from reference implementation
-	testPQCgenKATKem(t, "Kyber1024", "9e6441f6f77cd33ba2b7e1324ec66e7623808fe91896e7f06ee054e3a8645e93")
-	testPQCgenKATKem(t, "Kyber768", "6a9a983f3a003117c00f2adf8a1b42692429d40fd99ad12462caeb48e737a6eb")
-	testPQCgenKATKem(t, "Kyber512", "0da040de6aa757004315e18bfca4f25f6f9cd86e676bc87feb44cd87f3687db8")
+	kats := []struct {
+		name string
+		want string
+	}{
+		// Computed from reference implementation
+		{"Kyber1024", "89248f2f33f7f4f7051729111f3049c409a933ec904aedadf035f30fa5646cd5"},
+		{"Kyber768", "a1e122cad3c24bc51622e4c242d8b8acbcd3f618fee4220400605ca8f9ea02c2"},
+		{"Kyber512", "e9c2bd37133fcb40772f81559f14b1f58dccd1c816701be9ba6214d43baf4547"},
+	}
+	for _, kat := range kats {
+		kat := kat
+		t.Run(kat.name, func(t *testing.T) {
+			testPQCgenKATKem(t, kat.name, kat.want)
+		})
+	}
 }
 
 func testPQCgenKATKem(t *testing.T, name, expected string) {

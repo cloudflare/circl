@@ -65,11 +65,11 @@ func NewKeyFromSeed(seed []byte) (*PublicKey, *PrivateKey) {
 	pk.aT.Derive(&pk.rho, false) // Expand ρ to matrix A; we'll transpose later
 
 	var eh Vec
-	sk.sh.DeriveNoise(sigma, 0) // Sample secret vector s
+	sk.sh.DeriveNoise(sigma, 0, Eta1) // Sample secret vector s
 	sk.sh.NTT()
 	sk.sh.Normalize()
 
-	eh.DeriveNoise(sigma, K) // Sample blind e
+	eh.DeriveNoise(sigma, K, Eta1) // Sample blind e
 	eh.NTT()
 
 	// Next, we compute t = A s + e.
@@ -123,12 +123,12 @@ func (pk *PublicKey) EncryptTo(ct, seed, pt []byte) {
 	var e2, v, m common.Poly
 
 	// Sample r, e₁ and e₂ from B_η
-	rh.DeriveNoise(seed, 0)
+	rh.DeriveNoise(seed, 0, Eta1)
 	rh.NTT()
 	rh.BarrettReduce()
 
-	e1.DeriveNoise(seed, K)
-	e2.DeriveNoise(seed, 2*K)
+	e1.DeriveNoise(seed, K, 2)
+	e2.DeriveNoise(seed, 2*K, 2)
 
 	// Next we compute u = Aᵀ r + e₁.  First Aᵀ.
 	for i := 0; i < K; i++ {
