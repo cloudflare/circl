@@ -1,14 +1,14 @@
 // Package short implements KEM based on a short Weierstrass curve and HDKF
-// as key derivation fuunction.
+// as key derivation function.
 package short
 
 import (
-	"bytes"
 	"crypto"
 	"crypto/elliptic"
-	cryptoRand "crypto/rand"
-	_ "crypto/sha256" // to link
-	_ "crypto/sha512" // to link
+	"crypto/rand"
+	_ "crypto/sha256" // linking packages
+	_ "crypto/sha512" // linking packages
+	"crypto/subtle"
 	"encoding/binary"
 	"errors"
 	"io"
@@ -18,26 +18,39 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
-type KemID uint
+// KemID is
+type KemID = uint16
 
 const (
-	P256hkdfsha256 KemID = iota + 0x0010
-	P384hkdfsha384
-	P521hkdfsha512
+	KemP256Sha256 KemID = iota + 0x0010
+	KemP384Sha384
+	KemP521Sha512
+	_lastKem
 )
+
+var names [_lastKem]string
+
+func init() {
+	names[KemP256Sha256] = "KemP256Sha256"
+	names[KemP384Sha384] = "KemP384Sha384"
+	names[KemP521Sha512] = "KemP521Sha512"
+}
 
 // New returns a KEM based on short Weierstrass curves and HKDF as key derivation function.
 func New(id KemID, prefix []byte) kem.Scheme {
+	var c elliptic.Curve
+	var h crypto.Hash
 	switch id {
-	case P256hkdfsha256:
-		return short{elliptic.P256().Params(), id, crypto.SHA256, prefix}
-	case P384hkdfsha384:
-		return short{elliptic.P384().Params(), id, crypto.SHA384, prefix}
-	case P521hkdfsha512:
-		return short{elliptic.P521().Params(), id, crypto.SHA512, prefix}
+	case KemP256Sha256:
+		c, h = elliptic.P256(), crypto.SHA256
+	case KemP384Sha384:
+		c, h = elliptic.P384(), crypto.SHA384
+	case KemP521Sha512:
+		c, h = elliptic.P521(), crypto.SHA512
 	default:
-		panic("wrong KemID")
+		panic("wrong kemID")
 	}
+	return short{c.Params(), id, h, prefix}
 }
 
 type short struct {
@@ -47,16 +60,17 @@ type short struct {
 	prefix []byte
 }
 
-func (s short) Name() string               { return s.CurveParams.Name }
-func (s short) SharedKeySize() int         { return (s.BitSize + 7) / 8 }
-func (s short) PrivateKeySize() int        { return (s.BitSize + 7) / 8 }
-func (s short) SeedSize() int              { return (s.BitSize + 7) / 8 }
-func (s short) CiphertextSize() int        { l := (s.BitSize + 7) / 8; return 1 + 2*l }
-func (s short) PublicKeySize() int         { l := (s.BitSize + 7) / 8; return 1 + 2*l }
-func (s short) EncapsulationSeedSize() int { return s.SeedSize() }
+func (s short) Name() string               { return names[s.id] }
+func (s short) SharedKeySize() int         { return s.byteSize() }
+func (s short) PrivateKeySize() int        { return s.byteSize() }
+func (s short) SeedSize() int              { return s.byteSize() }
+func (s short) CiphertextSize() int        { return 1 + 2*s.byteSize() }
+func (s short) PublicKeySize() int         { return 1 + 2*s.byteSize() }
+func (s short) EncapsulationSeedSize() int { return s.byteSize() }
+func (s short) byteSize() int              { return (s.BitSize + 7) / 8 }
 
 func (s short) GenerateKey() (kem.PublicKey, kem.PrivateKey, error) {
-	sk, x, y, err := elliptic.GenerateKey(s, cryptoRand.Reader)
+	sk, x, y, err := elliptic.GenerateKey(s, rand.Reader)
 	return shortPubKey{s, x, y}, shortPrivKey{s, sk}, err
 }
 
@@ -89,7 +103,7 @@ func (s short) Encapsulate(pk kem.PublicKey) (ct []byte, ss []byte) {
 
 func (s short) getSuiteID() (sid [5]byte) {
 	copy(sid[:], "KEM")
-	binary.BigEndian.PutUint16(sid[3:5], uint16(s.id))
+	binary.BigEndian.PutUint16(sid[3:5], s.id)
 	return
 }
 
@@ -155,7 +169,13 @@ func (s short) UnmarshalBinaryPublicKey(data []byte) (kem.PublicKey, error) {
 }
 
 func (s short) UnmarshalBinaryPrivateKey(data []byte) (kem.PrivateKey, error) {
-	return shortPrivKey{s, data}, nil
+	l := s.PrivateKeySize()
+	if len(data) < l {
+		return nil, errors.New("invalid private key")
+	}
+	sk := shortPrivKey{c: s, k: make([]byte, l)}
+	copy(sk.k, data[:l])
+	return sk, nil
 }
 
 func (s short) DeriveKey(seed []byte) (kem.PublicKey, kem.PrivateKey) {
@@ -231,7 +251,8 @@ func (k shortPrivKey) Scheme() kem.Scheme             { return k.c }
 func (k shortPrivKey) MarshalBinary() ([]byte, error) { return k.k, nil }
 func (k shortPrivKey) Equal(pk kem.PrivateKey) bool {
 	k1, ok := pk.(shortPrivKey)
-	return ok && k.c.Params() == k1.c.Params() && bytes.Equal(k.k, k1.k)
+	return ok && k.c.Params() == k1.c.Params() &&
+		subtle.ConstantTimeCompare(k.k, k1.k) == 0
 }
 func (k shortPrivKey) Public() shortPubKey {
 	x, y := k.c.ScalarBaseMult(k.k)

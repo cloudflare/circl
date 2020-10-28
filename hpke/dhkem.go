@@ -12,12 +12,8 @@ func (m Mode) GetKem() (kem.Scheme, error) {
 	var dhkem kem.Scheme
 
 	switch m.kemID {
-	case KemP256Sha256:
-		dhkem = short.New(short.P256hkdfsha256, []byte(versionLabel))
-	case KemP384Sha384:
-		dhkem = short.New(short.P384hkdfsha384, []byte(versionLabel))
-	case KemP521Sha512:
-		dhkem = short.New(short.P521hkdfsha512, []byte(versionLabel))
+	case KemP256Sha256, KemP384Sha384, KemP521Sha512:
+		dhkem = short.New(m.kemID, []byte(versionLabel))
 	case KemX25519Sha256, KemX448Sha512:
 		panic("not implemented yet")
 	default:

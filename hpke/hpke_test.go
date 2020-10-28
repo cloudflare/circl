@@ -36,10 +36,10 @@ func (v *vector) verify(t *testing.T) {
 		pt := hexB(encv.Plaintext)
 		aad := hexB(encv.Aad)
 
-		ct, err := sender.Seal(aad, pt)
+		ct, err := sender.Seal(pt, aad)
 		test.CheckNoErr(t, err, "error on sealing"+mstr)
 
-		got, err := recv.Open(aad, ct)
+		got, err := recv.Open(ct, aad)
 		test.CheckNoErr(t, err, "error on opening"+mstr)
 
 		want := pt

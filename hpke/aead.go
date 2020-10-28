@@ -13,6 +13,7 @@ import (
 // EncContext is
 type EncContext interface {
 	Seal(aad, pt []byte) (ct []byte, err error)
+	Export(expCtx []byte, len uint16) []byte
 }
 
 // DecContext is
@@ -21,68 +22,76 @@ type DecContext interface {
 }
 
 type encdecCxt struct {
-	alg            aeadInfo
-	aead           cipher.AEAD
+	cipher.AEAD
+	m              Mode
 	baseNonce      []byte
 	seq            []byte
 	exporterSecret []byte
 }
 
-func (ai aeadInfo) newCtx(key, baseNonce, exporter []byte) (*encdecCxt, error) {
+func (m Mode) aeadCtx(id AeadID, key, baseNonce, exporter []byte) (*encdecCxt, error) {
+	l := aeadParams[id].Nn
+	if len(baseNonce) < int(l) {
+		return nil, errors.New("wrong nonce size")
+	}
+
 	var aead cipher.AEAD
 	var err error
 
-	switch ai.ID {
+	switch id {
 	case AeadAES128GCM, AeadAES256GCM:
-		block, err := aes.NewCipher(key)
-		if err != nil {
-			return nil, err
-		}
-		aead, err = cipher.NewGCM(block)
-		if err != nil {
-			return nil, err
+		var block cipher.Block
+		if block, err = aes.NewCipher(key); err == nil {
+			aead, err = cipher.NewGCM(block)
 		}
 	case AeadCC20P1305:
 		aead, err = chacha20poly1305.New(key)
-		if err != nil {
-			return nil, err
-		}
 	default:
-		return nil, errors.New("wrong AeadID")
+		err = errors.New("wrong AeadID")
 	}
-	return &encdecCxt{ai, aead, baseNonce, make([]byte, ai.Nn), exporter}, nil
+	if err != nil {
+		return nil, err
+	}
+	return &encdecCxt{aead, m, baseNonce, make([]byte, l), exporter}, nil
 }
 
 func (c *encdecCxt) calcNonce() []byte {
-	if len(c.baseNonce) != len(c.seq) {
-		panic("wrong sizes")
-	}
 	out := make([]byte, len(c.seq))
-	for i := range c.seq {
+	for i := range c.baseNonce {
 		out[i] = c.baseNonce[i] ^ c.seq[i]
 	}
 	return out
 }
 
 func (c *encdecCxt) inc() error {
-	const max = uint32(0xFFFFFFFF)
-	s0 := binary.BigEndian.Uint32(c.seq[8:12])
-	s1 := binary.BigEndian.Uint32(c.seq[4:8])
-	s2 := binary.BigEndian.Uint32(c.seq[0:4])
-	if s0 == max && s1 == max && s2 == max {
+	max := byte(0xFF)
+	of := max
+	for i := range c.seq {
+		of &= c.seq[i]
+	}
+	l32 := len(c.seq) / 4
+	carry := uint32(0)
+	word := uint32(1)
+	for i := l32 - 1; i >= 0; i-- {
+		si := binary.BigEndian.Uint32(c.seq[4*i : 4*(i+1)])
+		si, carry = bits.Add32(si, word, carry)
+		binary.BigEndian.PutUint32(c.seq[4*i:4*(i+1)], si)
+		word = 0
+	}
+	l8 := len(c.seq) % 4
+	for i := l8 - 1; i >= 0; i-- {
+		w := uint32(c.seq[i]) + carry
+		carry = w >> 8
+		c.seq[i] = byte(w & 0xFF)
+	}
+	if of == max || carry != 0 {
 		return errors.New("seq overflow")
 	}
-	r0, c0 := bits.Add32(s0, 1, 0)
-	r1, c1 := bits.Add32(s1, 0, c0)
-	r2, _ := bits.Add32(s2, 0, c1)
-	binary.BigEndian.PutUint32(c.seq[8:12], r0)
-	binary.BigEndian.PutUint32(c.seq[4:8], r1)
-	binary.BigEndian.PutUint32(c.seq[0:4], r2)
 	return nil
 }
 
-func (c *encdecCxt) Seal(aad, pt []byte) ([]byte, error) {
-	ct := c.aead.Seal(nil, c.calcNonce(), pt, aad)
+func (c *encdecCxt) Seal(pt, aad []byte) ([]byte, error) {
+	ct := c.AEAD.Seal(nil, c.calcNonce(), pt, aad)
 	err := c.inc()
 	if err != nil {
 		return nil, err
@@ -90,8 +99,8 @@ func (c *encdecCxt) Seal(aad, pt []byte) ([]byte, error) {
 	return ct, nil
 }
 
-func (c *encdecCxt) Open(aad, ct []byte) ([]byte, error) {
-	pt, err := c.aead.Open(nil, c.calcNonce(), ct, aad)
+func (c *encdecCxt) Open(ct, aad []byte) ([]byte, error) {
+	pt, err := c.AEAD.Open(nil, c.calcNonce(), ct, aad)
 	if err != nil {
 		return nil, err
 	}
@@ -100,4 +109,8 @@ func (c *encdecCxt) Open(aad, ct []byte) ([]byte, error) {
 		return nil, err
 	}
 	return pt, nil
+}
+
+func (c *encdecCxt) Export(expCtx []byte, len uint16) []byte {
+	return c.m.labeledExpand(c.exporterSecret, []byte("sec"), expCtx, len)
 }

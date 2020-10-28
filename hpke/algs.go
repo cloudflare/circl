@@ -1,13 +1,17 @@
 package hpke
 
-import "crypto"
+import (
+	"crypto"
+
+	"github.com/cloudflare/circl/kem/short"
+)
 
 type KemID = uint16
 
 const (
-	KemP256Sha256   KemID = 0x0010
-	KemP384Sha384   KemID = 0x0011
-	KemP521Sha512   KemID = 0x0012
+	KemP256Sha256   KemID = short.KemP256Sha256
+	KemP384Sha384   KemID = short.KemP384Sha384
+	KemP521Sha512   KemID = short.KemP521Sha512
 	KemX25519Sha256 KemID = 0x0020
 	KemX448Sha512   KemID = 0x0021
 )

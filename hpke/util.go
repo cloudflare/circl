@@ -33,7 +33,7 @@ func (m Mode) keySchedule(ss, info, psk, pskID []byte) (*encdecCxt, error) {
 	baseNonce := m.labeledExpand(secret, []byte("base_nonce"), keySchCtx, aeadPar.Nn)
 	exporterSecret := m.labeledExpand(secret, []byte("exp"), keySchCtx, aeadPar.Nn)
 
-	return aeadPar.newCtx(key, baseNonce, exporterSecret)
+	return m.aeadCtx(m.aeadID, key, baseNonce, exporterSecret)
 }
 
 func (m Mode) verifyPSKInputs(psk, pskID []byte) error {
