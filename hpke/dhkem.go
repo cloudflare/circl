@@ -11,17 +11,17 @@ import (
 func (m Mode) GetKem() (kem.Scheme, error) {
 	var dhkem kem.Scheme
 
-	switch m.KemInfo {
-	case DHKemP256hkdfsha256:
+	switch m.kemID {
+	case KemP256Sha256:
 		dhkem = short.New(short.P256hkdfsha256, []byte(versionLabel))
-	case DHKemP384hkdfsha384:
-		dhkem = short.New(short.P256hkdfsha256, []byte(versionLabel))
-	case DHKemP521hkdfsha512:
-		dhkem = short.New(short.P256hkdfsha256, []byte(versionLabel))
-	case DHKemX25519hkdfsha256, DHKemX448hkdfsha512:
+	case KemP384Sha384:
+		dhkem = short.New(short.P384hkdfsha384, []byte(versionLabel))
+	case KemP521Sha512:
+		dhkem = short.New(short.P521hkdfsha512, []byte(versionLabel))
+	case KemX25519Sha256, KemX448Sha512:
 		panic("not implemented yet")
 	default:
-		return nil, errors.New("wrong DHkemID")
+		return nil, errors.New("wrong kemID")
 	}
 	return dhkem, nil
 }

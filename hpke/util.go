@@ -12,8 +12,8 @@ import (
 const versionLabel = "HPKE-06"
 
 func (m Mode) String() string {
-	return fmt.Sprintf("mode: %v\nkem_id: %v\nkdf_id: %v\naead_id: %v",
-		m.ModeID, m.KemInfo, m.HkdfInfo, m.AeadInfo)
+	return fmt.Sprintf("mode: %v kem_id: %v kdf_id: %v aead_id: %v",
+		m.ModeID, m.kemID, m.kdfID, m.aeadID)
 }
 
 func (m Mode) keySchedule(ss, info, psk, pskID []byte) (*encdecCxt, error) {
@@ -23,12 +23,12 @@ func (m Mode) keySchedule(ss, info, psk, pskID []byte) (*encdecCxt, error) {
 
 	pskIDHash := m.labeledExtract(nil, []byte("psk_id_hash"), pskID)
 	infoHash := m.labeledExtract(nil, []byte("info_hash"), info)
-	keySchCtx := append([]byte{byte(m.ModeID)}, pskIDHash...)
+	keySchCtx := append([]byte{m.ModeID}, pskIDHash...)
 	keySchCtx = append(keySchCtx, infoHash...)
 
 	secret := m.labeledExtract(ss, []byte("secret"), psk)
 
-	aeadPar := aeadParams[m.AeadInfo]
+	aeadPar := aeadParams[m.aeadID]
 	key := m.labeledExpand(secret, []byte("key"), keySchCtx, aeadPar.Nk)
 	baseNonce := m.labeledExpand(secret, []byte("base_nonce"), keySchCtx, aeadPar.Nn)
 	exporterSecret := m.labeledExpand(secret, []byte("exp"), keySchCtx, aeadPar.Nn)
@@ -57,9 +57,9 @@ func (m Mode) verifyPSKInputs(psk, pskID []byte) error {
 
 func (m Mode) getSuiteID() (id [10]byte) {
 	copy(id[:], "HPKE")
-	binary.BigEndian.PutUint16(id[4:6], uint16(m.KemInfo))
-	binary.BigEndian.PutUint16(id[6:8], uint16(m.HkdfInfo))
-	binary.BigEndian.PutUint16(id[8:10], uint16(m.AeadInfo))
+	binary.BigEndian.PutUint16(id[4:6], m.kemID)
+	binary.BigEndian.PutUint16(id[6:8], m.kdfID)
+	binary.BigEndian.PutUint16(id[8:10], m.aeadID)
 	return
 }
 
@@ -70,7 +70,7 @@ func (m Mode) labeledExtract(salt, label, ikm []byte) []byte {
 	labeledIKM = append(labeledIKM, suiteID[:]...)
 	labeledIKM = append(labeledIKM, label...)
 	labeledIKM = append(labeledIKM, ikm...)
-	return hkdf.Extract(hkdfParams[m.HkdfInfo].H.New, labeledIKM, salt)
+	return hkdf.Extract(hkdfParams[m.kdfID].H.New, labeledIKM, salt)
 }
 
 func (m Mode) labeledExpand(prk, label, info []byte, l uint16) []byte {
@@ -82,7 +82,7 @@ func (m Mode) labeledExpand(prk, label, info []byte, l uint16) []byte {
 	labeledInfo = append(labeledInfo, label...)
 	labeledInfo = append(labeledInfo, info...)
 	b := make([]byte, l)
-	rd := hkdf.Expand(hkdfParams[m.HkdfInfo].H.New, prk, labeledInfo)
+	rd := hkdf.Expand(hkdfParams[m.kdfID].H.New, prk, labeledInfo)
 	_, _ = io.ReadFull(rd, b)
 	return b
 }

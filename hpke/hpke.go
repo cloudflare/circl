@@ -1,12 +1,10 @@
 // Package hpke implements hybrid public key encryption.
 package hpke
 
-import (
-	"crypto"
-)
+import "crypto"
 
 // ModeID is
-type ModeID uint8
+type ModeID = uint8
 
 const (
 	// Base is
@@ -19,12 +17,15 @@ const (
 	AuthPSK
 )
 
+// New is
+func New(m ModeID, k KemID, h KdfID, a AeadID) Mode { return Mode{m, k, h, a} }
+
 // Mode is
 type Mode struct {
 	ModeID
-	KemInfo  DHkemID
-	HkdfInfo HkdfID
-	AeadInfo AeadID
+	kemID  KemID
+	kdfID  KdfID
+	aeadID AeadID
 }
 
 // Seal is
