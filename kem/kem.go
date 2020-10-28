@@ -81,6 +81,14 @@ type Scheme interface {
 	EncapsulationSeedSize() int
 }
 
+// AuthScheme includes extra methods for authenticated public-key encapsulation.
+type AuthScheme interface {
+	Scheme
+	AuthEncapsulate(pkr PublicKey, sks PrivateKey) (ct []byte, ss []byte)
+	AuthDecapsulate(skr PrivateKey, ct []byte, pks PublicKey) []byte
+	AuthEncapsulateDeterministically(pk PublicKey, seed []byte, sks PrivateKey) (ct, ss []byte)
+}
+
 var (
 	// ErrTypeMismatch is the error used if types of, for instance, private
 	// and public keys don't match
