@@ -1,5 +1,4 @@
-// Package short implements KEM based on a short Weierstrass curve and HDKF
-// as key derivation function.
+// Package short implements KEM based on a short Weierstrass curves.
 package short
 
 import (
@@ -18,12 +17,12 @@ const (
 	KemP256Sha256 KemID = iota + 0x0010
 	KemP384Sha384
 	KemP521Sha512
-	_lastKem
 )
 
-var names [_lastKem]string
+var names map[KemID]string
 
 func init() {
+	names = make(map[KemID]string)
 	names[KemP256Sha256] = "KemP256Sha256"
 	names[KemP384Sha384] = "KemP384Sha384"
 	names[KemP521Sha512] = "KemP521Sha512"

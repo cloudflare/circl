@@ -30,9 +30,11 @@ type shortPrivKey struct {
 	pub *shortPubKey
 }
 
-func (k shortPrivKey) String() string                 { return fmt.Sprintf("%x", k.k) }
-func (k shortPrivKey) Scheme() kem.Scheme             { return k.c }
-func (k shortPrivKey) MarshalBinary() ([]byte, error) { return k.k, nil }
+func (k shortPrivKey) String() string     { return fmt.Sprintf("%x", k.k) }
+func (k shortPrivKey) Scheme() kem.Scheme { return k.c }
+func (k shortPrivKey) MarshalBinary() ([]byte, error) {
+	return append(make([]byte, 0, k.c.PrivateKeySize()), k.k...), nil
+}
 func (k shortPrivKey) Equal(pk kem.PrivateKey) bool {
 	k1, ok := pk.(shortPrivKey)
 	return ok && k.c.Params() == k1.c.Params() &&

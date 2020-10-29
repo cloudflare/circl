@@ -6,6 +6,7 @@ import (
 
 	"github.com/cloudflare/circl/kem"
 	"github.com/cloudflare/circl/kem/short"
+	"github.com/cloudflare/circl/kem/xkem"
 )
 
 func (s *Sender) encap(pk crypto.PublicKey) (ct []byte, ss []byte, err error) {
@@ -103,7 +104,7 @@ func (s Suite) GetKem() (dhkem kem.Scheme, err error) {
 	case KemP256Sha256, KemP384Sha384, KemP521Sha512:
 		dhkem = short.New(s.KemID, []byte(versionLabel))
 	case KemX25519Sha256, KemX448Sha512:
-		panic("not implemented yet")
+		dhkem = xkem.New(s.KemID, []byte(versionLabel))
 	default:
 		err = errors.New("wrong kemID")
 	}

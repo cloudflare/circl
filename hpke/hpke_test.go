@@ -16,10 +16,7 @@ import (
 func TestVectors(t *testing.T) {
 	vectors := readFile(t, "testdata/vectors.json")
 	for i, v := range vectors {
-		if v.KemID != KemX25519Sha256 &&
-			v.KemID != KemX448Sha512 {
-			t.Run(fmt.Sprintf("v%v", i), v.verify)
-		}
+		t.Run(fmt.Sprintf("v%v", i), v.verify)
 	}
 }
 
