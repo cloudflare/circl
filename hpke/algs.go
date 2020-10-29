@@ -22,7 +22,6 @@ const (
 	HkdfSha256 KdfID = iota + 1
 	HkdfSha384
 	HkdfSha512
-	_lastHkdf
 )
 
 type AeadID = uint16
@@ -31,37 +30,38 @@ const (
 	AeadAES128GCM AeadID = iota + 1
 	AeadAES256GCM
 	AeadCC20P1305
-	_lastAead
 )
 
-var aeadParams [_lastAead]aeadInfo
-var hkdfParams [_lastHkdf]kdfInfo
-
-// var dhkemParams [_lastDHKem]dhkemInfo
+var kemParams map[KemID]kemInfo
+var kdfParams map[KdfID]kdfInfo
+var aeadParams map[AeadID]aeadInfo
 
 func init() {
-	// dhkemParams[KemP256_SHA256] = dhkemInfo{32, 65, 65, 32, crypto.SHA256}
-	// dhkemParams[KemP384_SHA384] = dhkemInfo{48, 97, 97, 48, crypto.SHA384}
-	// dhkemParams[KemP521_SHA512] = dhkemInfo{64, 133, 133, 66, crypto.SHA512}
-	// dhkemParams[KemX25519_SHA256] = dhkemInfo{32, 32, 32, 32, crypto.SHA256}
-	// dhkemParams[KemX448_SHA512] = dhkemInfo{64, 56, 56, 56, crypto.SHA512}
+	kemParams = make(map[KemID]kemInfo)
+	kemParams[KemP256Sha256] = kemInfo{32, 65, 65, 32, crypto.SHA256}
+	kemParams[KemP384Sha384] = kemInfo{48, 97, 97, 48, crypto.SHA384}
+	kemParams[KemP521Sha512] = kemInfo{64, 133, 133, 66, crypto.SHA512}
+	kemParams[KemX25519Sha256] = kemInfo{32, 32, 32, 32, crypto.SHA256}
+	kemParams[KemX448Sha512] = kemInfo{64, 56, 56, 56, crypto.SHA512}
 
-	hkdfParams[HkdfSha256] = kdfInfo{crypto.SHA256}
-	hkdfParams[HkdfSha384] = kdfInfo{crypto.SHA384}
-	hkdfParams[HkdfSha512] = kdfInfo{crypto.SHA512}
+	kdfParams = make(map[KdfID]kdfInfo)
+	kdfParams[HkdfSha256] = kdfInfo{crypto.SHA256}
+	kdfParams[HkdfSha384] = kdfInfo{crypto.SHA384}
+	kdfParams[HkdfSha512] = kdfInfo{crypto.SHA512}
 
+	aeadParams = make(map[AeadID]aeadInfo)
 	aeadParams[AeadAES128GCM] = aeadInfo{AeadAES128GCM, 16, 12}
 	aeadParams[AeadAES256GCM] = aeadInfo{AeadAES256GCM, 32, 12}
 	aeadParams[AeadCC20P1305] = aeadInfo{AeadCC20P1305, 32, 12}
 }
 
-// type dhkemInfo struct {
-// 	Nsecret uint16
-// 	Nenc    uint
-// 	Npk     uint
-// 	Nsk     uint
-// 	H       crypto.Hash
-// }
+type kemInfo struct {
+	Nsecret uint16
+	Nenc    uint
+	Npk     uint
+	Nsk     uint
+	H       crypto.Hash
+}
 
 type kdfInfo struct {
 	H crypto.Hash

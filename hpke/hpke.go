@@ -1,73 +1,178 @@
 // Package hpke implements hybrid public key encryption.
 package hpke
 
-import "crypto"
+import (
+	"crypto"
+	"errors"
+
+	"github.com/cloudflare/circl/kem"
+)
+
+const versionLabel = "HPKE-06"
+
+// Exporter is
+type Exporter interface {
+	Export(expCtx []byte, len uint16) []byte
+}
+
+// Sealer is
+type Sealer interface {
+	Exporter
+	Seal(pt, aad []byte) (ct []byte, err error)
+}
+
+// Opener is
+type Opener interface {
+	Exporter
+	Open(ct, aad []byte) (pt []byte, err error)
+}
 
 // ModeID is
 type ModeID = uint8
 
 const (
-	// Base is
-	Base ModeID = iota
-	// PSK is
-	PSK
-	// Auth is
-	Auth
-	// AuthPSK is
-	AuthPSK
+	Base    ModeID = iota // Base is
+	PSK                   // PSK is
+	Auth                  // Auth is
+	AuthPSK               // AuthPSK is
 )
 
-// New is
-func New(m ModeID, k KemID, h KdfID, a AeadID) Mode { return Mode{m, k, h, a} }
-
-// Mode is
-type Mode struct {
-	ModeID
-	kemID  KemID
-	kdfID  KdfID
-	aeadID AeadID
+type Suite struct {
+	KemID  KemID
+	KdfID  KdfID
+	AeadID AeadID
 }
 
-// Seal is
-func (m Mode) Seal(pkR crypto.PublicKey, info, aad, pt []byte) (enc, ct []byte, err error) {
-	enc, ctx, err := m.SetupBaseS(pkR, info)
+type state struct {
+	Suite
+	modeID ModeID
+	skS    crypto.PrivateKey
+	pkS    crypto.PublicKey
+	psk    []byte
+	pskID  []byte
+}
+
+type Sender struct {
+	state
+	pkR  crypto.PublicKey
+	info []byte
+}
+
+func (s Suite) NewSender(pkR crypto.PublicKey, info []byte) *Sender {
+	return &Sender{state: state{Suite: s}, pkR: pkR, info: info}
+}
+
+func (s *Sender) Setup() (enc []byte, seal Sealer, err error) {
+	s.modeID = Base
+	return s.allSetup()
+}
+func (s *Sender) SetupAuth(skS crypto.PrivateKey) (enc []byte, seal Sealer, err error) {
+	s.modeID = Auth
+	s.state.skS = skS
+	return s.allSetup()
+}
+func (s *Sender) SetupPSK(psk, pskID []byte) (enc []byte, seal Sealer, err error) {
+	s.modeID = PSK
+	s.state.psk = psk
+	s.state.pskID = pskID
+	return s.allSetup()
+}
+func (s *Sender) SetupAuthPSK(skS crypto.PrivateKey, psk, pskID []byte) (enc []byte, seal Sealer, err error) {
+	s.modeID = AuthPSK
+	s.state.skS = skS
+	s.state.psk = psk
+	s.state.pskID = pskID
+	return s.allSetup()
+}
+
+type Receiver struct {
+	state
+	skR  crypto.PrivateKey
+	enc  []byte
+	info []byte
+}
+
+func (s Suite) NewReceiver(skR crypto.PrivateKey, info []byte) *Receiver {
+	return &Receiver{state: state{Suite: s}, skR: skR, info: info}
+}
+
+func (r *Receiver) Setup(enc []byte) (Opener, error) {
+	r.modeID = Base
+	r.enc = enc
+	return r.allSetup()
+}
+func (r *Receiver) SetupAuth(enc []byte, pkS crypto.PublicKey) (Opener, error) {
+	r.modeID = Auth
+	r.enc = enc
+	r.state.pkS = pkS
+	return r.allSetup()
+}
+func (r *Receiver) SetupPSK(enc, psk, pskID []byte) (Opener, error) {
+	r.modeID = PSK
+	r.enc = enc
+	r.state.psk = psk
+	r.state.pskID = pskID
+	return r.allSetup()
+}
+func (r *Receiver) SetupAuthPSK(enc, psk, pskID []byte, pkS crypto.PublicKey) (Opener, error) {
+	r.modeID = AuthPSK
+	r.enc = enc
+	r.state.psk = psk
+	r.state.pskID = pskID
+	r.state.pkS = pkS
+	return r.allSetup()
+}
+
+func (s *Sender) allSetup() ([]byte, Sealer, error) {
+	if err := s.validate(); err != nil {
+		return nil, nil, err
+	}
+	k, err := s.GetKem()
 	if err != nil {
 		return nil, nil, err
 	}
-	ct, err = ctx.Seal(aad, pt)
+
+	var enc, ss []byte
+	switch s.modeID {
+	case Base, PSK:
+		enc, ss = k.Encapsulate(s.pkR.(kem.PublicKey))
+	case Auth, AuthPSK:
+		authKem, ok := k.(kem.AuthScheme)
+		if !ok {
+			return nil, nil, errors.New("kem is not authenticated")
+		}
+		enc, ss = authKem.AuthEncapsulate(s.pkR.(kem.PublicKey), s.skS.(kem.PrivateKey))
+	}
+	ctx, err := s.keySchedule(ss, s.info, s.psk, s.pskID)
 	if err != nil {
 		return nil, nil, err
 	}
-	return enc, ct, nil
+	return enc, &sealCxt{ctx}, nil
 }
 
-// Open is
-func (m Mode) Open(skR crypto.PrivateKey, enc, info, aad, ct []byte) ([]byte, error) {
-	ctx, err := m.SetupBaseR(skR, enc, info)
+func (r *Receiver) allSetup() (Opener, error) {
+	if err := r.validate(); err != nil {
+		return nil, err
+	}
+	k, err := r.GetKem()
 	if err != nil {
 		return nil, err
 	}
-	return ctx.Open(aad, ct)
-}
 
-// SetupBaseS is
-func (m Mode) SetupBaseS(pkR crypto.PublicKey, info []byte) ([]byte, EncContext, error) {
-	enc, ss, err := m.encap(pkR)
-	if err != nil {
-		return nil, nil, err
+	var ss []byte
+	switch r.modeID {
+	case Base, PSK:
+		ss = k.Decapsulate(r.skR.(kem.PrivateKey), r.enc)
+	case Auth, AuthPSK:
+		authKem, ok := k.(kem.AuthScheme)
+		if !ok {
+			return nil, errors.New("kem is not authenticated")
+		}
+		ss = authKem.AuthDecapsulate(r.skR.(kem.PrivateKey), r.enc, r.pkS.(kem.PublicKey))
 	}
-	ctx, err := m.keySchedule(ss, info, nil, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-	return enc, ctx, nil
-}
-
-// SetupBaseR is
-func (m Mode) SetupBaseR(skR crypto.PrivateKey, enc, info []byte) (DecContext, error) {
-	ss, err := m.decap(skR, enc)
+	ctx, err := r.keySchedule(ss, r.info, r.psk, r.pskID)
 	if err != nil {
 		return nil, err
 	}
-	return m.keySchedule(ss, info, nil, nil)
+	return &openCxt{ctx}, nil
 }

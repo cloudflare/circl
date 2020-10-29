@@ -4,7 +4,7 @@ import "github.com/cloudflare/circl/kem"
 
 func (s short) Decapsulate(skr kem.PrivateKey, ct []byte) []byte {
 	dh := make([]byte, s.SharedKeySize())
-	kemCtx := s.codeDecap(dh, skr, ct)
+	kemCtx := s.coreDecap(dh, skr, ct)
 	return s.extractExpand(dh, kemCtx)
 }
 
@@ -16,7 +16,7 @@ func (s short) AuthDecapsulate(skr kem.PrivateKey, ct []byte, pks kem.PublicKey)
 
 	dhLen := s.SharedKeySize()
 	dh := make([]byte, 2*dhLen)
-	kemCtx := s.codeDecap(dh[:dhLen], skr, ct)
+	kemCtx := s.coreDecap(dh[:dhLen], skr, ct)
 	s.calcDH(dh[dhLen:], skr.(shortPrivKey), pkS)
 
 	pkSm, err := pkS.MarshalBinary()
@@ -27,7 +27,7 @@ func (s short) AuthDecapsulate(skr kem.PrivateKey, ct []byte, pks kem.PublicKey)
 	return s.extractExpand(dh, kemCtx)
 }
 
-func (s short) codeDecap(dh []byte, skr kem.PrivateKey, ct []byte) (kemCtx []byte) {
+func (s short) coreDecap(dh []byte, skr kem.PrivateKey, ct []byte) (kemCtx []byte) {
 	skR, ok := skr.(shortPrivKey)
 	if !ok {
 		panic(kem.ErrTypeMismatch)
