@@ -45,9 +45,9 @@ func init() {
 	kemParams[KemX448Sha512] = kemInfo{64, 56, 56, 56, crypto.SHA512}
 
 	kdfParams = make(map[KdfID]kdfInfo)
-	kdfParams[HkdfSha256] = kdfInfo{crypto.SHA256}
-	kdfParams[HkdfSha384] = kdfInfo{crypto.SHA384}
-	kdfParams[HkdfSha512] = kdfInfo{crypto.SHA512}
+	kdfParams[HkdfSha256] = kdfInfo{crypto.SHA256, 32}
+	kdfParams[HkdfSha384] = kdfInfo{crypto.SHA384, 48}
+	kdfParams[HkdfSha512] = kdfInfo{crypto.SHA512, 64}
 
 	aeadParams = make(map[AeadID]aeadInfo)
 	aeadParams[AeadAES128GCM] = aeadInfo{AeadAES128GCM, 16, 12}
@@ -64,7 +64,8 @@ type kemInfo struct {
 }
 
 type kdfInfo struct {
-	H crypto.Hash
+	H  crypto.Hash
+	Nh uint16
 }
 
 type aeadInfo struct {

@@ -3,9 +3,7 @@ package hpke
 
 import (
 	"crypto"
-	"errors"
-
-	"github.com/cloudflare/circl/kem"
+	"fmt"
 )
 
 const versionLabel = "HPKE-06"
@@ -56,6 +54,7 @@ type Sender struct {
 	state
 	pkR  crypto.PublicKey
 	info []byte
+	seed []byte
 }
 
 func (s Suite) NewSender(pkR crypto.PublicKey, info []byte) *Sender {
@@ -124,10 +123,8 @@ func (r *Receiver) SetupAuthPSK(enc, psk, pskID []byte, pkS crypto.PublicKey) (O
 }
 
 func (s *Sender) allSetup() ([]byte, Sealer, error) {
-	if err := s.validate(); err != nil {
-		return nil, nil, err
-	}
-	k, err := s.GetKem()
+	var err error
+	err = s.validate()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -135,26 +132,26 @@ func (s *Sender) allSetup() ([]byte, Sealer, error) {
 	var enc, ss []byte
 	switch s.modeID {
 	case Base, PSK:
-		enc, ss = k.Encapsulate(s.pkR.(kem.PublicKey))
+		enc, ss, err = s.encap(s.pkR)
 	case Auth, AuthPSK:
-		authKem, ok := k.(kem.AuthScheme)
-		if !ok {
-			return nil, nil, errors.New("kem is not authenticated")
-		}
-		enc, ss = authKem.AuthEncapsulate(s.pkR.(kem.PublicKey), s.skS.(kem.PrivateKey))
+		enc, ss, err = s.encapAuth(s.pkR, s.skS)
 	}
+	if err != nil {
+		return nil, nil, err
+	}
+
+	fmt.Printf("Sender ss: %x\n", ss)
 	ctx, err := s.keySchedule(ss, s.info, s.psk, s.pskID)
 	if err != nil {
 		return nil, nil, err
 	}
+
 	return enc, &sealCxt{ctx}, nil
 }
 
 func (r *Receiver) allSetup() (Opener, error) {
-	if err := r.validate(); err != nil {
-		return nil, err
-	}
-	k, err := r.GetKem()
+	var err error
+	err = r.validate()
 	if err != nil {
 		return nil, err
 	}
@@ -162,14 +159,15 @@ func (r *Receiver) allSetup() (Opener, error) {
 	var ss []byte
 	switch r.modeID {
 	case Base, PSK:
-		ss = k.Decapsulate(r.skR.(kem.PrivateKey), r.enc)
+		ss, err = r.decap(r.skR, r.enc)
 	case Auth, AuthPSK:
-		authKem, ok := k.(kem.AuthScheme)
-		if !ok {
-			return nil, errors.New("kem is not authenticated")
-		}
-		ss = authKem.AuthDecapsulate(r.skR.(kem.PrivateKey), r.enc, r.pkS.(kem.PublicKey))
+		ss, err = r.decapAuth(r.skR, r.enc, r.pkS)
 	}
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf("Recv ss: %x\n", ss)
+
 	ctx, err := r.keySchedule(ss, r.info, r.psk, r.pskID)
 	if err != nil {
 		return nil, err

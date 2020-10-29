@@ -40,7 +40,7 @@ func (s short) calcDH(dh []byte, sk shortPrivKey, pk shortPubKey) {
 
 func (s short) extractExpand(dh, kemCtx []byte) []byte {
 	eaePkr := s.labeledExtract(nil, []byte("eae_prk"), dh)
-	return s.labeledExpand(eaePkr, []byte("shared_secret"), kemCtx)
+	return s.labeledExpand(eaePkr, []byte("shared_secret"), kemCtx, uint16(s.byteSize()))
 }
 
 func (s short) labeledExtract(salt, label, info []byte) []byte {
@@ -54,9 +54,8 @@ func (s short) labeledExtract(salt, label, info []byte) []byte {
 	return hkdf.Extract(s.h.New, labeledIKM, salt)
 }
 
-func (s short) labeledExpand(prk, label, info []byte) []byte {
+func (s short) labeledExpand(prk, label, info []byte, l uint16) []byte {
 	suiteID := s.getSuiteID()
-	l := s.h.Size()
 	labeledInfo := make([]byte, 2, 2+len(s.dst)+len(suiteID)+len(label)+len(info))
 	binary.BigEndian.PutUint16(labeledInfo[0:2], uint16(l))
 	labeledInfo = append(append(append(append(labeledInfo,

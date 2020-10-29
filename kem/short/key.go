@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	"errors"
+	"fmt"
 	"math/big"
 
 	"github.com/cloudflare/circl/kem"
@@ -15,6 +16,7 @@ type shortPubKey struct {
 	x, y *big.Int
 }
 
+func (k shortPubKey) String() string                 { return fmt.Sprintf("x: %v\ny: %v", k.x.Text(16), k.y.Text(16)) }
 func (k shortPubKey) Scheme() kem.Scheme             { return k.c }
 func (k shortPubKey) MarshalBinary() ([]byte, error) { return elliptic.Marshal(k.c, k.x, k.y), nil }
 func (k shortPubKey) Equal(pk kem.PublicKey) bool {
@@ -28,6 +30,7 @@ type shortPrivKey struct {
 	pub *shortPubKey
 }
 
+func (k shortPrivKey) String() string                 { return fmt.Sprintf("%x", k.k) }
 func (k shortPrivKey) Scheme() kem.Scheme             { return k.c }
 func (k shortPrivKey) MarshalBinary() ([]byte, error) { return k.k, nil }
 func (k shortPrivKey) Equal(pk kem.PrivateKey) bool {
@@ -35,7 +38,7 @@ func (k shortPrivKey) Equal(pk kem.PrivateKey) bool {
 	return ok && k.c.Params() == k1.c.Params() &&
 		subtle.ConstantTimeCompare(k.k, k1.k) == 0
 }
-func (k shortPrivKey) Public() shortPubKey {
+func (k *shortPrivKey) Public() shortPubKey {
 	if k.pub == nil {
 		x, y := k.c.ScalarBaseMult(k.k)
 		k.pub = &shortPubKey{k.c, x, y}
@@ -78,7 +81,7 @@ func (s short) DeriveKey(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 		if ctr > 255 {
 			panic("derive key error")
 		}
-		bytes := s.labeledExpand(dkpPrk, []byte("candidate"), []byte{byte(ctr)})
+		bytes = s.labeledExpand(dkpPrk, []byte("candidate"), []byte{byte(ctr)}, uint16(s.byteSize()))
 		bytes[0] &= bitmask
 		skBig.SetBytes(bytes)
 	}

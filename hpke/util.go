@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/cloudflare/circl/kem"
-	"github.com/cloudflare/circl/kem/short"
 	"golang.org/x/crypto/hkdf"
 )
 
@@ -26,7 +24,13 @@ func (s state) keySchedule(ss, info, psk, pskID []byte) (*encdecCxt, error) {
 	aeadPar := aeadParams[s.AeadID]
 	key := s.labeledExpand(secret, []byte("key"), keySchCtx, aeadPar.Nk)
 	baseNonce := s.labeledExpand(secret, []byte("base_nonce"), keySchCtx, aeadPar.Nn)
-	exporterSecret := s.labeledExpand(secret, []byte("exp"), keySchCtx, aeadPar.Nn)
+	exporterSecret := s.labeledExpand(secret, []byte("exp"), keySchCtx, kdfParams[s.KdfID].Nh)
+
+	// fmt.Printf("keySchCtx:      %x\n", keySchCtx)
+	// fmt.Printf("secret:         %x\n", secret)
+	// fmt.Printf("key:            %x\n", key)
+	// fmt.Printf("baseNonce:      %x\n", baseNonce)
+	// fmt.Printf("exporterSecret: %x\n", exporterSecret)
 
 	return s.aeadCtx(key, baseNonce, exporterSecret)
 }
@@ -99,18 +103,4 @@ func (s Suite) labeledExpand(prk, label, info []byte, l uint16) []byte {
 	rd := hkdf.Expand(kdfParams[s.KdfID].H.New, prk, labeledInfo)
 	_, _ = io.ReadFull(rd, b)
 	return b
-}
-
-func (s Suite) GetKem() (kem.Scheme, error) {
-	var dhkem kem.Scheme
-
-	switch s.KemID {
-	case KemP256Sha256, KemP384Sha384, KemP521Sha512:
-		dhkem = short.New(s.KemID, []byte(versionLabel))
-	case KemX25519Sha256, KemX448Sha512:
-		panic("not implemented yet")
-	default:
-		return nil, errors.New("wrong kemID")
-	}
-	return dhkem, nil
 }
