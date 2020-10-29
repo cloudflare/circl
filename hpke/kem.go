@@ -3,7 +3,6 @@ package hpke
 import (
 	"crypto"
 	"errors"
-	"fmt"
 
 	"github.com/cloudflare/circl/kem"
 	"github.com/cloudflare/circl/kem/short"
@@ -21,10 +20,8 @@ func (s *Sender) encap(pk crypto.PublicKey) (ct []byte, ss []byte, err error) {
 	}
 
 	if s.seed == nil {
-		fmt.Println("\nrandom")
 		ct, ss = k.Encapsulate(pub)
 	} else if len(s.seed) >= k.SeedSize() {
-		fmt.Println("\ndeter")
 		ct, ss = k.EncapsulateDeterministically(pub, s.seed)
 	} else {
 		return nil, nil, kem.ErrSeedSize

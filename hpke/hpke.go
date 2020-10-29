@@ -3,7 +3,6 @@ package hpke
 
 import (
 	"crypto"
-	"fmt"
 )
 
 const versionLabel = "HPKE-06"
@@ -57,8 +56,8 @@ type Sender struct {
 	seed []byte
 }
 
-func (s Suite) NewSender(pkR crypto.PublicKey, info []byte) *Sender {
-	return &Sender{state: state{Suite: s}, pkR: pkR, info: info}
+func (s Suite) NewSender(pkR crypto.PublicKey, info, seed []byte) *Sender {
+	return &Sender{state: state{Suite: s}, pkR: pkR, info: info, seed: seed}
 }
 
 func (s *Sender) Setup() (enc []byte, seal Sealer, err error) {
@@ -140,7 +139,6 @@ func (s *Sender) allSetup() ([]byte, Sealer, error) {
 		return nil, nil, err
 	}
 
-	fmt.Printf("Sender ss: %x\n", ss)
 	ctx, err := s.keySchedule(ss, s.info, s.psk, s.pskID)
 	if err != nil {
 		return nil, nil, err
@@ -166,7 +164,6 @@ func (r *Receiver) allSetup() (Opener, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("Recv ss: %x\n", ss)
 
 	ctx, err := r.keySchedule(ss, r.info, r.psk, r.pskID)
 	if err != nil {

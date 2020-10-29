@@ -4,7 +4,6 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"errors"
-	"fmt"
 
 	"golang.org/x/crypto/chacha20poly1305"
 )
@@ -46,7 +45,6 @@ func (s Suite) aeadCtx(key, baseNonce, exporter []byte) (*encdecCxt, error) {
 }
 
 func (c *encdecCxt) Export(expCtx []byte, len uint16) []byte {
-	fmt.Printf("exporter>> \n")
 	return c.s.labeledExpand(c.exporterSecret, []byte("sec"), expCtx, len)
 }
 

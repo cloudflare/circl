@@ -76,11 +76,11 @@ func (s short) coreEncap(
 	if !ok {
 		panic(kem.ErrTypeMismatch)
 	}
-	pkE, ok := pke.(shortPubKey)
+	skE, ok := ske.(shortPrivKey)
 	if !ok {
 		panic(kem.ErrTypeMismatch)
 	}
-	skE, ok := ske.(shortPrivKey)
+	pkE, ok := pke.(shortPubKey)
 	if !ok {
 		panic(kem.ErrTypeMismatch)
 	}

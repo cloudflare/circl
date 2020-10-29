@@ -26,12 +26,6 @@ func (s state) keySchedule(ss, info, psk, pskID []byte) (*encdecCxt, error) {
 	baseNonce := s.labeledExpand(secret, []byte("base_nonce"), keySchCtx, aeadPar.Nn)
 	exporterSecret := s.labeledExpand(secret, []byte("exp"), keySchCtx, kdfParams[s.KdfID].Nh)
 
-	// fmt.Printf("keySchCtx:      %x\n", keySchCtx)
-	// fmt.Printf("secret:         %x\n", secret)
-	// fmt.Printf("key:            %x\n", key)
-	// fmt.Printf("baseNonce:      %x\n", baseNonce)
-	// fmt.Printf("exporterSecret: %x\n", exporterSecret)
-
 	return s.aeadCtx(key, baseNonce, exporterSecret)
 }
 
