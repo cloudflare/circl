@@ -1,0 +1,55 @@
+{
+"info": "test information",
+"skS": "40d0c9b6d03ec2b88a359bd81a60509bbbbb68e65c633c6711c1c75c215f7277",
+"suite": "P256-SHA256-SSWU-RO",
+"vectors": [
+  {
+    "Blind": {
+      "BlindedElement": "02be6ec49d1419d565f2fa6afaaa084b23bb2d9dc0e0ce31cd636afa039cb366a5",
+      "Token": "bfaba18e6da8cc89f57dcfa306363716edf0d84fa4ffd1ad521e1982d0c95e37"
+    },
+    "ClientOutput": "2820283d161267f22ff6faafde865973ed6f60fc25c2a194bb8e03ff1a96a096",
+    "Evaluation": {
+      "EvaluatedElement": "0237fdb9105aaebe0d0c502bcd37e6fd29b33489de892a1971cd87f41cdff50181"
+    },
+    "Input": {
+      "ClientInput": "00"
+    },
+    "Unblind": {
+      "IssuedToken": "03bc44ee69f4e459c322c2423e48b40cada036541e3c9077916e42c7ebfd2a5fa7"
+    }
+  },
+  {
+    "Blind": {
+      "BlindedElement": "03d0f7840f296ccc19f80ad7bcbf36d13723a6d8ced71fa9cfcb9d8d3dbc06ce80",
+      "Token": "631f0582cea43441a161b28e01e4e165958be2a15be54ac701d4f3be1d776858"
+    },
+    "ClientOutput": "e620d2d3b1c749acc6f239e5af9e694e398fd062b481176f6294f8e6a730d797",
+    "Evaluation": {
+      "EvaluatedElement": "02285dd51bcc15467c98c328ca8b67de64e938adb61e5d3c44e512d6745656e29b"
+    },
+    "Input": {
+      "ClientInput": "01"
+    },
+    "Unblind": {
+      "IssuedToken": "036fd3cc662c850390c0b076d3c08a7e014e38e233bb0932bd3d51bb3e00af3884"
+    }
+  },
+  {
+    "Blind": {
+      "BlindedElement": "024425dc4de0cebdc447b9fa1ea3e0a8e9ec97f1a3565bf65d8b259f9f78f298a6",
+      "Token": "4481fea792e8d1df369f9213b7593a70d51f11c35a47716c1b629a77b16d934c"
+    },
+    "ClientOutput": "dedc45e558637ba3d7bfe5f881d3807a0df24d8c7660fbc5e31f827e6a95f2fc",
+    "Evaluation": {
+      "EvaluatedElement": "03937994ae9c80cb928fff8a2e6ccb6daa88c4614f709242e056894786f974ac7f"
+    },
+    "Input": {
+      "ClientInput": "02"
+    },
+    "Unblind": {
+      "IssuedToken": "02c5064fbd78ce2b9a5a9aa38eadc4e4e8be0844ec6d97628bfd03f5c0903c5e0d"
+    }
+  }
+]
+}

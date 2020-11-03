@@ -278,6 +278,5 @@ func (c *Client) Finalize(t *Token, e *Evaluation, info []byte) (IssuedToken, []
 	iToken := tt.Serialize()
 
 	h := group.FinalizeHash(c.suite, t.data, iToken, info, c.ctx)
-
 	return iToken, h, nil
 }

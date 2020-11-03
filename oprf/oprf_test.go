@@ -3,6 +3,9 @@ package oprf
 import (
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/test"
@@ -169,11 +172,50 @@ func TestClientVerifyFinalize(t *testing.T) {
 	}
 }
 
-func blindTest(c *group.Ciphersuite, in []byte) (*Token, BlindToken) {
-	bytes, _ := hex.DecodeString("bfaba18e6da8cc89f57dcfa306363716edf0d84fa4ffd1ad521e1982d0c95e37")
+type Vector struct {
+	Blind struct {
+		Blinded string `json:"BlindedElement"`
+		Token   string `json:"Token"`
+	} `json:"Blind"`
+	Output     string `json:"ClientOutput"`
+	Evaluation struct {
+		Eval string `json:"EvaluatedElement"`
+	} `json:"Evaluation"`
+	Input struct {
+		In string `json:"ClientInput"`
+	} `json:"Input"`
+	Unblind struct {
+		IToken string `json:"IssuedToken"`
+	} `json:"Unblind"`
+}
+
+type Vectors struct {
+	Info      string   `json:"info"`
+	PrivK     string   `json:"skS"`
+	SuiteName string   `json:"suite"`
+	Vector    []Vector `json:"vectors"`
+}
+
+func (v *Vectors) readFile(t *testing.T, fileName string) {
+	jsonFile, err := os.Open(fileName)
+	if err != nil {
+		t.Fatalf("File %v can not be opened. Error: %v", fileName, err)
+	}
+	defer jsonFile.Close()
+	input, _ := ioutil.ReadAll(jsonFile)
+
+	err = json.Unmarshal(input, &v)
+	if err != nil {
+		t.Fatalf("File %v can not be loaded. Error: %v", fileName, err)
+	}
+}
+
+func blindTest(c *group.Ciphersuite, v Vector) (*Token, BlindToken) {
+	bytes, _ := hex.DecodeString(v.Blind.Token)
 	s := group.NewScalar(c)
 	s.Set(bytes)
 
+	in, _ := hex.DecodeString(v.Input.In)
 	p, _ := c.HashToGroup(in)
 	t := p.ScalarMult(s)
 	bToken := t.Serialize()
@@ -182,96 +224,164 @@ func blindTest(c *group.Ciphersuite, in []byte) (*Token, BlindToken) {
 	return token, bToken
 }
 
-func TestClientRequestVector(t *testing.T) {
-	srv, err := NewServer(OPRFP256, nil, nil)
-	if err != nil {
-		t.Fatal("invalid setup of server: " + err.Error())
-	}
-	if srv == nil {
-		t.Fatal("invalid setup of server: no server.")
-	}
+func (v *Vectors) runP256(t *testing.T) {
+	for _, j := range v.Vector {
+		srv, err := NewServer(OPRFP256, nil, nil)
+		if err != nil {
+			t.Fatal("invalid setup of server: " + err.Error())
+		}
+		if srv == nil {
+			t.Fatal("invalid setup of server: no server.")
+		}
 
-	client, err := NewClient(OPRFP256)
-	if err != nil {
-		t.Fatal("invalid setup of client: " + err.Error())
-	}
+		privKey, _ := hex.DecodeString(v.PrivK)
+		srv.Kp.PrivK.Set(privKey)
 
-	_, bToken := blindTest(client.suite, []byte{00})
+		client, err := NewClient(OPRFP256)
+		if err != nil {
+			t.Fatal("invalid setup of client: " + err.Error())
+		}
 
-	// From the test vectors
-	testBToken, _ := hex.DecodeString("02be6ec49d1419d565f2fa6afaaa084b23bb2d9dc0e0ce31cd636afa039cb366a5")
-	if !bytes.Equal(testBToken[:], bToken[:]) {
-		test.ReportError(t, bToken[:], testBToken[:], "request")
-	}
-}
+		token, bToken := blindTest(client.suite, j)
+		testBToken, _ := hex.DecodeString(j.Blind.Blinded)
+		if !bytes.Equal(testBToken[:], bToken[:]) {
+			test.ReportError(t, bToken[:], testBToken[:], "request")
+		}
 
-func TestServerEvaluationVector(t *testing.T) {
-	srv, err := NewServer(OPRFP256, nil, nil)
-	if err != nil {
-		t.Fatal("invalid setup of server: " + err.Error())
-	}
-	if srv == nil {
-		t.Fatal("invalid setup of server: no server.")
-	}
-	privKey, _ := hex.DecodeString("40d0c9b6d03ec2b88a359bd81a60509bbbbb68e65c633c6711c1c75c215f7277")
-	srv.Kp.PrivK.Set(privKey)
+		eval, _ := srv.Evaluate(bToken)
+		if eval == nil {
+			t.Fatal("invalid evaluation of server: no evaluation.")
+		}
 
-	client, err := NewClient(OPRFP256)
-	if err != nil {
-		t.Fatal("invalid setup of client: " + err.Error())
-	}
+		testEval, _ := hex.DecodeString(j.Evaluation.Eval)
+		if !bytes.Equal(testEval[:], eval.element[:]) {
+			test.ReportError(t, eval.element[:], testEval[:], "eval")
+		}
 
-	_, bToken := blindTest(client.suite, []byte{00})
+		info := []byte("test information")
+		iToken, h, _ := client.Finalize(token, eval, info)
 
-	eval, _ := srv.Evaluate(bToken)
-	if eval == nil {
-		t.Fatal("invalid evaluation of server: no evaluation.")
-	}
+		testIToken, _ := hex.DecodeString(j.Unblind.IToken)
+		if !bytes.Equal(testIToken[:], iToken[:]) {
+			test.ReportError(t, iToken[:], testIToken[:], "finalize")
+		}
 
-	// From the test vectors
-	testEval, _ := hex.DecodeString("0237fdb9105aaebe0d0c502bcd37e6fd29b33489de892a1971cd87f41cdff50181")
-
-	if !bytes.Equal(testEval[:], eval.element[:]) {
-		test.ReportError(t, eval.element[:], testEval[:], "eval")
+		testOutput, _ := hex.DecodeString(j.Output)
+		if !bytes.Equal(testOutput[:], h[:]) {
+			test.ReportError(t, h[:], testOutput[:], "finalize")
+		}
 	}
 }
 
-func TestClientUnblindFinalizeVector(t *testing.T) {
-	srv, err := NewServer(OPRFP256, nil, nil)
-	if err != nil {
-		t.Fatal("invalid setup of server: " + err.Error())
+func (v *Vectors) runP384(t *testing.T) {
+	for _, j := range v.Vector {
+		srv, err := NewServer(OPRFP384, nil, nil)
+		if err != nil {
+			t.Fatal("invalid setup of server: " + err.Error())
+		}
+		if srv == nil {
+			t.Fatal("invalid setup of server: no server.")
+		}
+
+		privKey, _ := hex.DecodeString(v.PrivK)
+		srv.Kp.PrivK.Set(privKey)
+
+		client, err := NewClient(OPRFP384)
+		if err != nil {
+			t.Fatal("invalid setup of client: " + err.Error())
+		}
+
+		token, bToken := blindTest(client.suite, j)
+		testBToken, _ := hex.DecodeString(j.Blind.Blinded)
+		if !bytes.Equal(testBToken[:], bToken[:]) {
+			test.ReportError(t, bToken[:], testBToken[:], "request")
+		}
+
+		eval, _ := srv.Evaluate(bToken)
+		if eval == nil {
+			t.Fatal("invalid evaluation of server: no evaluation.")
+		}
+
+		testEval, _ := hex.DecodeString(j.Evaluation.Eval)
+		if !bytes.Equal(testEval[:], eval.element[:]) {
+			test.ReportError(t, eval.element[:], testEval[:], "eval")
+		}
+
+		info := []byte("test information")
+		iToken, h, _ := client.Finalize(token, eval, info)
+
+		testIToken, _ := hex.DecodeString(j.Unblind.IToken)
+		if !bytes.Equal(testIToken[:], iToken[:]) {
+			test.ReportError(t, iToken[:], testIToken[:], "finalize")
+		}
+
+		testOutput, _ := hex.DecodeString(j.Output)
+		if !bytes.Equal(testOutput[:], h[:]) {
+			test.ReportError(t, h[:], testOutput[:], "finalize")
+		}
 	}
-	if srv == nil {
-		t.Fatal("invalid setup of server: no server.")
+}
+
+func (v *Vectors) runP521(t *testing.T) {
+	for _, j := range v.Vector {
+		srv, err := NewServer(OPRFP521, nil, nil)
+		if err != nil {
+			t.Fatal("invalid setup of server: " + err.Error())
+		}
+		if srv == nil {
+			t.Fatal("invalid setup of server: no server.")
+		}
+
+		privKey, _ := hex.DecodeString(v.PrivK)
+		srv.Kp.PrivK.Set(privKey)
+
+		client, err := NewClient(OPRFP521)
+		if err != nil {
+			t.Fatal("invalid setup of client: " + err.Error())
+		}
+
+		token, bToken := blindTest(client.suite, j)
+		testBToken, _ := hex.DecodeString(j.Blind.Blinded)
+		if !bytes.Equal(testBToken[:], bToken[:]) {
+			test.ReportError(t, bToken[:], testBToken[:], "request")
+		}
+
+		eval, _ := srv.Evaluate(bToken)
+		if eval == nil {
+			t.Fatal("invalid evaluation of server: no evaluation.")
+		}
+
+		testEval, _ := hex.DecodeString(j.Evaluation.Eval)
+
+		if !bytes.Equal(testEval[:], eval.element[:]) {
+			test.ReportError(t, eval.element[:], testEval[:], "eval")
+		}
+
+		info := []byte("test information")
+		iToken, h, _ := client.Finalize(token, eval, info)
+
+		testIToken, _ := hex.DecodeString(j.Unblind.IToken)
+		if !bytes.Equal(testIToken[:], iToken[:]) {
+			test.ReportError(t, iToken[:], testIToken[:], "finalize")
+		}
+
+		testOutput, _ := hex.DecodeString(j.Output)
+		if !bytes.Equal(testOutput[:], h[:]) {
+			test.ReportError(t, h[:], testOutput[:], "finalize")
+		}
 	}
-	privKey, _ := hex.DecodeString("40d0c9b6d03ec2b88a359bd81a60509bbbbb68e65c633c6711c1c75c215f7277")
-	srv.Kp.PrivK.Set(privKey)
+}
 
-	client, err := NewClient(OPRFP256)
-	if err != nil {
-		t.Fatal("invalid setup of client: " + err.Error())
-	}
+func TestDraftVectors(t *testing.T) {
+	// Test vectors from draft-05
+	var v Vectors
 
-	token, bToken := blindTest(client.suite, []byte{00})
+	v.readFile(t, "testdata/256_vectors.json")
+	t.Run("ORPF-P256", v.runP256)
 
-	eval, _ := srv.Evaluate(bToken)
-	if eval == nil {
-		t.Fatal("invalid evaluation of server: no evaluation.")
-	}
+	v.readFile(t, "testdata/384_vectors.json")
+	t.Run("ORPF-P384", v.runP384)
 
-	info := []byte("test information")
-	iToken, h, _ := client.Finalize(token, eval, info)
-
-	// From the test vectors
-	testIToken, _ := hex.DecodeString("03bc44ee69f4e459c322c2423e48b40cada036541e3c9077916e42c7ebfd2a5fa7")
-
-	if !bytes.Equal(testIToken[:], iToken[:]) {
-		test.ReportError(t, iToken[:], testIToken[:], "finalize")
-	}
-
-	testOutput, _ := hex.DecodeString("2820283d161267f22ff6faafde865973ed6f60fc25c2a194bb8e03ff1a96a096")
-
-	if !bytes.Equal(testOutput[:], h[:]) {
-		test.ReportError(t, h[:], testOutput[:], "finalize")
-	}
+	//v.readFile(t, "testdata/521_vectors.json")
+	//t.Run("ORPF-P521", v.runP521)
 }
