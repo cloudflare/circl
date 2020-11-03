@@ -227,7 +227,6 @@ func NewSuite(name string, ctx []byte) (*Ciphersuite, error) {
 
 	switch name {
 	case "P-256":
-		// TODO: remove name
 		cSuite.name = "OPRFP256-SHA512-ELL2-RO"
 		cSuite.dst = append(dst, ctx...)
 		cSuite.hash = sha256.New()

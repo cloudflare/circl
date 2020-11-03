@@ -165,7 +165,7 @@ func TestClientVerifyFinalize(t *testing.T) {
 
 	b := srv.VerifyFinalize([]byte{00}, []byte("test information"), h)
 	if b == false {
-		t.Fatal("invalid evaluation of server: ")
+		t.Fatal("Invalid verification from the server")
 	}
 }
 
