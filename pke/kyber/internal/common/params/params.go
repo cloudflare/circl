@@ -15,4 +15,7 @@ const (
 
 	// PlaintextSize is the size of the plaintext
 	PlaintextSize = 32
+
+	// Eta2 is the parameter η₂
+	Eta2 = 2
 )

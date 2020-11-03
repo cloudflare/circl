@@ -16,4 +16,7 @@ const (
 
 	// PlaintextSize is the size of the plaintext
 	PlaintextSize = params.PlaintextSize
+
+	// Eta2 is the parameter η₂
+	Eta2 = params.Eta2
 )

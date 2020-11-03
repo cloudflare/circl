@@ -127,8 +127,8 @@ func (pk *PublicKey) EncryptTo(ct, seed, pt []byte) {
 	rh.NTT()
 	rh.BarrettReduce()
 
-	e1.DeriveNoise(seed, K, 2)
-	e2.DeriveNoise(seed, 2*K, 2)
+	e1.DeriveNoise(seed, K, common.Eta2)
+	e2.DeriveNoise(seed, 2*K, common.Eta2)
 
 	// Next we compute u = Aᵀ r + e₁.  First Aᵀ.
 	for i := 0; i < K; i++ {
