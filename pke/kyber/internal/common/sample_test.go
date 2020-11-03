@@ -4,6 +4,22 @@ import (
 	"testing"
 )
 
+func BenchmarkDeriveNoise2(b *testing.B) {
+	var p Poly
+	var seed [32]byte
+	for i := 0; i < b.N; i++ {
+		p.DeriveNoise2(seed[:], 37)
+	}
+}
+
+func BenchmarkDeriveNoise3(b *testing.B) {
+	var p Poly
+	var seed [32]byte
+	for i := 0; i < b.N; i++ {
+		p.DeriveNoise3(seed[:], 37)
+	}
+}
+
 func TestPolyDeriveNoise3Ref(t *testing.T) {
 	var p Poly
 
