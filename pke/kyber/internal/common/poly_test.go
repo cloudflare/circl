@@ -15,13 +15,6 @@ func sModQ(x int16) int16 {
 	return x
 }
 
-func BenchmarkMulhat(b *testing.B) {
-	var a Poly
-	for i := 0; i < b.N; i++ {
-		a.MulHat(&a, &a)
-	}
-}
-
 func TestDecompressMessage(t *testing.T) {
 	var m, m2 [PlaintextSize]byte
 	var p Poly
@@ -185,7 +178,12 @@ func TestMulHatAgainstGeneric(t *testing.T) {
 		var p1, p2, a, b Poly
 		a.RandAbsLeQ()
 		b.RandAbsLeQ()
-		p1.MulHat(&a, &b)
+		a2 := a
+		b2 := b
+		a2.Tangle()
+		b2.Tangle()
+		p1.MulHat(&a2, &b2)
+		p1.Detangle()
 		p2.mulHatGeneric(&a, &b)
 		if p1 != p2 {
 			t.Fatalf("MulHat(%v, %v) = \n%v \n!= %v", a, b, p1, p2)
