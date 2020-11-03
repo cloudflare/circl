@@ -3,6 +3,7 @@ package group
 import (
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/binary"
 	"errors"
@@ -22,8 +23,8 @@ type Ciphersuite struct {
 	// name of the ciphersuite.
 	name string
 
-	// dst string used for hashing to curve.
-	dst string
+	// dst is a tag to be used for hashing to curve.
+	dst []byte
 
 	// hash defines the hash function to be used.
 	hash hash.Hash
@@ -93,7 +94,7 @@ func getH2CSuite(c *Ciphersuite) (HashToPoint, error) {
 		return nil, errors.New("invalid suite")
 	}
 
-	hasher, err := suite.Get([]byte(c.dst))
+	hasher, err := suite.Get(c.dst)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +210,7 @@ func FinalizeHash(c *Ciphersuite, data, iToken, info, ctx []byte) []byte {
 	_, _ = h.Write(lenBuf)
 	_, _ = h.Write(info)
 
-	dst := []byte("RFCXXXX-Finalize-")
+	dst := []byte("VOPRF05-Finalize-")
 	dst = append(dst, ctx...)
 
 	binary.BigEndian.PutUint16(lenBuf, uint16(len(dst)))
@@ -220,24 +221,26 @@ func FinalizeHash(c *Ciphersuite, data, iToken, info, ctx []byte) []byte {
 }
 
 // NewSuite creates a new ciphersuite for the requested name.
-func NewSuite(name string) (*Ciphersuite, error) {
+func NewSuite(name string, ctx []byte) (*Ciphersuite, error) {
 	cSuite := &Ciphersuite{}
+	dst := []byte("VOPRF05-")
 
 	switch name {
 	case "P-256":
+		// TODO: remove name
 		cSuite.name = "OPRFP256-SHA512-ELL2-RO"
-		cSuite.dst = "RFCXXXX-P256_XMD:SHA-512_SSWU_RO_"
-		cSuite.hash = sha512.New() // TODO: maybe it is too early to init it as the compiler might release it in a weird way..
+		cSuite.dst = append(dst, ctx...)
+		cSuite.hash = sha256.New()
 		cSuite.curve = elliptic.P256()
 	// TODO: might be good to use the circl one as well
 	case "P-384":
 		cSuite.name = "OPRFP384-SHA512-ELL2-RO"
-		cSuite.dst = "RFCXXXX-P384_XMD:SHA-512_SSWU_RO_"
+		cSuite.dst = append(dst, ctx...)
 		cSuite.hash = sha512.New()
 		cSuite.curve = elliptic.P384()
 	case "P-521":
 		cSuite.name = "OPRFP521-SHA512-ELL2-RO"
-		cSuite.dst = "RFCXXXX-P521_XMD:SHA-512_SSWU_RO_"
+		cSuite.dst = append(dst, ctx...)
 		cSuite.hash = sha512.New()
 		cSuite.curve = elliptic.P521()
 	// TODO: what other libraries should be used?

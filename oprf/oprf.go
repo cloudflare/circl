@@ -112,17 +112,17 @@ func assignKeyPair(suite *group.Ciphersuite, privK, pubK []byte) (*KeyPair, erro
 	return kp, nil
 }
 
-func suiteFromID(id SuiteID) (*group.Ciphersuite, error) {
+func suiteFromID(id SuiteID, ctx []byte) (*group.Ciphersuite, error) {
 	var err error
 	var suite *group.Ciphersuite
 
 	switch id {
 	case OPRFP256:
-		suite, err = group.NewSuite("P-256")
+		suite, err = group.NewSuite("P-256", ctx)
 	case OPRFP384:
-		suite, err = group.NewSuite("P-384")
+		suite, err = group.NewSuite("P-384", ctx)
 	case OPRFP521:
-		suite, err = group.NewSuite("P-521")
+		suite, err = group.NewSuite("P-521", ctx)
 	default:
 		return suite, ErrUnsupportedGroup
 	}
@@ -136,12 +136,12 @@ func suiteFromID(id SuiteID) (*group.Ciphersuite, error) {
 // NewServer creates a new instantiation of a Server. It can create
 // a server with existing keys or use pre-generated keys.
 func NewServer(id SuiteID, privK, pubK []byte) (*Server, error) {
-	suite, err := suiteFromID(id)
+	ctx := generateCtx(id)
+
+	suite, err := suiteFromID(id, ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	ctx := generateCtx(id)
 
 	var keyPair *KeyPair
 	if privK == nil || pubK == nil {
@@ -177,12 +177,12 @@ func (s *Server) Evaluate(b BlindToken) (*Evaluation, error) {
 
 // NewClient creates a new instantiation of a Client.
 func NewClient(id SuiteID) (*Client, error) {
-	suite, err := suiteFromID(id)
+	ctx := generateCtx(id)
+
+	suite, err := suiteFromID(id, ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	ctx := generateCtx(id)
 
 	client := &Client{}
 	client.suite = suite
