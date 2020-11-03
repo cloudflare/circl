@@ -57,6 +57,9 @@ func (p *Poly) ToMont() {
 // Montgomery form.  Products between coefficients of a and b must be strictly
 // bounded in absolute value by 2¹⁵q.  p will be in Montgomery form and
 // bounded in absolute value by 2q.
+//
+// Requires a and b to be in "tangled" order, see Tangle().  p will be in
+// tangled order as well.
 func (p *Poly) mulHatGeneric(a, b *Poly) {
 	// Recall from the discussion in NTT(), that a transformed polynomial is
 	// an element of ℤ_q[x]/(x²-ζ) x … x  ℤ_q[x]/(x²+ζ¹²⁷);
@@ -98,18 +101,23 @@ func (p *Poly) mulHatGeneric(a, b *Poly) {
 
 // Packs p into buf.  buf should be of length PolySize.
 //
-// Assumes p is normalized (and not just Barrett reduced.)
+// Assumes p is normalized (and not just Barrett reduced) and "tangled",
+// see Tangle().
 func (p *Poly) Pack(buf []byte) {
+	q := *p
+	q.Detangle()
 	for i := 0; i < 128; i++ {
-		t0 := p[2*i]
-		t1 := p[2*i+1]
+		t0 := q[2*i]
+		t1 := q[2*i+1]
 		buf[3*i] = byte(t0)
 		buf[3*i+1] = byte(t0>>8) | byte(t1<<4)
 		buf[3*i+2] = byte(t1 >> 4)
 	}
 }
 
-// Unpacks p from buf.  buf should be of length PolySize.
+// Unpacks p from buf.
+//
+// buf should be of length PolySize.  p will be "tangled", see Detangle().
 //
 // p will not be normalized; instead 0 ≤ p[i] < 4096.
 func (p *Poly) Unpack(buf []byte) {
@@ -117,6 +125,7 @@ func (p *Poly) Unpack(buf []byte) {
 		p[2*i] = int16(buf[3*i]) | ((int16(buf[3*i+1]) << 8) & 0xfff)
 		p[2*i+1] = int16(buf[3*i+1]>>4) | (int16(buf[3*i+2]) << 4)
 	}
+	p.Tangle()
 }
 
 // Set p to Decompress_q(m, 1).

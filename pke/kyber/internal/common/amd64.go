@@ -213,6 +213,8 @@ func (p *Poly) Sub(a, b *Poly) {
 // coefficients are in absolute value ≤7q.  If the input is in Montgomery
 // form, then the result is in Montgomery form and so (by linearity of the NTT)
 // if the input is in regular form, then the result is also in regular form.
+// The order of coefficients will be "tangled". These can be put back into
+// their proper order by calling Detangle().
 func (p *Poly) NTT() {
 	if cpu.X86.HasAVX2 {
 		nttAVX2((*[N]int16)(p))
@@ -224,6 +226,7 @@ func (p *Poly) NTT() {
 // Executes an in-place inverse "NTT" on p and multiply by the Montgomery
 // factor R.
 //
+// Requires coefficients to be in "tangled" order, see Tangle().
 // Assumes the coefficients are in absolute value ≤q.  The resulting
 // coefficients are in absolute value ≤q.  If the input is in Montgomery
 // form, then the result is in Montgomery form and so (by linearity)
@@ -242,6 +245,9 @@ func (p *Poly) InvNTT() {
 // Montgomery form.  Products between coefficients of a and b must be strictly
 // bounded in absolute value by 2¹⁵q.  p will be in Montgomery form and
 // bounded in absolute value by 2q.
+//
+// Requires a and b to be in "tangled" order, see Tangle().  p will be in
+// tangled order as well.
 func (p *Poly) MulHat(a, b *Poly) {
 	if cpu.X86.HasAVX2 {
 		mulHatAVX2(
@@ -252,4 +258,22 @@ func (p *Poly) MulHat(a, b *Poly) {
 	} else {
 		p.mulHatGeneric(a, b)
 	}
+}
+
+// Puts p into the right form to be used with (among others) InvNTT().
+func (p *Poly) Tangle() {
+	if cpu.X86.HasAVX2 {
+		tangleAVX2((*[N]int16)(p))
+	}
+
+	// When AVX2 is not available, we use the standard order.
+}
+
+// Puts p back into standard form.
+func (p *Poly) Detangle() {
+	if cpu.X86.HasAVX2 {
+		detangleAVX2((*[N]int16)(p))
+	}
+
+	// When AVX2 is not available, we use the standard order.
 }

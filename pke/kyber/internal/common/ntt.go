@@ -53,6 +53,8 @@ var InvNTTReductions = [...]int{
 // coefficients are in absolute value ≤7q.  If the input is in Montgomery
 // form, then the result is in Montgomery form and so (by linearity of the NTT)
 // if the input is in regular form, then the result is also in regular form.
+// The order of coefficients will be "tangled". These can be put back into
+// their proper order by calling Detangle().
 func (p *Poly) nttGeneric() {
 	// Note that ℤ_q does not have a primitive 512ᵗʰ root of unity (as 512
 	// does not divide into q) and so we cannot do a regular NTT.  ℤ_q
@@ -133,6 +135,7 @@ func (p *Poly) nttGeneric() {
 // Executes an in-place inverse "NTT" on p and multiply by the Montgomery
 // factor R.
 //
+// Requires coefficients to be in "tangled" order, see Tangle().
 // Assumes the coefficients are in absolute value ≤q.  The resulting
 // coefficients are in absolute value ≤q.  If the input is in Montgomery
 // form, then the result is in Montgomery form and so (by linearity)

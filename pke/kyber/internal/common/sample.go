@@ -89,7 +89,7 @@ func (p *Poly) DeriveNoise2(seed []byte, nonce uint8) {
 
 // Sample p uniformly from the given seed and x and y coordinates.
 //
-// Coefficients are reduced.
+// Coefficients are reduced and will be in "tangled" order.  See Tangle().
 func (p *Poly) DeriveUniform(seed *[32]byte, x, y uint8) {
 	var seedSuffix [2]byte
 	var buf [168]byte // rate of SHAKE-128
@@ -132,4 +132,6 @@ func (p *Poly) DeriveUniform(seed *[32]byte, x, y uint8) {
 			break
 		}
 	}
+
+	p.Tangle()
 }

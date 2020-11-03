@@ -113,6 +113,7 @@ func TestPolyDeriveUniformRef(t *testing.T) {
 	}
 
 	p.DeriveUniform(&seed, 1, 0)
+	p.Detangle()
 	p.Normalize()
 
 	if p != want {

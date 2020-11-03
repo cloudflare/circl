@@ -52,6 +52,7 @@ func TestNTTAgainstGeneric(t *testing.T) {
 		q1 = p
 		q2 = p
 		q1.NTT()
+		q1.Detangle()
 		q2.nttGeneric()
 		if q1 != q2 {
 			t.Fatalf("NTT(%v) = \n%v \n!= %v", p, q2, q1)
@@ -65,6 +66,7 @@ func TestInvNTTAgainstGeneric(t *testing.T) {
 		p.RandAbsLeQ()
 		q1 = p
 		q2 = p
+		q1.Tangle()
 		q1.InvNTT()
 		q2.invNTTGeneric()
 

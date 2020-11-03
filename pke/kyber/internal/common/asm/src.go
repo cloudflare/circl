@@ -276,37 +276,14 @@ func invNttAVX2() {
 
 	// Layers 1 - 6
 	for offset := 0; offset < 2; offset++ {
-		// XXX Coefficients are kept in their standard form for now until
-		//     we have an AVX2 optimized version of MulHat() and Pack().
-
 		for i := 0; i < 8; i++ {
 			VMOVDQU(Mem{Base: pPtr, Disp: 32 * (i + offset*8)}, xs[i])
 		}
-
-		bitflip(3, xs[0], xs[2], ts[0])
-		bitflip(3, xs[1], xs[3], ts[0])
-		bitflip(3, xs[4], xs[6], ts[0])
-		bitflip(3, xs[5], xs[7], ts[0])
-
-		bitflip(2, xs[0], xs[1], ts[0])
-		bitflip(2, xs[2], xs[3], ts[0])
-		bitflip(2, xs[4], xs[5], ts[0])
-		bitflip(2, xs[6], xs[7], ts[0])
-
-		bitflip(1, xs[0], xs[2], ts[0])
-		bitflip(1, xs[1], xs[3], ts[0])
-		bitflip(1, xs[4], xs[6], ts[0])
-		bitflip(1, xs[5], xs[7], ts[0])
 
 		VMOVDQU(Mem{Base: zetasPtr, Disp: 32 * (33 + offset*4)}, zs[0])
 		VMOVDQU(Mem{Base: zetasPtr, Disp: 32 * (33 + offset*4 + 1)}, zs[1])
 		VMOVDQU(Mem{Base: zetasPtr, Disp: 32 * (33 + offset*4 + 2)}, zs[2])
 		VMOVDQU(Mem{Base: zetasPtr, Disp: 32 * (33 + offset*4 + 3)}, zs[3])
-
-		bitflip(0, xs[0], xs[1], ts[0])
-		bitflip(0, xs[2], xs[3], ts[0])
-		bitflip(0, xs[4], xs[5], ts[0])
-		bitflip(0, xs[6], xs[7], ts[0])
 
 		// Layer 1 (inverse of 7)
 
@@ -797,29 +774,6 @@ func nttAVX2() {
 			q, // q
 		)
 
-		// XXX We're putting the coefficients back in their regular form
-		//     until we have an AVX2 optimized MulHat(), Pack(), etc.
-
-		bitflip(0, xs[0], xs[1], ts[0])
-		bitflip(0, xs[2], xs[3], ts[0])
-		bitflip(0, xs[4], xs[5], ts[0])
-		bitflip(0, xs[6], xs[7], ts[0])
-
-		bitflip(1, xs[0], xs[2], ts[0])
-		bitflip(1, xs[1], xs[3], ts[0])
-		bitflip(1, xs[4], xs[6], ts[0])
-		bitflip(1, xs[5], xs[7], ts[0])
-
-		bitflip(2, xs[0], xs[1], ts[0])
-		bitflip(2, xs[2], xs[3], ts[0])
-		bitflip(2, xs[4], xs[5], ts[0])
-		bitflip(2, xs[6], xs[7], ts[0])
-
-		bitflip(3, xs[0], xs[2], ts[0])
-		bitflip(3, xs[1], xs[3], ts[0])
-		bitflip(3, xs[4], xs[6], ts[0])
-		bitflip(3, xs[5], xs[7], ts[0])
-
 		for i := 0; i < 8; i++ {
 			VMOVDQU(xs[i], Mem{Base: pPtr, Disp: 32 * (i + offset*8)})
 		}
@@ -846,10 +800,10 @@ func mulHatAVX2() {
 	zl := YMM()
 	zh := YMM()
 	qinv := YMM()
-    q := YMM()
+	q := YMM()
 
 	broadcastImm16(-3327, qinv) // = q⁻¹ (mod 2¹⁶)
-    broadcastImm16(params.Q, q)
+	broadcastImm16(params.Q, q)
 
 	for j := 0; j < 4; j++ {
 		for i := 0; i < 4; i++ {
@@ -858,28 +812,6 @@ func mulHatAVX2() {
 		for i := 0; i < 4; i++ {
 			VMOVDQU(Mem{Base: bPtr, Disp: 32 * (4*j + i)}, b[i])
 		}
-
-		// XXX coefficients are in standard form while we haven't AVX2-optimized
-		//     all functions yet.
-		bitflip(3, a[0], a[2], t[0])
-		bitflip(3, a[1], a[3], t[0])
-		bitflip(3, b[0], b[2], t[0])
-		bitflip(3, b[1], b[3], t[0])
-
-		bitflip(2, a[0], a[1], t[0])
-		bitflip(2, a[2], a[3], t[0])
-		bitflip(2, b[0], b[1], t[0])
-		bitflip(2, b[2], b[3], t[0])
-
-		bitflip(1, a[0], a[2], t[0])
-		bitflip(1, a[1], a[3], t[0])
-		bitflip(1, b[0], b[2], t[0])
-		bitflip(1, b[1], b[3], t[0])
-
-		bitflip(0, a[0], a[1], t[0])
-		bitflip(0, a[2], a[3], t[0])
-		bitflip(0, b[0], b[1], t[0])
-		bitflip(0, b[2], b[3], t[0])
 
 		// Recall that quite conveniently for this computation (when j=0),
 		//
@@ -898,111 +830,186 @@ func mulHatAVX2() {
 		//  t := int16(uint32(int32(a) * int32(b) - m * int32(Q)) >> 16)
 		//     = (uint32(int32(a) * int32(b))>>16) - (uint32(m * int32(Q))>>16)
 
-        // We start with the first four lines of
-        //
+		// We start with the first four lines of
+		//
 		//  p0 := montReduce(int32(a[i+1]) * int32(b[i+1]))
 		//  p2 := montReduce(int32(a[i]) * int32(b[i]))
 		//  p1 := montReduce(int32(a[i]) * int32(b[i+1]))
 		//  p1 += montReduce(int32(a[i+1]) * int32(b[i]))
 		//  p0 = montReduce(int32(p0) * zeta) + p2
-        VPMULLW(a[1], b[1], t[0])
-        VPMULLW(a[0], b[0], t[1])
-        VPMULLW(a[0], b[1], t[2])
-        VPMULLW(a[1], b[0], t[3])
+		VPMULLW(a[1], b[1], t[0])
+		VPMULLW(a[0], b[0], t[1])
+		VPMULLW(a[0], b[1], t[2])
+		VPMULLW(a[1], b[0], t[3])
 
-        VPMULLW(t[0], qinv, t[0])
-        VPMULLW(t[1], qinv, t[1])
-        VPMULLW(t[2], qinv, t[2])
-        VPMULLW(t[3], qinv, t[3])
+		VPMULLW(t[0], qinv, t[0])
+		VPMULLW(t[1], qinv, t[1])
+		VPMULLW(t[2], qinv, t[2])
+		VPMULLW(t[3], qinv, t[3])
 
-        // zl and zh are used as temporary registers here
-        VPMULHW(a[1], b[1], zl) // will end up in b[0]
-        VPMULHW(a[0], b[0], zh) // will end up in b[1]
-        VPMULHW(a[0], b[1], a[0])
-        VPMULHW(a[1], b[0], a[1])
-        VMOVDQA(zl, b[0])
-        VMOVDQA(zh, b[1])
+		// zl and zh are used as temporary registers here
+		VPMULHW(a[1], b[1], zl) // will end up in b[0]
+		VPMULHW(a[0], b[0], zh) // will end up in b[1]
+		VPMULHW(a[0], b[1], a[0])
+		VPMULHW(a[1], b[0], a[1])
+		VMOVDQA(zl, b[0])
+		VMOVDQA(zh, b[1])
 
-        VPMULHW(t[0], q, t[0])
-        VPMULHW(t[1], q, t[1])
-        VPMULHW(t[2], q, t[2])
-        VPMULHW(t[3], q, t[3])
+		VPMULHW(t[0], q, t[0])
+		VPMULHW(t[1], q, t[1])
+		VPMULHW(t[2], q, t[2])
+		VPMULHW(t[3], q, t[3])
 
-        VPSUBW(t[0], b[0], b[0]) // a[i+1]*b[i+1]
-        VPSUBW(t[1], b[1], b[1]) // a[i]*b[i]
-        VPSUBW(t[2], a[0], a[0]) // a[i]*b[i+1]
-        VPSUBW(t[3], a[1], a[1]) // a[i+1]*b[i]
-
-		VMOVDQU(Mem{Base: zetasPtr, Disp: 32 * (25 + j*2)}, zl)
-		VMOVDQU(Mem{Base: zetasPtr, Disp: 32 * (25 + j*2 + 1)}, zh)
-
-        // Compute p0 = montReduce(int32(p0) * zeta) + p2
-        VPMULLW(b[0], zl, t[0])
-        VPMULHW(b[0], zh, b[0])
-        VPMULHW(t[0], q, t[0])
-        VPSUBW(t[0], b[0], b[0])
-        VPADDW(b[0], b[1], b[0])
-
-        // p1
-        VPADDW(a[0], a[1], b[1])
-
-        // Now the same but then for the next two
-        VPMULLW(a[3], b[3], t[0])
-        VPMULLW(a[2], b[2], t[1])
-        VPMULLW(a[2], b[3], t[2])
-        VPMULLW(a[3], b[2], t[3])
-
-        VPMULLW(t[0], qinv, t[0])
-        VPMULLW(t[1], qinv, t[1])
-        VPMULLW(t[2], qinv, t[2])
-        VPMULLW(t[3], qinv, t[3])
-
-        // zl and zh are used as temporary registers here
-        VPMULHW(a[3], b[3], zl) // will end up in b[2]
-        VPMULHW(a[2], b[2], zh) // will end up in b[3]
-        VPMULHW(a[2], b[3], a[2])
-        VPMULHW(a[3], b[2], a[3])
-        VMOVDQA(zl, b[2])
-        VMOVDQA(zh, b[3])
-
-        VPMULHW(t[0], q, t[0])
-        VPMULHW(t[1], q, t[1])
-        VPMULHW(t[2], q, t[2])
-        VPMULHW(t[3], q, t[3])
-
-        VPSUBW(t[0], b[2], b[2]) // a[i+1]*b[i+1]
-        VPSUBW(t[1], b[3], b[3]) // a[i]*b[i]
-        VPSUBW(t[2], a[2], a[2]) // a[i]*b[i+1]
-        VPSUBW(t[3], a[3], a[3]) // a[i+1]*b[i]
+		VPSUBW(t[0], b[0], b[0]) // a[i+1]*b[i+1]
+		VPSUBW(t[1], b[1], b[1]) // a[i]*b[i]
+		VPSUBW(t[2], a[0], a[0]) // a[i]*b[i+1]
+		VPSUBW(t[3], a[1], a[1]) // a[i+1]*b[i]
 
 		VMOVDQU(Mem{Base: zetasPtr, Disp: 32 * (25 + j*2)}, zl)
 		VMOVDQU(Mem{Base: zetasPtr, Disp: 32 * (25 + j*2 + 1)}, zh)
 
-        // Compute p0 = p2 - montReduce(int32(p0) * zeta)
-        VPMULLW(b[2], zl, t[0])
-        VPMULHW(b[2], zh, b[2])
-        VPMULHW(t[0], q, t[0])
-        VPSUBW(t[0], b[2], b[2])
-        VPSUBW(b[2], b[3], b[2])
+		// Compute p0 = montReduce(int32(p0) * zeta) + p2
+		VPMULLW(b[0], zl, t[0])
+		VPMULHW(b[0], zh, b[0])
+		VPMULHW(t[0], q, t[0])
+		VPSUBW(t[0], b[0], b[0])
+		VPADDW(b[0], b[1], b[0])
 
-        // p1
-        VPADDW(a[2], a[3], b[3])
+		// p1
+		VPADDW(a[0], a[1], b[1])
 
-		// XXX put coefficients back in standard form.
-		bitflip(0, b[0], b[1], t[0])
-		bitflip(0, b[2], b[3], t[0])
+		// Now the same but then for the next two
+		VPMULLW(a[3], b[3], t[0])
+		VPMULLW(a[2], b[2], t[1])
+		VPMULLW(a[2], b[3], t[2])
+		VPMULLW(a[3], b[2], t[3])
 
-		bitflip(1, b[0], b[2], t[0])
-		bitflip(1, b[1], b[3], t[0])
+		VPMULLW(t[0], qinv, t[0])
+		VPMULLW(t[1], qinv, t[1])
+		VPMULLW(t[2], qinv, t[2])
+		VPMULLW(t[3], qinv, t[3])
 
-		bitflip(2, b[0], b[1], t[0])
-		bitflip(2, b[2], b[3], t[0])
+		// zl and zh are used as temporary registers here
+		VPMULHW(a[3], b[3], zl) // will end up in b[2]
+		VPMULHW(a[2], b[2], zh) // will end up in b[3]
+		VPMULHW(a[2], b[3], a[2])
+		VPMULHW(a[3], b[2], a[3])
+		VMOVDQA(zl, b[2])
+		VMOVDQA(zh, b[3])
 
-		bitflip(3, b[0], b[2], t[0])
-		bitflip(3, b[1], b[3], t[0])
+		VPMULHW(t[0], q, t[0])
+		VPMULHW(t[1], q, t[1])
+		VPMULHW(t[2], q, t[2])
+		VPMULHW(t[3], q, t[3])
+
+		VPSUBW(t[0], b[2], b[2]) // a[i+1]*b[i+1]
+		VPSUBW(t[1], b[3], b[3]) // a[i]*b[i]
+		VPSUBW(t[2], a[2], a[2]) // a[i]*b[i+1]
+		VPSUBW(t[3], a[3], a[3]) // a[i+1]*b[i]
+
+		VMOVDQU(Mem{Base: zetasPtr, Disp: 32 * (25 + j*2)}, zl)
+		VMOVDQU(Mem{Base: zetasPtr, Disp: 32 * (25 + j*2 + 1)}, zh)
+
+		// Compute p0 = p2 - montReduce(int32(p0) * zeta)
+		VPMULLW(b[2], zl, t[0])
+		VPMULHW(b[2], zh, b[2])
+		VPMULHW(t[0], q, t[0])
+		VPSUBW(t[0], b[2], b[2])
+		VPSUBW(b[2], b[3], b[2])
+
+		// p1
+		VPADDW(a[2], a[3], b[3])
 
 		for i := 0; i < 4; i++ {
 			VMOVDQU(b[i], Mem{Base: pPtr, Disp: 32 * (4*j + i)})
+		}
+	}
+
+	RET()
+}
+
+func tangleAVX2() {
+	TEXT("tangleAVX2", NOSPLIT, "func(p *[256]int16)")
+	Pragma("noescape")
+	pPtr := Load(Param("p"), GP64())
+
+	var xs [8]VecVirtual
+	for i := 0; i < 8; i++ {
+		xs[i] = YMM()
+	}
+	t := YMM()
+
+	for offset := 0; offset < 2; offset++ {
+		for i := 0; i < 8; i++ {
+			VMOVDQU(Mem{Base: pPtr, Disp: 32 * (i + offset*8)}, xs[i])
+		}
+
+		bitflip(3, xs[0], xs[2], t)
+		bitflip(3, xs[1], xs[3], t)
+		bitflip(3, xs[4], xs[6], t)
+		bitflip(3, xs[5], xs[7], t)
+
+		bitflip(2, xs[0], xs[1], t)
+		bitflip(2, xs[2], xs[3], t)
+		bitflip(2, xs[4], xs[5], t)
+		bitflip(2, xs[6], xs[7], t)
+
+		bitflip(1, xs[0], xs[2], t)
+		bitflip(1, xs[1], xs[3], t)
+		bitflip(1, xs[4], xs[6], t)
+		bitflip(1, xs[5], xs[7], t)
+
+		bitflip(0, xs[0], xs[1], t)
+		bitflip(0, xs[2], xs[3], t)
+		bitflip(0, xs[4], xs[5], t)
+		bitflip(0, xs[6], xs[7], t)
+
+		for i := 0; i < 8; i++ {
+			VMOVDQU(xs[i], Mem{Base: pPtr, Disp: 32 * (i + offset*8)})
+		}
+	}
+
+	RET()
+}
+
+func detangleAVX2() {
+	TEXT("detangleAVX2", NOSPLIT, "func(p *[256]int16)")
+	Pragma("noescape")
+	pPtr := Load(Param("p"), GP64())
+
+	var xs [8]VecVirtual
+	for i := 0; i < 8; i++ {
+		xs[i] = YMM()
+	}
+	t := YMM()
+
+	for offset := 0; offset < 2; offset++ {
+		for i := 0; i < 8; i++ {
+			VMOVDQU(Mem{Base: pPtr, Disp: 32 * (i + offset*8)}, xs[i])
+		}
+
+		bitflip(0, xs[0], xs[1], t)
+		bitflip(0, xs[2], xs[3], t)
+		bitflip(0, xs[4], xs[5], t)
+		bitflip(0, xs[6], xs[7], t)
+
+		bitflip(1, xs[0], xs[2], t)
+		bitflip(1, xs[1], xs[3], t)
+		bitflip(1, xs[4], xs[6], t)
+		bitflip(1, xs[5], xs[7], t)
+
+		bitflip(2, xs[0], xs[1], t)
+		bitflip(2, xs[2], xs[3], t)
+		bitflip(2, xs[4], xs[5], t)
+		bitflip(2, xs[6], xs[7], t)
+
+		bitflip(3, xs[0], xs[2], t)
+		bitflip(3, xs[1], xs[3], t)
+		bitflip(3, xs[4], xs[6], t)
+		bitflip(3, xs[5], xs[7], t)
+
+		for i := 0; i < 8; i++ {
+			VMOVDQU(xs[i], Mem{Base: pPtr, Disp: 32 * (i + offset*8)})
 		}
 	}
 
@@ -1017,6 +1024,8 @@ func main() {
 	nttAVX2()
 	invNttAVX2()
 	mulHatAVX2()
+	detangleAVX2()
+	tangleAVX2()
 
 	Generate()
 }
