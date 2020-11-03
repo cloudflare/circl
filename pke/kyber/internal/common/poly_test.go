@@ -179,3 +179,30 @@ func BenchmarkSubGeneric(b *testing.B) {
 		p.subGeneric(&p, &p)
 	}
 }
+
+func TestMulHatAgainstGeneric(t *testing.T) {
+	for k := 0; k < 1000; k++ {
+		var p1, p2, a, b Poly
+		a.RandAbsLeQ()
+		b.RandAbsLeQ()
+		p1.MulHat(&a, &b)
+		p2.mulHatGeneric(&a, &b)
+		if p1 != p2 {
+			t.Fatalf("MulHat(%v, %v) = \n%v \n!= %v", a, b, p1, p2)
+		}
+	}
+}
+
+func BenchmarkMulHat(b *testing.B) {
+	var p Poly
+	for i := 0; i < b.N; i++ {
+		p.MulHat(&p, &p)
+	}
+}
+
+func BenchmarkMulHatGeneric(b *testing.B) {
+	var p Poly
+	for i := 0; i < b.N; i++ {
+		p.mulHatGeneric(&p, &p)
+	}
+}

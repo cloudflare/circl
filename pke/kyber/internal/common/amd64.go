@@ -235,3 +235,21 @@ func (p *Poly) InvNTT() {
 		p.invNTTGeneric()
 	}
 }
+
+// Sets p to the "pointwise" multiplication of a and b.
+//
+// That is: InvNTT(p) = InvNTT(a) * InvNTT(b).  Assumes a and b are in
+// Montgomery form.  Products between coefficients of a and b must be strictly
+// bounded in absolute value by 2¹⁵q.  p will be in Montgomery form and
+// bounded in absolute value by 2q.
+func (p *Poly) MulHat(a, b *Poly) {
+	if cpu.X86.HasAVX2 {
+		mulHatAVX2(
+			(*[N]int16)(p),
+			(*[N]int16)(a),
+			(*[N]int16)(b),
+		)
+	} else {
+		p.mulHatGeneric(a, b)
+	}
+}

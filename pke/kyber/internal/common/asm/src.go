@@ -24,7 +24,7 @@ func barrettReduceX16(x, q, num, t Op) {
 	//  x - int16((int32(x)*20159)>>26)*q
 
 	VPMULHW(num, x, t)   // t := (int32(x) * 20158) >> 16
-	VPSRAW(U8(10), t, t) // int16(t) >>= 10 so that t = (int32(x) * 20158) >> 26
+	VPSRAW(U8(10), t, t) // t = int16(t)>>10 so that t = (int32(x)*20158) >> 26
 	VPMULLW(q, t, t)     // t *= q
 	VPSUBW(t, x, x)      // x -= t
 }
@@ -108,10 +108,10 @@ func subAVX2() {
 //
 // For instance, if i=2, then this will swap
 //
-//   a[0b0100] ←> b[0b0000]    a[0b0101] ←> b[0b0001]
-//   a[0b0110] ←> b[0b0010]    a[0b0111] ←> b[0b0011]
-//   a[0b1100] ←> b[0b1000]    a[0b1101] ←> b[0b1001]
-//   a[0b1110] ←> b[0b1010]    a[0b1111] ←> b[0b1011]
+//   a[0b0100] ↔ b[0b0000]    a[0b0101] ↔ b[0b0001]
+//   a[0b0110] ↔ b[0b0010]    a[0b0111] ↔ b[0b0011]
+//   a[0b1100] ↔ b[0b1000]    a[0b1101] ↔ b[0b1001]
+//   a[0b1110] ↔ b[0b1010]    a[0b1111] ↔ b[0b1011]
 //
 // and keep all other lanes in their place.  If we index the lanes of a and
 // b consecutively (i.e. 0wxyz is wxyz of a and 1wxyz = wxyz of b), then
@@ -828,6 +828,187 @@ func nttAVX2() {
 	RET()
 }
 
+func mulHatAVX2() {
+	TEXT("mulHatAVX2", NOSPLIT, "func(p, a, b *[256]int16)")
+	Pragma("noescape")
+
+	pPtr := Load(Param("p"), GP64())
+	aPtr := Load(Param("a"), GP64())
+	bPtr := Load(Param("b"), GP64())
+
+	zetasPtr := GP64()
+	LEAQ(NewDataAddr(Symbol{Name: "·ZetasAVX2"}, 0), zetasPtr)
+
+	a := []Op{YMM(), YMM(), YMM(), YMM()}
+	b := []Op{YMM(), YMM(), YMM(), YMM()}
+	t := []Op{YMM(), YMM(), YMM(), YMM()}
+
+	zl := YMM()
+	zh := YMM()
+	qinv := YMM()
+    q := YMM()
+
+	broadcastImm16(-3327, qinv) // = q⁻¹ (mod 2¹⁶)
+    broadcastImm16(params.Q, q)
+
+	for j := 0; j < 4; j++ {
+		for i := 0; i < 4; i++ {
+			VMOVDQU(Mem{Base: aPtr, Disp: 32 * (4*j + i)}, a[i])
+		}
+		for i := 0; i < 4; i++ {
+			VMOVDQU(Mem{Base: bPtr, Disp: 32 * (4*j + i)}, b[i])
+		}
+
+		// XXX coefficients are in standard form while we haven't AVX2-optimized
+		//     all functions yet.
+		bitflip(3, a[0], a[2], t[0])
+		bitflip(3, a[1], a[3], t[0])
+		bitflip(3, b[0], b[2], t[0])
+		bitflip(3, b[1], b[3], t[0])
+
+		bitflip(2, a[0], a[1], t[0])
+		bitflip(2, a[2], a[3], t[0])
+		bitflip(2, b[0], b[1], t[0])
+		bitflip(2, b[2], b[3], t[0])
+
+		bitflip(1, a[0], a[2], t[0])
+		bitflip(1, a[1], a[3], t[0])
+		bitflip(1, b[0], b[2], t[0])
+		bitflip(1, b[1], b[3], t[0])
+
+		bitflip(0, a[0], a[1], t[0])
+		bitflip(0, a[2], a[3], t[0])
+		bitflip(0, b[0], b[1], t[0])
+		bitflip(0, b[2], b[3], t[0])
+
+		// Recall that quite conveniently for this computation (when j=0),
+		//
+		//  a[0] contains a₀, a₄, ..., a₆₀,
+		//  a[1] contains a₁, a₅, ..., a₆₁,
+		//  a[2] contains a₂, a₆, ..., a₆₂ and
+		//  a[3] contains a₃, a₇, ..., a₆₃
+		//
+		// and a similar thing for b, p and j>0.
+
+		// We have to compute several products of the form t=montReduce(a*b).
+		// From the discussion in AVX2-optimized NTT, recall that we can
+		// compute this as follows.
+		//
+		//  m := int16(a * b * 62209) = int16(a * b * -3227)
+		//  t := int16(uint32(int32(a) * int32(b) - m * int32(Q)) >> 16)
+		//     = (uint32(int32(a) * int32(b))>>16) - (uint32(m * int32(Q))>>16)
+
+        // We start with the first four lines of
+        //
+		//  p0 := montReduce(int32(a[i+1]) * int32(b[i+1]))
+		//  p2 := montReduce(int32(a[i]) * int32(b[i]))
+		//  p1 := montReduce(int32(a[i]) * int32(b[i+1]))
+		//  p1 += montReduce(int32(a[i+1]) * int32(b[i]))
+		//  p0 = montReduce(int32(p0) * zeta) + p2
+        VPMULLW(a[1], b[1], t[0])
+        VPMULLW(a[0], b[0], t[1])
+        VPMULLW(a[0], b[1], t[2])
+        VPMULLW(a[1], b[0], t[3])
+
+        VPMULLW(t[0], qinv, t[0])
+        VPMULLW(t[1], qinv, t[1])
+        VPMULLW(t[2], qinv, t[2])
+        VPMULLW(t[3], qinv, t[3])
+
+        // zl and zh are used as temporary registers here
+        VPMULHW(a[1], b[1], zl) // will end up in b[0]
+        VPMULHW(a[0], b[0], zh) // will end up in b[1]
+        VPMULHW(a[0], b[1], a[0])
+        VPMULHW(a[1], b[0], a[1])
+        VMOVDQA(zl, b[0])
+        VMOVDQA(zh, b[1])
+
+        VPMULHW(t[0], q, t[0])
+        VPMULHW(t[1], q, t[1])
+        VPMULHW(t[2], q, t[2])
+        VPMULHW(t[3], q, t[3])
+
+        VPSUBW(t[0], b[0], b[0]) // a[i+1]*b[i+1]
+        VPSUBW(t[1], b[1], b[1]) // a[i]*b[i]
+        VPSUBW(t[2], a[0], a[0]) // a[i]*b[i+1]
+        VPSUBW(t[3], a[1], a[1]) // a[i+1]*b[i]
+
+		VMOVDQU(Mem{Base: zetasPtr, Disp: 32 * (25 + j*2)}, zl)
+		VMOVDQU(Mem{Base: zetasPtr, Disp: 32 * (25 + j*2 + 1)}, zh)
+
+        // Compute p0 = montReduce(int32(p0) * zeta) + p2
+        VPMULLW(b[0], zl, t[0])
+        VPMULHW(b[0], zh, b[0])
+        VPMULHW(t[0], q, t[0])
+        VPSUBW(t[0], b[0], b[0])
+        VPADDW(b[0], b[1], b[0])
+
+        // p1
+        VPADDW(a[0], a[1], b[1])
+
+        // Now the same but then for the next two
+        VPMULLW(a[3], b[3], t[0])
+        VPMULLW(a[2], b[2], t[1])
+        VPMULLW(a[2], b[3], t[2])
+        VPMULLW(a[3], b[2], t[3])
+
+        VPMULLW(t[0], qinv, t[0])
+        VPMULLW(t[1], qinv, t[1])
+        VPMULLW(t[2], qinv, t[2])
+        VPMULLW(t[3], qinv, t[3])
+
+        // zl and zh are used as temporary registers here
+        VPMULHW(a[3], b[3], zl) // will end up in b[2]
+        VPMULHW(a[2], b[2], zh) // will end up in b[3]
+        VPMULHW(a[2], b[3], a[2])
+        VPMULHW(a[3], b[2], a[3])
+        VMOVDQA(zl, b[2])
+        VMOVDQA(zh, b[3])
+
+        VPMULHW(t[0], q, t[0])
+        VPMULHW(t[1], q, t[1])
+        VPMULHW(t[2], q, t[2])
+        VPMULHW(t[3], q, t[3])
+
+        VPSUBW(t[0], b[2], b[2]) // a[i+1]*b[i+1]
+        VPSUBW(t[1], b[3], b[3]) // a[i]*b[i]
+        VPSUBW(t[2], a[2], a[2]) // a[i]*b[i+1]
+        VPSUBW(t[3], a[3], a[3]) // a[i+1]*b[i]
+
+		VMOVDQU(Mem{Base: zetasPtr, Disp: 32 * (25 + j*2)}, zl)
+		VMOVDQU(Mem{Base: zetasPtr, Disp: 32 * (25 + j*2 + 1)}, zh)
+
+        // Compute p0 = p2 - montReduce(int32(p0) * zeta)
+        VPMULLW(b[2], zl, t[0])
+        VPMULHW(b[2], zh, b[2])
+        VPMULHW(t[0], q, t[0])
+        VPSUBW(t[0], b[2], b[2])
+        VPSUBW(b[2], b[3], b[2])
+
+        // p1
+        VPADDW(a[2], a[3], b[3])
+
+		// XXX put coefficients back in standard form.
+		bitflip(0, b[0], b[1], t[0])
+		bitflip(0, b[2], b[3], t[0])
+
+		bitflip(1, b[0], b[2], t[0])
+		bitflip(1, b[1], b[3], t[0])
+
+		bitflip(2, b[0], b[1], t[0])
+		bitflip(2, b[2], b[3], t[0])
+
+		bitflip(3, b[0], b[2], t[0])
+		bitflip(3, b[1], b[3], t[0])
+
+		for i := 0; i < 4; i++ {
+			VMOVDQU(b[i], Mem{Base: pPtr, Disp: 32 * (4*j + i)})
+		}
+	}
+
+	RET()
+}
+
 func main() {
 	ConstraintExpr("amd64")
 
@@ -835,6 +1016,7 @@ func main() {
 	subAVX2()
 	nttAVX2()
 	invNttAVX2()
+	mulHatAVX2()
 
 	Generate()
 }

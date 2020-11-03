@@ -15,3 +15,6 @@ func nttAVX2(p *[256]int16)
 
 //go:noescape
 func invNttAVX2(p *[256]int16)
+
+//go:noescape
+func mulHatAVX2(p *[256]int16, a *[256]int16, b *[256]int16)

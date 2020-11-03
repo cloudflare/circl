@@ -57,7 +57,7 @@ func (p *Poly) ToMont() {
 // Montgomery form.  Products between coefficients of a and b must be strictly
 // bounded in absolute value by 2¹⁵q.  p will be in Montgomery form and
 // bounded in absolute value by 2q.
-func (p *Poly) MulHat(a, b *Poly) {
+func (p *Poly) mulHatGeneric(a, b *Poly) {
 	// Recall from the discussion in NTT(), that a transformed polynomial is
 	// an element of ℤ_q[x]/(x²-ζ) x … x  ℤ_q[x]/(x²+ζ¹²⁷);
 	// that is: 128 degree-one polynomials instead of simply 256 elements
@@ -85,7 +85,7 @@ func (p *Poly) MulHat(a, b *Poly) {
 		p[i+1] = p1
 
 		p2 := montReduce(int32(a[i+3]) * int32(b[i+3]))
-		p2 = montReduce(-int32(p2) * zeta)
+		p2 = -montReduce(int32(p2) * zeta)
 		p2 += montReduce(int32(a[i+2]) * int32(b[i+2]))
 
 		p3 := montReduce(int32(a[i+2]) * int32(b[i+3]))
