@@ -170,7 +170,6 @@ func (s *Server) Evaluate(b BlindToken) (*Evaluation, error) {
 	}
 
 	z := p.ScalarMult(s.Kp.PrivK)
-
 	ser := z.Serialize()
 
 	return &Evaluation{ser}, nil
@@ -199,13 +198,13 @@ func (s *Server) VerifyFinalize(in, info, out []byte) bool {
 	}
 
 	el := p.Serialize()
+
 	e, err := s.Evaluate(el)
 	if err != nil {
 		return false
 	}
 
 	h := group.FinalizeHash(s.suite, in, e.element, info, s.ctx)
-
 	if subtle.ConstantTimeCompare(h, out) == 1 {
 		return true
 

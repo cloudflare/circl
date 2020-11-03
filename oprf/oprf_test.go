@@ -123,8 +123,54 @@ func TestClientFinalize(t *testing.T) {
 	}
 }
 
+func TestClientVerifyFinalize(t *testing.T) {
+	srv, err := NewServer(OPRFP256, nil, nil)
+	if err != nil {
+		t.Fatal("invalid setup of server: " + err.Error())
+	}
+	if srv == nil {
+		t.Fatal("invalid setup of server: no server.")
+	}
+
+	client, err := NewClient(OPRFP256)
+	if err != nil {
+		t.Fatal("invalid setup of client: " + err.Error())
+	}
+
+	token, bToken, err := client.Request([]byte{00})
+	if err != nil {
+		t.Fatal("invalid blinding of client: " + err.Error())
+	}
+
+	eval, err := srv.Evaluate(bToken)
+	if err != nil {
+		t.Fatal("invalid evaluation of server: " + err.Error())
+	}
+	if eval == nil {
+		t.Fatal("invalid evaluation of server: no evaluation")
+	}
+
+	iToken, h, err := client.Finalize(token, eval, []byte("test information"))
+	if err != nil {
+		t.Fatal("invalid unblinding of client: " + err.Error())
+	}
+
+	if iToken == nil {
+		t.Fatal("invalid unblinding of client: no issued Token.")
+	}
+
+	if !(len(h) > 0) {
+		t.Fatal("invalid finalizing of client: no final byte array.")
+	}
+
+	b := srv.VerifyFinalize([]byte{00}, []byte("test information"), h)
+	if b == false {
+		t.Fatal("invalid evaluation of server: ")
+	}
+}
+
 func blindTest(c *group.Ciphersuite, in []byte) (*Token, BlindToken) {
-	bytes, _ := hex.DecodeString("e6db3004c35ec2cf97c4d462e4690e9859741c186b8e1138b977d547ad166951")
+	bytes, _ := hex.DecodeString("bfaba18e6da8cc89f57dcfa306363716edf0d84fa4ffd1ad521e1982d0c95e37")
 	s := group.NewScalar(c)
 	s.Set(bytes)
 
@@ -137,7 +183,6 @@ func blindTest(c *group.Ciphersuite, in []byte) (*Token, BlindToken) {
 }
 
 func TestClientRequestVector(t *testing.T) {
-	t.Skip()
 	srv, err := NewServer(OPRFP256, nil, nil)
 	if err != nil {
 		t.Fatal("invalid setup of server: " + err.Error())
@@ -154,14 +199,13 @@ func TestClientRequestVector(t *testing.T) {
 	_, bToken := blindTest(client.suite, []byte{00})
 
 	// From the test vectors
-	testBToken, _ := hex.DecodeString("02fb7eadba79acefca3e5401e291f2face38f4f3c159e8d636b29f650d96dfc3f1")
+	testBToken, _ := hex.DecodeString("02be6ec49d1419d565f2fa6afaaa084b23bb2d9dc0e0ce31cd636afa039cb366a5")
 	if !bytes.Equal(testBToken[:], bToken[:]) {
 		test.ReportError(t, bToken[:], testBToken[:], "request")
 	}
 }
 
 func TestServerEvaluationVector(t *testing.T) {
-	t.Skip()
 	srv, err := NewServer(OPRFP256, nil, nil)
 	if err != nil {
 		t.Fatal("invalid setup of server: " + err.Error())
@@ -169,7 +213,7 @@ func TestServerEvaluationVector(t *testing.T) {
 	if srv == nil {
 		t.Fatal("invalid setup of server: no server.")
 	}
-	privKey, _ := hex.DecodeString("7331fb3bfbc4a786af3a35e33b2d75db3929b4c033998526dc66d60f6531a255")
+	privKey, _ := hex.DecodeString("40d0c9b6d03ec2b88a359bd81a60509bbbbb68e65c633c6711c1c75c215f7277")
 	srv.Kp.PrivK.Set(privKey)
 
 	client, err := NewClient(OPRFP256)
@@ -185,15 +229,14 @@ func TestServerEvaluationVector(t *testing.T) {
 	}
 
 	// From the test vectors
-	testEval, _ := hex.DecodeString("02449231545a1770f3e3995e7a0f0a29a51995bf068c833dd1269295641e289cda")
+	testEval, _ := hex.DecodeString("0237fdb9105aaebe0d0c502bcd37e6fd29b33489de892a1971cd87f41cdff50181")
 
 	if !bytes.Equal(testEval[:], eval.element[:]) {
 		test.ReportError(t, eval.element[:], testEval[:], "eval")
 	}
 }
 
-func TestClientUnblindVector(t *testing.T) {
-	t.Skip()
+func TestClientUnblindFinalizeVector(t *testing.T) {
 	srv, err := NewServer(OPRFP256, nil, nil)
 	if err != nil {
 		t.Fatal("invalid setup of server: " + err.Error())
@@ -201,7 +244,7 @@ func TestClientUnblindVector(t *testing.T) {
 	if srv == nil {
 		t.Fatal("invalid setup of server: no server.")
 	}
-	privKey, _ := hex.DecodeString("7331fb3bfbc4a786af3a35e33b2d75db3929b4c033998526dc66d60f6531a255")
+	privKey, _ := hex.DecodeString("40d0c9b6d03ec2b88a359bd81a60509bbbbb68e65c633c6711c1c75c215f7277")
 	srv.Kp.PrivK.Set(privKey)
 
 	client, err := NewClient(OPRFP256)
@@ -220,13 +263,13 @@ func TestClientUnblindVector(t *testing.T) {
 	iToken, h, _ := client.Finalize(token, eval, info)
 
 	// From the test vectors
-	testIToken, _ := hex.DecodeString("0277f2ded1d0cbbc9a71504f94dd0aa997709f7adb3368631392313164273eb340")
+	testIToken, _ := hex.DecodeString("03bc44ee69f4e459c322c2423e48b40cada036541e3c9077916e42c7ebfd2a5fa7")
 
 	if !bytes.Equal(testIToken[:], iToken[:]) {
 		test.ReportError(t, iToken[:], testIToken[:], "finalize")
 	}
 
-	testOutput, _ := hex.DecodeString("dafd07b7ae978c791481d3cf6c3f6340742eab67f5771279f535ae6daf9df51b74dce7b28da84b6d6bca969b951a317449783acd18ba4cb748d70821e01e7230")
+	testOutput, _ := hex.DecodeString("2820283d161267f22ff6faafde865973ed6f60fc25c2a194bb8e03ff1a96a096")
 
 	if !bytes.Equal(testOutput[:], h[:]) {
 		test.ReportError(t, h[:], testOutput[:], "finalize")
