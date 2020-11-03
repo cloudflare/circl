@@ -1,3 +1,18 @@
+//
+// Package oprf provides an implementation of Oblivious Pseudorandom Functions
+// (OPRFs), as defined on draft-irtf-cfrg-voprf.
+// It implements:
+// For a Client:
+//   - Blind
+//   - Unblind
+//   - Finalize
+//
+// For a Server:
+//   - Setup
+//   - Evaluate
+//   - VerifyFinalize
+// References
+//  - OPRF draft: https://datatracker.ietf.org/doc/draft-irtf-cfrg-voprf/
 package oprf
 
 import (
