@@ -204,7 +204,7 @@ func (s *Server) VerifyFinalize(in, info, out []byte) bool {
 		return false
 	}
 
-	h := group.FinalizeHash(s.suite, in, e, info, s.ctx)
+	h := group.FinalizeHash(s.suite, in, e.element, info, s.ctx)
 
 	if subtle.ConstantTimeCompare(h, out) == 1 {
 		return true
