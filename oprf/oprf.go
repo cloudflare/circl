@@ -220,12 +220,7 @@ func (s *Server) VerifyFinalize(in, info, out []byte) bool {
 	}
 
 	h := group.FinalizeHash(s.suite, in, e.element, info, s.ctx)
-	if subtle.ConstantTimeCompare(h, out) == 1 {
-		return true
-
-	}
-
-	return false
+	return subtle.ConstantTimeCompare(h, out) == 1
 }
 
 // NewClient creates a new instantiation of a Client.
