@@ -33,24 +33,25 @@ func (p *Poly) DeriveNoise3(seed []byte, nonce uint8) {
 	// of (a₁ + a₂ + a₃) - (b₁ + b₂+b₃) where a_i,b_i~U(1).  Thus we need
 	// 6 bits per coefficients, thus 192 bytes of input entropy.
 
-	// We add one extra zero byte in the buffer to be able to read 4 bytes
-	// at the same time (while using only 3.)
-	var buf [192 + 1]byte
+	// We add two extra zero bytes in the buffer to be able to read 8 bytes
+	// at the same time (while using only 6.)
+	var buf [192 + 2]byte
 	_, _ = h.Read(buf[:192])
 
-	// XXX 64 bits at a time?
-	for i := 0; i < 64; i++ {
+	for i := 0; i < 32; i++ {
 		// t is interpreted as a₁ + 2a₂ + 4a₃ + 8b₁ + 16b₂ + ….
-		t := binary.LittleEndian.Uint32(buf[3*i:])
+		t := binary.LittleEndian.Uint64(buf[6*i:])
 
-		d := t & 0x00249249        // a₁ + 8b₁ + …
-		d += (t >> 1) & 0x00249249 // a₁ + a₂ + 8(b₁ + b₂) + …
-		d += (t >> 2) & 0x00249249 // a₁ + a₂ + a₃ + 4(b₁ + b₂ + b₃) + …
+		d := t & 0x249249249249        // a₁ + 8b₁ + …
+		d += (t >> 1) & 0x249249249249 // a₁ + a₂ + 8(b₁ + b₂) + …
+		d += (t >> 2) & 0x249249249249 // a₁ + a₂ + a₃ + 4(b₁ + b₂ + b₃) + …
 
-		for j := 0; j < 4; j++ {
-			a := int16(d>>uint(6*j)) & 0x7   // a₁ + a₂ + a₃
-			b := int16(d>>uint(6*j+3)) & 0x7 // b₁ + b₂ + b₃
-			p[4*i+j] = a - b
+		for j := 0; j < 8; j++ {
+			a := int16(d) & 0x7 // a₁ + a₂ + a₃
+			d >>= 3
+			b := int16(d) & 0x7 // b₁ + b₂ + b₃
+			d >>= 3
+			p[8*i+j] = a - b
 		}
 	}
 }
@@ -71,18 +72,19 @@ func (p *Poly) DeriveNoise2(seed []byte, nonce uint8) {
 	var buf [128]byte
 	_, _ = h.Read(buf[:])
 
-	// XXX 64 bits at a time?
-	for i := 0; i < 32; i++ {
+	for i := 0; i < 16; i++ {
 		// t is interpreted as a + 2a' + 4b + 8b' + ….
-		t := binary.LittleEndian.Uint32(buf[4*i:])
+		t := binary.LittleEndian.Uint64(buf[8*i:])
 
-		d := t & 0x55555555        // a + 4b + …
-		d += (t >> 1) & 0x55555555 // a+a' + 4(b + b') + …
+		d := t & 0x5555555555555555        // a + 4b + …
+		d += (t >> 1) & 0x5555555555555555 // a+a' + 4(b + b') + …
 
-		for j := 0; j < 8; j++ {
-			a := int16(d>>uint(4*j)) & 0x3   // a + a'
-			b := int16(d>>uint(4*j+2)) & 0x3 // b + b'
-			p[8*i+j] = a - b
+		for j := 0; j < 16; j++ {
+			a := int16(d) & 0x3
+			d >>= 2
+			b := int16(d) & 0x3
+			d >>= 2
+			p[16*i+j] = a - b
 		}
 	}
 }
