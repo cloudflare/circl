@@ -1,6 +1,7 @@
 package oprf
 
 import (
+	"crypto/subtle"
 	"errors"
 
 	"github.com/cloudflare/circl/oprf/group"
@@ -188,6 +189,29 @@ func (s *Server) FullEvaluate(in, info []byte) ([]byte, error) {
 	h := group.FinalizeHash(s.suite, in, iToken, info, s.ctx)
 
 	return h, nil
+}
+
+// VerifyFinalize verifies the evaluation.
+func (s *Server) VerifyFinalize(in, info, out []byte) bool {
+	p, err := s.suite.HashToGroup(in)
+	if err != nil {
+		return false
+	}
+
+	el := p.Serialize()
+	e, err := s.Evaluate(el)
+	if err != nil {
+		return false
+	}
+
+	h := group.FinalizeHash(s.suite, in, e, info, s.ctx)
+
+	if subtle.ConstantTimeCompare(h, out) == 1 {
+		return true
+
+	}
+
+	return false
 }
 
 // NewClient creates a new instantiation of a Client.
