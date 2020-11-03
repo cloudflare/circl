@@ -175,6 +175,21 @@ func (s *Server) Evaluate(b BlindToken) (*Evaluation, error) {
 	return &Evaluation{ser}, nil
 }
 
+// FullEvaluate performs a full evaluation at the server side.
+func (s *Server) FullEvaluate(in, info []byte) ([]byte, error) {
+	p, err := s.suite.HashToGroup(in)
+	if err != nil {
+		return nil, err
+	}
+
+	t := p.ScalarMult(s.Kp.PrivK)
+	iToken := t.Serialize()
+
+	h := group.FinalizeHash(s.suite, in, iToken, info, s.ctx)
+
+	return h, nil
+}
+
 // NewClient creates a new instantiation of a Client.
 func NewClient(id SuiteID) (*Client, error) {
 	ctx := generateCtx(id)
