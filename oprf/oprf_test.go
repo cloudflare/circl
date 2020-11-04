@@ -244,6 +244,7 @@ func (v *Vectors) runP256(t *testing.T) {
 
 		token, bToken := blindTest(client.suite, j)
 		testBToken, _ := hex.DecodeString(j.Blind.Blinded)
+
 		if !bytes.Equal(testBToken[:], bToken[:]) {
 			test.ReportError(t, bToken[:], testBToken[:], "request")
 		}
@@ -342,6 +343,7 @@ func (v *Vectors) runP521(t *testing.T) {
 
 		token, bToken := blindTest(client.suite, j)
 		testBToken, _ := hex.DecodeString(j.Blind.Blinded)
+
 		if !bytes.Equal(testBToken[:], bToken[:]) {
 			test.ReportError(t, bToken[:], testBToken[:], "request")
 		}
@@ -352,7 +354,6 @@ func (v *Vectors) runP521(t *testing.T) {
 		}
 
 		testEval, _ := hex.DecodeString(j.Evaluation.Eval)
-
 		if !bytes.Equal(testEval[:], eval.element[:]) {
 			test.ReportError(t, eval.element[:], testEval[:], "eval")
 		}
@@ -382,6 +383,6 @@ func TestDraftVectors(t *testing.T) {
 	v.readFile(t, "testdata/384_vectors.json")
 	t.Run("ORPF-P384", v.runP384)
 
-	//v.readFile(t, "testdata/521_vectors.json")
-	//t.Run("ORPF-P521", v.runP521)
+	v.readFile(t, "testdata/521_vectors.json")
+	t.Run("ORPF-P521", v.runP521)
 }
