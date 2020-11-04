@@ -62,8 +62,8 @@ func testPQCgenKATKem(t *testing.T, name, expected string) {
 		pk, sk := scheme.DeriveKey(kseed)
 		ppk, _ := pk.MarshalBinary()
 		psk, _ := sk.MarshalBinary()
-		ct, ss := scheme.EncapsulateDeterministically(pk, eseed)
-		ss2 := scheme.Decapsulate(sk, ct)
+		ct, ss, _ := scheme.EncapsulateDeterministically(pk, eseed)
+		ss2, _ := scheme.Decapsulate(sk, ct)
 		if !bytes.Equal(ss, ss2) {
 			t.Fatal()
 		}
