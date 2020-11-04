@@ -82,7 +82,7 @@ type Server struct {
 	Kp    *KeyPair
 }
 
-func generateCtx(id SuiteID) []byte {
+func generateContext(id SuiteID) []byte {
 	ctx := [3]byte{OPRFMode, 0, byte(id)}
 
 	return ctx[:]
@@ -143,7 +143,7 @@ func suiteFromID(id SuiteID, ctx []byte) (*group.Ciphersuite, error) {
 // NewServer creates a new instantiation of a Server. It can create
 // a server with existing keys or use pre-generated keys.
 func NewServer(id SuiteID, privK, pubK []byte) (*Server, error) {
-	ctx := generateCtx(id)
+	ctx := generateContext(id)
 
 	suite, err := suiteFromID(id, ctx)
 	if err != nil {
@@ -215,7 +215,7 @@ func (s *Server) VerifyFinalize(in, info, out []byte) bool {
 
 // NewClient creates a new instantiation of a Client.
 func NewClient(id SuiteID) (*Client, error) {
-	ctx := generateCtx(id)
+	ctx := generateContext(id)
 
 	suite, err := suiteFromID(id, ctx)
 	if err != nil {
