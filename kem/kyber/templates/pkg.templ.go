@@ -335,22 +335,22 @@ func (*scheme) DeriveKey(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 	return NewKeyFromSeed(seed[:])
 }
 
-func (*scheme) Encapsulate(pk kem.PublicKey) (ct, ss []byte, err error) {
+func (*scheme) Encapsulate(pk kem.PublicKey) (ct []byte, ss []byte) {
 	ct = make([]byte, CiphertextSize)
 	ss = make([]byte, SharedKeySize)
 
 	pub, ok := pk.(*PublicKey)
 	if !ok {
-		return nil, nil, kem.ErrTypeMismatch
+		panic(kem.ErrTypeMismatch)
 	}
 	pub.EncapsulateTo(ct, ss, nil)
 	return
 }
 
 func (*scheme) EncapsulateDeterministically(pk kem.PublicKey, seed []byte) (
-	ct, ss []byte, err error) {
+	ct []byte, ss []byte) {
 	if len(seed) != EncapsulationSeedSize {
-		return nil, nil, kem.ErrSeedSize
+		panic(kem.ErrSeedSize)
 	}
 
 	ct = make([]byte, CiphertextSize)
@@ -358,24 +358,24 @@ func (*scheme) EncapsulateDeterministically(pk kem.PublicKey, seed []byte) (
 
 	pub, ok := pk.(*PublicKey)
 	if !ok {
-		return nil, nil, kem.ErrTypeMismatch
+		panic(kem.ErrTypeMismatch)
 	}
 	pub.EncapsulateTo(ct, ss, seed)
 	return
 }
 
-func (*scheme) Decapsulate(sk kem.PrivateKey, ct []byte) ([]byte, error) {
+func (*scheme) Decapsulate(sk kem.PrivateKey, ct []byte) []byte {
 	if len(ct) != CiphertextSize {
-		return nil, kem.ErrCiphertextSize
+		panic(kem.ErrCiphertextSize)
 	}
 
 	priv, ok := sk.(*PrivateKey)
 	if !ok {
-		return nil, kem.ErrTypeMismatch
+		panic(kem.ErrTypeMismatch)
 	}
 	ss := make([]byte, SharedKeySize)
 	priv.DecapsulateTo(ss, ct)
-	return ss, nil
+	return ss
 }
 
 func (*scheme) UnmarshalBinaryPublicKey(buf []byte) (kem.PublicKey, error) {

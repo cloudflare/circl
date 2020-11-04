@@ -38,11 +38,13 @@ type Scheme interface {
 
 	// Encapsulate generates a shared key ss for the public key  and
 	// encapsulates it into a ciphertext ct.
-	Encapsulate(pk PublicKey) (ct []byte, ss []byte, err error)
+	Encapsulate(pk PublicKey) (ct []byte, ss []byte)
 
 	// Returns the shared key encapsulated in ciphertext ct for the
 	// private key sk.
-	Decapsulate(sk PrivateKey, ct []byte) ([]byte, error)
+	//
+	// Panics if ct is not of size CiphertextSize().
+	Decapsulate(sk PrivateKey, ct []byte) []byte
 
 	// Unmarshals a PublicKey from the provided buffer.
 	UnmarshalBinaryPublicKey([]byte) (PublicKey, error)
@@ -74,8 +76,9 @@ type Scheme interface {
 	// EncapsulateDeterministically generates a shared key ss for the public
 	// key deterministically from the given seed and encapsulates it into
 	// a ciphertext ct.  If unsure, you're better off using Encapsulate().
-	EncapsulateDeterministically(pk PublicKey, seed []byte) (
-		ct, ss []byte, err error)
+	//
+	// Panics if seed is not of length EncapsulationSeedSize().
+	EncapsulateDeterministically(pk PublicKey, seed []byte) (ct, ss []byte)
 
 	// Size of seed used in EncapsulateDeterministically().
 	EncapsulationSeedSize() int
@@ -101,10 +104,4 @@ var (
 	// ErrPrivKeySize is the error used if the provided private key is of
 	// the wrong size.
 	ErrPrivKeySize = errors.New("wrong size for private key")
-
-	// ErrPubKey is the error used if the provided public key is invalid.
-	ErrPubKey = errors.New("invalid public key")
-
-	// ErrCipherText is the error used if the provided ciphertext is invalid.
-	ErrCipherText = errors.New("invalid ciphertext")
 )
