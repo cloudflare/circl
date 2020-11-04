@@ -61,9 +61,6 @@ type Suite interface {
 	// Performs a scalar multiplication of the Generator with some scalar
 	// input.
 	ScalarMultBase(*Scalar) *Element
-
-	// Returns the ByteLength of Elements associated with the Ciphersuite.
-	ByteLength() int
 }
 
 // Name returns the name associated with the chosen ciphersuite.
@@ -187,11 +184,6 @@ func (c *Ciphersuite) ScalarMultBase(s *Scalar) *Element {
 	gen := c.Generator()
 
 	return gen.ScalarMult(s)
-}
-
-// ByteLength returns the ByteLength of objects associated with the Ciphersuite.
-func (c *Ciphersuite) ByteLength() int {
-	return (c.Curve.Params().BitSize + 7) / 8
 }
 
 // FinalizeHash computes the final hash for the suite
