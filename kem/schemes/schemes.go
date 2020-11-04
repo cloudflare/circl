@@ -9,6 +9,7 @@ import (
 	"github.com/cloudflare/circl/kem/kyber/kyber512"
 	"github.com/cloudflare/circl/kem/kyber/kyber768"
 	"github.com/cloudflare/circl/kem/x25519"
+	"github.com/cloudflare/circl/kem/x448"
 )
 
 var allSchemes = [...]kem.Scheme{
@@ -16,6 +17,7 @@ var allSchemes = [...]kem.Scheme{
 	kyber768.Scheme,
 	kyber1024.Scheme,
 	x25519.Scheme,
+	x448.Scheme,
 }
 
 var allSchemeNames map[string]kem.Scheme
