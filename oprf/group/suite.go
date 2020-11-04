@@ -88,6 +88,7 @@ type eccHasher struct {
 	hasher h2c.HashToPoint
 }
 
+// Hash hashes a byte array into an Element.
 func (h eccHasher) Hash(in []byte) (*Element, error) {
 	q := h.hasher.Hash(in)
 	x := q.X().Polynomial()
@@ -192,25 +193,25 @@ func FinalizeHash(c *Ciphersuite, data, iToken, info, ctx []byte) []byte {
 }
 
 // NewSuite creates a new ciphersuite for the requested name.
-func NewSuite(name string, id uint16, ctx []byte) (*Ciphersuite, error) {
+func NewSuite(id uint16, ctx []byte) (*Ciphersuite, error) {
 	cSuite := &Ciphersuite{}
 	dst := []byte("VOPRF05-")
 
-	switch name {
-	case "P-256":
+	switch id {
+	case 0x0003:
 		cSuite.id = id
 		cSuite.name = "OPRFP256-SHA512-ELL2-RO"
 		cSuite.dst = append(dst, ctx...)
 		cSuite.hash = sha256.New()
 		cSuite.Curve = elliptic.P256()
 	// TODO: might be good to use the circl one as well
-	case "P-384":
+	case 0x0004:
 		cSuite.id = id
 		cSuite.name = "OPRFP384-SHA512-ELL2-RO"
 		cSuite.dst = append(dst, ctx...)
 		cSuite.hash = sha512.New()
 		cSuite.Curve = elliptic.P384()
-	case "P-521":
+	case 0x0005:
 		cSuite.id = id
 		cSuite.name = "OPRFP521-SHA512-ELL2-RO"
 		cSuite.dst = append(dst, ctx...)

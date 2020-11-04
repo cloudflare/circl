@@ -132,16 +132,7 @@ func suiteFromID(id SuiteID, ctx []byte) (*group.Ciphersuite, error) {
 	var err error
 	var suite *group.Ciphersuite
 
-	switch id {
-	case OPRFP256:
-		suite, err = group.NewSuite("P-256", uint16(id), ctx)
-	case OPRFP384:
-		suite, err = group.NewSuite("P-384", uint16(id), ctx)
-	case OPRFP521:
-		suite, err = group.NewSuite("P-521", uint16(id), ctx)
-	default:
-		return suite, ErrUnsupportedGroup
-	}
+	suite, err = group.NewSuite(uint16(id), ctx)
 	if err != nil {
 		return nil, err
 	}
