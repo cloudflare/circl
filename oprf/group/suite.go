@@ -20,6 +20,9 @@ import (
 // definitions.
 // Should be created using NewSuite, using the appropriate string.
 type Ciphersuite struct {
+	// id of the ciphersuite.
+	id uint16
+
 	// name of the ciphersuite.
 	name string
 
@@ -37,6 +40,9 @@ type Ciphersuite struct {
 // groups of prime order. This is the setting in which the OPRF operations
 // take place.
 type Suite interface {
+	// Returns the identifying id of the group.
+	Identifier() uint16
+
 	// Returns the identifying name of the group.
 	Name() string
 
@@ -61,6 +67,11 @@ type Suite interface {
 	// Performs a scalar multiplication of the Generator with some scalar
 	// input.
 	ScalarMultBase(*Scalar) *Element
+}
+
+// Identifier returns the id associated with the chosen ciphersuite.
+func (c *Ciphersuite) Identifier() uint16 {
+	return c.id
 }
 
 // Name returns the name associated with the chosen ciphersuite.
@@ -214,23 +225,26 @@ func FinalizeHash(c *Ciphersuite, data, iToken, info, ctx []byte) []byte {
 }
 
 // NewSuite creates a new ciphersuite for the requested name.
-func NewSuite(name string, ctx []byte) (*Ciphersuite, error) {
+func NewSuite(name string, id uint16, ctx []byte) (*Ciphersuite, error) {
 	cSuite := &Ciphersuite{}
 	dst := []byte("VOPRF05-")
 
 	switch name {
 	case "P-256":
+		cSuite.id = id
 		cSuite.name = "OPRFP256-SHA512-ELL2-RO"
 		cSuite.dst = append(dst, ctx...)
 		cSuite.hash = sha256.New()
 		cSuite.Curve = elliptic.P256()
 	// TODO: might be good to use the circl one as well
 	case "P-384":
+		cSuite.id = id
 		cSuite.name = "OPRFP384-SHA512-ELL2-RO"
 		cSuite.dst = append(dst, ctx...)
 		cSuite.hash = sha512.New()
 		cSuite.Curve = elliptic.P384()
 	case "P-521":
+		cSuite.id = id
 		cSuite.name = "OPRFP521-SHA512-ELL2-RO"
 		cSuite.dst = append(dst, ctx...)
 		cSuite.hash = sha512.New()
