@@ -36,39 +36,6 @@ type Ciphersuite struct {
 	Curve elliptic.Curve
 }
 
-// Suite is an interface that defines operations within additive
-// groups of prime order. This is the setting in which the OPRF operations
-// take place.
-type Suite interface {
-	// Returns the identifying id of the group.
-	Identifier() uint16
-
-	// Returns the identifying name of the group.
-	Name() string
-
-	// Returns the canonical (fixed) generator for defined group.
-	Generator() *Element
-
-	// Returns the order of the canonical generator in the group.
-	Order() *Scalar
-
-	// Performs a transformation to encode bytes as a Element object in the
-	// group.
-	HashToGroup([]byte) (*Element, error)
-
-	// Performs a transformation to encode bytes as a Scalar object in the
-	// appropriate group.
-	HashToScalar([]byte) (Scalar, error)
-
-	// Samples a random scalar value from the field of scalars defined by the
-	// group order.
-	RandomScalar() *Scalar
-
-	// Performs a scalar multiplication of the Generator with some scalar
-	// input.
-	ScalarMultBase(*Scalar) *Element
-}
-
 // Identifier returns the id associated with the chosen ciphersuite.
 func (c *Ciphersuite) Identifier() uint16 {
 	return c.id
