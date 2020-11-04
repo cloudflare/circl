@@ -1,6 +1,7 @@
 package group
 
 import (
+	"crypto/elliptic"
 	"crypto/subtle"
 	"errors"
 	"math/big"
@@ -8,27 +9,27 @@ import (
 
 // Element is a representation of a group element.
 type Element struct {
-	c   *Ciphersuite
+	c   elliptic.Curve
 	x   *big.Int
 	y   *big.Int
 	com bool // use compression when serialiazing, be default set to true
 }
 
 // NewElement generates a new Element for the corresponding ciphersuite.
-func NewElement(c *Ciphersuite) *Element {
+func NewElement(c elliptic.Curve) *Element {
 	p := &Element{c, new(big.Int), new(big.Int), true}
 	return p
 }
 
 // IsValid checks that the given Element is a valid curve point.
 func (p *Element) IsValid() bool {
-	return p.c.curve.IsOnCurve(p.x, p.y)
+	return p.c.IsOnCurve(p.x, p.y)
 }
 
 // ScalarMult multiplies a Element by the provided Scalar value.
 func (p *Element) ScalarMult(s *Scalar) *Element {
 	q := NewElement(p.c)
-	q.x, q.y = p.c.curve.ScalarMult(p.x, p.y, s.Serialize())
+	q.x, q.y = p.c.ScalarMult(p.x, p.y, s.Serialize())
 
 	return q
 }
@@ -37,14 +38,14 @@ func (p *Element) ScalarMult(s *Scalar) *Element {
 // along with a separate Element provided as input.
 func (p *Element) Add(q *Element) *Element {
 	r := NewElement(p.c)
-	r.x, r.y = p.c.curve.Add(p.x, p.y, q.x, q.y)
+	r.x, r.y = p.c.Add(p.x, p.y, q.x, q.y)
 
 	return r
 }
 
 // Neg performs the negation operation on the calling Element object.
 func (p *Element) Neg() *Element {
-	xInv := new(big.Int).ModInverse(p.x, p.c.curve.Params().N)
+	xInv := new(big.Int).ModInverse(p.x, p.c.Params().N)
 
 	r := NewElement(p.c)
 	r.x.Set(xInv)
@@ -58,8 +59,8 @@ func (p *Element) Serialize() []byte {
 	x, y := p.x.Bytes(), p.y.Bytes()
 
 	// append zeroes to the front if the bytes are not filled up
-	x = append(make([]byte, p.c.ByteLength()-len(x)), x...)
-	y = append(make([]byte, p.c.ByteLength()-len(y)), y...)
+	x = append(make([]byte, ((p.c.Params().BitSize+7)/8)-len(x)), x...)
+	y = append(make([]byte, ((p.c.Params().BitSize+7)/8)-len(y)), y...)
 
 	var b []byte
 	var tag int
@@ -102,7 +103,7 @@ func isCompressed(in []byte, expLen int) (bool, error) {
 
 // Deserialize a byte array into a valid Element object.
 func (p *Element) Deserialize(in []byte) error {
-	byteLen := p.c.ByteLength()
+	byteLen := (p.c.Params().BitSize + 7) / 8
 
 	com, err := isCompressed(in, byteLen)
 	if err != nil {
@@ -117,20 +118,20 @@ func (p *Element) Deserialize(in []byte) error {
 			return errors.New("invalid deserialization")
 		}
 	} else {
-		order := p.c.curve.Params().P
+		order := p.c.Params().P
 		var y2 *big.Int
 		x := new(big.Int).SetBytes(in[1:])
 
 		x2 := new(big.Int).Exp(x, two, order)
 		x2a := new(big.Int).Add(x2, big.NewInt(-3))
 		x3 := new(big.Int).Mul(x2a, x)
-		x3ab := new(big.Int).Add(x3, p.c.curve.Params().B)
+		x3ab := new(big.Int).Add(x3, p.c.Params().B)
 		y2 = new(big.Int).Mod(x3ab, order)
 
-		a1 := new(big.Int).Add(p.c.curve.Params().P, one)
-		a2 := new(big.Int).ModInverse(big.NewInt(4), p.c.curve.Params().P)
+		a1 := new(big.Int).Add(p.c.Params().P, one)
+		a2 := new(big.Int).ModInverse(big.NewInt(4), p.c.Params().P)
 		m := new(big.Int).Mul(a1, a2)
-		sqrtExp := new(big.Int).Mod(m, p.c.curve.Params().P)
+		sqrtExp := new(big.Int).Mod(m, p.c.Params().P)
 
 		// construct y coordinate with correct sign
 		y := new(big.Int).Exp(y2, sqrtExp, order)
@@ -158,12 +159,12 @@ func (p *Element) Equal(q *Element) bool {
 
 // Scalar is an struct representing a field element.
 type Scalar struct {
-	c *Ciphersuite
+	c elliptic.Curve
 	x *big.Int
 }
 
 // NewScalar generates a new scalar.
-func NewScalar(c *Ciphersuite) *Scalar {
+func NewScalar(c elliptic.Curve) *Scalar {
 	s := &Scalar{c, new(big.Int)}
 	return s
 }
@@ -176,8 +177,8 @@ func (s *Scalar) Set(x []byte) *Scalar {
 
 // Inv sets the Scalar to its multiplicative inverse.
 func (s *Scalar) Inv() *Scalar {
-	n := s.c.Order()
-	inv := new(big.Int).ModInverse(s.x, n.x)
+	n := s.c.Params().N
+	inv := new(big.Int).ModInverse(s.x, n)
 
 	rInv := NewScalar(s.c)
 	rInv.x.Set(inv)
@@ -187,7 +188,7 @@ func (s *Scalar) Inv() *Scalar {
 
 // Serialize the Scalar into a byte slice.
 func (s *Scalar) Serialize() []byte {
-	l := s.c.ByteLength()
+	l := (s.c.Params().BitSize + 7) / 8
 	bytes := s.x.Bytes()
 	if len(bytes) < l {
 		arr := make([]byte, l-len(bytes))
@@ -199,7 +200,6 @@ func (s *Scalar) Serialize() []byte {
 
 // Deserialize an octet-string into a valid Scalar object.
 func (s *Scalar) Deserialize(in []byte) {
-	byteLength := s.c.ByteLength()
-
+	byteLength := (s.c.Params().BitSize + 7) / 8
 	s.x = new(big.Int).SetBytes(in[1 : byteLength+1])
 }

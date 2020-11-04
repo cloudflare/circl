@@ -212,7 +212,7 @@ func (v *Vectors) readFile(t *testing.T, fileName string) {
 
 func blindTest(c *group.Ciphersuite, v Vector) (*Token, BlindToken) {
 	bytes, _ := hex.DecodeString(v.Blind.Token)
-	s := group.NewScalar(c)
+	s := group.NewScalar(c.Curve)
 	s.Set(bytes)
 
 	in, _ := hex.DecodeString(v.Input.In)

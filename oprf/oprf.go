@@ -98,10 +98,10 @@ func (kp *KeyPair) Serialize() ([]byte, []byte) {
 
 // Deserialize deserializes a KeyPair into an element and field element of the group.
 func (kp *KeyPair) Deserialize(suite *group.Ciphersuite, privK, pubK []byte) error {
-	priv := group.NewScalar(suite)
+	priv := group.NewScalar(suite.Curve)
 	priv.Deserialize(privK)
 
-	pub := group.NewElement(suite)
+	pub := group.NewElement(suite.Curve)
 	err := pub.Deserialize(pubK)
 	if err != nil {
 		return err
@@ -177,7 +177,7 @@ func NewServer(id SuiteID, privK, pubK []byte) (*Server, error) {
 
 // Evaluate blindly signs a client token.
 func (s *Server) Evaluate(b BlindToken) (*Evaluation, error) {
-	p := group.NewElement(s.suite)
+	p := group.NewElement(s.suite.Curve)
 	err := p.Deserialize(b)
 	if err != nil {
 		return nil, err
@@ -258,7 +258,7 @@ func (c *Client) Request(in []byte) (*Token, BlindToken, error) {
 // Finalize returns a signed token from a server Evaluation together
 // with the output of the OPRF protocol.
 func (c *Client) Finalize(t *Token, e *Evaluation, info []byte) (IssuedToken, []byte, error) {
-	p := group.NewElement(c.suite)
+	p := group.NewElement(c.suite.Curve)
 	err := p.Deserialize(e.element)
 	if err != nil {
 		return nil, []byte{}, err

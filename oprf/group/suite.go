@@ -18,7 +18,7 @@ import (
 // Ciphersuite object determines the prime-order group (pog) that is used for
 // performing the OPRF operations, along with the different hash function
 // definitions.
-// Should be created using NewSuite, using the appropiate string.
+// Should be created using NewSuite, using the appropriate string.
 type Ciphersuite struct {
 	// name of the ciphersuite.
 	name string
@@ -29,7 +29,8 @@ type Ciphersuite struct {
 	// hash defines the hash function to be used.
 	hash hash.Hash
 
-	curve elliptic.Curve
+	// Curve defines the underlying used curve.
+	Curve elliptic.Curve
 }
 
 // Suite is an interface that defines operations within additive
@@ -72,12 +73,12 @@ func (c *Ciphersuite) Name() string {
 
 // Generator returns the canonical (fixed) generator for the defined group.
 func (c *Ciphersuite) Generator() *Element {
-	return &Element{c, c.curve.Params().Gx, c.curve.Params().Gy, true}
+	return &Element{c.Curve, c.Curve.Params().Gx, c.Curve.Params().Gy, true}
 }
 
 // Order returns the order of the canonical generator in the group.
 func (c *Ciphersuite) Order() *Scalar {
-	return &Scalar{c, c.curve.Params().N}
+	return &Scalar{c.Curve, c.Curve.Params().N}
 }
 
 func getH2CSuite(c *Ciphersuite) (HashToElement, error) {
@@ -117,7 +118,7 @@ func (h eccHasher) Hash(in []byte) (*Element, error) {
 	x := q.X().Polynomial()
 	y := q.Y().Polynomial()
 
-	p := &Element{h.suite, new(big.Int), new(big.Int), true}
+	p := &Element{h.suite.Curve, new(big.Int), new(big.Int), true}
 	p.x.Set(x[0])
 	p.y.Set(y[0])
 
@@ -177,7 +178,7 @@ func (c *Ciphersuite) RandomScalar() *Scalar {
 	}
 
 	x := new(big.Int).SetBytes(buf)
-	return &Scalar{c, x}
+	return &Scalar{c.Curve, x}
 }
 
 // ScalarMultBase performs a scalar multiplication of the Generator with some scalar
@@ -190,7 +191,7 @@ func (c *Ciphersuite) ScalarMultBase(s *Scalar) *Element {
 
 // ByteLength returns the ByteLength of objects associated with the Ciphersuite.
 func (c *Ciphersuite) ByteLength() int {
-	return (c.curve.Params().BitSize + 7) / 8
+	return (c.Curve.Params().BitSize + 7) / 8
 }
 
 // FinalizeHash computes the final hash for the suite
@@ -230,18 +231,18 @@ func NewSuite(name string, ctx []byte) (*Ciphersuite, error) {
 		cSuite.name = "OPRFP256-SHA512-ELL2-RO"
 		cSuite.dst = append(dst, ctx...)
 		cSuite.hash = sha256.New()
-		cSuite.curve = elliptic.P256()
+		cSuite.Curve = elliptic.P256()
 	// TODO: might be good to use the circl one as well
 	case "P-384":
 		cSuite.name = "OPRFP384-SHA512-ELL2-RO"
 		cSuite.dst = append(dst, ctx...)
 		cSuite.hash = sha512.New()
-		cSuite.curve = elliptic.P384()
+		cSuite.Curve = elliptic.P384()
 	case "P-521":
 		cSuite.name = "OPRFP521-SHA512-ELL2-RO"
 		cSuite.dst = append(dst, ctx...)
 		cSuite.hash = sha512.New()
-		cSuite.curve = elliptic.P521()
+		cSuite.Curve = elliptic.P521()
 	// TODO: support ristretto255 and decaf448
 	default:
 		return nil, errors.New("the chosen group is not supported")
