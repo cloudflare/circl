@@ -13,7 +13,7 @@ import (
 )
 
 func TestServerSetUp(t *testing.T) {
-	srv, err := NewServer(OPRFP256, nil, nil)
+	srv, err := NewServer(OPRFP256)
 	if err != nil {
 		t.Fatal("invalid setup of server: " + err.Error())
 	}
@@ -57,7 +57,7 @@ func TestClientRequest(t *testing.T) {
 }
 
 func TestServerEvaluation(t *testing.T) {
-	srv, err := NewServer(OPRFP256, nil, nil)
+	srv, err := NewServer(OPRFP256)
 	if err != nil {
 		t.Fatal("invalid setup of server: " + err.Error())
 	}
@@ -86,7 +86,7 @@ func TestServerEvaluation(t *testing.T) {
 }
 
 func TestClientFinalize(t *testing.T) {
-	srv, err := NewServer(OPRFP256, nil, nil)
+	srv, err := NewServer(OPRFP256)
 	if err != nil {
 		t.Fatal("invalid setup of server: " + err.Error())
 	}
@@ -127,7 +127,7 @@ func TestClientFinalize(t *testing.T) {
 }
 
 func TestClientVerifyFinalize(t *testing.T) {
-	srv, err := NewServer(OPRFP256, nil, nil)
+	srv, err := NewServer(OPRFP256)
 	if err != nil {
 		t.Fatal("invalid setup of server: " + err.Error())
 	}
@@ -226,7 +226,7 @@ func blindTest(c *group.Ciphersuite, v Vector) (*Token, BlindToken) {
 
 func (v *Vectors) runP256(t *testing.T) {
 	for _, j := range v.Vector {
-		srv, err := NewServer(OPRFP256, nil, nil)
+		srv, err := NewServer(OPRFP256)
 		if err != nil {
 			t.Fatal("invalid setup of server: " + err.Error())
 		}
@@ -276,7 +276,7 @@ func (v *Vectors) runP256(t *testing.T) {
 
 func (v *Vectors) runP384(t *testing.T) {
 	for _, j := range v.Vector {
-		srv, err := NewServer(OPRFP384, nil, nil)
+		srv, err := NewServer(OPRFP384)
 		if err != nil {
 			t.Fatal("invalid setup of server: " + err.Error())
 		}
@@ -325,7 +325,7 @@ func (v *Vectors) runP384(t *testing.T) {
 
 func (v *Vectors) runP521(t *testing.T) {
 	for _, j := range v.Vector {
-		srv, err := NewServer(OPRFP521, nil, nil)
+		srv, err := NewServer(OPRFP521)
 		if err != nil {
 			t.Fatal("invalid setup of server: " + err.Error())
 		}

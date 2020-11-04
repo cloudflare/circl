@@ -140,9 +140,25 @@ func suiteFromID(id SuiteID, ctx []byte) (*group.Ciphersuite, error) {
 	return suite, err
 }
 
-// NewServer creates a new instantiation of a Server. It can create
+// NewServer creates a new instantiation of a Server.
+func NewServer(id SuiteID) (*Server, error) {
+	ctx := generateContext(id)
+
+	suite, err := suiteFromID(id, ctx)
+	if err != nil {
+		return nil, err
+	}
+	keyPair := GenerateKeyPair(suite)
+
+	return &Server{
+		suite: suite,
+		ctx:   ctx,
+		Kp:    keyPair}, nil
+}
+
+// NewServerWithKeyPair creates a new instantiation of a Server. It can create
 // a server with existing keys or use pre-generated keys.
-func NewServer(id SuiteID, privK, pubK []byte) (*Server, error) {
+func NewServerWithKeyPair(id SuiteID, privK, pubK []byte) (*Server, error) {
 	ctx := generateContext(id)
 
 	suite, err := suiteFromID(id, ctx)
@@ -150,14 +166,9 @@ func NewServer(id SuiteID, privK, pubK []byte) (*Server, error) {
 		return nil, err
 	}
 
-	var keyPair *KeyPair
-	if privK == nil || pubK == nil {
-		keyPair = GenerateKeyPair(suite)
-	} else {
-		keyPair, err = assignKeyPair(suite, privK, pubK)
-		if err != nil {
-			return nil, err
-		}
+	keyPair, err := assignKeyPair(suite, privK, pubK)
+	if err != nil {
+		return nil, err
 	}
 
 	return &Server{
