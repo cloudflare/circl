@@ -18,7 +18,7 @@ import (
 // Ciphersuite object determines the prime-order group (pog) that is used for
 // performing the OPRF operations, along with the different hash function
 // definitions.
-// Should be created using NewSuite, using an string.
+// Should be created using NewSuite, using the appropiate string.
 type Ciphersuite struct {
 	// name of the ciphersuite.
 	name string
@@ -36,10 +36,10 @@ type Ciphersuite struct {
 // groups of prime order. This is the setting in which the OPRF operations
 // take place.
 type Suite interface {
-	// Returns the identifying name of the group
+	// Returns the identifying name of the group.
 	Name() string
 
-	// Returns the canonical (fixed) generator for defined group
+	// Returns the canonical (fixed) generator for defined group.
 	Generator() *Element
 
 	// Returns the order of the canonical generator in the group.
@@ -58,10 +58,10 @@ type Suite interface {
 	RandomScalar() *Scalar
 
 	// Performs a scalar multiplication of the Generator with some scalar
-	// input
+	// input.
 	ScalarMultBase(*Scalar) *Element
 
-	// Returns the ByteLength of objects associated with the Ciphersuite
+	// Returns the ByteLength of Elements associated with the Ciphersuite.
 	ByteLength() int
 }
 
@@ -80,7 +80,7 @@ func (c *Ciphersuite) Order() *Scalar {
 	return &Scalar{c, c.curve.Params().N}
 }
 
-func getH2CSuite(c *Ciphersuite) (HashToPoint, error) {
+func getH2CSuite(c *Ciphersuite) (HashToElement, error) {
 	var suite h2c.SuiteID
 
 	switch c.Name() {
@@ -102,8 +102,8 @@ func getH2CSuite(c *Ciphersuite) (HashToPoint, error) {
 	return eccHasher{c, hasher}, nil
 }
 
-// HashToPoint produces a new point by hashing the input message.
-type HashToPoint interface {
+// HashToElement produces a new point by hashing the input message.
+type HashToElement interface {
 	Hash(msg []byte) (*Element, error)
 }
 
@@ -242,7 +242,7 @@ func NewSuite(name string, ctx []byte) (*Ciphersuite, error) {
 		cSuite.dst = append(dst, ctx...)
 		cSuite.hash = sha512.New()
 		cSuite.curve = elliptic.P521()
-	// TODO: what other libraries should be used?
+	// TODO: support ristretto255 and decaf448
 	default:
 		return nil, errors.New("the chosen group is not supported")
 	}

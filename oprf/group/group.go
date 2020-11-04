@@ -6,8 +6,7 @@ import (
 	"math/big"
 )
 
-// Element is a representation of a group element. It has two coordinates of
-// *big.Int type.
+// Element is a representation of a group element.
 type Element struct {
 	c   *Ciphersuite
 	x   *big.Int
@@ -15,18 +14,18 @@ type Element struct {
 	com bool // use compression when serialiazing, be default set to true
 }
 
-// NewElement generates a new point.
+// NewElement generates a new Element for the corresponding ciphersuite.
 func NewElement(c *Ciphersuite) *Element {
 	p := &Element{c, new(big.Int), new(big.Int), true}
 	return p
 }
 
-// IsValid checks that the given Element is a valid curve point
+// IsValid checks that the given Element is a valid curve point.
 func (p *Element) IsValid() bool {
 	return p.c.curve.IsOnCurve(p.x, p.y)
 }
 
-// ScalarMult multiplies a Element by the provided Scalar value
+// ScalarMult multiplies a Element by the provided Scalar value.
 func (p *Element) ScalarMult(s *Scalar) *Element {
 	q := NewElement(p.c)
 	q.x, q.y = p.c.curve.ScalarMult(p.x, p.y, s.Serialize())
@@ -35,7 +34,7 @@ func (p *Element) ScalarMult(s *Scalar) *Element {
 }
 
 // Add performs the addition operation on the calling Element object
-// along with a separate Element provided as input
+// along with a separate Element provided as input.
 func (p *Element) Add(q *Element) *Element {
 	r := NewElement(p.c)
 	r.x, r.y = p.c.curve.Add(p.x, p.y, q.x, q.y)
@@ -43,7 +42,7 @@ func (p *Element) Add(q *Element) *Element {
 	return r
 }
 
-// Neg performs the negation operation on the calling Element object
+// Neg performs the negation operation on the calling Element object.
 func (p *Element) Neg() *Element {
 	xInv := new(big.Int).ModInverse(p.x, p.c.curve.Params().N)
 
@@ -69,9 +68,9 @@ func (p *Element) Serialize() []byte {
 		tag = 4
 	} else {
 		b = x
-		sign := Sgn0(p.y)
+		sign := sgn0(p.y)
 		// select correct tag
-		e := int(Equals(sign, One).Int64())
+		e := int(equals(sign, one).Int64())
 		tag = subtle.ConstantTimeSelect(e, 2, 3)
 	}
 
@@ -79,7 +78,7 @@ func (p *Element) Serialize() []byte {
 }
 
 // checkBytes checks that the number of bytes corresponds to the correct
-// curve type and serialization tag that is present
+// curve type and serialization tag that is present.
 func isCompressed(in []byte, expLen int) (bool, error) {
 	tag := in[0]
 	com := false
@@ -101,7 +100,7 @@ func isCompressed(in []byte, expLen int) (bool, error) {
 	return com, nil
 }
 
-// Deserialize an octet-string into a valid Element object.
+// Deserialize a byte array into a valid Element object.
 func (p *Element) Deserialize(in []byte) error {
 	byteLen := p.c.ByteLength()
 
@@ -122,22 +121,22 @@ func (p *Element) Deserialize(in []byte) error {
 		var y2 *big.Int
 		x := new(big.Int).SetBytes(in[1:])
 
-		x2 := new(big.Int).Exp(x, Two, order)
+		x2 := new(big.Int).Exp(x, two, order)
 		x2a := new(big.Int).Add(x2, big.NewInt(-3))
 		x3 := new(big.Int).Mul(x2a, x)
 		x3ab := new(big.Int).Add(x3, p.c.curve.Params().B)
 		y2 = new(big.Int).Mod(x3ab, order)
 
-		a1 := new(big.Int).Add(p.c.curve.Params().P, One)
+		a1 := new(big.Int).Add(p.c.curve.Params().P, one)
 		a2 := new(big.Int).ModInverse(big.NewInt(4), p.c.curve.Params().P)
 		m := new(big.Int).Mul(a1, a2)
 		sqrtExp := new(big.Int).Mod(m, p.c.curve.Params().P)
 
 		// construct y coordinate with correct sign
 		y := new(big.Int).Exp(y2, sqrtExp, order)
-		parity := Equals(big.NewInt(int64(in[0])), Two)
-		yParity := Equals(Sgn0(y), One)
-		y = cMov(new(big.Int).Mul(y, MinusOne), y, Equals(parity, yParity))
+		parity := equals(big.NewInt(int64(in[0])), two)
+		yParity := equals(sgn0(y), one)
+		y = cMov(new(big.Int).Mul(y, minusOne), y, equals(parity, yParity))
 
 		p.x = new(big.Int).Mod(x, order)
 		p.y = new(big.Int).Mod(y, order)
@@ -157,7 +156,7 @@ func (p *Element) Equal(q *Element) bool {
 	return (p.x.Cmp(q.x) == 0) && (p.y.Cmp(q.y) == 0)
 }
 
-// Scalar is an struct representing a field element
+// Scalar is an struct representing a field element.
 type Scalar struct {
 	c *Ciphersuite
 	x *big.Int

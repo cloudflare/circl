@@ -110,7 +110,7 @@ func (kp *KeyPair) Deserialize(suite *group.Ciphersuite, privK, pubK []byte) err
 	return nil
 }
 
-//GenerateKeyPair generates a KeyPair in accordance with the group.
+// GenerateKeyPair generates a KeyPair in accordance with the group.
 func GenerateKeyPair(suite *group.Ciphersuite) *KeyPair {
 	privK := suite.RandomScalar()
 	pubK := suite.ScalarMultBase(privK)
@@ -170,10 +170,9 @@ func NewServer(id SuiteID, privK, pubK []byte) (*Server, error) {
 	}
 
 	return &Server{
-			suite: suite,
-			ctx:   ctx,
-			Kp:    keyPair},
-		nil
+		suite: suite,
+		ctx:   ctx,
+		Kp:    keyPair}, nil
 }
 
 // Evaluate blindly signs a client token.
@@ -238,8 +237,7 @@ func NewClient(id SuiteID) (*Client, error) {
 
 	return &Client{
 		suite: suite,
-		ctx:   ctx,
-	}, nil
+		ctx:   ctx}, nil
 }
 
 // Request generates a token and its blinded version.
