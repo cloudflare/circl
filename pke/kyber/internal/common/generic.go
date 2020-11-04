@@ -21,3 +21,14 @@ func (p *Poly) Sub(a, b *Poly) {
 func (p *Poly) NTT() {
 	p.nttGeneric()
 }
+
+// Executes an in-place inverse "NTT" on p and multiply by the Montgomery
+// factor R.
+//
+// Assumes the coefficients are in absolute value ≤q.  The resulting
+// coefficients are in absolute value ≤q.  If the input is in Montgomery
+// form, then the result is in Montgomery form and so (by linearity)
+// if the input is in regular form, then the result is also in regular form.
+func (p *Poly) InvNTT() {
+	p.invNTTGeneric()
+}
