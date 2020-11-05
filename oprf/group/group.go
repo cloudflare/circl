@@ -155,14 +155,7 @@ func (s *Scalar) Inv() *Scalar {
 
 // Serialize the Scalar into a byte slice.
 func (s *Scalar) Serialize() []byte {
-	l := (s.c.Params().BitSize + 7) / 8
-	bytes := s.x.Bytes()
-	if len(bytes) < l {
-		arr := make([]byte, l-len(bytes))
-		bytes = append(arr, bytes...)
-	}
-
-	return bytes
+	return s.x.Bytes()
 }
 
 // Deserialize an octet-string into a valid Scalar object.
