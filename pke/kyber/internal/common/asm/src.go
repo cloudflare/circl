@@ -23,7 +23,7 @@ func barrettReduceX16(x, q, num, t Op) {
 	//
 	//  x - int16((int32(x)*20159)>>26)*q
 
-	VPMULHW(num, x, t)   // t := (int32(x) * 20158) >> 16
+	VPMULHW(num, x, t)   // t := (int32(x) * 20159) >> 16
 	VPSRAW(U8(10), t, t) // t = int16(t)>>10 so that t = (int32(x)*20158) >> 26
 	VPMULLW(q, t, t)     // t *= q
 	VPSUBW(t, x, x)      // x -= t
@@ -1016,6 +1016,137 @@ func detangleAVX2() {
 	RET()
 }
 
+func barrettReduceAVX2() {
+	TEXT("barrettReduceAVX2", NOSPLIT, "func(p *[256]int16)")
+	Pragma("noescape")
+	pPtr := Load(Param("p"), GP64())
+
+	xs := [4]Op{YMM(), YMM(), YMM(), YMM()}
+	ts := [4]Op{YMM(), YMM(), YMM(), YMM()}
+	num := YMM()
+	q := YMM()
+
+	broadcastImm16(params.Q, q)
+	broadcastImm16(20159, num)
+
+	for offset := 0; offset < 4; offset++ {
+		for i := 0; i < 4; i++ {
+			VMOVDQU(Mem{Base: pPtr, Disp: 32 * (i + offset*4)}, xs[i])
+		}
+
+		// Recall that the Barrett reduction of x is given by
+		//
+		//  x - int16((int32(x)*20159)>>26)*q
+
+		VPMULHW(num, xs[0], ts[0]) // t := (int32(x) * 20158) >> 16
+		VPMULHW(num, xs[1], ts[1])
+		VPMULHW(num, xs[2], ts[2])
+		VPMULHW(num, xs[3], ts[3])
+
+		// t = int16(t)>>10 so that t = (int32(x)*20159) >> 26
+		VPSRAW(U8(10), ts[0], ts[0])
+		VPSRAW(U8(10), ts[1], ts[1])
+		VPSRAW(U8(10), ts[2], ts[2])
+		VPSRAW(U8(10), ts[3], ts[3])
+
+		VPMULLW(q, ts[0], ts[0]) // t *= q
+		VPMULLW(q, ts[1], ts[1])
+		VPMULLW(q, ts[2], ts[2])
+		VPMULLW(q, ts[3], ts[3])
+
+		VPSUBW(ts[0], xs[0], xs[0]) // x -= t
+		VPSUBW(ts[1], xs[1], xs[1])
+		VPSUBW(ts[2], xs[2], xs[2])
+		VPSUBW(ts[3], xs[3], xs[3])
+
+		for i := 0; i < 4; i++ {
+			VMOVDQU(xs[i], Mem{Base: pPtr, Disp: 32 * (i + offset*4)})
+		}
+	}
+
+	RET()
+}
+
+func normalizeAVX2() {
+	TEXT("normalizeAVX2", NOSPLIT, "func(p *[256]int16)")
+	Pragma("noescape")
+	pPtr := Load(Param("p"), GP64())
+
+	xs := [4]Op{YMM(), YMM(), YMM(), YMM()}
+	ts := [4]Op{YMM(), YMM(), YMM(), YMM()}
+	num := YMM()
+	q := YMM()
+
+	broadcastImm16(params.Q, q)
+	broadcastImm16(20159, num)
+
+	for offset := 0; offset < 4; offset++ {
+		for i := 0; i < 4; i++ {
+			VMOVDQU(Mem{Base: pPtr, Disp: 32 * (i + offset*4)}, xs[i])
+		}
+
+		// Just like the generic implementation, we do a Barrett reduction
+		// followed by a conditional substraction.
+
+		// Recall that the Barrett reduction of x is given by
+		//
+		//  x - int16((int32(x)*20159)>>26)*q
+
+		VPMULHW(num, xs[0], ts[0]) // t := (int32(x) * 20159) >> 16
+		VPMULHW(num, xs[1], ts[1])
+		VPMULHW(num, xs[2], ts[2])
+		VPMULHW(num, xs[3], ts[3])
+
+		// t = int16(t)>>10 so that t = (int32(x)*20159) >> 26
+		VPSRAW(U8(10), ts[0], ts[0])
+		VPSRAW(U8(10), ts[1], ts[1])
+		VPSRAW(U8(10), ts[2], ts[2])
+		VPSRAW(U8(10), ts[3], ts[3])
+
+		VPMULLW(q, ts[0], ts[0]) // t *= q
+		VPMULLW(q, ts[1], ts[1])
+		VPMULLW(q, ts[2], ts[2])
+		VPMULLW(q, ts[3], ts[3])
+
+		VPSUBW(ts[0], xs[0], xs[0]) // x -= t
+		VPSUBW(ts[1], xs[1], xs[1])
+		VPSUBW(ts[2], xs[2], xs[2])
+		VPSUBW(ts[3], xs[3], xs[3])
+
+		// x is now Barrett reduced.  Next we conditionally substract q to
+		// normalize it.
+		//
+		//  x -= Q
+		//  x += (x >> 15) & Q
+
+		VPSUBW(q, xs[0], xs[0]) // x -= q
+		VPSUBW(q, xs[1], xs[1])
+		VPSUBW(q, xs[2], xs[2])
+		VPSUBW(q, xs[3], xs[3])
+
+		VPSRAW(U8(15), xs[0], ts[0]) // t := x >> 15
+		VPSRAW(U8(15), xs[1], ts[1])
+		VPSRAW(U8(15), xs[2], ts[2])
+		VPSRAW(U8(15), xs[3], ts[3])
+
+		VPAND(ts[0], q, ts[0]) // t &= q
+		VPAND(ts[1], q, ts[1])
+		VPAND(ts[2], q, ts[2])
+		VPAND(ts[3], q, ts[3])
+
+		VPADDW(xs[0], ts[0], xs[0]) // x += t
+		VPADDW(xs[1], ts[1], xs[1])
+		VPADDW(xs[2], ts[2], xs[2])
+		VPADDW(xs[3], ts[3], xs[3])
+
+		for i := 0; i < 4; i++ {
+			VMOVDQU(xs[i], Mem{Base: pPtr, Disp: 32 * (i + offset*4)})
+		}
+	}
+
+	RET()
+}
+
 func main() {
 	ConstraintExpr("amd64")
 
@@ -1026,6 +1157,8 @@ func main() {
 	mulHatAVX2()
 	detangleAVX2()
 	tangleAVX2()
+	barrettReduceAVX2()
+	normalizeAVX2()
 
 	Generate()
 }

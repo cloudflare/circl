@@ -2072,3 +2072,283 @@ TEXT ·tangleAVX2(SB), NOSPLIT, $0-8
 	VMOVDQU     Y6, 448(AX)
 	VMOVDQU     Y7, 480(AX)
 	RET
+
+// func barrettReduceAVX2(p *[256]int16)
+// Requires: AVX, AVX2
+TEXT ·barrettReduceAVX2(SB), NOSPLIT, $0-8
+	MOVQ         p+0(FP), AX
+	MOVL         $0x00000d01, CX
+	VMOVD        CX, X0
+	VPBROADCASTW X0, Y9
+	MOVL         $0x00004ebf, CX
+	VMOVD        CX, X0
+	VPBROADCASTW X0, Y8
+	VMOVDQU      (AX), Y0
+	VMOVDQU      32(AX), Y1
+	VMOVDQU      64(AX), Y2
+	VMOVDQU      96(AX), Y3
+	VPMULHW      Y8, Y0, Y4
+	VPMULHW      Y8, Y1, Y5
+	VPMULHW      Y8, Y2, Y6
+	VPMULHW      Y8, Y3, Y7
+	VPSRAW       $0x0a, Y4, Y4
+	VPSRAW       $0x0a, Y5, Y5
+	VPSRAW       $0x0a, Y6, Y6
+	VPSRAW       $0x0a, Y7, Y7
+	VPMULLW      Y9, Y4, Y4
+	VPMULLW      Y9, Y5, Y5
+	VPMULLW      Y9, Y6, Y6
+	VPMULLW      Y9, Y7, Y7
+	VPSUBW       Y4, Y0, Y0
+	VPSUBW       Y5, Y1, Y1
+	VPSUBW       Y6, Y2, Y2
+	VPSUBW       Y7, Y3, Y3
+	VMOVDQU      Y0, (AX)
+	VMOVDQU      Y1, 32(AX)
+	VMOVDQU      Y2, 64(AX)
+	VMOVDQU      Y3, 96(AX)
+	VMOVDQU      128(AX), Y0
+	VMOVDQU      160(AX), Y1
+	VMOVDQU      192(AX), Y2
+	VMOVDQU      224(AX), Y3
+	VPMULHW      Y8, Y0, Y4
+	VPMULHW      Y8, Y1, Y5
+	VPMULHW      Y8, Y2, Y6
+	VPMULHW      Y8, Y3, Y7
+	VPSRAW       $0x0a, Y4, Y4
+	VPSRAW       $0x0a, Y5, Y5
+	VPSRAW       $0x0a, Y6, Y6
+	VPSRAW       $0x0a, Y7, Y7
+	VPMULLW      Y9, Y4, Y4
+	VPMULLW      Y9, Y5, Y5
+	VPMULLW      Y9, Y6, Y6
+	VPMULLW      Y9, Y7, Y7
+	VPSUBW       Y4, Y0, Y0
+	VPSUBW       Y5, Y1, Y1
+	VPSUBW       Y6, Y2, Y2
+	VPSUBW       Y7, Y3, Y3
+	VMOVDQU      Y0, 128(AX)
+	VMOVDQU      Y1, 160(AX)
+	VMOVDQU      Y2, 192(AX)
+	VMOVDQU      Y3, 224(AX)
+	VMOVDQU      256(AX), Y0
+	VMOVDQU      288(AX), Y1
+	VMOVDQU      320(AX), Y2
+	VMOVDQU      352(AX), Y3
+	VPMULHW      Y8, Y0, Y4
+	VPMULHW      Y8, Y1, Y5
+	VPMULHW      Y8, Y2, Y6
+	VPMULHW      Y8, Y3, Y7
+	VPSRAW       $0x0a, Y4, Y4
+	VPSRAW       $0x0a, Y5, Y5
+	VPSRAW       $0x0a, Y6, Y6
+	VPSRAW       $0x0a, Y7, Y7
+	VPMULLW      Y9, Y4, Y4
+	VPMULLW      Y9, Y5, Y5
+	VPMULLW      Y9, Y6, Y6
+	VPMULLW      Y9, Y7, Y7
+	VPSUBW       Y4, Y0, Y0
+	VPSUBW       Y5, Y1, Y1
+	VPSUBW       Y6, Y2, Y2
+	VPSUBW       Y7, Y3, Y3
+	VMOVDQU      Y0, 256(AX)
+	VMOVDQU      Y1, 288(AX)
+	VMOVDQU      Y2, 320(AX)
+	VMOVDQU      Y3, 352(AX)
+	VMOVDQU      384(AX), Y0
+	VMOVDQU      416(AX), Y1
+	VMOVDQU      448(AX), Y2
+	VMOVDQU      480(AX), Y3
+	VPMULHW      Y8, Y0, Y4
+	VPMULHW      Y8, Y1, Y5
+	VPMULHW      Y8, Y2, Y6
+	VPMULHW      Y8, Y3, Y7
+	VPSRAW       $0x0a, Y4, Y4
+	VPSRAW       $0x0a, Y5, Y5
+	VPSRAW       $0x0a, Y6, Y6
+	VPSRAW       $0x0a, Y7, Y7
+	VPMULLW      Y9, Y4, Y4
+	VPMULLW      Y9, Y5, Y5
+	VPMULLW      Y9, Y6, Y6
+	VPMULLW      Y9, Y7, Y7
+	VPSUBW       Y4, Y0, Y0
+	VPSUBW       Y5, Y1, Y1
+	VPSUBW       Y6, Y2, Y2
+	VPSUBW       Y7, Y3, Y3
+	VMOVDQU      Y0, 384(AX)
+	VMOVDQU      Y1, 416(AX)
+	VMOVDQU      Y2, 448(AX)
+	VMOVDQU      Y3, 480(AX)
+	RET
+
+// func normalizeAVX2(p *[256]int16)
+// Requires: AVX, AVX2
+TEXT ·normalizeAVX2(SB), NOSPLIT, $0-8
+	MOVQ         p+0(FP), AX
+	MOVL         $0x00000d01, CX
+	VMOVD        CX, X0
+	VPBROADCASTW X0, Y9
+	MOVL         $0x00004ebf, CX
+	VMOVD        CX, X0
+	VPBROADCASTW X0, Y8
+	VMOVDQU      (AX), Y0
+	VMOVDQU      32(AX), Y1
+	VMOVDQU      64(AX), Y2
+	VMOVDQU      96(AX), Y3
+	VPMULHW      Y8, Y0, Y4
+	VPMULHW      Y8, Y1, Y5
+	VPMULHW      Y8, Y2, Y6
+	VPMULHW      Y8, Y3, Y7
+	VPSRAW       $0x0a, Y4, Y4
+	VPSRAW       $0x0a, Y5, Y5
+	VPSRAW       $0x0a, Y6, Y6
+	VPSRAW       $0x0a, Y7, Y7
+	VPMULLW      Y9, Y4, Y4
+	VPMULLW      Y9, Y5, Y5
+	VPMULLW      Y9, Y6, Y6
+	VPMULLW      Y9, Y7, Y7
+	VPSUBW       Y4, Y0, Y0
+	VPSUBW       Y5, Y1, Y1
+	VPSUBW       Y6, Y2, Y2
+	VPSUBW       Y7, Y3, Y3
+	VPSUBW       Y9, Y0, Y0
+	VPSUBW       Y9, Y1, Y1
+	VPSUBW       Y9, Y2, Y2
+	VPSUBW       Y9, Y3, Y3
+	VPSRAW       $0x0f, Y0, Y4
+	VPSRAW       $0x0f, Y1, Y5
+	VPSRAW       $0x0f, Y2, Y6
+	VPSRAW       $0x0f, Y3, Y7
+	VPAND        Y4, Y9, Y4
+	VPAND        Y5, Y9, Y5
+	VPAND        Y6, Y9, Y6
+	VPAND        Y7, Y9, Y7
+	VPADDW       Y0, Y4, Y0
+	VPADDW       Y1, Y5, Y1
+	VPADDW       Y2, Y6, Y2
+	VPADDW       Y3, Y7, Y3
+	VMOVDQU      Y0, (AX)
+	VMOVDQU      Y1, 32(AX)
+	VMOVDQU      Y2, 64(AX)
+	VMOVDQU      Y3, 96(AX)
+	VMOVDQU      128(AX), Y0
+	VMOVDQU      160(AX), Y1
+	VMOVDQU      192(AX), Y2
+	VMOVDQU      224(AX), Y3
+	VPMULHW      Y8, Y0, Y4
+	VPMULHW      Y8, Y1, Y5
+	VPMULHW      Y8, Y2, Y6
+	VPMULHW      Y8, Y3, Y7
+	VPSRAW       $0x0a, Y4, Y4
+	VPSRAW       $0x0a, Y5, Y5
+	VPSRAW       $0x0a, Y6, Y6
+	VPSRAW       $0x0a, Y7, Y7
+	VPMULLW      Y9, Y4, Y4
+	VPMULLW      Y9, Y5, Y5
+	VPMULLW      Y9, Y6, Y6
+	VPMULLW      Y9, Y7, Y7
+	VPSUBW       Y4, Y0, Y0
+	VPSUBW       Y5, Y1, Y1
+	VPSUBW       Y6, Y2, Y2
+	VPSUBW       Y7, Y3, Y3
+	VPSUBW       Y9, Y0, Y0
+	VPSUBW       Y9, Y1, Y1
+	VPSUBW       Y9, Y2, Y2
+	VPSUBW       Y9, Y3, Y3
+	VPSRAW       $0x0f, Y0, Y4
+	VPSRAW       $0x0f, Y1, Y5
+	VPSRAW       $0x0f, Y2, Y6
+	VPSRAW       $0x0f, Y3, Y7
+	VPAND        Y4, Y9, Y4
+	VPAND        Y5, Y9, Y5
+	VPAND        Y6, Y9, Y6
+	VPAND        Y7, Y9, Y7
+	VPADDW       Y0, Y4, Y0
+	VPADDW       Y1, Y5, Y1
+	VPADDW       Y2, Y6, Y2
+	VPADDW       Y3, Y7, Y3
+	VMOVDQU      Y0, 128(AX)
+	VMOVDQU      Y1, 160(AX)
+	VMOVDQU      Y2, 192(AX)
+	VMOVDQU      Y3, 224(AX)
+	VMOVDQU      256(AX), Y0
+	VMOVDQU      288(AX), Y1
+	VMOVDQU      320(AX), Y2
+	VMOVDQU      352(AX), Y3
+	VPMULHW      Y8, Y0, Y4
+	VPMULHW      Y8, Y1, Y5
+	VPMULHW      Y8, Y2, Y6
+	VPMULHW      Y8, Y3, Y7
+	VPSRAW       $0x0a, Y4, Y4
+	VPSRAW       $0x0a, Y5, Y5
+	VPSRAW       $0x0a, Y6, Y6
+	VPSRAW       $0x0a, Y7, Y7
+	VPMULLW      Y9, Y4, Y4
+	VPMULLW      Y9, Y5, Y5
+	VPMULLW      Y9, Y6, Y6
+	VPMULLW      Y9, Y7, Y7
+	VPSUBW       Y4, Y0, Y0
+	VPSUBW       Y5, Y1, Y1
+	VPSUBW       Y6, Y2, Y2
+	VPSUBW       Y7, Y3, Y3
+	VPSUBW       Y9, Y0, Y0
+	VPSUBW       Y9, Y1, Y1
+	VPSUBW       Y9, Y2, Y2
+	VPSUBW       Y9, Y3, Y3
+	VPSRAW       $0x0f, Y0, Y4
+	VPSRAW       $0x0f, Y1, Y5
+	VPSRAW       $0x0f, Y2, Y6
+	VPSRAW       $0x0f, Y3, Y7
+	VPAND        Y4, Y9, Y4
+	VPAND        Y5, Y9, Y5
+	VPAND        Y6, Y9, Y6
+	VPAND        Y7, Y9, Y7
+	VPADDW       Y0, Y4, Y0
+	VPADDW       Y1, Y5, Y1
+	VPADDW       Y2, Y6, Y2
+	VPADDW       Y3, Y7, Y3
+	VMOVDQU      Y0, 256(AX)
+	VMOVDQU      Y1, 288(AX)
+	VMOVDQU      Y2, 320(AX)
+	VMOVDQU      Y3, 352(AX)
+	VMOVDQU      384(AX), Y0
+	VMOVDQU      416(AX), Y1
+	VMOVDQU      448(AX), Y2
+	VMOVDQU      480(AX), Y3
+	VPMULHW      Y8, Y0, Y4
+	VPMULHW      Y8, Y1, Y5
+	VPMULHW      Y8, Y2, Y6
+	VPMULHW      Y8, Y3, Y7
+	VPSRAW       $0x0a, Y4, Y4
+	VPSRAW       $0x0a, Y5, Y5
+	VPSRAW       $0x0a, Y6, Y6
+	VPSRAW       $0x0a, Y7, Y7
+	VPMULLW      Y9, Y4, Y4
+	VPMULLW      Y9, Y5, Y5
+	VPMULLW      Y9, Y6, Y6
+	VPMULLW      Y9, Y7, Y7
+	VPSUBW       Y4, Y0, Y0
+	VPSUBW       Y5, Y1, Y1
+	VPSUBW       Y6, Y2, Y2
+	VPSUBW       Y7, Y3, Y3
+	VPSUBW       Y9, Y0, Y0
+	VPSUBW       Y9, Y1, Y1
+	VPSUBW       Y9, Y2, Y2
+	VPSUBW       Y9, Y3, Y3
+	VPSRAW       $0x0f, Y0, Y4
+	VPSRAW       $0x0f, Y1, Y5
+	VPSRAW       $0x0f, Y2, Y6
+	VPSRAW       $0x0f, Y3, Y7
+	VPAND        Y4, Y9, Y4
+	VPAND        Y5, Y9, Y5
+	VPAND        Y6, Y9, Y6
+	VPAND        Y7, Y9, Y7
+	VPADDW       Y0, Y4, Y0
+	VPADDW       Y1, Y5, Y1
+	VPADDW       Y2, Y6, Y2
+	VPADDW       Y3, Y7, Y3
+	VMOVDQU      Y0, 384(AX)
+	VMOVDQU      Y1, 416(AX)
+	VMOVDQU      Y2, 448(AX)
+	VMOVDQU      Y3, 480(AX)
+	RET

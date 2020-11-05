@@ -24,3 +24,9 @@ func detangleAVX2(p *[256]int16)
 
 //go:noescape
 func tangleAVX2(p *[256]int16)
+
+//go:noescape
+func barrettReduceAVX2(p *[256]int16)
+
+//go:noescape
+func normalizeAVX2(p *[256]int16)
