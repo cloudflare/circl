@@ -69,17 +69,15 @@ func (p *Element) Neg() *Element {
 
 // Serialize the Element into a byte slice.
 func (p *Element) Serialize() []byte {
-	x, y := p.x.Bytes(), p.y.Bytes()
-
-	// append zeroes to the front if the bytes are not filled up
+	x := p.x.Bytes()
+	// append zeroes to the front if the bytes are not filled up.
 	x = append(make([]byte, ((p.c.Params().BitSize+7)/8)-len(x)), x...)
-	y = append(make([]byte, ((p.c.Params().BitSize+7)/8)-len(y)), y...)
 
 	var b []byte
 	var tag int
 	b = x
 	sign := sgn0(p.y)
-	// select correct tag
+	// select correct tag.
 	e := int(equals(sign, one).Int64())
 	tag = subtle.ConstantTimeSelect(e, 2, 3)
 
