@@ -204,7 +204,7 @@ func (s *Suite) readFile(t *testing.T, fileName string) {
 	}
 }
 
-func (s *Suite) fillVectors(t *testing.T) [3]Vectors {
+func (s *Suite) fillVectors() [3]Vectors {
 	var v [3]Vectors
 
 	v[0].Info = s.P256.Info
@@ -274,7 +274,6 @@ func setUpParties(t *testing.T, name string) (*Server, *Client) {
 	}
 
 	return nil, nil
-
 }
 
 func blindTest(c *group.Ciphersuite, ctx []byte, v Vector) *ClientRequest {
@@ -349,7 +348,7 @@ func TestDraftVectors(t *testing.T) {
 	var s Suite
 
 	s.readFile(t, "testdata/vectors.json")
-	v := s.fillVectors(t)
+	v := s.fillVectors()
 
 	for i := range v {
 		t.Run("ORPF-Base-Protocol", v[i].run)
