@@ -44,7 +44,7 @@ func (c *Ciphersuite) Name() string {
 
 // Generator returns the canonical (fixed) generator for the defined group.
 func (c *Ciphersuite) Generator() *Element {
-	return &Element{c.Curve, c.Curve.Params().Gx, c.Curve.Params().Gy, true}
+	return &Element{c.Curve, c.Curve.Params().Gx, c.Curve.Params().Gy}
 }
 
 // Order returns the order of the canonical generator in the group.
@@ -90,7 +90,7 @@ func (h eccHasher) Hash(in []byte) (*Element, error) {
 	x := q.X().Polynomial()
 	y := q.Y().Polynomial()
 
-	p := &Element{h.suite.Curve, new(big.Int), new(big.Int), true}
+	p := &Element{h.suite.Curve, new(big.Int), new(big.Int)}
 	p.x.Set(x[0])
 	p.y.Set(y[0])
 
@@ -151,14 +151,6 @@ func (c *Ciphersuite) RandomScalar() *Scalar {
 
 	x := new(big.Int).SetBytes(buf)
 	return &Scalar{c.Curve, x}
-}
-
-// ScalarMultBase performs a scalar multiplication of the Generator with some scalar
-// input
-func (c *Ciphersuite) ScalarMultBase(s *Scalar) *Element {
-	gen := c.Generator()
-
-	return gen.ScalarMult(s)
 }
 
 // NewSuite creates a new ciphersuite for the requested name.

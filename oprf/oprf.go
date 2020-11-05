@@ -117,7 +117,7 @@ func (kp *KeyPair) Deserialize(suite *group.Ciphersuite, privK, pubK []byte) err
 // GenerateKeyPair generates a KeyPair in accordance with the group.
 func GenerateKeyPair(suite *group.Ciphersuite) *KeyPair {
 	privK := suite.RandomScalar()
-	pubK := suite.ScalarMultBase(privK)
+	pubK := suite.Generator().ScalarBaseMult(privK)
 
 	return &KeyPair{pubK, privK}
 }
