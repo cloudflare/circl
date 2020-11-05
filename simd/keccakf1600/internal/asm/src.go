@@ -26,7 +26,7 @@ func main() {
 	rcPtr := Load(Param("rc"), GP64())
 
 	// We use the same approach as the normal Keccak-f[1600] implementation
-	// (in the internal/shake package): we group four rounds together into a
+	// (in the internal/sha3 package): we group four rounds together into a
 	// super round.  Thus we have six super rounds.
 	superRound := GP64()
 	MOVQ(U64(6), superRound) // count down.

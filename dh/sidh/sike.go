@@ -6,7 +6,7 @@ import (
 	"io"
 
 	"github.com/cloudflare/circl/dh/sidh/internal/common"
-	"github.com/cloudflare/circl/internal/shake"
+	"github.com/cloudflare/circl/internal/sha3"
 )
 
 // SIKE KEM interface.
@@ -16,7 +16,7 @@ type KEM struct {
 	msg         []byte
 	secretBytes []byte
 	params      *common.SidhParams
-	shake       shake.Shake
+	shake       sha3.State
 }
 
 // NewSike434 instantiates SIKE/p434 KEM.
@@ -47,7 +47,7 @@ func (c *KEM) Allocate(id uint8, rng io.Reader) {
 	c.params = common.Params(id)
 	c.msg = make([]byte, c.params.MsgLen)
 	c.secretBytes = make([]byte, c.params.A.SecretByteLen)
-	c.shake = shake.NewShake256()
+	c.shake = sha3.NewShake256()
 	c.allocated = true
 }
 

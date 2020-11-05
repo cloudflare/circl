@@ -1,7 +1,7 @@
 package common
 
 import (
-	"github.com/cloudflare/circl/internal/shake"
+	"github.com/cloudflare/circl/internal/sha3"
 
 	"encoding/binary"
 )
@@ -25,7 +25,7 @@ func (p *Poly) DeriveNoise(seed []byte, nonce uint8, eta int) {
 // 15/64, 5/16, 16/64, 3/32, 1/64}.
 func (p *Poly) DeriveNoise3(seed []byte, nonce uint8) {
 	keySuffix := [1]byte{nonce}
-	h := shake.NewShake256()
+	h := sha3.NewShake256()
 	_, _ = h.Write(seed[:])
 	_, _ = h.Write(keySuffix[:])
 
@@ -61,7 +61,7 @@ func (p *Poly) DeriveNoise3(seed []byte, nonce uint8) {
 // 3/8, 1/4, 1/16}.
 func (p *Poly) DeriveNoise2(seed []byte, nonce uint8) {
 	keySuffix := [1]byte{nonce}
-	h := shake.NewShake256()
+	h := sha3.NewShake256()
 	_, _ = h.Write(seed[:])
 	_, _ = h.Write(keySuffix[:])
 
@@ -99,7 +99,7 @@ func (p *Poly) DeriveUniform(seed *[32]byte, x, y uint8) {
 	seedSuffix[0] = x
 	seedSuffix[1] = y
 
-	h := shake.NewShake128()
+	h := sha3.NewShake128()
 	_, _ = h.Write(seed[:])
 	_, _ = h.Write(seedSuffix[:])
 

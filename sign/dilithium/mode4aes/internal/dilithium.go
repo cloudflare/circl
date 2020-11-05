@@ -7,7 +7,7 @@ import (
 	"crypto/subtle"
 	"io"
 
-	"github.com/cloudflare/circl/internal/shake"
+	"github.com/cloudflare/circl/internal/sha3"
 	"github.com/cloudflare/circl/sign/dilithium/internal/common"
 )
 
@@ -92,7 +92,7 @@ func (pk *PublicKey) Unpack(buf *[PublicKeySize]byte) {
 
 	// tr = CRH(ρ ‖ t1) = CRH(pk)
 	pk.tr = new([48]byte)
-	h := shake.NewShake256()
+	h := sha3.NewShake256()
 	_, _ = h.Write(buf[:])
 	_, _ = h.Read(pk.tr[:])
 }
@@ -191,7 +191,7 @@ func NewKeyFromExpandedSeed(seed *[96]byte) (*PublicKey, *PrivateKey) {
 	pk.Pack(&packedPk)
 
 	// tr = CRH(ρ ‖ t1) = CRH(pk)
-	h := shake.NewShake256()
+	h := sha3.NewShake256()
 	_, _ = h.Write(packedPk[:])
 	_, _ = h.Read(sk.tr[:])
 
@@ -221,7 +221,7 @@ func (sk *PrivateKey) computeT0andT1(t0, t1 *VecK) {
 // NewKeyFromSeed derives a public/private key pair using the given seed.
 func NewKeyFromSeed(seed *[common.SeedSize]byte) (*PublicKey, *PrivateKey) {
 	var buf [96]byte
-	h := shake.NewShake256()
+	h := sha3.NewShake256()
 	_, _ = h.Write(seed[:])
 	_, _ = h.Read(buf[:])
 	return NewKeyFromExpandedSeed(&buf)
@@ -242,7 +242,7 @@ func Verify(pk *PublicKey, msg []byte, signature []byte) bool {
 	}
 
 	// μ = CRH(tr ‖ msg)
-	h := shake.NewShake256()
+	h := sha3.NewShake256()
 	_, _ = h.Write(pk.tr[:])
 	_, _ = h.Write(msg)
 	_, _ = h.Read(mu[:])
@@ -296,7 +296,7 @@ func SignTo(sk *PrivateKey, msg []byte, signature []byte) {
 	}
 
 	//  μ = CRH(tr ‖ msg)
-	h := shake.NewShake256()
+	h := sha3.NewShake256()
 	_, _ = h.Write(sk.tr[:])
 	_, _ = h.Write(msg)
 	_, _ = h.Read(mu[:])
