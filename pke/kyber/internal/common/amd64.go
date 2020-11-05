@@ -277,3 +277,25 @@ func (p *Poly) Detangle() {
 
 	// When AVX2 is not available, we use the standard order.
 }
+
+// Almost normalizes coefficients.
+//
+// Ensures each coefficient is in {0, …, q}.
+func (p *Poly) BarrettReduce() {
+	if cpu.X86.HasAVX2 {
+		barrettReduceAVX2((*[N]int16)(p))
+	} else {
+		p.barrettReduceGeneric()
+	}
+}
+
+// Normalizes coefficients.
+//
+// Ensures each coefficient is in {0, …, q-1}.
+func (p *Poly) Normalize() {
+	if cpu.X86.HasAVX2 {
+		normalizeAVX2((*[N]int16)(p))
+	} else {
+		p.normalizeGeneric()
+	}
+}
