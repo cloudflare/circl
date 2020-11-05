@@ -86,7 +86,7 @@ func (d *State) permute() {
 		d.buf = d.storage.asBytes()[:0]
 		KeccakF1600(&d.a)
 	case spongeSqueezing:
-		// If we're squeezing, we need to apply the permutatin before
+		// If we're squeezing, we need to apply the permutation before
 		// copying more output.
 		KeccakF1600(&d.a)
 		d.buf = d.storage.asBytes()[:d.rate]
