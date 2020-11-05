@@ -196,7 +196,13 @@ type Vectors struct {
 	Vector    []Vector `json:"vectors"`
 }
 
-func (v *Vectors) readFile(t *testing.T, fileName string) {
+type Suite struct {
+	P256 Vectors `json:"BaseP256-SHA256-SSWU-RO"`
+	P384 Vectors `json:"BaseP384-SHA512-SSWU-RO"`
+	P521 Vectors `json:"BaseP521-SHA512-SSWU-RO"`
+}
+
+func (s *Suite) readFile(t *testing.T, fileName string) {
 	jsonFile, err := os.Open(fileName)
 	if err != nil {
 		t.Fatalf("File %v can not be opened. Error: %v", fileName, err)
@@ -204,28 +210,35 @@ func (v *Vectors) readFile(t *testing.T, fileName string) {
 	defer jsonFile.Close()
 	input, _ := ioutil.ReadAll(jsonFile)
 
-	err = json.Unmarshal(input, &v)
+	err = json.Unmarshal(input, &s)
 	if err != nil {
 		t.Fatalf("File %v can not be loaded. Error: %v", fileName, err)
 	}
 }
 
-func blindTest(c *group.Ciphersuite, v Vector) (*Token, BlindToken) {
-	bytes, _ := hex.DecodeString(v.Blind.Token)
-	s := group.NewScalar(c.Curve)
-	s.Set(bytes)
+func (s *Suite) fillVectors(t *testing.T) [3]Vectors {
+	var v [3]Vectors
 
-	in, _ := hex.DecodeString(v.Input.In)
-	p, _ := c.HashToGroup(in)
-	t := p.ScalarMult(s)
-	bToken := t.Serialize()
+	v[0].Info = s.P256.Info
+	v[0].PrivK = s.P256.PrivK
+	v[0].SuiteName = s.P256.SuiteName
+	v[0].Vector = s.P256.Vector
 
-	token := &Token{in, s}
-	return token, bToken
+	v[1].Info = s.P384.Info
+	v[1].PrivK = s.P384.PrivK
+	v[1].SuiteName = s.P384.SuiteName
+	v[1].Vector = s.P384.Vector
+
+	v[2].Info = s.P521.Info
+	v[2].PrivK = s.P521.PrivK
+	v[2].SuiteName = s.P521.SuiteName
+	v[2].Vector = s.P521.Vector
+
+	return v
 }
 
-func (v *Vectors) runP256(t *testing.T) {
-	for _, j := range v.Vector {
+func setUpParties(t *testing.T, name string) (*Server, *Client) {
+	if name == "P256-SHA256-SSWU-RO" {
 		srv, err := NewServer(OPRFP256)
 		if err != nil {
 			t.Fatal("invalid setup of server: " + err.Error())
@@ -234,48 +247,13 @@ func (v *Vectors) runP256(t *testing.T) {
 			t.Fatal("invalid setup of server: no server.")
 		}
 
-		privKey, _ := hex.DecodeString(v.PrivK)
-		srv.Kp.PrivK.Set(privKey)
-
 		client, err := NewClient(OPRFP256)
 		if err != nil {
 			t.Fatal("invalid setup of client: " + err.Error())
 		}
 
-		token, bToken := blindTest(client.suite, j)
-		testBToken, _ := hex.DecodeString(j.Blind.Blinded)
-
-		if !bytes.Equal(testBToken[:], bToken[:]) {
-			test.ReportError(t, bToken[:], testBToken[:], "request")
-		}
-
-		eval, _ := srv.Evaluate(bToken)
-		if eval == nil {
-			t.Fatal("invalid evaluation of server: no evaluation.")
-		}
-
-		testEval, _ := hex.DecodeString(j.Evaluation.Eval)
-		if !bytes.Equal(testEval[:], eval.element[:]) {
-			test.ReportError(t, eval.element[:], testEval[:], "eval")
-		}
-
-		info := []byte("test information")
-		iToken, h, _ := client.Finalize(token, eval, info)
-
-		testIToken, _ := hex.DecodeString(j.Unblind.IToken)
-		if !bytes.Equal(testIToken[:], iToken[:]) {
-			test.ReportError(t, iToken[:], testIToken[:], "finalize")
-		}
-
-		testOutput, _ := hex.DecodeString(j.Output)
-		if !bytes.Equal(testOutput[:], h[:]) {
-			test.ReportError(t, h[:], testOutput[:], "finalize")
-		}
-	}
-}
-
-func (v *Vectors) runP384(t *testing.T) {
-	for _, j := range v.Vector {
+		return srv, client
+	} else if name == "P384-SHA512-SSWU-RO" {
 		srv, err := NewServer(OPRFP384)
 		if err != nil {
 			t.Fatal("invalid setup of server: " + err.Error())
@@ -284,47 +262,13 @@ func (v *Vectors) runP384(t *testing.T) {
 			t.Fatal("invalid setup of server: no server.")
 		}
 
-		privKey, _ := hex.DecodeString(v.PrivK)
-		srv.Kp.PrivK.Set(privKey)
-
 		client, err := NewClient(OPRFP384)
 		if err != nil {
 			t.Fatal("invalid setup of client: " + err.Error())
 		}
 
-		token, bToken := blindTest(client.suite, j)
-		testBToken, _ := hex.DecodeString(j.Blind.Blinded)
-		if !bytes.Equal(testBToken[:], bToken[:]) {
-			test.ReportError(t, bToken[:], testBToken[:], "request")
-		}
-
-		eval, _ := srv.Evaluate(bToken)
-		if eval == nil {
-			t.Fatal("invalid evaluation of server: no evaluation.")
-		}
-
-		testEval, _ := hex.DecodeString(j.Evaluation.Eval)
-		if !bytes.Equal(testEval[:], eval.element[:]) {
-			test.ReportError(t, eval.element[:], testEval[:], "eval")
-		}
-
-		info := []byte("test information")
-		iToken, h, _ := client.Finalize(token, eval, info)
-
-		testIToken, _ := hex.DecodeString(j.Unblind.IToken)
-		if !bytes.Equal(testIToken[:], iToken[:]) {
-			test.ReportError(t, iToken[:], testIToken[:], "finalize")
-		}
-
-		testOutput, _ := hex.DecodeString(j.Output)
-		if !bytes.Equal(testOutput[:], h[:]) {
-			test.ReportError(t, h[:], testOutput[:], "finalize")
-		}
-	}
-}
-
-func (v *Vectors) runP521(t *testing.T) {
-	for _, j := range v.Vector {
+		return srv, client
+	} else if name == "P521-SHA512-SSWU-RO" {
 		srv, err := NewServer(OPRFP521)
 		if err != nil {
 			t.Fatal("invalid setup of server: " + err.Error())
@@ -333,16 +277,40 @@ func (v *Vectors) runP521(t *testing.T) {
 			t.Fatal("invalid setup of server: no server.")
 		}
 
-		privKey, _ := hex.DecodeString(v.PrivK)
-		srv.Kp.PrivK.Set(privKey)
-
 		client, err := NewClient(OPRFP521)
 		if err != nil {
 			t.Fatal("invalid setup of client: " + err.Error())
 		}
 
+		return srv, client
+	}
+
+	return nil, nil
+
+}
+
+func blindTest(c *group.Ciphersuite, v Vector) (*Token, BlindToken) {
+	bytes, _ := hex.DecodeString(v.Blind.Token[2:])
+	s := group.NewScalar(c.Curve)
+	s.Set(bytes)
+
+	in, _ := hex.DecodeString(v.Input.In[2:])
+	p, _ := c.HashToGroup(in)
+	t := p.ScalarMult(s)
+	bToken := t.Serialize()
+
+	token := &Token{in, s}
+	return token, bToken
+}
+
+func (v *Vectors) run(t *testing.T) {
+	srv, client := setUpParties(t, v.SuiteName)
+	privKey, _ := hex.DecodeString(v.PrivK[2:])
+	srv.Kp.PrivK.Set(privKey)
+
+	for _, j := range v.Vector {
 		token, bToken := blindTest(client.suite, j)
-		testBToken, _ := hex.DecodeString(j.Blind.Blinded)
+		testBToken, _ := hex.DecodeString(j.Blind.Blinded[2:])
 
 		if !bytes.Equal(testBToken[:], bToken[:]) {
 			test.ReportError(t, bToken[:], testBToken[:], "request")
@@ -353,7 +321,7 @@ func (v *Vectors) runP521(t *testing.T) {
 			t.Fatal("invalid evaluation of server: no evaluation.")
 		}
 
-		testEval, _ := hex.DecodeString(j.Evaluation.Eval)
+		testEval, _ := hex.DecodeString(j.Evaluation.Eval[2:])
 		if !bytes.Equal(testEval[:], eval.element[:]) {
 			test.ReportError(t, eval.element[:], testEval[:], "eval")
 		}
@@ -361,12 +329,12 @@ func (v *Vectors) runP521(t *testing.T) {
 		info := []byte("test information")
 		iToken, h, _ := client.Finalize(token, eval, info)
 
-		testIToken, _ := hex.DecodeString(j.Unblind.IToken)
+		testIToken, _ := hex.DecodeString(j.Unblind.IToken[2:])
 		if !bytes.Equal(testIToken[:], iToken[:]) {
 			test.ReportError(t, iToken[:], testIToken[:], "finalize")
 		}
 
-		testOutput, _ := hex.DecodeString(j.Output)
+		testOutput, _ := hex.DecodeString(j.Output[2:])
 		if !bytes.Equal(testOutput[:], h[:]) {
 			test.ReportError(t, h[:], testOutput[:], "finalize")
 		}
@@ -375,14 +343,12 @@ func (v *Vectors) runP521(t *testing.T) {
 
 func TestDraftVectors(t *testing.T) {
 	// Test vectors from draft-05
-	var v Vectors
+	var s Suite
 
-	v.readFile(t, "testdata/256_vectors.json")
-	t.Run("ORPF-P256", v.runP256)
+	s.readFile(t, "testdata/vectors.json")
+	v := s.fillVectors(t)
 
-	v.readFile(t, "testdata/384_vectors.json")
-	t.Run("ORPF-P384", v.runP384)
-
-	v.readFile(t, "testdata/521_vectors.json")
-	t.Run("ORPF-P521", v.runP521)
+	for i := range v {
+		t.Run("ORPF-Base-Protocol", v[i].run)
+	}
 }

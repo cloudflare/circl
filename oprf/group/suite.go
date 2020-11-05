@@ -30,7 +30,7 @@ type Ciphersuite struct {
 	dst []byte
 
 	// hash defines the hash function to be used.
-	hash hash.Hash
+	hash string
 
 	// Curve defines the underlying used curve.
 	Curve elliptic.Curve
@@ -167,7 +167,13 @@ func (c *Ciphersuite) ScalarMultBase(s *Scalar) *Element {
 
 // FinalizeHash computes the final hash for the suite
 func FinalizeHash(c *Ciphersuite, data, iToken, info, ctx []byte) []byte {
-	h := c.hash
+	var h hash.Hash
+	if c.hash == "sha256" {
+		h = sha256.New()
+	} else if c.hash == "sha512" {
+		h = sha512.New()
+	}
+
 	lenBuf := make([]byte, 2)
 
 	binary.BigEndian.PutUint16(lenBuf, uint16(len(data)))
@@ -202,20 +208,20 @@ func NewSuite(id uint16, ctx []byte) (*Ciphersuite, error) {
 		cSuite.id = id
 		cSuite.name = "OPRFP256-SHA512-ELL2-RO"
 		cSuite.dst = append(dst, ctx...)
-		cSuite.hash = sha256.New()
+		cSuite.hash = "sha256"
 		cSuite.Curve = elliptic.P256()
 	// TODO: might be good to use the circl one as well
 	case 0x0004:
 		cSuite.id = id
 		cSuite.name = "OPRFP384-SHA512-ELL2-RO"
 		cSuite.dst = append(dst, ctx...)
-		cSuite.hash = sha512.New()
+		cSuite.hash = "sha512"
 		cSuite.Curve = elliptic.P384()
 	case 0x0005:
 		cSuite.id = id
 		cSuite.name = "OPRFP521-SHA512-ELL2-RO"
 		cSuite.dst = append(dst, ctx...)
-		cSuite.hash = sha512.New()
+		cSuite.hash = "sha512"
 		cSuite.Curve = elliptic.P521()
 	// TODO: support ristretto255 and decaf448
 	default:
