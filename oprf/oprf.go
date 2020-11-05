@@ -279,36 +279,45 @@ func NewClient(id SuiteID) (*Client, error) {
 		ctx:   ctx}, nil
 }
 
+// ClientRequest is a structure to encapsulate the output of a Request call.
+type ClientRequest struct {
+	suite  *group.Ciphersuite
+	ctx    []byte
+	token  *Token
+	bToken BlindToken
+}
+
 // Request generates a token and its blinded version.
-func (c *Client) Request(in []byte) (*Token, BlindToken, error) {
+func (c *Client) Request(in []byte) (*ClientRequest, error) {
 	r := c.suite.RandomScalar()
 
 	p, err := c.suite.HashToGroup(in)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	t := p.ScalarMult(r)
 	bToken := t.Serialize()
 
-	return &Token{in, r}, bToken, nil
+	tk := &Token{in, r}
+	return &ClientRequest{c.suite, c.ctx, tk, bToken}, nil
 }
 
 // Finalize computes the signed token from the server Evaluation and returns
 // the output of the OPRF protocol.
-func (c *Client) Finalize(t *Token, e *Evaluation, info []byte) ([]byte, error) {
-	p := group.NewElement(c.suite.Curve)
+func (cr *ClientRequest) Finalize(e *Evaluation, info []byte) ([]byte, error) {
+	p := group.NewElement(cr.suite.Curve)
 	err := p.Deserialize(e.element)
 	if err != nil {
 		return []byte{}, err
 	}
 
-	r := t.blind
+	r := cr.token.blind
 	rInv := r.Inv()
 
 	tt := p.ScalarMult(rInv)
 	iToken := tt.Serialize()
 
-	h := finalizeHash(c.suite, t.data, iToken, info, c.ctx)
+	h := finalizeHash(cr.suite, cr.token.data, iToken, info, cr.ctx)
 	return h, nil
 }

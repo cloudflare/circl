@@ -42,17 +42,13 @@ func TestClientRequest(t *testing.T) {
 		t.Fatal("invalid setup of client: " + err.Error())
 	}
 
-	token, bToken, err := client.Request([]byte{00})
+	cr, err := client.Request([]byte{00})
 
 	if err != nil {
 		t.Fatal("invalid blinding of client: " + err.Error())
 	}
-	if token == nil {
+	if cr == nil {
 		t.Fatal("invalid blinding of client: no token.")
-	}
-
-	if bToken == nil {
-		t.Fatal("invalid blinding of client: no blinded token")
 	}
 }
 
@@ -70,12 +66,12 @@ func TestServerEvaluation(t *testing.T) {
 		t.Fatal("invalid setup of client: " + err.Error())
 	}
 
-	_, bToken, err := client.Request([]byte{00})
+	cr, err := client.Request([]byte{00})
 	if err != nil {
 		t.Fatal("invalid blinding of client: " + err.Error())
 	}
 
-	eval, err := srv.Evaluate(bToken)
+	eval, err := srv.Evaluate(cr.bToken)
 	if err != nil {
 		t.Fatal("invalid evaluation of server: " + err.Error())
 	}
@@ -99,12 +95,12 @@ func TestClientFinalize(t *testing.T) {
 		t.Fatal("invalid setup of client: " + err.Error())
 	}
 
-	token, bToken, err := client.Request([]byte{00})
+	cr, err := client.Request([]byte{00})
 	if err != nil {
 		t.Fatal("invalid blinding of client: " + err.Error())
 	}
 
-	eval, err := srv.Evaluate(bToken)
+	eval, err := srv.Evaluate(cr.bToken)
 	if err != nil {
 		t.Fatal("invalid evaluation of server: " + err.Error())
 	}
@@ -112,7 +108,7 @@ func TestClientFinalize(t *testing.T) {
 		t.Fatal("invalid evaluation of server: no evaluation")
 	}
 
-	h, err := client.Finalize(token, eval, []byte{0x00})
+	h, err := cr.Finalize(eval, []byte{0x00})
 	if err != nil {
 		t.Fatal("invalid unblinding of client: " + err.Error())
 	}
@@ -136,12 +132,12 @@ func TestClientVerifyFinalize(t *testing.T) {
 		t.Fatal("invalid setup of client: " + err.Error())
 	}
 
-	token, bToken, err := client.Request([]byte{00})
+	cr, err := client.Request([]byte{00})
 	if err != nil {
 		t.Fatal("invalid blinding of client: " + err.Error())
 	}
 
-	eval, err := srv.Evaluate(bToken)
+	eval, err := srv.Evaluate(cr.bToken)
 	if err != nil {
 		t.Fatal("invalid evaluation of server: " + err.Error())
 	}
@@ -149,7 +145,7 @@ func TestClientVerifyFinalize(t *testing.T) {
 		t.Fatal("invalid evaluation of server: no evaluation")
 	}
 
-	h, err := client.Finalize(token, eval, []byte("test information"))
+	h, err := cr.Finalize(eval, []byte("test information"))
 	if err != nil {
 		t.Fatal("invalid unblinding of client: " + err.Error())
 	}
@@ -281,7 +277,7 @@ func setUpParties(t *testing.T, name string) (*Server, *Client) {
 
 }
 
-func blindTest(c *group.Ciphersuite, v Vector) (*Token, BlindToken) {
+func blindTest(c *group.Ciphersuite, ctx []byte, v Vector) *ClientRequest {
 	bytes, _ := hex.DecodeString(v.Blind.Token[2:])
 	s := group.NewScalar(c.Curve)
 	s.Set(bytes)
@@ -292,7 +288,7 @@ func blindTest(c *group.Ciphersuite, v Vector) (*Token, BlindToken) {
 	bToken := t.Serialize()
 
 	token := &Token{in, s}
-	return token, bToken
+	return &ClientRequest{c, ctx, token, bToken}
 }
 
 func generateIssuedToken(c *Client, e *Evaluation, t *Token) IssuedToken {
@@ -315,14 +311,14 @@ func (v *Vectors) run(t *testing.T) {
 	srv.Kp.PrivK.Set(privKey)
 
 	for _, j := range v.Vector {
-		token, bToken := blindTest(client.suite, j)
+		cr := blindTest(client.suite, client.ctx, j)
 		testBToken, _ := hex.DecodeString(j.Blind.Blinded[2:])
 
-		if !bytes.Equal(testBToken[:], bToken[:]) {
-			test.ReportError(t, bToken[:], testBToken[:], "request")
+		if !bytes.Equal(testBToken[:], cr.bToken[:]) {
+			test.ReportError(t, cr.bToken[:], testBToken[:], "request")
 		}
 
-		eval, _ := srv.Evaluate(bToken)
+		eval, _ := srv.Evaluate(cr.bToken)
 		if eval == nil {
 			t.Fatal("invalid evaluation of server: no evaluation.")
 		}
@@ -333,8 +329,8 @@ func (v *Vectors) run(t *testing.T) {
 		}
 
 		info := []byte("test information")
-		h, _ := client.Finalize(token, eval, info)
-		iToken := generateIssuedToken(client, eval, token)
+		h, _ := cr.Finalize(eval, info)
+		iToken := generateIssuedToken(client, eval, cr.token)
 
 		testIToken, _ := hex.DecodeString(j.Unblind.IToken[2:])
 		if !bytes.Equal(testIToken[:], iToken[:]) {
