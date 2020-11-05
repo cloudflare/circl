@@ -7,7 +7,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/cloudflare/circl/internal/shake"
+	"github.com/cloudflare/circl/internal/sha3"
 	"github.com/cloudflare/circl/sign"
 	"github.com/cloudflare/circl/sign/dilithium/mode4"
 	"github.com/cloudflare/circl/sign/ed448"
@@ -60,7 +60,7 @@ func NewKeyFromSeed(seed *[SeedSize]byte) (*PublicKey, *PrivateKey) {
 	var seed1 [32]byte
 	var seed2 [ed448.SeedSize]byte
 
-	h := shake.NewShake256()
+	h := sha3.NewShake256()
 	_, _ = h.Write(seed[:])
 	_, _ = h.Read(seed1[:])
 	_, _ = h.Read(seed2[:])
