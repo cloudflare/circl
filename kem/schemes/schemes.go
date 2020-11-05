@@ -8,12 +8,18 @@ import (
 	"github.com/cloudflare/circl/kem/kyber/kyber1024"
 	"github.com/cloudflare/circl/kem/kyber/kyber512"
 	"github.com/cloudflare/circl/kem/kyber/kyber768"
+	"github.com/cloudflare/circl/kem/sike/sikep434"
+	"github.com/cloudflare/circl/kem/sike/sikep503"
+	"github.com/cloudflare/circl/kem/sike/sikep751"
 )
 
 var allSchemes = [...]kem.Scheme{
 	kyber512.Scheme,
 	kyber768.Scheme,
 	kyber1024.Scheme,
+	sikep434.Scheme,
+	sikep503.Scheme,
+	sikep751.Scheme,
 }
 
 var allSchemeNames map[string]kem.Scheme

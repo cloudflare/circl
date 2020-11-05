@@ -198,6 +198,16 @@ func (c *KEM) SharedSecretSize() int {
 	return c.params.KemSize
 }
 
+// PublicKeySize returns size of the public key in bytes.
+func (c *KEM) PublicKeySize() int {
+	return c.params.PublicKeySize
+}
+
+// Size returns size of the private key in bytes.
+func (c *KEM) PrivateKeySize() int {
+	return int(c.params.B.SecretByteLen) + c.params.MsgLen
+}
+
 func (c *KEM) generateCiphertext(ctext []byte, skA *PrivateKey, pkA, pkB *PublicKey, ptext []byte) {
 	var n [common.MaxMsgBsz]byte
 	var j [common.MaxSharedSecretBsz]byte
