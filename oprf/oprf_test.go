@@ -112,13 +112,9 @@ func TestClientFinalize(t *testing.T) {
 		t.Fatal("invalid evaluation of server: no evaluation")
 	}
 
-	iToken, h, err := client.Finalize(token, eval, []byte{0x00})
+	h, err := client.Finalize(token, eval, []byte{0x00})
 	if err != nil {
 		t.Fatal("invalid unblinding of client: " + err.Error())
-	}
-
-	if iToken == nil {
-		t.Fatal("invalid unblinding of client: no issued Token.")
 	}
 
 	if !(len(h) > 0) {
@@ -153,13 +149,9 @@ func TestClientVerifyFinalize(t *testing.T) {
 		t.Fatal("invalid evaluation of server: no evaluation")
 	}
 
-	iToken, h, err := client.Finalize(token, eval, []byte("test information"))
+	h, err := client.Finalize(token, eval, []byte("test information"))
 	if err != nil {
 		t.Fatal("invalid unblinding of client: " + err.Error())
-	}
-
-	if iToken == nil {
-		t.Fatal("invalid unblinding of client: no issued Token.")
 	}
 
 	if !(len(h) > 0) {
@@ -303,6 +295,20 @@ func blindTest(c *group.Ciphersuite, v Vector) (*Token, BlindToken) {
 	return token, bToken
 }
 
+func generateIssuedToken(c *Client, e *Evaluation, t *Token) IssuedToken {
+	p := group.NewElement(c.suite.Curve)
+	err := p.Deserialize(e.element)
+	if err != nil {
+		return nil
+	}
+
+	r := t.blind
+	rInv := r.Inv()
+
+	tt := p.ScalarMult(rInv)
+	return tt.Serialize()
+}
+
 func (v *Vectors) run(t *testing.T) {
 	srv, client := setUpParties(t, v.SuiteName)
 	privKey, _ := hex.DecodeString(v.PrivK[2:])
@@ -327,7 +333,8 @@ func (v *Vectors) run(t *testing.T) {
 		}
 
 		info := []byte("test information")
-		iToken, h, _ := client.Finalize(token, eval, info)
+		h, _ := client.Finalize(token, eval, info)
+		iToken := generateIssuedToken(client, eval, token)
 
 		testIToken, _ := hex.DecodeString(j.Unblind.IToken[2:])
 		if !bytes.Equal(testIToken[:], iToken[:]) {

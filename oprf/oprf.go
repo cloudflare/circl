@@ -16,8 +16,12 @@
 package oprf
 
 import (
+	"crypto/sha256"
+	"crypto/sha512"
 	"crypto/subtle"
+	"encoding/binary"
 	"errors"
+	"hash"
 
 	"github.com/cloudflare/circl/oprf/group"
 )
@@ -191,6 +195,39 @@ func (s *Server) Evaluate(b BlindToken) (*Evaluation, error) {
 	return &Evaluation{ser}, nil
 }
 
+// FinalizeHash computes the final hash for the suite.
+func finalizeHash(c *group.Ciphersuite, data, iToken, info, ctx []byte) []byte {
+	var h hash.Hash
+	if c.Hash == "sha256" {
+		h = sha256.New()
+	} else if c.Hash == "sha512" {
+		h = sha512.New()
+	}
+
+	lenBuf := make([]byte, 2)
+
+	binary.BigEndian.PutUint16(lenBuf, uint16(len(data)))
+	_, _ = h.Write(lenBuf)
+	_, _ = h.Write(data)
+
+	binary.BigEndian.PutUint16(lenBuf, uint16(len(iToken)))
+	_, _ = h.Write(lenBuf)
+	_, _ = h.Write(iToken)
+
+	binary.BigEndian.PutUint16(lenBuf, uint16(len(info)))
+	_, _ = h.Write(lenBuf)
+	_, _ = h.Write(info)
+
+	dst := []byte("VOPRF05-Finalize-")
+	dst = append(dst, ctx...)
+
+	binary.BigEndian.PutUint16(lenBuf, uint16(len(dst)))
+	_, _ = h.Write(lenBuf)
+	_, _ = h.Write(dst)
+
+	return h.Sum(nil)
+}
+
 // FullEvaluate performs a full evaluation at the server side.
 func (s *Server) FullEvaluate(in, info []byte) ([]byte, error) {
 	p, err := s.suite.HashToGroup(in)
@@ -201,7 +238,7 @@ func (s *Server) FullEvaluate(in, info []byte) ([]byte, error) {
 	t := p.ScalarMult(s.Kp.PrivK)
 	iToken := t.Serialize()
 
-	h := group.FinalizeHash(s.suite, in, iToken, info, s.ctx)
+	h := finalizeHash(s.suite, in, iToken, info, s.ctx)
 
 	return h, nil
 }
@@ -220,7 +257,7 @@ func (s *Server) VerifyFinalize(in, info, out []byte) bool {
 		return false
 	}
 
-	h := group.FinalizeHash(s.suite, in, e.element, info, s.ctx)
+	h := finalizeHash(s.suite, in, e.element, info, s.ctx)
 	return subtle.ConstantTimeCompare(h, out) == 1
 }
 
@@ -257,13 +294,13 @@ func (c *Client) Request(in []byte) (*Token, BlindToken, error) {
 	return &Token{in, r}, bToken, nil
 }
 
-// Finalize returns a signed token from a server Evaluation together
-// with the output of the OPRF protocol.
-func (c *Client) Finalize(t *Token, e *Evaluation, info []byte) (IssuedToken, []byte, error) {
+// Finalize computes the signed token from the server Evaluation and returns
+// the output of the OPRF protocol.
+func (c *Client) Finalize(t *Token, e *Evaluation, info []byte) ([]byte, error) {
 	p := group.NewElement(c.suite.Curve)
 	err := p.Deserialize(e.element)
 	if err != nil {
-		return nil, []byte{}, err
+		return []byte{}, err
 	}
 
 	r := t.blind
@@ -272,6 +309,6 @@ func (c *Client) Finalize(t *Token, e *Evaluation, info []byte) (IssuedToken, []
 	tt := p.ScalarMult(rInv)
 	iToken := tt.Serialize()
 
-	h := group.FinalizeHash(c.suite, t.data, iToken, info, c.ctx)
-	return iToken, h, nil
+	h := finalizeHash(c.suite, t.data, iToken, info, c.ctx)
+	return h, nil
 }

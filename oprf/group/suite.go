@@ -3,11 +3,7 @@ package group
 import (
 	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/sha256"
-	"crypto/sha512"
-	"encoding/binary"
 	"errors"
-	"hash"
 	"io"
 	"math/big"
 
@@ -29,8 +25,8 @@ type Ciphersuite struct {
 	// dst is a tag to be used for hashing to curve.
 	dst []byte
 
-	// hash defines the hash function to be used.
-	hash string
+	// Hash defines the hash function to be used.
+	Hash string
 
 	// Curve defines the underlying used curve.
 	Curve elliptic.Curve
@@ -165,39 +161,6 @@ func (c *Ciphersuite) ScalarMultBase(s *Scalar) *Element {
 	return gen.ScalarMult(s)
 }
 
-// FinalizeHash computes the final hash for the suite
-func FinalizeHash(c *Ciphersuite, data, iToken, info, ctx []byte) []byte {
-	var h hash.Hash
-	if c.hash == "sha256" {
-		h = sha256.New()
-	} else if c.hash == "sha512" {
-		h = sha512.New()
-	}
-
-	lenBuf := make([]byte, 2)
-
-	binary.BigEndian.PutUint16(lenBuf, uint16(len(data)))
-	_, _ = h.Write(lenBuf)
-	_, _ = h.Write(data)
-
-	binary.BigEndian.PutUint16(lenBuf, uint16(len(iToken)))
-	_, _ = h.Write(lenBuf)
-	_, _ = h.Write(iToken)
-
-	binary.BigEndian.PutUint16(lenBuf, uint16(len(info)))
-	_, _ = h.Write(lenBuf)
-	_, _ = h.Write(info)
-
-	dst := []byte("VOPRF05-Finalize-")
-	dst = append(dst, ctx...)
-
-	binary.BigEndian.PutUint16(lenBuf, uint16(len(dst)))
-	_, _ = h.Write(lenBuf)
-	_, _ = h.Write(dst)
-
-	return h.Sum(nil)
-}
-
 // NewSuite creates a new ciphersuite for the requested name.
 func NewSuite(id uint16, ctx []byte) (*Ciphersuite, error) {
 	cSuite := &Ciphersuite{}
@@ -208,20 +171,20 @@ func NewSuite(id uint16, ctx []byte) (*Ciphersuite, error) {
 		cSuite.id = id
 		cSuite.name = "OPRFP256-SHA512-ELL2-RO"
 		cSuite.dst = append(dst, ctx...)
-		cSuite.hash = "sha256"
+		cSuite.Hash = "sha256"
 		cSuite.Curve = elliptic.P256()
 	// TODO: might be good to use the circl one as well
 	case 0x0004:
 		cSuite.id = id
 		cSuite.name = "OPRFP384-SHA512-ELL2-RO"
 		cSuite.dst = append(dst, ctx...)
-		cSuite.hash = "sha512"
+		cSuite.Hash = "sha512"
 		cSuite.Curve = elliptic.P384()
 	case 0x0005:
 		cSuite.id = id
 		cSuite.name = "OPRFP521-SHA512-ELL2-RO"
 		cSuite.dst = append(dst, ctx...)
-		cSuite.hash = "sha512"
+		cSuite.Hash = "sha512"
 		cSuite.Curve = elliptic.P521()
 	// TODO: support ristretto255 and decaf448
 	default:
