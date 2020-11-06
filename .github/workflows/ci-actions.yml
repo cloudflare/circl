@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-18.04
     strategy:
       matrix:
-        GOVER: ['1.15', '1.14', '1.13', '1.12']
+        GOVER: ['1.12']
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -36,6 +36,7 @@ jobs:
   exotic_job:
     name: Go-${{matrix.CFG[2]}}/${{matrix.CFG[0]}}
     runs-on: ubuntu-18.04
+    if: false
     strategy:
       matrix:
         CFG: [ [arm64,arm64v8,1.15] ]
@@ -55,7 +56,7 @@ jobs:
           docker run --rm -v `pwd`:`pwd` -w `pwd` ${{matrix.CFG[1]}}/golang:${{matrix.CFG[2]}} go test -v ./...
   coverage_amd64_job:
     needs: [ amd64_job ]
-    if: github.event_name == 'push'
+    if: false
     runs-on: ubuntu-18.04
     name: amd64/coverage
     steps:
