@@ -270,10 +270,6 @@ func NewClient(id SuiteID) (*Client, error) {
 		return nil, err
 	}
 
-	client := &Client{}
-	client.suite = suite
-	client.ctx = ctx
-
 	return &Client{
 		suite: suite,
 		ctx:   ctx}, nil
@@ -309,7 +305,7 @@ func (cr *ClientRequest) Finalize(e *Evaluation, info []byte) ([]byte, error) {
 	p := group.NewElement(cr.suite.Curve)
 	err := p.Deserialize(e.element)
 	if err != nil {
-		return []byte{}, err
+		return nil, err
 	}
 
 	r := cr.token.blind
