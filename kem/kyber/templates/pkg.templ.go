@@ -15,7 +15,7 @@ import (
 	"github.com/cloudflare/circl/kem"
 	cpapke "github.com/cloudflare/circl/pke/kyber/{{.Pkg}}"
 
-	"golang.org/x/crypto/sha3"
+	"github.com/cloudflare/circl/internal/sha3"
 
 	"bytes"
 	cryptoRand "crypto/rand"

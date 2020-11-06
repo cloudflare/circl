@@ -1,8 +1,7 @@
 package internal
 
 import (
-	"golang.org/x/crypto/sha3"
-
+	"github.com/cloudflare/circl/internal/sha3"
 	"github.com/cloudflare/circl/pke/kyber/internal/common"
 )
 

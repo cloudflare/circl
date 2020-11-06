@@ -3,7 +3,7 @@
 package internal
 
 import (
-	"github.com/cloudflare/circl/internal/shake"
+	"github.com/cloudflare/circl/internal/sha3"
 	"github.com/cloudflare/circl/simd/keccakf1600"
 
 	"github.com/cloudflare/circl/sign/dilithium/internal/common"
@@ -216,7 +216,7 @@ func PolyDeriveUniform(p *common.Poly, seed *[32]byte, nonce uint16) {
 		}
 	} else {
 		var iv [32 + 2]byte // 32 byte seed + uint16 nonce
-		h := shake.NewShake128()
+		h := sha3.NewShake128()
 		copy(iv[:32], seed[:])
 		iv[32] = uint8(nonce)
 		iv[33] = uint8(nonce >> 8)
@@ -276,7 +276,7 @@ func PolyDeriveUniformLeqEta(p *common.Poly, seed *[32]byte, nonce uint16) {
 	} else {
 		var iv [32 + 2]byte // 32 byte seed + uint16 nonce
 
-		h := shake.NewShake128()
+		h := sha3.NewShake128()
 		copy(iv[:32], seed[:])
 		iv[32] = uint8(nonce)
 		iv[33] = uint8(nonce >> 8)
@@ -367,7 +367,7 @@ func PolyDeriveUniformLeGamma1(p *common.Poly, seed *[48]byte, nonce uint16) {
 		var iv [48 + 2]byte // 48 byte seed + uint16 nonce
 		bufOffset := 0      // where to put the next block
 
-		h := shake.NewShake256()
+		h := sha3.NewShake256()
 		copy(iv[:48], seed[:])
 		iv[48] = uint8(nonce)
 		iv[49] = uint8(nonce >> 8)
@@ -522,7 +522,7 @@ func PolyDeriveUniformB60(p *common.Poly, seed *[48]byte, w1 *VecK) {
 
 	w1.PackLe16(w1Packed[:])
 
-	h := shake.NewShake256()
+	h := sha3.NewShake256()
 	_, _ = h.Write(seed[:])
 	_, _ = h.Write(w1Packed[:])
 	_, _ = h.Read(buf[:])

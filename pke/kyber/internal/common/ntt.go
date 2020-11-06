@@ -53,6 +53,8 @@ var InvNTTReductions = [...]int{
 // coefficients are in absolute value ≤7q.  If the input is in Montgomery
 // form, then the result is in Montgomery form and so (by linearity of the NTT)
 // if the input is in regular form, then the result is also in regular form.
+// The order of coefficients will be "tangled". These can be put back into
+// their proper order by calling Detangle().
 func (p *Poly) nttGeneric() {
 	// Note that ℤ_q does not have a primitive 512ᵗʰ root of unity (as 512
 	// does not divide into q) and so we cannot do a regular NTT.  ℤ_q
@@ -133,11 +135,12 @@ func (p *Poly) nttGeneric() {
 // Executes an in-place inverse "NTT" on p and multiply by the Montgomery
 // factor R.
 //
+// Requires coefficients to be in "tangled" order, see Tangle().
 // Assumes the coefficients are in absolute value ≤q.  The resulting
 // coefficients are in absolute value ≤q.  If the input is in Montgomery
 // form, then the result is in Montgomery form and so (by linearity)
 // if the input is in regular form, then the result is also in regular form.
-func (p *Poly) InvNTT() {
+func (p *Poly) invNTTGeneric() {
 	k := 127 // Index into Zetas
 	r := -1  // Index into InvNTTReductions.
 
@@ -152,14 +155,14 @@ func (p *Poly) InvNTT() {
 			// we can use the existing Zetas table instead of
 			// keeping a separate InvZetas table as in Dilithium.
 
-			zeta := -int32(Zetas[k])
+			minZeta := int32(Zetas[k])
 			k--
 
 			for j := offset; j < offset+l; j++ {
-				t := p[j] // Gentleman-Sande butterfly: (a, b) ↦ (a + b, ζ(a-b))
-				p[j] = t + p[j+l]
-				t -= p[j+l]
-				p[j+l] = montReduce(zeta * int32(t))
+				// Gentleman-Sande butterfly: (a, b) ↦ (a + b, ζ(a-b))
+				t := p[j+l] - p[j]
+				p[j] += p[j+l]
+				p[j+l] = montReduce(minZeta * int32(t))
 
 				// Note that if we had |a| < αq and |b| < βq before the
 				// butterfly, then now we have |a| < (α+β)q and |b| < q.

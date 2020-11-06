@@ -18,7 +18,7 @@ package keccakf1600
 import (
 	"unsafe"
 
-	"github.com/cloudflare/circl/internal/shake"
+	"github.com/cloudflare/circl/internal/sha3"
 	"golang.org/x/sys/cpu"
 )
 
@@ -76,7 +76,7 @@ func permuteScalar(a []uint64) {
 		for j := 0; j < 25; j++ {
 			buf[j] = a[4*j+i]
 		}
-		shake.KeccakF1600(&buf)
+		sha3.KeccakF1600(&buf)
 		for j := 0; j < 25; j++ {
 			a[4*j+i] = buf[j]
 		}

@@ -5,28 +5,20 @@
 // +build amd64 386 ppc64le
 // +build !appengine
 
-package shake
+package sha3
 
 import "unsafe"
 
+// A storageBuf is an aligned array of maxRate bytes.
 type storageBuf [maxRate / 8]uint64
 
 func (b *storageBuf) asBytes() *[maxRate]byte {
 	return (*[maxRate]byte)(unsafe.Pointer(b))
 }
 
-//go:nocheckptr
-//
-// xorIn intentionally reads the input buffer as an unaligned slice of
-// integers. The language spec is not clear on whether that is allowed.
-// See:
-// 	https://golang.org/issue/37644
-// 	https://golang.org/issue/37298
-// 	https://golang.org/issue/35381
-//  #89
-//
-// xorIn uses unaligned reads and writes to update d.a to contain d.a XOR buf.
-func xorIn(d *Shake, buf []byte) {
+// xorInUnaligned uses unaligned reads and writes to update d.a to contain d.a
+// XOR buf.
+func xorInUnaligned(d *State, buf []byte) {
 	n := len(buf)
 	bw := (*[maxRate / 8]uint64)(unsafe.Pointer(&buf[0]))[: n/8 : n/8]
 	if n >= 72 {
@@ -62,7 +54,14 @@ func xorIn(d *Shake, buf []byte) {
 	}
 }
 
-func copyOut(d *Shake, buf []byte) {
+func copyOutUnaligned(d *State, buf []byte) {
 	ab := (*[maxRate]uint8)(unsafe.Pointer(&d.a[0]))
 	copy(buf, ab[:])
 }
+
+var (
+	xorIn   = xorInUnaligned
+	copyOut = copyOutUnaligned
+)
+
+const xorImplementationUnaligned = "unaligned"

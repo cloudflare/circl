@@ -4,12 +4,12 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"github.com/cloudflare/circl/internal/shake"
+	"github.com/cloudflare/circl/internal/sha3"
 )
 
 func hexHash(in []byte) string {
 	var ret [16]byte
-	h := shake.NewShake256()
+	h := sha3.NewShake256()
 	_, _ = h.Write(in[:])
 	_, _ = h.Read(ret[:])
 	return hex.EncodeToString(ret[:])
@@ -21,7 +21,7 @@ func testNewKeyFromSeed(t *testing.T, name, esk, epk string) {
 		t.Fatal()
 	}
 	var seed [96]byte
-	h := shake.NewShake128()
+	h := sha3.NewShake128()
 	_, _ = h.Write(make([]byte, mode.SeedSize()))
 	_, _ = h.Read(seed[:])
 	pk, sk := mode.NewKeyFromExpandedSeed(&seed)

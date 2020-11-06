@@ -4,10 +4,10 @@
 
 // +build amd64,!appengine,!gccgo
 
-package shake
+package sha3
 
 // This function is implemented in keccakf_amd64.s.
 
 //go:noescape
 
-func KeccakF1600(a *[25]uint64)
+func KeccakF1600(state *[25]uint64)

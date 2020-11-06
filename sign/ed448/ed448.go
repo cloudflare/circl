@@ -34,7 +34,7 @@ import (
 	"strconv"
 
 	"github.com/cloudflare/circl/ecc/goldilocks"
-	sha3 "github.com/cloudflare/circl/internal/shake"
+	"github.com/cloudflare/circl/internal/sha3"
 	"github.com/cloudflare/circl/sign"
 )
 

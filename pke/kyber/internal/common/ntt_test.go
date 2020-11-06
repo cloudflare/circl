@@ -26,6 +26,13 @@ func BenchmarkInvNTT(b *testing.B) {
 	}
 }
 
+func BenchmarkInvNTTGeneric(b *testing.B) {
+	var a Poly
+	for i := 0; i < b.N; i++ {
+		a.invNTTGeneric()
+	}
+}
+
 func (p *Poly) Rand() {
 	for i := 0; i < N; i++ {
 		p[i] = int16(rand.Intn(int(Q))) // nolint:gosec
@@ -45,9 +52,29 @@ func TestNTTAgainstGeneric(t *testing.T) {
 		q1 = p
 		q2 = p
 		q1.NTT()
+		q1.Detangle()
 		q2.nttGeneric()
 		if q1 != q2 {
 			t.Fatalf("NTT(%v) = \n%v \n!= %v", p, q2, q1)
+		}
+	}
+}
+
+func TestInvNTTAgainstGeneric(t *testing.T) {
+	for k := 0; k < 1000; k++ {
+		var p, q1, q2 Poly
+		p.RandAbsLeQ()
+		q1 = p
+		q2 = p
+		q1.Tangle()
+		q1.InvNTT()
+		q2.invNTTGeneric()
+
+		q1.Normalize()
+		q2.Normalize()
+
+		if q1 != q2 {
+			t.Fatalf("InvNTT(%v) = \n%v \n!= %v", p, q2, q1)
 		}
 	}
 }
