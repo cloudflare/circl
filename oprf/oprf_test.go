@@ -36,23 +36,7 @@ func TestClientSetUp(t *testing.T) {
 	}
 }
 
-func TestClientRequest(t *testing.T) {
-	client, err := NewClient(OPRFP256)
-	if err != nil {
-		t.Fatal("invalid setup of client: " + err.Error())
-	}
-
-	cr, err := client.Request([]byte{00})
-
-	if err != nil {
-		t.Fatal("invalid blinding of client: " + err.Error())
-	}
-	if cr == nil {
-		t.Fatal("invalid blinding of client: no token.")
-	}
-}
-
-func TestServerEvaluation(t *testing.T) {
+func TestRequestEvaluateVerifyFlow(t *testing.T) {
 	srv, err := NewServer(OPRFP256)
 	if err != nil {
 		t.Fatal("invalid setup of server: " + err.Error())
@@ -66,41 +50,13 @@ func TestServerEvaluation(t *testing.T) {
 		t.Fatal("invalid setup of client: " + err.Error())
 	}
 
-	cr, err := client.Request([]byte{00})
+	input := []byte{00}
+	cr, err := client.Request(input)
 	if err != nil {
 		t.Fatal("invalid blinding of client: " + err.Error())
 	}
 
-	eval, err := srv.Evaluate(cr.bToken)
-	if err != nil {
-		t.Fatal("invalid evaluation of server: " + err.Error())
-	}
-
-	if eval == nil {
-		t.Fatal("invalid evaluation of server: no evaluation.")
-	}
-}
-
-func TestClientFinalize(t *testing.T) {
-	srv, err := NewServer(OPRFP256)
-	if err != nil {
-		t.Fatal("invalid setup of server: " + err.Error())
-	}
-	if srv == nil {
-		t.Fatal("invalid setup of server: no server.")
-	}
-
-	client, err := NewClient(OPRFP256)
-	if err != nil {
-		t.Fatal("invalid setup of client: " + err.Error())
-	}
-
-	cr, err := client.Request([]byte{00})
-	if err != nil {
-		t.Fatal("invalid blinding of client: " + err.Error())
-	}
-
-	eval, err := srv.Evaluate(cr.bToken)
+	eval, err := srv.Evaluate(cr.BlindedToken)
 	if err != nil {
 		t.Fatal("invalid evaluation of server: " + err.Error())
 	}
@@ -108,55 +64,27 @@ func TestClientFinalize(t *testing.T) {
 		t.Fatal("invalid evaluation of server: no evaluation")
 	}
 
-	h, err := cr.Finalize(eval, []byte{0x00})
+	info := []byte("test information")
+	clientOutput, err := cr.Finalize(eval, info)
 	if err != nil {
 		t.Fatal("invalid unblinding of client: " + err.Error())
 	}
 
-	if !(len(h) > 0) {
-		t.Fatal("invalid finalizing of client: no final byte array.")
-	}
-}
-
-func TestClientVerifyFinalize(t *testing.T) {
-	srv, err := NewServer(OPRFP256)
-	if err != nil {
-		t.Fatal("invalid setup of server: " + err.Error())
-	}
-	if srv == nil {
-		t.Fatal("invalid setup of server: no server.")
-	}
-
-	client, err := NewClient(OPRFP256)
-	if err != nil {
-		t.Fatal("invalid setup of client: " + err.Error())
-	}
-
-	cr, err := client.Request([]byte{00})
-	if err != nil {
-		t.Fatal("invalid blinding of client: " + err.Error())
-	}
-
-	eval, err := srv.Evaluate(cr.bToken)
-	if err != nil {
-		t.Fatal("invalid evaluation of server: " + err.Error())
-	}
-	if eval == nil {
-		t.Fatal("invalid evaluation of server: no evaluation")
-	}
-
-	h, err := cr.Finalize(eval, []byte("test information"))
-	if err != nil {
-		t.Fatal("invalid unblinding of client: " + err.Error())
-	}
-
-	if !(len(h) > 0) {
+	if clientOutput == nil {
 		t.Fatal("invalid finalizing of client: no final byte array.")
 	}
 
-	b := srv.VerifyFinalize([]byte{00}, []byte("test information"), h)
-	if b == false {
+	valid := srv.VerifyFinalize(input, info, clientOutput)
+	if !valid {
 		t.Fatal("Invalid verification from the server")
+	}
+
+	serverOutput, err := srv.FullEvaluate(input, info)
+	if err != nil {
+		t.Fatal("FullEvaluate failed", err)
+	}
+	if !bytes.Equal(serverOutput, clientOutput) {
+		t.Fatalf("Client and server OPRF output mismatch, got client output %x, expected server output %x", serverOutput, clientOutput)
 	}
 }
 
@@ -310,14 +238,14 @@ func (v *Vectors) run(t *testing.T) {
 	srv.Kp.PrivK.Set(privKey)
 
 	for _, j := range v.Vector {
-		cr := blindTest(client.suite, client.ctx, j)
+		cr := blindTest(client.suite, client.context, j)
 		testBToken, _ := hex.DecodeString(j.Blind.Blinded[2:])
 
-		if !bytes.Equal(testBToken[:], cr.bToken[:]) {
-			test.ReportError(t, cr.bToken[:], testBToken[:], "request")
+		if !bytes.Equal(testBToken[:], cr.BlindedToken[:]) {
+			test.ReportError(t, cr.BlindedToken[:], testBToken[:], "request")
 		}
 
-		eval, _ := srv.Evaluate(cr.bToken)
+		eval, _ := srv.Evaluate(cr.BlindedToken)
 		if eval == nil {
 			t.Fatal("invalid evaluation of server: no evaluation.")
 		}
