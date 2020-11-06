@@ -2,9 +2,14 @@ package common
 
 import (
 	"github.com/cloudflare/circl/internal/sha3"
+	"github.com/cloudflare/circl/simd/keccakf1600"
 
 	"encoding/binary"
 )
+
+// DeriveX4Available indicates whether the system supports the quick fourway
+// sampling variants like PolyDeriveUniformX4.
+var DeriveX4Available = keccakf1600.IsEnabledX4()
 
 // Samples p from a centered binomial distribution with given η.
 //
@@ -85,6 +90,98 @@ func (p *Poly) DeriveNoise2(seed []byte, nonce uint8) {
 			b := int16(d) & 0x3
 			d >>= 2
 			p[16*i+j] = a - b
+		}
+	}
+}
+
+// For each i, sample ps[i] uniformly from the given seed for coordinates
+// xs[i] and ys[i]. ps[i] may be nil and is ignored in that case.
+//
+// Can only be called when DeriveX4Available is true.
+func PolyDeriveUniformX4(ps [4]*Poly, seed *[32]byte, xs, ys [4]uint8) {
+	var perm keccakf1600.StateX4
+	state := perm.Initialize()
+
+	// Absorb the seed in the four states
+	for i := 0; i < 4; i++ {
+		v := binary.LittleEndian.Uint64(seed[8*i : 8*(i+1)])
+		for j := 0; j < 4; j++ {
+			state[i*4+j] = v
+		}
+	}
+
+	// Absorb the coordinates, the SHAKE128 domain separator (0b1111), the
+	// start of the padding (0b…001) and the end of the padding 0b100….
+	// Recall that the rate of SHAKE128 is 168; ie. 21 uint64s.
+	for j := 0; j < 4; j++ {
+		state[4*4+j] = uint64(xs[j]) | (uint64(ys[j]) << 8) | (0x1f << 16)
+		state[20*4+j] = 0x80 << 56
+	}
+
+	var idx [4]int // indices into ps
+	for j := 0; j < 4; j++ {
+		if ps[j] == nil {
+			idx[j] = N // mark nil polynomials as completed
+		}
+	}
+
+	done := false
+	for !done {
+		// Applies KeccaK-f[1600] to state to get the next 21 uint64s of each of
+		// the four SHAKE128 streams.
+		perm.Permute()
+
+		done = true
+
+	PolyLoop:
+		for j := 0; j < 4; j++ {
+			if idx[j] == N {
+				continue
+			}
+			for i := 0; i < 7; i++ {
+				var t [16]uint16
+
+				v1 := state[i*3*4+j]
+				v2 := state[(i*3+1)*4+j]
+				v3 := state[(i*3+2)*4+j]
+
+				t[0] = uint16(v1) & 0xfff
+				t[1] = uint16(v1>>12) & 0xfff
+				t[2] = uint16(v1>>24) & 0xfff
+				t[3] = uint16(v1>>36) & 0xfff
+				t[4] = uint16(v1>>48) & 0xfff
+				t[5] = uint16((v1>>60)|(v2<<4)) & 0xfff
+
+				t[6] = uint16(v2>>8) & 0xfff
+				t[7] = uint16(v2>>20) & 0xfff
+				t[8] = uint16(v2>>32) & 0xfff
+				t[9] = uint16(v2>>44) & 0xfff
+				t[10] = uint16((v2>>56)|(v3<<8)) & 0xfff
+
+				t[11] = uint16(v3>>4) & 0xfff
+				t[12] = uint16(v3>>16) & 0xfff
+				t[13] = uint16(v3>>28) & 0xfff
+				t[14] = uint16(v3>>40) & 0xfff
+				t[15] = uint16(v3>>52) & 0xfff
+
+				for k := 0; k < 16; k++ {
+					if t[k] < uint16(Q) {
+						ps[j][idx[j]] = int16(t[k])
+						idx[j]++
+						if idx[j] == N {
+							continue PolyLoop
+						}
+					}
+				}
+			}
+
+			done = false
+		}
+	}
+
+	for i := 0; i < 4; i++ {
+		if ps[i] != nil {
+			ps[i].Tangle()
 		}
 	}
 }
