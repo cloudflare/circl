@@ -160,7 +160,7 @@ func generateSourceFiles() {
 			}
 			_, ok := files[name]
 			if !ok {
-				fmt.Printf("Removing superfluous file: %s", fn)
+				fmt.Printf("Removing superfluous file: %s\n", fn)
 				err = os.Remove(fn)
 				if err != nil {
 					panic(err)
