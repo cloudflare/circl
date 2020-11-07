@@ -201,7 +201,10 @@ func setUpParties(t *testing.T, name string, privateKey []byte) (*Server, *Clien
 		t.Fatal(err)
 	}
 	keyPair := new(KeyPair)
-	keyPair.Deserialize(suite, privateKey)
+	err = keyPair.Deserialize(suite, privateKey)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if name == "P256-SHA256-SSWU-RO" {
 		srv, err := NewServerWithKeyPair(OPRFP256, *keyPair)
