@@ -67,8 +67,8 @@ type Evaluation struct {
 
 // KeyPair is an struct containing a public and private key.
 type KeyPair struct {
-	PublicKey  *group.Element
-	PrivateKey *group.Scalar
+	publicKey  *group.Element
+	privateKey *group.Scalar
 }
 
 // Client is a representation of a Client during protocol execution.
@@ -92,7 +92,7 @@ func generateContext(id SuiteID) []byte {
 
 // Serialize serializes a KeyPair elements into byte arrays.
 func (kp *KeyPair) Serialize() []byte {
-	return kp.PrivateKey.Serialize()
+	return kp.privateKey.Serialize()
 }
 
 // Deserialize deserializes a KeyPair into an element and field element of the group.
@@ -101,8 +101,8 @@ func (kp *KeyPair) Deserialize(suite *group.Ciphersuite, encoded []byte) error {
 	privateKey.Deserialize(encoded)
 	publicKey := suite.Generator().ScalarBaseMult(privateKey)
 
-	kp.PublicKey = publicKey
-	kp.PrivateKey = privateKey
+	kp.publicKey = publicKey
+	kp.privateKey = privateKey
 
 	return nil
 }
@@ -110,9 +110,9 @@ func (kp *KeyPair) Deserialize(suite *group.Ciphersuite, encoded []byte) error {
 // GenerateKeyPair generates a KeyPair in accordance with the group.
 func GenerateKeyPair(suite *group.Ciphersuite) KeyPair {
 	privateKey := suite.RandomScalar()
-	PublicKey := suite.Generator().ScalarBaseMult(privateKey)
+	publicKey := suite.Generator().ScalarBaseMult(privateKey)
 
-	return KeyPair{PublicKey, privateKey}
+	return KeyPair{publicKey, privateKey}
 }
 
 func suiteFromID(id SuiteID, context []byte) (*group.Ciphersuite, error) {
@@ -167,7 +167,7 @@ func (s *Server) Evaluate(b BlindToken) (*Evaluation, error) {
 		return nil, err
 	}
 
-	z := p.ScalarMult(s.Kp.PrivateKey)
+	z := p.ScalarMult(s.Kp.privateKey)
 	ser := z.Serialize()
 
 	return &Evaluation{ser}, nil
@@ -223,7 +223,7 @@ func (s *Server) FullEvaluate(in, info []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	t := p.ScalarMult(s.Kp.PrivateKey)
+	t := p.ScalarMult(s.Kp.privateKey)
 	iToken := t.Serialize()
 
 	h := finalizeHash(s.suite, in, iToken, info, s.context)
