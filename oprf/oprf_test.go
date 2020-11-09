@@ -9,11 +9,10 @@ import (
 	"testing"
 
 	"github.com/cloudflare/circl/internal/test"
-	"github.com/cloudflare/circl/oprf/group"
 )
 
 func TestServerSerialization(t *testing.T) {
-	suite, err := suiteFromID(OPRFP256, []byte(""))
+	suite, err := suiteFromID(OPRFP256)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,55 +71,60 @@ func TestClientSetUp(t *testing.T) {
 	}
 }
 
-func TestRequestEvaluateVerifyFlow(t *testing.T) {
-	srv, err := NewServer(OPRFP256)
-	if err != nil {
-		t.Fatal("invalid setup of server: " + err.Error())
-	}
-	if srv == nil {
-		t.Fatal("invalid setup of server: no server.")
-	}
+func TestOPRF(t *testing.T) {
+	for _, suite := range []SuiteID{OPRFP256, OPRFP384, OPRFP521} {
+		suite := suite
+		t.Run(suite.String(), func(t *testing.T) {
+			srv, err := NewServer(suite)
+			if err != nil {
+				t.Fatal("invalid setup of server: " + err.Error())
+			}
+			if srv == nil {
+				t.Fatal("invalid setup of server: no server.")
+			}
 
-	client, err := NewClient(OPRFP256)
-	if err != nil {
-		t.Fatal("invalid setup of client: " + err.Error())
-	}
+			client, err := NewClient(suite)
+			if err != nil {
+				t.Fatal("invalid setup of client: " + err.Error())
+			}
 
-	input := []byte{00}
-	cr, err := client.Request(input)
-	if err != nil {
-		t.Fatal("invalid blinding of client: " + err.Error())
-	}
+			input := []byte{00}
+			cr, err := client.Request(input)
+			if err != nil {
+				t.Fatal("invalid blinding of client: " + err.Error())
+			}
 
-	eval, err := srv.Evaluate(cr.BlindedToken)
-	if err != nil {
-		t.Fatal("invalid evaluation of server: " + err.Error())
-	}
-	if eval == nil {
-		t.Fatal("invalid evaluation of server: no evaluation")
-	}
+			eval, err := srv.Evaluate(cr.BlindedToken)
+			if err != nil {
+				t.Fatal("invalid evaluation of server: " + err.Error())
+			}
+			if eval == nil {
+				t.Fatal("invalid evaluation of server: no evaluation")
+			}
 
-	info := []byte("test information")
-	clientOutput, err := cr.Finalize(eval, info)
-	if err != nil {
-		t.Fatal("invalid unblinding of client: " + err.Error())
-	}
+			info := []byte("test information")
+			clientOutput, err := cr.Finalize(eval, info)
+			if err != nil {
+				t.Fatal("invalid unblinding of client: " + err.Error())
+			}
 
-	if clientOutput == nil {
-		t.Fatal("invalid finalizing of client: no final byte array.")
-	}
+			if clientOutput == nil {
+				t.Fatal("invalid finalizing of client: no final byte array.")
+			}
 
-	valid := srv.VerifyFinalize(input, info, clientOutput)
-	if !valid {
-		t.Fatal("Invalid verification from the server")
-	}
+			valid := srv.VerifyFinalize(input, info, clientOutput)
+			if !valid {
+				t.Fatal("Invalid verification from the server")
+			}
 
-	serverOutput, err := srv.FullEvaluate(input, info)
-	if err != nil {
-		t.Fatal("FullEvaluate failed", err)
-	}
-	if !bytes.Equal(serverOutput, clientOutput) {
-		t.Fatalf("Client and server OPRF output mismatch, got client output %x, expected server output %x", serverOutput, clientOutput)
+			serverOutput, err := srv.FullEvaluate(input, info)
+			if err != nil {
+				t.Fatal("FullEvaluate failed", err)
+			}
+			if !bytes.Equal(serverOutput, clientOutput) {
+				t.Fatalf("Client and server OPRF output mismatch, got client output %x, expected server output %x", serverOutput, clientOutput)
+			}
+		})
 	}
 }
 
@@ -196,7 +200,7 @@ var suiteMaps = map[string]SuiteID{
 }
 
 func setUpParties(t *testing.T, name string, privateKey []byte) (*Server, *Client) {
-	suite, err := suiteFromID(suiteMaps[name], []byte(""))
+	suite, err := suiteFromID(suiteMaps[name])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -256,32 +260,47 @@ func setUpParties(t *testing.T, name string, privateKey []byte) (*Server, *Clien
 	return nil, nil
 }
 
-func blindTest(c *group.Ciphersuite, ctx []byte, v Vector) *ClientRequest {
+func blindTest(c *suite, ctx []byte, v Vector) *ClientRequest {
 	bytes, _ := hex.DecodeString(v.Blind.Token[2:])
-	s := group.NewScalar(c.Curve)
-	s.Set(bytes)
-
+	s := c.Group.NewScl()
+	err := s.UnmarshalBinary(bytes)
+	if err != nil {
+		return nil
+	}
 	in, _ := hex.DecodeString(v.Input.In[2:])
-	p, _ := c.HashToGroup(in)
-	t := p.ScalarMult(s)
-	bToken := t.Serialize()
+	dst := append(append([]byte{}, version...), ctx...)
+	h2c := c.Group.Hashes(dst)
+	p := h2c.Hash(in)
+
+	t := c.Group.NewElt()
+	t.Mul(p, s)
+	bToken, err := t.MarshalBinaryCompress()
+	if err != nil {
+		return nil
+	}
 
 	token := &Token{in, s}
 	return &ClientRequest{c, ctx, token, bToken}
 }
 
 func generateIssuedToken(c *Client, e *Evaluation, t *Token) IssuedToken {
-	p := group.NewElement(c.suite.Curve)
-	err := p.Deserialize(e.Element)
+	p := c.suite.Group.NewElt()
+	err := p.UnmarshalBinary(e.Element)
 	if err != nil {
 		return nil
 	}
 
 	r := t.blind
-	rInv := r.Inv()
+	rInv := c.suite.Group.NewScl()
+	rInv.Inv(r)
 
-	tt := p.ScalarMult(rInv)
-	return tt.Serialize()
+	tt := c.suite.Group.NewElt()
+	tt.Mul(p, rInv)
+	iToken, err := tt.MarshalBinaryCompress()
+	if err != nil {
+		return nil
+	}
+	return iToken
 }
 
 func (v *Vectors) run(t *testing.T) {
@@ -333,6 +352,6 @@ func TestDraftVectors(t *testing.T) {
 	v := s.fillVectors()
 
 	for i := range v {
-		t.Run("ORPF-Base-Protocol", v[i].run)
+		t.Run("ORPF-Base-Protocol/"+v[i].SuiteName, v[i].run)
 	}
 }
