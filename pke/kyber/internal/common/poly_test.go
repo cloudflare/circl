@@ -3,13 +3,13 @@ package common
 import (
 	cryptoRand "crypto/rand"
 	"fmt"
-	"math/rand"
+	mathRand "math/rand"
 	"testing"
 )
 
 func (p *Poly) RandAbsLe9Q() {
 	for i := 0; i < N; i++ {
-		p[i] = int16(rand.Intn(18*int(Q) - 9*int(Q))) // nolint:gosec
+		p[i] = int16(mathRand.Intn(18*int(Q) - 9*int(Q)))
 	}
 }
 

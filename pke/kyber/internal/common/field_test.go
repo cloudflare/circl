@@ -2,7 +2,7 @@ package common
 
 import (
 	"flag"
-	"math/rand"
+	mathRand "math/rand"
 	"testing"
 )
 
@@ -37,7 +37,7 @@ func TestBarrettReduceFull(t *testing.T) {
 
 func TestMontReduce(t *testing.T) {
 	for i := 0; i < 1000; i++ {
-		x := rand.Int31n(int32(Q)*(1<<16)) - int32(Q)*(1<<15) // nolint:gosec
+		x := mathRand.Int31n(int32(Q)*(1<<16)) - int32(Q)*(1<<15)
 		y := montReduce(x)
 		if modQ32(x) != modQ32(int32(y)*(1<<16)) {
 			t.Fatalf("%d", x)
