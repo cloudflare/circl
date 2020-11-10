@@ -24,7 +24,7 @@ func barrettReduceX16(x, q, num, t Op) {
 	//  x - int16((int32(x)*20159)>>26)*q
 
 	VPMULHW(num, x, t)   // t := (int32(x) * 20159) >> 16
-	VPSRAW(U8(10), t, t) // t = int16(t)>>10 so that t = (int32(x)*20158) >> 26
+	VPSRAW(U8(10), t, t) // t = int16(t)>>10 so that t = (int32(x)*20159) >> 26
 	VPMULLW(q, t, t)     // t *= q
 	VPSUBW(t, x, x)      // x -= t
 }
@@ -1038,7 +1038,7 @@ func barrettReduceAVX2() {
 		//
 		//  x - int16((int32(x)*20159)>>26)*q
 
-		VPMULHW(num, xs[0], ts[0]) // t := (int32(x) * 20158) >> 16
+		VPMULHW(num, xs[0], ts[0]) // t := (int32(x) * 20159) >> 16
 		VPMULHW(num, xs[1], ts[1])
 		VPMULHW(num, xs[2], ts[2])
 		VPMULHW(num, xs[3], ts[3])
