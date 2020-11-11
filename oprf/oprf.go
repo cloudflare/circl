@@ -115,7 +115,7 @@ func GenerateKeyPair(suite *group.Ciphersuite) KeyPair {
 	return KeyPair{publicKey, privateKey}
 }
 
-func suiteFromID(id SuiteID, context []byte) (*group.Ciphersuite, error) {
+func GroupFromID(id SuiteID, context []byte) (*group.Ciphersuite, error) {
 	var err error
 	var suite *group.Ciphersuite
 
@@ -131,7 +131,7 @@ func suiteFromID(id SuiteID, context []byte) (*group.Ciphersuite, error) {
 func NewServer(id SuiteID) (*Server, error) {
 	context := generateContext(id)
 
-	suite, err := suiteFromID(id, context)
+	suite, err := GroupFromID(id, context)
 	if err != nil {
 		return nil, err
 	}
@@ -148,7 +148,7 @@ func NewServer(id SuiteID) (*Server, error) {
 func NewServerWithKeyPair(id SuiteID, kp KeyPair) (*Server, error) {
 	context := generateContext(id)
 
-	suite, err := suiteFromID(id, context)
+	suite, err := GroupFromID(id, context)
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +253,7 @@ func (s *Server) VerifyFinalize(in, info, out []byte) bool {
 func NewClient(id SuiteID) (*Client, error) {
 	context := generateContext(id)
 
-	suite, err := suiteFromID(id, context)
+	suite, err := GroupFromID(id, context)
 	if err != nil {
 		return nil, err
 	}
