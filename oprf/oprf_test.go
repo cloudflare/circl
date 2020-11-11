@@ -13,7 +13,7 @@ import (
 )
 
 func TestServerSerialization(t *testing.T) {
-	suite, err := suiteFromID(OPRFP256, []byte(""))
+	suite, err := GroupFromID(OPRFP256, []byte(""))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,7 +196,7 @@ var suiteMaps = map[string]SuiteID{
 }
 
 func setUpParties(t *testing.T, name string, privateKey []byte) (*Server, *Client) {
-	suite, err := suiteFromID(suiteMaps[name], []byte(""))
+	suite, err := GroupFromID(suiteMaps[name], []byte(""))
 	if err != nil {
 		t.Fatal(err)
 	}
