@@ -60,3 +60,17 @@ func (p *Poly) Detangle() {
 	// In the generic implementation there is no advantage to using a
 	// different order, so we use the standard order everywhere.
 }
+
+// Almost normalizes coefficients.
+//
+// Ensures each coefficient is in {0, …, q}.
+func (p *Poly) BarrettReduce() {
+	p.barrettReduceGeneric()
+}
+
+// Normalizes coefficients.
+//
+// Ensures each coefficient is in {0, …, q-1}.
+func (p *Poly) Normalize() {
+	p.normalizeGeneric()
+}

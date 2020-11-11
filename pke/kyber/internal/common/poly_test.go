@@ -1,10 +1,17 @@
 package common
 
 import (
-	"crypto/rand"
+	cryptoRand "crypto/rand"
 	"fmt"
+	mathRand "math/rand"
 	"testing"
 )
+
+func (p *Poly) RandAbsLe9Q() {
+	for i := 0; i < N; i++ {
+		p[i] = int16(mathRand.Intn(18*int(Q) - 9*int(Q)))
+	}
+}
 
 // Returns x mod^± q
 func sModQ(x int16) int16 {
@@ -19,7 +26,7 @@ func TestDecompressMessage(t *testing.T) {
 	var m, m2 [PlaintextSize]byte
 	var p Poly
 	for i := 0; i < 1000; i++ {
-		_, _ = rand.Read(m[:])
+		_, _ = cryptoRand.Read(m[:])
 		p.DecompressMessage(m[:])
 		p.CompressMessageTo(m2[:])
 		if m != m2 {
@@ -202,5 +209,61 @@ func BenchmarkMulHatGeneric(b *testing.B) {
 	var p Poly
 	for i := 0; i < b.N; i++ {
 		p.mulHatGeneric(&p, &p)
+	}
+}
+
+func BenchmarkBarrettReduce(b *testing.B) {
+	var p Poly
+	for i := 0; i < b.N; i++ {
+		p.BarrettReduce()
+	}
+}
+
+func BenchmarkBarrettReduceGeneric(b *testing.B) {
+	var p Poly
+	for i := 0; i < b.N; i++ {
+		p.barrettReduceGeneric()
+	}
+}
+
+func TestBarrettReduceAgainstGeneric(t *testing.T) {
+	for k := 0; k < 1000; k++ {
+		var p1, p2, a Poly
+		a.RandAbsLe9Q()
+		p1 = a
+		p2 = a
+		p1.BarrettReduce()
+		p2.barrettReduceGeneric()
+		if p1 != p2 {
+			t.Fatalf("BarrettReduce(%v) = \n%v \n!= %v", a, p1, p2)
+		}
+	}
+}
+
+func BenchmarkNormalize(b *testing.B) {
+	var p Poly
+	for i := 0; i < b.N; i++ {
+		p.Normalize()
+	}
+}
+
+func BenchmarkNormalizeGeneric(b *testing.B) {
+	var p Poly
+	for i := 0; i < b.N; i++ {
+		p.barrettReduceGeneric()
+	}
+}
+
+func TestNormalizeAgainstGeneric(t *testing.T) {
+	for k := 0; k < 1000; k++ {
+		var p1, p2, a Poly
+		a.RandAbsLe9Q()
+		p1 = a
+		p2 = a
+		p1.Normalize()
+		p2.normalizeGeneric()
+		if p1 != p2 {
+			t.Fatalf("Normalize(%v) = \n%v \n!= %v", a, p1, p2)
+		}
 	}
 }

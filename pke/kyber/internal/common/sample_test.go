@@ -136,3 +136,56 @@ func TestPolyDeriveUniformRef(t *testing.T) {
 		t.Fatalf("%v\n%v", p, want)
 	}
 }
+
+func BenchmarkPolyDeriveUniform(b *testing.B) {
+	var p Poly
+	var seed [32]byte
+	for i := 0; i < b.N; i++ {
+		p.DeriveUniform(&seed, 0, 0)
+	}
+}
+
+func BenchmarkPolyDeriveUniformX4(b *testing.B) {
+	if !DeriveX4Available {
+		b.SkipNow()
+	}
+
+	var p [4]Poly
+	var seed [32]byte
+	for i := 0; i < b.N; i++ {
+		PolyDeriveUniformX4(
+			[4]*Poly{&p[0], &p[1], &p[2], &p[3]},
+			&seed,
+			[4]uint8{0, 1, 2, 3},
+			[4]uint8{4, 5, 6, 7},
+		)
+	}
+}
+
+func TestPolyDeriveUniformX4(t *testing.T) {
+	if !DeriveX4Available {
+		t.SkipNow()
+	}
+
+	var p2 Poly
+	var p [4]Poly
+	var seed [32]byte
+
+	for i := 0; i < 32; i++ {
+		seed[i] = byte(i)
+	}
+
+	PolyDeriveUniformX4(
+		[4]*Poly{&p[0], &p[1], &p[2], &p[3]},
+		&seed,
+		[4]uint8{0, 1, 2, 3},
+		[4]uint8{4, 5, 6, 7},
+	)
+
+	for i := 0; i < 4; i++ {
+		p2.DeriveUniform(&seed, uint8(i), uint8(i+4))
+		if p2 != p[i] {
+			t.Fatalf("%d\n%v\n%v", i, p2, p[i])
+		}
+	}
+}

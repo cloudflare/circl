@@ -12,6 +12,46 @@ import (
 	"github.com/cloudflare/circl/oprf/group"
 )
 
+func TestServerSerialization(t *testing.T) {
+	suite, err := suiteFromID(OPRFP256, []byte(""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	keyPair := GenerateKeyPair(suite)
+
+	server, err := NewServerWithKeyPair(OPRFP256, keyPair)
+	if err != nil {
+		t.Fatal("invalid setup of server: " + err.Error())
+	}
+
+	input := []byte("hello world")
+	info := []byte("info")
+	outputA, errA := server.FullEvaluate(input, info)
+	if errA != nil {
+		t.Fatal(errA)
+	}
+
+	encoded := keyPair.Serialize()
+	recoveredKeyPair := new(KeyPair)
+	err = recoveredKeyPair.Deserialize(suite, encoded)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	recoveredServer, err := NewServerWithKeyPair(OPRFP256, *recoveredKeyPair)
+	if err != nil {
+		t.Fatal("invalid setup of server: " + err.Error())
+	}
+
+	outputB, errB := recoveredServer.FullEvaluate(input, info)
+	if errB != nil {
+		t.Fatal(errB)
+	}
+	if !bytes.Equal(outputA, outputB) {
+		t.Fatal("failed to compute the same output after serializing and deserializing the key pair")
+	}
+}
+
 func TestServerSetUp(t *testing.T) {
 	srv, err := NewServer(OPRFP256)
 	if err != nil {
@@ -19,10 +59,6 @@ func TestServerSetUp(t *testing.T) {
 	}
 	if srv == nil {
 		t.Fatal("invalid setup of server: no server.")
-	}
-
-	if srv.Kp == nil {
-		t.Fatal("invalid setup of server: no keypair")
 	}
 }
 
@@ -153,9 +189,25 @@ func (s *Suite) fillVectors() [3]Vectors {
 	return v
 }
 
-func setUpParties(t *testing.T, name string) (*Server, *Client) {
+var suiteMaps = map[string]SuiteID{
+	"P256-SHA256-SSWU-RO": OPRFP256,
+	"P384-SHA512-SSWU-RO": OPRFP384,
+	"P521-SHA512-SSWU-RO": OPRFP521,
+}
+
+func setUpParties(t *testing.T, name string, privateKey []byte) (*Server, *Client) {
+	suite, err := suiteFromID(suiteMaps[name], []byte(""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	keyPair := new(KeyPair)
+	err = keyPair.Deserialize(suite, privateKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	if name == "P256-SHA256-SSWU-RO" {
-		srv, err := NewServer(OPRFP256)
+		srv, err := NewServerWithKeyPair(OPRFP256, *keyPair)
 		if err != nil {
 			t.Fatal("invalid setup of server: " + err.Error())
 		}
@@ -170,7 +222,7 @@ func setUpParties(t *testing.T, name string) (*Server, *Client) {
 
 		return srv, client
 	} else if name == "P384-SHA512-SSWU-RO" {
-		srv, err := NewServer(OPRFP384)
+		srv, err := NewServerWithKeyPair(OPRFP384, *keyPair)
 		if err != nil {
 			t.Fatal("invalid setup of server: " + err.Error())
 		}
@@ -185,7 +237,7 @@ func setUpParties(t *testing.T, name string) (*Server, *Client) {
 
 		return srv, client
 	} else if name == "P521-SHA512-SSWU-RO" {
-		srv, err := NewServer(OPRFP521)
+		srv, err := NewServerWithKeyPair(OPRFP521, *keyPair)
 		if err != nil {
 			t.Fatal("invalid setup of server: " + err.Error())
 		}
@@ -220,7 +272,7 @@ func blindTest(c *group.Ciphersuite, ctx []byte, v Vector) *ClientRequest {
 
 func generateIssuedToken(c *Client, e *Evaluation, t *Token) IssuedToken {
 	p := group.NewElement(c.suite.Curve)
-	err := p.Deserialize(e.element)
+	err := p.Deserialize(e.Element)
 	if err != nil {
 		return nil
 	}
@@ -233,9 +285,11 @@ func generateIssuedToken(c *Client, e *Evaluation, t *Token) IssuedToken {
 }
 
 func (v *Vectors) run(t *testing.T) {
-	srv, client := setUpParties(t, v.SuiteName)
-	privKey, _ := hex.DecodeString(v.PrivK[2:])
-	srv.Kp.PrivK.Set(privKey)
+	privateKey, err := hex.DecodeString(v.PrivK[2:])
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv, client := setUpParties(t, v.SuiteName, privateKey)
 
 	for _, j := range v.Vector {
 		cr := blindTest(client.suite, client.context, j)
@@ -251,8 +305,8 @@ func (v *Vectors) run(t *testing.T) {
 		}
 
 		testEval, _ := hex.DecodeString(j.Evaluation.Eval[2:])
-		if !bytes.Equal(testEval[:], eval.element[:]) {
-			test.ReportError(t, eval.element[:], testEval[:], "eval")
+		if !bytes.Equal(testEval[:], eval.Element[:]) {
+			test.ReportError(t, eval.Element[:], testEval[:], "eval")
 		}
 
 		info := []byte("test information")

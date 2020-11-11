@@ -62,13 +62,13 @@ type Token struct {
 
 // Evaluation corresponds to the evaluation over a token.
 type Evaluation struct {
-	element []byte
+	Element []byte
 }
 
 // KeyPair is an struct containing a public and private key.
 type KeyPair struct {
-	pubK  *group.Element
-	PrivK *group.Scalar
+	publicKey  *group.Element
+	privateKey *group.Scalar
 }
 
 // Client is a representation of a Client during protocol execution.
@@ -81,7 +81,7 @@ type Client struct {
 type Server struct {
 	suite   *group.Ciphersuite
 	context []byte
-	Kp      *KeyPair
+	Kp      KeyPair
 }
 
 func generateContext(id SuiteID) []byte {
@@ -91,43 +91,28 @@ func generateContext(id SuiteID) []byte {
 }
 
 // Serialize serializes a KeyPair elements into byte arrays.
-func (kp *KeyPair) Serialize() ([]byte, []byte) {
-	pubK := kp.pubK.Serialize()
-	privK := kp.PrivK.Serialize()
-
-	return pubK, privK
+func (kp *KeyPair) Serialize() []byte {
+	return kp.privateKey.Serialize()
 }
 
 // Deserialize deserializes a KeyPair into an element and field element of the group.
-func (kp *KeyPair) Deserialize(suite *group.Ciphersuite, privK, pubK []byte) error {
-	priv := group.NewScalar(suite.Curve)
-	priv.Deserialize(privK)
+func (kp *KeyPair) Deserialize(suite *group.Ciphersuite, encoded []byte) error {
+	privateKey := group.NewScalar(suite.Curve)
+	privateKey.Deserialize(encoded)
+	publicKey := suite.Generator().ScalarBaseMult(privateKey)
 
-	pub := group.NewElement(suite.Curve)
-	err := pub.Deserialize(pubK)
-	if err != nil {
-		return err
-	}
+	kp.publicKey = publicKey
+	kp.privateKey = privateKey
 
 	return nil
 }
 
 // GenerateKeyPair generates a KeyPair in accordance with the group.
-func GenerateKeyPair(suite *group.Ciphersuite) *KeyPair {
-	privK := suite.RandomScalar()
-	pubK := suite.Generator().ScalarBaseMult(privK)
+func GenerateKeyPair(suite *group.Ciphersuite) KeyPair {
+	privateKey := suite.RandomScalar()
+	publicKey := suite.Generator().ScalarBaseMult(privateKey)
 
-	return &KeyPair{pubK, privK}
-}
-
-func assignKeyPair(suite *group.Ciphersuite, privK, pubK []byte) (*KeyPair, error) {
-	kp := &KeyPair{}
-	err := kp.Deserialize(suite, privK, pubK)
-	if err != nil {
-		return nil, err
-	}
-
-	return kp, nil
+	return KeyPair{publicKey, privateKey}
 }
 
 func GroupFromID(id SuiteID, context []byte) (*group.Ciphersuite, error) {
@@ -160,7 +145,7 @@ func NewServer(id SuiteID) (*Server, error) {
 
 // NewServerWithKeyPair creates a new instantiation of a Server. It can create
 // a server with existing keys or use pre-generated keys.
-func NewServerWithKeyPair(id SuiteID, privK, pubK []byte) (*Server, error) {
+func NewServerWithKeyPair(id SuiteID, kp KeyPair) (*Server, error) {
 	context := generateContext(id)
 
 	suite, err := GroupFromID(id, context)
@@ -168,15 +153,10 @@ func NewServerWithKeyPair(id SuiteID, privK, pubK []byte) (*Server, error) {
 		return nil, err
 	}
 
-	keyPair, err := assignKeyPair(suite, privK, pubK)
-	if err != nil {
-		return nil, err
-	}
-
 	return &Server{
 		suite:   suite,
 		context: context,
-		Kp:      keyPair}, nil
+		Kp:      kp}, nil
 }
 
 // Evaluate blindly signs a client token.
@@ -187,7 +167,7 @@ func (s *Server) Evaluate(b BlindToken) (*Evaluation, error) {
 		return nil, err
 	}
 
-	z := p.ScalarMult(s.Kp.PrivK)
+	z := p.ScalarMult(s.Kp.privateKey)
 	ser := z.Serialize()
 
 	return &Evaluation{ser}, nil
@@ -243,7 +223,7 @@ func (s *Server) FullEvaluate(in, info []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	t := p.ScalarMult(s.Kp.PrivK)
+	t := p.ScalarMult(s.Kp.privateKey)
 	iToken := t.Serialize()
 
 	h := finalizeHash(s.suite, in, iToken, info, s.context)
@@ -265,7 +245,7 @@ func (s *Server) VerifyFinalize(in, info, out []byte) bool {
 		return false
 	}
 
-	h := finalizeHash(s.suite, in, e.element, info, s.context)
+	h := finalizeHash(s.suite, in, e.Element, info, s.context)
 	return subtle.ConstantTimeCompare(h, out) == 1
 }
 
@@ -311,7 +291,7 @@ func (c *Client) Request(in []byte) (*ClientRequest, error) {
 // the output of the OPRF protocol.
 func (cr *ClientRequest) Finalize(e *Evaluation, info []byte) ([]byte, error) {
 	p := group.NewElement(cr.suite.Curve)
-	err := p.Deserialize(e.element)
+	err := p.Deserialize(e.Element)
 	if err != nil {
 		return nil, err
 	}

@@ -26,7 +26,7 @@ func (p *Poly) subGeneric(a, b *Poly) {
 // Almost normalizes coefficients.
 //
 // Ensures each coefficient is in {0, …, q}.
-func (p *Poly) BarrettReduce() {
+func (p *Poly) barrettReduceGeneric() {
 	for i := 0; i < N; i++ {
 		p[i] = barrettReduce(p[i])
 	}
@@ -35,7 +35,7 @@ func (p *Poly) BarrettReduce() {
 // Normalizes coefficients.
 //
 // Ensures each coefficient is in {0, …, q-1}.
-func (p *Poly) Normalize() {
+func (p *Poly) normalizeGeneric() {
 	for i := 0; i < N; i++ {
 		p[i] = csubq(barrettReduce(p[i]))
 	}

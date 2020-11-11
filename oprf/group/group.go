@@ -159,5 +159,5 @@ func (s *Scalar) Serialize() []byte {
 // Deserialize an octet-string into a valid Scalar object.
 func (s *Scalar) Deserialize(in []byte) {
 	byteLength := (s.c.Params().BitSize + 7) / 8
-	s.x = new(big.Int).SetBytes(in[1 : byteLength+1])
+	s.x = new(big.Int).SetBytes(in[:byteLength])
 }

@@ -1,7 +1,7 @@
 package common
 
 import (
-	"math/rand"
+	mathRand "math/rand"
 	"testing"
 )
 
@@ -35,13 +35,13 @@ func BenchmarkInvNTTGeneric(b *testing.B) {
 
 func (p *Poly) Rand() {
 	for i := 0; i < N; i++ {
-		p[i] = int16(rand.Intn(int(Q))) // nolint:gosec
+		p[i] = int16(mathRand.Intn(int(Q)))
 	}
 }
 
 func (p *Poly) RandAbsLeQ() {
 	for i := 0; i < N; i++ {
-		p[i] = int16(rand.Intn(int(2*Q))) - Q // nolint:gosec
+		p[i] = int16(mathRand.Intn(int(2*Q))) - Q
 	}
 }
 
