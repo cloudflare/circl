@@ -72,6 +72,7 @@ type Evaluation struct {
 
 // KeyPair is an struct containing a public and private key.
 type KeyPair struct {
+	id         SuiteID
 	publicKey  group.Element
 	privateKey group.Scalar
 }
@@ -90,6 +91,7 @@ type Server struct {
 }
 
 type suite struct {
+	SuiteID
 	group.Group
 	crypto.Hash
 }
@@ -97,11 +99,11 @@ type suite struct {
 func (id SuiteID) String() string {
 	switch id {
 	case OPRFP256:
-		return "OPRFP256"
+		return "OPRF(P-256,SHA-256)"
 	case OPRFP384:
-		return "OPRFP384"
+		return "OPRF(P-384,SHA-512)"
 	case OPRFP521:
-		return "OPRFP521"
+		return "OPRF(P-521,SHA-512)"
 	default:
 		panic(ErrUnsupportedSuite)
 	}
@@ -117,15 +119,20 @@ func (kp *KeyPair) Serialize() []byte {
 }
 
 // Deserialize deserializes a KeyPair into an element and field element of the group.
-func (kp *KeyPair) Deserialize(s *suite, encoded []byte) error {
+func (kp *KeyPair) Deserialize(id SuiteID, encoded []byte) error {
+	s, err := suiteFromID(id)
+	if err != nil {
+		return err
+	}
 	privateKey := s.NewScl()
-	err := privateKey.UnmarshalBinary(encoded)
+	err = privateKey.UnmarshalBinary(encoded)
 	if err != nil {
 		return err
 	}
 	publicKey := s.NewElt()
 	publicKey.MulGen(privateKey)
 
+	kp.id = id
 	kp.publicKey = publicKey
 	kp.privateKey = privateKey
 
@@ -139,24 +146,32 @@ func generateContext(id SuiteID) (ctx [3]byte) {
 	return
 }
 
-// GenerateKeyPair generates a KeyPair in accordance with the group.
-func GenerateKeyPair(s *suite) KeyPair {
+func (s *suite) generateKeyPair() *KeyPair {
 	r := s.Random()
 	privateKey := r.RndScl(rand.Reader)
 	publicKey := s.NewElt()
 	publicKey.MulGen(privateKey)
 
-	return KeyPair{publicKey, privateKey}
+	return &KeyPair{s.SuiteID, publicKey, privateKey}
+}
+
+// GenerateKeyPair generates a KeyPair in accordance with the group.
+func GenerateKeyPair(id SuiteID) (*KeyPair, error) {
+	suite, err := suiteFromID(id)
+	if err != nil {
+		return nil, err
+	}
+	return suite.generateKeyPair(), nil
 }
 
 func suiteFromID(id SuiteID) (*suite, error) {
 	switch id {
 	case OPRFP256:
-		return &suite{group.P256, crypto.SHA256}, nil
+		return &suite{id, group.P256, crypto.SHA256}, nil
 	case OPRFP384:
-		return &suite{group.P384, crypto.SHA512}, nil
+		return &suite{id, group.P384, crypto.SHA512}, nil
 	case OPRFP521:
-		return &suite{group.P521, crypto.SHA512}, nil
+		return &suite{id, group.P521, crypto.SHA512}, nil
 	default:
 		return nil, ErrUnsupportedSuite
 	}
@@ -169,18 +184,23 @@ func NewServer(id SuiteID) (*Server, error) {
 		return nil, err
 	}
 	context := generateContext(id)
-	keyPair := GenerateKeyPair(suite)
+	keyPair := suite.generateKeyPair()
 
 	return &Server{
 		suite:   suite,
 		context: context[:],
-		Kp:      keyPair,
+		Kp:      *keyPair,
 	}, nil
 }
 
 // NewServerWithKeyPair creates a new instantiation of a Server. It can create
 // a server with existing keys or use pre-generated keys.
 func NewServerWithKeyPair(id SuiteID, kp KeyPair) (*Server, error) {
+	// Verifies keypair corresponds to SuiteID.
+	if id != kp.id {
+		return nil, ErrUnsupportedSuite
+	}
+
 	suite, err := suiteFromID(id)
 	if err != nil {
 		return nil, err
