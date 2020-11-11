@@ -33,6 +33,8 @@ var Zetas = [128]int16{
 // Generated in a lazily: once a butterfly is computed which is about to
 // overflow the int16, the largest coefficient is reduced.  If that is
 // not enough, the other coefficient is reduced as well.
+//
+// This is actually optimal, as proven in https://eprint.iacr.org/2020/1377.pdf
 var InvNTTReductions = [...]int{
 	-1, // after layer 1
 	-1, // after layer 2
