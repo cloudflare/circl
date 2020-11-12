@@ -5,6 +5,7 @@ import (
 	"crypto/elliptic"
 	_ "crypto/sha256" // to link libraries
 	_ "crypto/sha512" // to link libraries
+	"crypto/subtle"
 	"fmt"
 	"io"
 	"math/big"
@@ -163,6 +164,10 @@ type wScl struct {
 }
 
 func (s *wScl) String() string { return fmt.Sprintf("0x%x", s.k) }
+func (s *wScl) IsEqual(a Scalar) bool {
+	aa := s.cvtScl(a)
+	return subtle.ConstantTimeCompare(s.k, aa.k) == 1
+}
 func (s *wScl) fromBig(b *big.Int) {
 	_ = s.UnmarshalBinary(b.Bytes())
 }

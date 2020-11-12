@@ -1,3 +1,4 @@
+// Package group provides prime-order groups based on elliptic curves.
 package group
 
 import (
@@ -18,7 +19,7 @@ var (
 	P521 Group = wG{elliptic.P521()}
 )
 
-// Group si
+// Group represents a prime-order group based on elliptic curves.
 type Group interface {
 	NewElt() Element
 	NewScl() Scalar
@@ -45,6 +46,7 @@ type Element interface {
 
 // Scalar represents an integer scalar.
 type Scalar interface {
+	IsEqual(x Scalar) bool
 	Add(x, y Scalar) Scalar
 	Sub(x, y Scalar) Scalar
 	Mul(x, y Scalar) Scalar
@@ -54,21 +56,20 @@ type Scalar interface {
 	encoding.BinaryUnmarshaler
 }
 
-// Randomizer is
+// Randomizer allows to get random group elements and scalars.
 type Randomizer interface {
 	RndElt(io.Reader) Element
 	RndScl(io.Reader) Scalar
 }
 
-// Hasher is
+// Hasher allows to hash byte strings into group elements and scalars.
 type Hasher interface {
 	Encode([]byte) Element
 	Hash([]byte) Element
 	ScHash([]byte) Scalar
 }
 
-// ErrType is
-var ErrType = errors.New("type mismatch")
-
-// ErrUnmarshal is
-var ErrUnmarshal = errors.New("error unmarshaling")
+var (
+	ErrType      = errors.New("type mismatch")
+	ErrUnmarshal = errors.New("error unmarshaling")
+)

@@ -5,9 +5,9 @@ import (
 	"math/big"
 )
 
-// GFHasher is
+// GFHasher allows to hash byte strings producing one or more field elements.
 type GFHasher interface {
-	GFHash(u []big.Int, b []byte)
+	GFHash(u []big.Int, b []byte) // u1,..., uN = Hash(b).
 }
 
 type expanderXMD struct {

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/test"
@@ -41,6 +42,15 @@ func toBytes(t *testing.T, s, errMsg string) []byte {
 	return bytes
 }
 
+func toListBytes(t *testing.T, s, errMsg string) [][]byte {
+	strs := strings.Split(s, ",")
+	out := make([][]byte, len(strs))
+	for i := range strs {
+		out[i] = toBytes(t, strs[i], errMsg)
+	}
+	return out
+}
+
 func readFile(t *testing.T, fileName string) []vector {
 	jsonFile, err := os.Open(fileName)
 	if err != nil {
@@ -64,55 +74,78 @@ func (v *vector) SetUpParties(t *testing.T) (*Server, *Client) {
 	err := keyPair.Deserialize(v.ID, privateKey)
 	test.CheckNoErr(t, err, "invalid private key")
 
-	srv, err := NewServerWithKeyPair(v.ID, *keyPair)
+	srv, err := NewServerWithKeyPair(v.ID, v.Mode, *keyPair)
 	test.CheckNoErr(t, err, "invalid setup of server")
 
-	client, err := NewClient(v.ID)
+	client, err := NewClient(v.ID, v.Mode)
 	test.CheckNoErr(t, err, "invalid setup of client")
 
 	return srv, client
 }
 
+func (v *vector) compareLists(t *testing.T, got, want [][]byte) {
+	for i := range got {
+		if !bytes.Equal(got[i], want[i]) {
+			test.ReportError(t, got[i], want[i], v.Name, v.Mode, i)
+		}
+	}
+}
+
 func (v *vector) test(t *testing.T) {
 	server, client := v.SetUpParties(t)
-	blind := client.GetGroup().NewScl()
+	gg := client.GetGroup()
+	h2g := gg.Hashes(client.getDST(hashToGroupDST))
 
 	for i, vi := range v.Vectors {
-		input := toBytes(t, vi.Input, "input")
-		err := blind.UnmarshalBinary(toBytes(t, vi.Blind, "blind"))
-		test.CheckNoErr(t, err, "invalid blind")
+		inputs := toListBytes(t, vi.Input, "input")
+		blindsBytes := toListBytes(t, vi.Blind, "blind")
+		blinds := make([]Blind, len(blindsBytes))
+		for j := range blindsBytes {
+			blinds[j] = gg.NewScl()
+			err := blinds[j].UnmarshalBinary(blindsBytes[j])
+			test.CheckNoErr(t, err, "invalid blind")
+		}
 
-		clientReq, err := client.blind(input, blind)
+		clientReq, err := client.blind(h2g, inputs, blinds)
 		test.CheckNoErr(t, err, "invalid client request")
-		got := clientReq.BlindedToken
-		want := toBytes(t, vi.BlindedElement, "blindedElement")
-		if !bytes.Equal(got, want) {
-			test.ReportError(t, got, want, v.Name, v.Mode, i)
-		}
+		v.compareLists(t,
+			clientReq.BlindedElements,
+			toListBytes(t, vi.BlindedElement, "blindedElement"),
+		)
 
-		eval, err := server.Evaluate(clientReq.BlindedToken)
+		eval, err := server.Evaluate(clientReq.BlindedElements)
 		test.CheckNoErr(t, err, "invalid evaluation")
-		got = eval.Element
-		want = toBytes(t, vi.EvaluationElement, "evaluation")
-		if !bytes.Equal(got, want) {
-			test.ReportError(t, got, want, v.Name, v.Mode, i)
-		}
+		v.compareLists(t,
+			eval.Elements,
+			toListBytes(t, vi.EvaluationElement, "evaluation"),
+		)
 
-		unblindedToken, err := clientReq.unblind(eval)
+		unblindedToken, err := client.unblind(eval.Elements, clientReq.blinds)
 		test.CheckNoErr(t, err, "invalid unblindedToken")
-		got = unblindedToken
-		want = toBytes(t, vi.UnblindedElement, "unblindedelement")
-		if !bytes.Equal(got, want) {
-			test.ReportError(t, got, want, v.Name, v.Mode, i)
-		}
+		v.compareLists(t,
+			unblindedToken,
+			toListBytes(t, vi.UnblindedElement, "unblindedelement"),
+		)
 
 		info := toBytes(t, vi.Info, "info")
-		output, err := clientReq.Finalize(eval, info)
+		outputs, err := client.Finalize(clientReq, eval, info)
 		test.CheckNoErr(t, err, "invalid finalize")
-		got = output
-		want = toBytes(t, vi.Output, "output")
-		if !bytes.Equal(got, want) {
-			test.ReportError(t, got, want, v.Name, v.Mode, i)
+		expectedOutputs := toListBytes(t, vi.Output, "output")
+		v.compareLists(t,
+			outputs,
+			expectedOutputs,
+		)
+
+		for j := range inputs {
+			output, err := server.FullEvaluate(inputs[j], info)
+			test.CheckNoErr(t, err, "invalid full evaluate")
+			got := output
+			want := expectedOutputs[j]
+			if !bytes.Equal(got, want) {
+				test.ReportError(t, got, want, v.Name, v.Mode, i, j)
+			}
+
+			test.CheckOk(server.VerifyFinalize(inputs[j], info, output), "verify finalize", t)
 		}
 	}
 }
@@ -123,16 +156,10 @@ func TestVectors(t *testing.T) {
 
 	for i := range v {
 		id := v[i].ID
-		mode := v[i].Mode
-
 		if !(id == OPRFP256 || id == OPRFP384 || id == OPRFP521) {
 			t.Logf(v[i].Name + " not supported yet")
 			continue
 		}
-		if !(mode == BaseMode) {
-			t.Logf("VerifiableMode not supported yet")
-			continue
-		}
-		t.Run(fmt.Sprintf("Suite#%v/Mode#%v", id, mode), v[i].test)
+		t.Run(fmt.Sprintf("Suite%v/Mode%v", id, v[i].Mode), v[i].test)
 	}
 }
