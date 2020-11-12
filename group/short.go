@@ -15,13 +15,13 @@ type wG struct {
 	elliptic.Curve
 }
 
-func (g wG) String() string     { return g.Params().Name }
-func (g wG) NewElt() Element    { return g.Identity() }
-func (g wG) NewScl() Scalar     { return &wScl{g, nil} }
-func (g wG) Identity() Element  { return &wElt{g, new(big.Int), new(big.Int)} }
-func (g wG) Generator() Element { return &wElt{g, g.Params().Gx, g.Params().Gy} }
-func (g wG) Order() Scalar      { s := &wScl{g, nil}; s.fromBig(g.Params().N); return s }
-func (g wG) Random() Randomizer { return wRnd{g, g.Hashes(nil)} }
+func (g wG) String() string      { return g.Params().Name }
+func (g wG) NewElement() Element { return g.Identity() }
+func (g wG) NewScalar() Scalar   { return &wScl{g, nil} }
+func (g wG) Identity() Element   { return &wElt{g, new(big.Int), new(big.Int)} }
+func (g wG) Generator() Element  { return &wElt{g, g.Params().Gx, g.Params().Gy} }
+func (g wG) Order() Scalar       { s := &wScl{g, nil}; s.fromBig(g.Params().N); return s }
+func (g wG) Random() Randomizer  { return wRnd{g, g.Hashes(nil)} }
 func (g wG) Hashes(dst []byte) Hasher {
 	var Z, C2 big.Int
 	var h crypto.Hash
@@ -255,7 +255,7 @@ func (h wHash) Hash(b []byte) Element {
 func (h wHash) ScHash(b []byte) Scalar {
 	var u [1]big.Int
 	h.scl.GFHash(u[:], b)
-	s := h.NewScl().(*wScl)
+	s := h.NewScalar().(*wScl)
 	s.fromBig(&u[0])
 	return s
 }

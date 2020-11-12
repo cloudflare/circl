@@ -31,7 +31,7 @@ func TestGroup(t *testing.T) {
 }
 
 func testAdd(t *testing.T, testTimes int, g group.Group, r group.Randomizer) {
-	Q := g.NewElt()
+	Q := g.NewElement()
 	for i := 0; i < testTimes; i++ {
 		P := r.RndElt(rand.Reader)
 
@@ -49,7 +49,7 @@ func testAdd(t *testing.T, testTimes int, g group.Group, r group.Randomizer) {
 }
 
 func testNeg(t *testing.T, testTimes int, g group.Group, r group.Randomizer) {
-	Q := g.NewElt()
+	Q := g.NewElement()
 	for i := 0; i < testTimes; i++ {
 		P := r.RndElt(rand.Reader)
 		Q.Neg(P)
@@ -63,8 +63,8 @@ func testNeg(t *testing.T, testTimes int, g group.Group, r group.Randomizer) {
 }
 
 func testMul(t *testing.T, testTimes int, g group.Group, r group.Randomizer) {
-	Q := g.NewElt()
-	kInv := g.NewScl()
+	Q := g.NewElement()
+	kInv := g.NewScalar()
 	for i := 0; i < testTimes; i++ {
 		P := r.RndElt(rand.Reader)
 		k := r.RndScl(rand.Reader)
@@ -83,8 +83,8 @@ func testMul(t *testing.T, testTimes int, g group.Group, r group.Randomizer) {
 
 func testMulGen(t *testing.T, testTimes int, g group.Group, r group.Randomizer) {
 	G := g.Generator()
-	P := g.NewElt()
-	Q := g.NewElt()
+	P := g.NewElement()
+	Q := g.NewElement()
 	for i := 0; i < testTimes; i++ {
 		k := r.RndScl(rand.Reader)
 
@@ -100,7 +100,7 @@ func testMulGen(t *testing.T, testTimes int, g group.Group, r group.Randomizer) 
 }
 
 func testOrder(t *testing.T, testTimes int, g group.Group, r group.Randomizer) {
-	Q := g.NewElt()
+	Q := g.NewElement()
 	order := g.Order()
 	for i := 0; i < testTimes; i++ {
 		P := r.RndElt(rand.Reader)
@@ -125,14 +125,14 @@ func testMarshal(t *testing.T, testTimes int, g group.Group, r group.Randomizer)
 	if !bytes.Equal(got, want) {
 		test.ReportError(t, got, want)
 	}
-	II := g.NewElt()
+	II := g.NewElement()
 	err := II.UnmarshalBinary(got)
 	if err != nil || !I.IsEqual(II) {
 		test.ReportError(t, I, II)
 	}
 
-	got1 := g.NewElt()
-	got2 := g.NewElt()
+	got1 := g.NewElement()
+	got2 := g.NewElement()
 	for i := 0; i < testTimes; i++ {
 		x := r.RndElt(rand.Reader)
 		enc1, _ := x.MarshalBinary()
@@ -150,10 +150,10 @@ func testMarshal(t *testing.T, testTimes int, g group.Group, r group.Randomizer)
 }
 
 func testScalar(t *testing.T, testTimes int, g group.Group, r group.Randomizer) {
-	c := g.NewScl()
-	d := g.NewScl()
-	e := g.NewScl()
-	f := g.NewScl()
+	c := g.NewScalar()
+	d := g.NewScalar()
+	e := g.NewScalar()
+	f := g.NewScalar()
 	for i := 0; i < testTimes; i++ {
 		a := r.RndScl(rand.Reader)
 		b := r.RndScl(rand.Reader)

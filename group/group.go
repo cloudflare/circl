@@ -21,8 +21,8 @@ var (
 
 // Group represents a prime-order group based on elliptic curves.
 type Group interface {
-	NewElt() Element
-	NewScl() Scalar
+	NewElement() Element
+	NewScalar() Scalar
 	Identity() Element
 	Generator() Element
 	Order() Scalar

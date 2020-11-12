@@ -48,7 +48,7 @@ func (s *Server) Evaluate(blindedElements []Blinded) (*Evaluation, error) {
 
 	var err error
 	eval := make([]Serialized, l)
-	p := s.suite.NewElt()
+	p := s.suite.NewElement()
 
 	for i := range blindedElements {
 		err = p.UnmarshalBinary(blindedElements[i])
@@ -109,21 +109,21 @@ func (s *Server) generateProof(b []Blinded, eval []Serialized) (*Proof, error) {
 	if err != nil {
 		return nil, err
 	}
-	M := s.Group.NewElt()
+	M := s.Group.NewElement()
 	err = M.UnmarshalBinary(a0)
 	if err != nil {
 		return nil, err
 	}
 	rr := rnd.RndScl(rand.Reader)
 
-	a2e := s.Group.NewElt()
+	a2e := s.Group.NewElement()
 	a2e.MulGen(rr)
 	a2, err := a2e.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
 
-	a3e := s.Group.NewElt()
+	a3e := s.Group.NewElement()
 	a3e.Mul(M, rr)
 	a3, err := a3e.MarshalBinary()
 	if err != nil {
@@ -131,7 +131,7 @@ func (s *Server) generateProof(b []Blinded, eval []Serialized) (*Proof, error) {
 	}
 
 	cc := s.doChallenge(h2g, [5][]byte{pkSm, a0, a1, a2, a3})
-	ss := s.suite.Group.NewScl()
+	ss := s.suite.Group.NewScalar()
 	ss.Mul(cc, s.Kp.privateKey)
 	ss.Sub(rr, ss)
 

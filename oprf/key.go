@@ -18,12 +18,12 @@ func (kp *KeyPair) Deserialize(id SuiteID, encoded []byte) error {
 	if err != nil {
 		return err
 	}
-	privateKey := suite.NewScl()
+	privateKey := suite.NewScalar()
 	err = privateKey.UnmarshalBinary(encoded)
 	if err != nil {
 		return err
 	}
-	publicKey := suite.NewElt()
+	publicKey := suite.NewElement()
 	publicKey.MulGen(privateKey)
 
 	kp.id = id

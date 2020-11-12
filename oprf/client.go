@@ -88,32 +88,32 @@ func (c *Client) verifyProof(blinds []Blinded, e *Evaluation) bool {
 	if err != nil {
 		return false
 	}
-	M := c.suite.Group.NewElt()
+	M := c.suite.Group.NewElement()
 	err = M.UnmarshalBinary(a0)
 	if err != nil {
 		return false
 	}
-	Z := c.suite.Group.NewElt()
+	Z := c.suite.Group.NewElement()
 	err = Z.UnmarshalBinary(a1)
 	if err != nil {
 		return false
 	}
 
-	sG := c.suite.Group.NewElt()
-	ss := c.suite.Group.NewScl()
+	sG := c.suite.Group.NewElement()
+	ss := c.suite.Group.NewScalar()
 	err = ss.UnmarshalBinary(e.Proof.S)
 	if err != nil {
 		return false
 	}
 	sG.MulGen(ss)
 
-	cP := c.suite.Group.NewElt()
-	cc := c.suite.Group.NewScl()
+	cP := c.suite.Group.NewElement()
+	cc := c.suite.Group.NewScalar()
 	err = cc.UnmarshalBinary(e.Proof.C)
 	if err != nil {
 		return false
 	}
-	pkS := c.suite.Group.NewElt()
+	pkS := c.suite.Group.NewElement()
 	err = pkS.UnmarshalBinary(pkSm)
 	if err != nil {
 		return false
@@ -125,9 +125,9 @@ func (c *Client) verifyProof(blinds []Blinded, e *Evaluation) bool {
 		return false
 	}
 
-	sM := c.suite.Group.NewElt()
+	sM := c.suite.Group.NewElement()
 	sM.Mul(M, ss)
-	cZ := c.suite.Group.NewElt()
+	cZ := c.suite.Group.NewElement()
 	cZ.Mul(Z, cc)
 	sM.Add(sM, cZ)
 	a3, err := sM.MarshalBinary()
@@ -141,8 +141,8 @@ func (c *Client) verifyProof(blinds []Blinded, e *Evaluation) bool {
 
 func (c *Client) unblind(e []Serialized, blinds []Blind) ([][]byte, error) {
 	unblindedElements := make([][]byte, len(e))
-	p := c.Group.NewElt()
-	invBlind := c.Group.NewScl()
+	p := c.Group.NewElement()
+	invBlind := c.Group.NewScalar()
 	for i := range e {
 		err := p.UnmarshalBinary(e[i])
 		if err != nil {

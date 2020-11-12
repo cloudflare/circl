@@ -101,7 +101,7 @@ func (v *vector) test(t *testing.T) {
 		blindsBytes := toListBytes(t, vi.Blind, "blind")
 		blinds := make([]Blind, len(blindsBytes))
 		for j := range blindsBytes {
-			blinds[j] = gg.NewScl()
+			blinds[j] = gg.NewScalar()
 			err := blinds[j].UnmarshalBinary(blindsBytes[j])
 			test.CheckNoErr(t, err, "invalid blind")
 		}

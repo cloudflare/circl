@@ -105,14 +105,14 @@ func (s *suite) getDST(name string) []byte {
 func (s *suite) generateKeyPair() *KeyPair {
 	r := s.Random()
 	privateKey := r.RndScl(rand.Reader)
-	publicKey := s.NewElt()
+	publicKey := s.NewElement()
 	publicKey.MulGen(privateKey)
 
 	return &KeyPair{s.SuiteID, publicKey, privateKey}
 }
 
 func (s *suite) scalarMult(e group.Element, k group.Scalar) ([]byte, error) {
-	t := s.Group.NewElt()
+	t := s.Group.NewElement()
 	t.Mul(e, k)
 	return t.MarshalBinaryCompress()
 }
@@ -176,8 +176,8 @@ func (s *suite) computeComposites(
 
 	M := s.Group.Identity()
 	Z := s.Group.Identity()
-	Mi := s.Group.NewElt()
-	Zi := s.Group.NewElt()
+	Mi := s.Group.NewElement()
+	Zi := s.Group.NewElement()
 	for i := range b {
 		h2Input := []byte{}
 
