@@ -37,7 +37,7 @@ type vector struct {
 }
 
 func toBytes(t *testing.T, s, errMsg string) []byte {
-	bytes, err := hex.DecodeString(s[2:])
+	bytes, err := hex.DecodeString(s)
 	test.CheckNoErr(t, err, "decoding "+errMsg)
 	return bytes
 }

@@ -19,6 +19,7 @@ func TestOPRF(t *testing.T) {
 			oprf.BaseMode,
 			oprf.VerifiableMode,
 		} {
+			suite, mode := suite, mode
 			name := fmt.Sprintf("Suite%v/Mode%v", suite, mode)
 			t.Run("API/"+name, func(tt *testing.T) { testAPI(tt, suite, mode) })
 			t.Run("Serde/"+name, func(tt *testing.T) { testSerialization(tt, suite, mode) })
@@ -73,8 +74,8 @@ func testAPI(t *testing.T, suite oprf.SuiteID, mode oprf.Mode) {
 	}
 
 	inputs := [][]byte{
-		[]byte{0x00},
-		[]byte{0xFF},
+		{0x00},
+		{0xFF},
 	}
 	cr, err := client.Request(inputs)
 	if err != nil {
