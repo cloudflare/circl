@@ -31,22 +31,27 @@ import (
 	"github.com/cloudflare/circl/group"
 )
 
-const version = "VOPRF05-"
+const version = "VOPRF06-"
 
-// SuiteID is a type that represents the ID of a Suite.
-type SuiteID uint16
+// SuiteID identifies supported suites.
+type SuiteID = uint16
 
 const (
-	// OPRFP256 is the constant to represent the OPRF P-256 with SHA-256 (SSWU-RO) group.
+	// OPRFP256 represents the OPRF with P-256 and SHA-256.
 	OPRFP256 SuiteID = 0x0003
-	// OPRFP384 is the constant to represent the OPRF P-384 with SHA-512 (SSWU-RO) group.
+	// OPRFP384 represents the OPRF with P-384 and SHA-512.
 	OPRFP384 SuiteID = 0x0004
-	// OPRFP521 is the constant to represent the OPRF P-521 with SHA-512 (SSWU-RO) group.
+	// OPRFP521 represents the OPRF with P-521 and SHA-512.
 	OPRFP521 SuiteID = 0x0005
 )
 
-// OPRFMode is the context string to define a OPRF.
-const OPRFMode byte = 0x00
+// Mode specifies a variant of the OPRF protocol.
+type Mode = uint8
+
+const (
+	BaseMode       Mode = 0x00
+	VerifiableMode Mode = 0x01
+)
 
 // ErrUnsupportedSuite is an error stating that the suite chosen is not supported
 var ErrUnsupportedSuite = errors.New("unsupported suite")
@@ -79,44 +84,50 @@ type KeyPair struct {
 
 // Client is a representation of a Client during protocol execution.
 type Client struct {
-	suite   *suite
-	context []byte
+	suite
 }
 
 // Server is a representation of a Server during protocol execution.
 type Server struct {
-	suite   *suite
-	context []byte
-	Kp      KeyPair
+	suite
+	Kp KeyPair
 }
 
 type suite struct {
 	SuiteID
+	Mode
 	group.Group
 	crypto.Hash
 }
 
-func (id SuiteID) String() string {
-	switch id {
-	case OPRFP256:
-		return "OPRF(P-256,SHA-256)"
-	case OPRFP384:
-		return "OPRF(P-384,SHA-512)"
-	case OPRFP521:
-		return "OPRF(P-521,SHA-512)"
-	default:
-		panic(ErrUnsupportedSuite)
-	}
+func (s *suite) GetGroup() group.Group { return s.Group }
+
+func (s *suite) getHashToGroup() group.Hasher {
+	dst := append(append(append([]byte{},
+		[]byte(version)...),
+		[]byte("HashToGroup-")...),
+		[]byte{s.Mode, 0, byte(s.SuiteID)}...)
+	return s.Group.Hashes(dst)
+}
+
+func (s *suite) dstHash() []byte {
+	return append(append(append([]byte{},
+		[]byte(version)...),
+		[]byte("Finalize-")...),
+		[]byte{s.Mode, 0, byte(s.SuiteID)}...)
+}
+
+func (s *suite) generateKeyPair() *KeyPair {
+	r := s.Random()
+	privateKey := r.RndScl(rand.Reader)
+	publicKey := s.NewElt()
+	publicKey.MulGen(privateKey)
+
+	return &KeyPair{s.SuiteID, publicKey, privateKey}
 }
 
 // Serialize serializes a KeyPair elements into byte arrays.
-func (kp *KeyPair) Serialize() []byte {
-	data, err := kp.privateKey.MarshalBinary()
-	if err != nil {
-		panic("error on serializing")
-	}
-	return data
-}
+func (kp *KeyPair) Serialize() ([]byte, error) { return kp.privateKey.MarshalBinary() }
 
 // Deserialize deserializes a KeyPair into an element and field element of the group.
 func (kp *KeyPair) Deserialize(id SuiteID, encoded []byte) error {
@@ -139,22 +150,6 @@ func (kp *KeyPair) Deserialize(id SuiteID, encoded []byte) error {
 	return nil
 }
 
-func generateContext(id SuiteID) (ctx [3]byte) {
-	ctx[0] = OPRFMode
-	ctx[1] = 0
-	ctx[2] = byte(id)
-	return
-}
-
-func (s *suite) generateKeyPair() *KeyPair {
-	r := s.Random()
-	privateKey := r.RndScl(rand.Reader)
-	publicKey := s.NewElt()
-	publicKey.MulGen(privateKey)
-
-	return &KeyPair{s.SuiteID, publicKey, privateKey}
-}
-
 // GenerateKeyPair generates a KeyPair in accordance with the group.
 func GenerateKeyPair(id SuiteID) (*KeyPair, error) {
 	suite, err := suiteFromID(id)
@@ -167,11 +162,11 @@ func GenerateKeyPair(id SuiteID) (*KeyPair, error) {
 func suiteFromID(id SuiteID) (*suite, error) {
 	switch id {
 	case OPRFP256:
-		return &suite{id, group.P256, crypto.SHA256}, nil
+		return &suite{id, BaseMode, group.P256, crypto.SHA256}, nil
 	case OPRFP384:
-		return &suite{id, group.P384, crypto.SHA512}, nil
+		return &suite{id, BaseMode, group.P384, crypto.SHA512}, nil
 	case OPRFP521:
-		return &suite{id, group.P521, crypto.SHA512}, nil
+		return &suite{id, BaseMode, group.P521, crypto.SHA512}, nil
 	default:
 		return nil, ErrUnsupportedSuite
 	}
@@ -183,14 +178,9 @@ func NewServer(id SuiteID) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	context := generateContext(id)
 	keyPair := suite.generateKeyPair()
 
-	return &Server{
-		suite:   suite,
-		context: context[:],
-		Kp:      *keyPair,
-	}, nil
+	return &Server{*suite, *keyPair}, nil
 }
 
 // NewServerWithKeyPair creates a new instantiation of a Server. It can create
@@ -205,13 +195,8 @@ func NewServerWithKeyPair(id SuiteID, kp KeyPair) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	context := generateContext(id)
 
-	return &Server{
-		suite:   suite,
-		context: context[:],
-		Kp:      kp,
-	}, nil
+	return &Server{*suite, kp}, nil
 }
 
 // Evaluate blindly signs a client token.
@@ -243,7 +228,7 @@ func mustWrite(h io.Writer, data []byte) {
 }
 
 // FinalizeHash computes the final hash for the suite.
-func finalizeHash(s *suite, data, iToken, info, context []byte) []byte {
+func (s *suite) finalizeHash(data, iToken, info []byte) []byte {
 	h := s.New()
 
 	lenBuf := make([]byte, 2)
@@ -260,9 +245,7 @@ func finalizeHash(s *suite, data, iToken, info, context []byte) []byte {
 	mustWrite(h, lenBuf)
 	mustWrite(h, info)
 
-	dst := append(append([]byte{}, []byte(version)...), []byte("Finalize-")...)
-	dst = append(dst, context...)
-
+	dst := s.dstHash()
 	binary.BigEndian.PutUint16(lenBuf, uint16(len(dst)))
 	mustWrite(h, lenBuf)
 	mustWrite(h, dst)
@@ -272,9 +255,8 @@ func finalizeHash(s *suite, data, iToken, info, context []byte) []byte {
 
 // FullEvaluate performs a full evaluation at the server side.
 func (s *Server) FullEvaluate(in, info []byte) ([]byte, error) {
-	dst := append(append([]byte{}, []byte(version)...), s.context...)
-	h2c := s.suite.Group.Hashes(dst)
-	p := h2c.Hash(in)
+	H := s.getHashToGroup()
+	p := H.Hash(in)
 
 	t := s.suite.Group.NewElt()
 	t.Mul(p, s.Kp.privateKey)
@@ -283,16 +265,15 @@ func (s *Server) FullEvaluate(in, info []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	h := finalizeHash(s.suite, in, iToken, info, s.context)
+	h := s.finalizeHash(in, iToken, info)
 
 	return h, nil
 }
 
 // VerifyFinalize verifies the evaluation.
 func (s *Server) VerifyFinalize(in, info, out []byte) bool {
-	dst := append(append([]byte{}, []byte(version)...), s.context...)
-	h2c := s.suite.Group.Hashes(dst)
-	p := h2c.Hash(in)
+	H := s.getHashToGroup()
+	p := H.Hash(in)
 
 	el, err := p.MarshalBinaryCompress()
 	if err != nil {
@@ -304,7 +285,7 @@ func (s *Server) VerifyFinalize(in, info, out []byte) bool {
 		return false
 	}
 
-	h := finalizeHash(s.suite, in, e.Element, info, s.context)
+	h := s.finalizeHash(in, e.Element, info)
 	return subtle.ConstantTimeCompare(h, out) == 1
 }
 
@@ -314,18 +295,13 @@ func NewClient(id SuiteID) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	context := generateContext(id)
 
-	return &Client{
-		suite:   suite,
-		context: context[:],
-	}, nil
+	return &Client{*suite}, nil
 }
 
 // ClientRequest is a structure to encapsulate the output of a Request call.
 type ClientRequest struct {
 	suite        *suite
-	context      []byte
 	token        *Token
 	BlindedToken BlindToken
 }
@@ -334,25 +310,23 @@ type ClientRequest struct {
 func (c *Client) Request(in []byte) (*ClientRequest, error) {
 	rnd := c.suite.Group.Random()
 	r := rnd.RndScl(rand.Reader)
+	return c.blind(in, r)
+}
 
-	dst := append(append([]byte{}, []byte(version)...), c.context...)
-	h2c := c.suite.Group.Hashes(dst)
-	p := h2c.Hash(in)
+func (c *Client) blind(in []byte, blind group.Scalar) (*ClientRequest, error) {
+	H := c.getHashToGroup()
+	p := H.Hash(in)
 
 	t := c.suite.Group.NewElt()
-	t.Mul(p, r)
+	t.Mul(p, blind)
 	BlindedToken, err := t.MarshalBinaryCompress()
 	if err != nil {
 		return nil, err
 	}
-
-	tk := &Token{in, r}
-	return &ClientRequest{c.suite, c.context, tk, BlindedToken}, nil
+	return &ClientRequest{&c.suite, &Token{in, blind}, BlindedToken}, nil
 }
 
-// Finalize computes the signed token from the server Evaluation and returns
-// the output of the OPRF protocol.
-func (cr *ClientRequest) Finalize(e *Evaluation, info []byte) ([]byte, error) {
+func (cr *ClientRequest) unblind(e *Evaluation) ([]byte, error) {
 	p := cr.suite.Group.NewElt()
 	err := p.UnmarshalBinary(e.Element)
 	if err != nil {
@@ -365,11 +339,16 @@ func (cr *ClientRequest) Finalize(e *Evaluation, info []byte) ([]byte, error) {
 
 	tt := cr.suite.Group.NewElt()
 	tt.Mul(p, rInv)
-	iToken, err := tt.MarshalBinaryCompress()
+	return tt.MarshalBinaryCompress()
+}
+
+// Finalize computes the signed token from the server Evaluation and returns
+// the output of the OPRF protocol.
+func (cr *ClientRequest) Finalize(e *Evaluation, info []byte) ([]byte, error) {
+	iToken, err := cr.unblind(e)
 	if err != nil {
 		return nil, err
 	}
-
-	h := finalizeHash(cr.suite, cr.token.data, iToken, info, cr.context)
+	h := cr.suite.finalizeHash(cr.token.data, iToken, info)
 	return h, nil
 }

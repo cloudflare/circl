@@ -2,8 +2,10 @@ package oprf_test
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
+	"github.com/cloudflare/circl/internal/test"
 	"github.com/cloudflare/circl/oprf"
 )
 
@@ -14,40 +16,33 @@ func TestServerSerialization(t *testing.T) {
 		oprf.OPRFP521,
 	} {
 		keyPair, err := oprf.GenerateKeyPair(suite)
-		if err != nil {
-			t.Fatal("invalid key generation: " + err.Error())
-		}
+		test.CheckNoErr(t, err, "invalid key generation")
 
 		server, err := oprf.NewServerWithKeyPair(suite, *keyPair)
-		if err != nil {
-			t.Fatal("invalid setup of server: " + err.Error())
-		}
+		test.CheckNoErr(t, err, "invalid setup of server")
 
 		input := []byte("hello world")
 		info := []byte("info")
-		outputA, errA := server.FullEvaluate(input, info)
-		if errA != nil {
-			t.Fatal(errA)
-		}
+		outputA, err := server.FullEvaluate(input, info)
+		test.CheckNoErr(t, err, "wrong full evaluate")
 
-		encoded := keyPair.Serialize()
+		encoded, err := keyPair.Serialize()
+		test.CheckNoErr(t, err, "wrong serialize")
+
 		recoveredKeyPair := new(oprf.KeyPair)
 		err = recoveredKeyPair.Deserialize(suite, encoded)
-		if err != nil {
-			t.Fatal(err)
-		}
+		test.CheckNoErr(t, err, "wrong deserialize")
 
 		recoveredServer, err := oprf.NewServerWithKeyPair(suite, *recoveredKeyPair)
-		if err != nil {
-			t.Fatal("invalid setup of server: " + err.Error())
-		}
+		test.CheckNoErr(t, err, "invalid setup of server with key")
 
-		outputB, errB := recoveredServer.FullEvaluate(input, info)
-		if errB != nil {
-			t.Fatal(errB)
-		}
-		if !bytes.Equal(outputA, outputB) {
-			t.Fatal("failed to compute the same output after serializing and deserializing the key pair")
+		outputB, err := recoveredServer.FullEvaluate(input, info)
+		test.CheckNoErr(t, err, "invalid full evaluate")
+
+		got := outputA
+		want := outputB
+		if !bytes.Equal(got, want) {
+			test.ReportError(t, got, want, suite)
 		}
 	}
 }
@@ -59,7 +54,8 @@ func TestOPRF(t *testing.T) {
 		oprf.OPRFP521,
 	} {
 		suite := suite
-		t.Run(suite.String(), func(t *testing.T) {
+		name := fmt.Sprintf("Suite#%v/Mode#%v", suite, oprf.BaseMode)
+		t.Run(name, func(t *testing.T) {
 			srv, err := oprf.NewServer(suite)
 			if err != nil {
 				t.Fatal("invalid setup of server: " + err.Error())
