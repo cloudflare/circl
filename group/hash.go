@@ -5,9 +5,10 @@ import (
 	"math/big"
 )
 
-// GFHasher allows to hash byte strings producing one or more field elements.
-type GFHasher interface {
-	GFHash(u []big.Int, b []byte) // u1,..., uN = Hash(b).
+// FieldHasher allows to hash byte strings producing one or more field elements.
+type FieldHasher interface {
+	// HashToField generates a set of elements {u1,..., uN} = Hash(b).
+	HashToField(u []big.Int, b []byte)
 }
 
 type expanderXMD struct {
@@ -18,7 +19,7 @@ type expanderXMD struct {
 }
 
 // NewExpanderMD returns a hash function based on a Merkle-Damgård hash function.
-func NewExpanderMD(h crypto.Hash, p *big.Int, L uint, dst []byte) GFHasher {
+func NewExpanderMD(h crypto.Hash, p *big.Int, L uint, dst []byte) FieldHasher {
 	const maxDSTLength = 255
 	var dstPrime []byte
 	if l := len(dst); l > maxDSTLength {
@@ -34,7 +35,7 @@ func NewExpanderMD(h crypto.Hash, p *big.Int, L uint, dst []byte) GFHasher {
 	return expanderXMD{h, p, L, dstPrime}
 }
 
-func (e expanderXMD) GFHash(u []big.Int, b []byte) {
+func (e expanderXMD) HashToField(u []big.Int, b []byte) {
 	count := uint(len(u))
 	bytes := e.expand(b, count*e.L)
 	for i := range u {

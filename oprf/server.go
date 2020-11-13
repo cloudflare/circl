@@ -47,7 +47,7 @@ func (s *Server) Evaluate(blindedElements []Blinded) (*Evaluation, error) {
 	}
 
 	var err error
-	eval := make([]Serialized, l)
+	eval := make([]SerializedElement, l)
 	p := s.suite.NewElement()
 
 	for i := range blindedElements {
@@ -77,7 +77,7 @@ func (s *Server) Evaluate(blindedElements []Blinded) (*Evaluation, error) {
 func (s *Server) FullEvaluate(input, info []byte) ([]byte, error) {
 	dst := s.getDST(hashToGroupDST)
 	H := s.Group.Hashes(dst)
-	p := H.Hash(input)
+	p := H.HashToElement(input)
 
 	ser, err := s.scalarMult(p, s.Kp.privateKey)
 	if err != nil {
@@ -96,7 +96,7 @@ func (s *Server) VerifyFinalize(input, info, output []byte) bool {
 	return subtle.ConstantTimeCompare(gotOutput, output) == 1
 }
 
-func (s *Server) generateProof(b []Blinded, eval []Serialized) (*Proof, error) {
+func (s *Server) generateProof(b []Blinded, eval []SerializedElement) (*Proof, error) {
 	pkSm, err := s.Kp.publicKey.MarshalBinary()
 	if err != nil {
 		return nil, err
@@ -114,7 +114,7 @@ func (s *Server) generateProof(b []Blinded, eval []Serialized) (*Proof, error) {
 	if err != nil {
 		return nil, err
 	}
-	rr := rnd.RndScl(rand.Reader)
+	rr := rnd.RandomScalar(rand.Reader)
 
 	a2e := s.Group.NewElement()
 	a2e.MulGen(rr)

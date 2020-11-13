@@ -57,16 +57,16 @@ const (
 var ErrUnsupportedSuite = errors.New("non-supported suite")
 
 type Blind group.Scalar
-type Serialized = []byte
+type SerializedElement = []byte
 type Blinded = []byte
 
 type Proof struct {
-	PublicKey Serialized
+	PublicKey SerializedElement
 	C, S      []byte
 }
 
 type Evaluation struct {
-	Elements []Serialized
+	Elements []SerializedElement
 	Proof    *Proof
 }
 
@@ -104,7 +104,7 @@ func (s *suite) getDST(name string) []byte {
 
 func (s *suite) generateKeyPair() *KeyPair {
 	r := s.Random()
-	privateKey := r.RndScl(rand.Reader)
+	privateKey := r.RandomScalar(rand.Reader)
 	publicKey := s.NewElement()
 	publicKey.MulGen(privateKey)
 
@@ -156,7 +156,7 @@ func (s *suite) computeComposites(
 	h2g group.Hasher,
 	pkSm []byte,
 	b []Blinded,
-	eval []Serialized,
+	eval []SerializedElement,
 	skS group.Scalar,
 ) ([]byte, []byte, error) {
 	lenBuf := []byte{0, 0}
@@ -197,7 +197,7 @@ func (s *suite) computeComposites(
 		binary.BigEndian.PutUint16(lenBuf, uint16(len(dst)))
 		h2Input = append(append(h2Input, lenBuf...), dst...)
 
-		di := h2g.ScHash(h2Input)
+		di := h2g.HashToScalar(h2Input)
 		err := Mi.UnmarshalBinary(b[i])
 		if err != nil {
 			return nil, nil, err
@@ -244,5 +244,5 @@ func (s *suite) doChallenge(h2g group.Hasher, a [5][]byte) group.Scalar {
 	binary.BigEndian.PutUint16(lenBuf, uint16(len(dst)))
 	h2Input = append(append(h2Input, lenBuf...), dst...)
 
-	return h2g.ScHash(h2Input)
+	return h2g.HashToScalar(h2Input)
 }

@@ -33,12 +33,12 @@ type Group interface {
 // Element represents an abstract element of a prime-order group.
 type Element interface {
 	IsIdentity() bool
-	IsEqual(a Element) bool
-	Add(a, b Element) Element
-	Dbl(a Element) Element
-	Neg(a Element) Element
-	Mul(a Element, n Scalar) Element
-	MulGen(n Scalar) Element
+	IsEqual(Element) bool
+	Add(Element, Element) Element
+	Dbl(Element) Element
+	Neg(Element) Element
+	Mul(Element, Scalar) Element
+	MulGen(Scalar) Element
 	encoding.BinaryMarshaler
 	encoding.BinaryUnmarshaler
 	MarshalBinaryCompress() ([]byte, error)
@@ -46,10 +46,10 @@ type Element interface {
 
 // Scalar represents an integer scalar.
 type Scalar interface {
-	IsEqual(x Scalar) bool
-	Add(x, y Scalar) Scalar
-	Sub(x, y Scalar) Scalar
-	Mul(x, y Scalar) Scalar
+	IsEqual(Scalar) bool
+	Add(Scalar, Scalar) Scalar
+	Sub(Scalar, Scalar) Scalar
+	Mul(Scalar, Scalar) Scalar
 	Neg(Scalar) Scalar
 	Inv(Scalar) Scalar
 	encoding.BinaryMarshaler
@@ -58,15 +58,15 @@ type Scalar interface {
 
 // Randomizer allows to get random group elements and scalars.
 type Randomizer interface {
-	RndElt(io.Reader) Element
-	RndScl(io.Reader) Scalar
+	RandomElement(io.Reader) Element
+	RandomScalar(io.Reader) Scalar
 }
 
 // Hasher allows to hash byte strings into group elements and scalars.
 type Hasher interface {
-	Encode([]byte) Element
-	Hash([]byte) Element
-	ScHash([]byte) Scalar
+	EncodeToElement([]byte) Element
+	HashToElement([]byte) Element
+	HashToScalar([]byte) Scalar
 }
 
 var (

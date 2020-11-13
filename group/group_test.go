@@ -33,7 +33,7 @@ func TestGroup(t *testing.T) {
 func testAdd(t *testing.T, testTimes int, g group.Group, r group.Randomizer) {
 	Q := g.NewElement()
 	for i := 0; i < testTimes; i++ {
-		P := r.RndElt(rand.Reader)
+		P := r.RandomElement(rand.Reader)
 
 		got := Q.Dbl(P).Dbl(Q).Dbl(Q).Dbl(Q) // Q = 16P
 
@@ -51,7 +51,7 @@ func testAdd(t *testing.T, testTimes int, g group.Group, r group.Randomizer) {
 func testNeg(t *testing.T, testTimes int, g group.Group, r group.Randomizer) {
 	Q := g.NewElement()
 	for i := 0; i < testTimes; i++ {
-		P := r.RndElt(rand.Reader)
+		P := r.RandomElement(rand.Reader)
 		Q.Neg(P)
 		Q.Add(Q, P)
 		got := Q.IsIdentity()
@@ -66,8 +66,8 @@ func testMul(t *testing.T, testTimes int, g group.Group, r group.Randomizer) {
 	Q := g.NewElement()
 	kInv := g.NewScalar()
 	for i := 0; i < testTimes; i++ {
-		P := r.RndElt(rand.Reader)
-		k := r.RndScl(rand.Reader)
+		P := r.RandomElement(rand.Reader)
+		k := r.RandomScalar(rand.Reader)
 		kInv.Inv(k)
 
 		Q.Mul(P, k)
@@ -86,7 +86,7 @@ func testMulGen(t *testing.T, testTimes int, g group.Group, r group.Randomizer) 
 	P := g.NewElement()
 	Q := g.NewElement()
 	for i := 0; i < testTimes; i++ {
-		k := r.RndScl(rand.Reader)
+		k := r.RandomScalar(rand.Reader)
 
 		P.Mul(G, k)
 		Q.MulGen(k)
@@ -103,7 +103,7 @@ func testOrder(t *testing.T, testTimes int, g group.Group, r group.Randomizer) {
 	Q := g.NewElement()
 	order := g.Order()
 	for i := 0; i < testTimes; i++ {
-		P := r.RndElt(rand.Reader)
+		P := r.RandomElement(rand.Reader)
 
 		Q.Mul(P, order)
 		got := Q.IsIdentity()
@@ -134,7 +134,7 @@ func testMarshal(t *testing.T, testTimes int, g group.Group, r group.Randomizer)
 	got1 := g.NewElement()
 	got2 := g.NewElement()
 	for i := 0; i < testTimes; i++ {
-		x := r.RndElt(rand.Reader)
+		x := r.RandomElement(rand.Reader)
 		enc1, _ := x.MarshalBinary()
 		enc2, _ := x.MarshalBinaryCompress()
 
@@ -155,8 +155,8 @@ func testScalar(t *testing.T, testTimes int, g group.Group, r group.Randomizer) 
 	e := g.NewScalar()
 	f := g.NewScalar()
 	for i := 0; i < testTimes; i++ {
-		a := r.RndScl(rand.Reader)
-		b := r.RndScl(rand.Reader)
+		a := r.RandomScalar(rand.Reader)
+		b := r.RandomScalar(rand.Reader)
 		c.Add(a, b)
 		d.Sub(a, b)
 		e.Mul(c, d)
@@ -180,9 +180,9 @@ func BenchmarkElement(b *testing.B) {
 		group.P521,
 	} {
 		r := g.Random()
-		x := r.RndElt(rand.Reader)
-		y := r.RndElt(rand.Reader)
-		n := r.RndScl(rand.Reader)
+		x := r.RandomElement(rand.Reader)
+		y := r.RandomElement(rand.Reader)
+		n := r.RandomScalar(rand.Reader)
 		name := g.(fmt.Stringer).String()
 		b.Run(name+"/Add", func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
@@ -214,8 +214,8 @@ func BenchmarkScalar(b *testing.B) {
 		group.P521,
 	} {
 		r := g.Random()
-		x := r.RndScl(rand.Reader)
-		y := r.RndScl(rand.Reader)
+		x := r.RandomScalar(rand.Reader)
+		y := r.RandomScalar(rand.Reader)
 		name := g.(fmt.Stringer).String()
 		b.Run(name+"/Add", func(b *testing.B) {
 			for i := 0; i < b.N; i++ {

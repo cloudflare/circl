@@ -223,38 +223,38 @@ type wRnd struct {
 	Hasher
 }
 
-func (r wRnd) RndElt(rd io.Reader) Element {
+func (r wRnd) RandomElement(rd io.Reader) Element {
 	b := make([]byte, (r.Params().BitSize+7)/8)
 	_, _ = io.ReadFull(rd, b)
-	return r.Hash(b)
+	return r.HashToElement(b)
 }
-func (r wRnd) RndScl(rd io.Reader) Scalar {
+func (r wRnd) RandomScalar(rd io.Reader) Scalar {
 	b := make([]byte, (r.Params().BitSize+7)/8)
 	_, _ = io.ReadFull(rd, b)
-	return r.ScHash(b)
+	return r.HashToScalar(b)
 }
 
 type wHash struct {
 	sswu3mod4
-	elt GFHasher
-	scl GFHasher
+	elt FieldHasher
+	scl FieldHasher
 }
 
-func (h wHash) Encode(b []byte) Element {
+func (h wHash) EncodeToElement(b []byte) Element {
 	var u [1]big.Int
-	h.elt.GFHash(u[:], b)
+	h.elt.HashToField(u[:], b)
 	return h.Map(&u[0])
 }
-func (h wHash) Hash(b []byte) Element {
+func (h wHash) HashToElement(b []byte) Element {
 	var u [2]big.Int
-	h.elt.GFHash(u[:], b)
+	h.elt.HashToField(u[:], b)
 	Q0 := h.Map(&u[0])
 	Q1 := h.Map(&u[1])
 	return Q0.Add(Q0, Q1)
 }
-func (h wHash) ScHash(b []byte) Scalar {
+func (h wHash) HashToScalar(b []byte) Scalar {
 	var u [1]big.Int
-	h.scl.GFHash(u[:], b)
+	h.scl.HashToField(u[:], b)
 	s := h.NewScalar().(*wScl)
 	s.fromBig(&u[0])
 	return s

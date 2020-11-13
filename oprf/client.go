@@ -36,7 +36,7 @@ func (c *Client) Request(inputs [][]byte) (*ClientRequest, error) {
 	rnd := c.suite.Group.Random()
 	blinds := make([]Blind, len(inputs))
 	for i := range inputs {
-		blinds[i] = rnd.RndScl(rand.Reader)
+		blinds[i] = rnd.RandomScalar(rand.Reader)
 	}
 
 	h2g := c.suite.Group.Hashes(c.getDST(hashToGroupDST))
@@ -47,7 +47,7 @@ func (c *Client) blind(h2g group.Hasher, inputs [][]byte, blinds []Blind) (*Clie
 	var err error
 	blindedElements := make([]Blinded, len(inputs))
 	for i := range inputs {
-		p := h2g.Hash(inputs[i])
+		p := h2g.HashToElement(inputs[i])
 		blindedElements[i], err = c.scalarMult(p, blinds[i])
 		if err != nil {
 			return nil, err
@@ -139,7 +139,7 @@ func (c *Client) verifyProof(blinds []Blinded, e *Evaluation) bool {
 	return gotC.IsEqual(cc)
 }
 
-func (c *Client) unblind(e []Serialized, blinds []Blind) ([][]byte, error) {
+func (c *Client) unblind(e []SerializedElement, blinds []Blind) ([][]byte, error) {
 	unblindedElements := make([][]byte, len(e))
 	p := c.Group.NewElement()
 	invBlind := c.Group.NewScalar()
