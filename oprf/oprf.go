@@ -61,8 +61,7 @@ type SerializedElement = []byte
 type Blinded = []byte
 
 type Proof struct {
-	PublicKey SerializedElement
-	C, S      []byte
+	C, S []byte
 }
 
 type Evaluation struct {
@@ -93,8 +92,6 @@ func suiteFromID(id SuiteID, m Mode) (*suite, error) {
 	}
 }
 
-func (s *suite) GetGroup() group.Group { return s.Group }
-
 func (s *suite) getDST(name string) []byte {
 	return append(append(append([]byte{},
 		[]byte(version)...),
@@ -102,12 +99,9 @@ func (s *suite) getDST(name string) []byte {
 		[]byte{s.Mode, 0, byte(s.SuiteID)}...)
 }
 
-func (s *suite) generateKeyPair() *KeyPair {
+func (s *suite) generateKey() *PrivateKey {
 	privateKey := s.Group.RandomScalar(rand.Reader)
-	publicKey := s.NewElement()
-	publicKey.MulGen(privateKey)
-
-	return &KeyPair{s.SuiteID, publicKey, privateKey}
+	return &PrivateKey{s.SuiteID, privateKey}
 }
 
 func (s *suite) scalarMult(e group.Element, k group.Scalar) ([]byte, error) {

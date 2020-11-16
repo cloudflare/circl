@@ -25,7 +25,8 @@ func NewClient(id SuiteID, m Mode) (*Client, error) {
 	return &Client{*suite}, nil
 }
 
-// Request generates a token and its blinded version.
+// Request generates a request for server passing an array of inputs to be
+// evaluated by server.
 func (c *Client) Request(inputs [][]byte) (*ClientRequest, error) {
 	if len(inputs) == 0 {
 		return nil, errors.New("few inputs")
@@ -53,15 +54,19 @@ func (c *Client) blind(inputs [][]byte, blinds []Blind) (*ClientRequest, error) 
 }
 
 // Finalize computes the signed token from the server Evaluation and returns
-// the output of the OPRF protocol.
-func (c *Client) Finalize(r *ClientRequest, e *Evaluation, info []byte) ([][]byte, error) {
+// the output of the OPRF protocol. The function uses server's public key
+// to verify the proof in verifiable mode.
+func (c *Client) Finalize(r *ClientRequest, e *Evaluation, info []byte, pkS *PublicKey) ([][]byte, error) {
 	l := len(r.blinds)
 	if len(r.BlindedElements) != l || len(e.Elements) != l {
 		return nil, errors.New("mismatch number of elements")
 	}
 
 	if c.Mode == VerifiableMode {
-		if !c.verifyProof(r.BlindedElements, e) {
+		if pkS == nil {
+			return nil, errors.New("no public key provided")
+		}
+		if !c.verifyProof(r.BlindedElements, e, pkS) {
 			return nil, errors.New("invalid proof")
 		}
 	}
@@ -77,8 +82,11 @@ func (c *Client) Finalize(r *ClientRequest, e *Evaluation, info []byte) ([][]byt
 	return outputs, nil
 }
 
-func (c *Client) verifyProof(blinds []Blinded, e *Evaluation) bool {
-	pkSm := e.Proof.PublicKey
+func (c *Client) verifyProof(blinds []Blinded, e *Evaluation, pkS *PublicKey) bool {
+	pkSm, err := pkS.Serialize()
+	if err != nil {
+		return false
+	}
 	a0, a1, err := c.computeComposites(pkSm, blinds, e.Elements, nil)
 	if err != nil {
 		return false
@@ -108,12 +116,7 @@ func (c *Client) verifyProof(blinds []Blinded, e *Evaluation) bool {
 	if err != nil {
 		return false
 	}
-	pkS := c.suite.Group.NewElement()
-	err = pkS.UnmarshalBinary(pkSm)
-	if err != nil {
-		return false
-	}
-	cP.Mul(pkS, cc)
+	cP.Mul(pkS.Element, cc)
 	sG.Add(sG, cP)
 	a2, err := sG.MarshalBinary()
 	if err != nil {

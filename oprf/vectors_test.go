@@ -68,19 +68,19 @@ func readFile(t *testing.T, fileName string) []vector {
 }
 
 func (v *vector) SetUpParties(t *testing.T) (*Server, *Client) {
-	privateKey := toBytes(t, v.SkSm, "private key")
+	skSm := toBytes(t, v.SkSm, "private key")
 
-	keyPair := new(KeyPair)
-	err := keyPair.Deserialize(v.ID, privateKey)
+	privateKey := new(PrivateKey)
+	err := privateKey.Deserialize(v.ID, skSm)
 	test.CheckNoErr(t, err, "invalid private key")
 
-	srv, err := NewServerWithKeyPair(v.ID, v.Mode, *keyPair)
+	server, err := NewServerWithKey(v.ID, v.Mode, privateKey)
 	test.CheckNoErr(t, err, "invalid setup of server")
 
 	client, err := NewClient(v.ID, v.Mode)
 	test.CheckNoErr(t, err, "invalid setup of client")
 
-	return srv, client
+	return server, client
 }
 
 func (v *vector) compareLists(t *testing.T, got, want [][]byte) {
@@ -93,14 +93,22 @@ func (v *vector) compareLists(t *testing.T, got, want [][]byte) {
 
 func (v *vector) test(t *testing.T) {
 	server, client := v.SetUpParties(t)
-	gg := client.GetGroup()
+
+	var publicKey *PublicKey
+	if v.Mode == VerifiableMode {
+		pkSm := toBytes(t, v.PkSm, "public key")
+		publicKey = new(PublicKey)
+		err := publicKey.Deserialize(v.ID, pkSm)
+		test.CheckNoErr(t, err, "invalid public key")
+	}
 
 	for i, vi := range v.Vectors {
 		inputs := toListBytes(t, vi.Input, "input")
 		blindsBytes := toListBytes(t, vi.Blind, "blind")
+
 		blinds := make([]Blind, len(blindsBytes))
 		for j := range blindsBytes {
-			blinds[j] = gg.NewScalar()
+			blinds[j] = client.suite.Group.NewScalar()
 			err := blinds[j].UnmarshalBinary(blindsBytes[j])
 			test.CheckNoErr(t, err, "invalid blind")
 		}
@@ -127,7 +135,7 @@ func (v *vector) test(t *testing.T) {
 		)
 
 		info := toBytes(t, vi.Info, "info")
-		outputs, err := client.Finalize(clientReq, eval, info)
+		outputs, err := client.Finalize(clientReq, eval, info, publicKey)
 		test.CheckNoErr(t, err, "invalid finalize")
 		expectedOutputs := toListBytes(t, vi.Output, "output")
 		v.compareLists(t,

@@ -9,15 +9,15 @@ import (
 // Server is a representation of a Server during protocol execution.
 type Server struct {
 	suite
-	Kp KeyPair
+	privateKey PrivateKey
 }
 
-// NewServerWithKeyPair creates a new instantiation of a Server. It can create
+// NewServerWithKey creates a new instantiation of a Server. It can create
 // a server with existing keys or use pre-generated keys.
-func NewServerWithKeyPair(id SuiteID, m Mode, kp KeyPair) (*Server, error) {
+func NewServerWithKey(id SuiteID, m Mode, skS *PrivateKey) (*Server, error) {
 	// Verifies keypair corresponds to SuiteID.
-	if id != kp.id {
-		return nil, ErrUnsupportedSuite
+	if id != skS.SuiteID {
+		return nil, errors.New("keys don't match with suite")
 	}
 
 	suite, err := suiteFromID(id, m)
@@ -25,7 +25,7 @@ func NewServerWithKeyPair(id SuiteID, m Mode, kp KeyPair) (*Server, error) {
 		return nil, err
 	}
 
-	return &Server{*suite, kp}, nil
+	return &Server{*suite, *skS}, nil
 }
 
 // NewServer creates a new instantiation of a Server.
@@ -34,12 +34,14 @@ func NewServer(id SuiteID, m Mode) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	keyPair := suite.generateKeyPair()
+	skS := suite.generateKey()
 
-	return &Server{*suite, *keyPair}, nil
+	return &Server{*suite, *skS}, nil
 }
 
-// Evaluate blindly signs a client token.
+func (s *Server) GetPublicKey() *PublicKey { return s.privateKey.Public() }
+
+// Evaluate evaluates a set of blinded inputs from the client.
 func (s *Server) Evaluate(blindedElements []Blinded) (*Evaluation, error) {
 	l := len(blindedElements)
 	if l == 0 {
@@ -55,8 +57,7 @@ func (s *Server) Evaluate(blindedElements []Blinded) (*Evaluation, error) {
 		if err != nil {
 			return nil, err
 		}
-
-		eval[i], err = s.scalarMult(p, s.Kp.privateKey)
+		eval[i], err = s.scalarMult(p, s.privateKey.Scalar)
 		if err != nil {
 			return nil, err
 		}
@@ -77,7 +78,7 @@ func (s *Server) Evaluate(blindedElements []Blinded) (*Evaluation, error) {
 func (s *Server) FullEvaluate(input, info []byte) ([]byte, error) {
 	p := s.Group.HashToElement(input, s.getDST(hashToGroupDST))
 
-	ser, err := s.scalarMult(p, s.Kp.privateKey)
+	ser, err := s.scalarMult(p, s.privateKey.Scalar)
 	if err != nil {
 		return nil, err
 	}
@@ -95,12 +96,13 @@ func (s *Server) VerifyFinalize(input, info, output []byte) bool {
 }
 
 func (s *Server) generateProof(b []Blinded, eval []SerializedElement) (*Proof, error) {
-	pkSm, err := s.Kp.publicKey.MarshalBinary()
+	pkS := s.privateKey.Public()
+	pkSm, err := pkS.Serialize()
 	if err != nil {
 		return nil, err
 	}
 
-	a0, a1, err := s.computeComposites(pkSm, b, eval, s.Kp.privateKey)
+	a0, a1, err := s.computeComposites(pkSm, b, eval, s.privateKey.Scalar)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +129,7 @@ func (s *Server) generateProof(b []Blinded, eval []SerializedElement) (*Proof, e
 
 	cc := s.doChallenge([5][]byte{pkSm, a0, a1, a2, a3})
 	ss := s.suite.Group.NewScalar()
-	ss.Mul(cc, s.Kp.privateKey)
+	ss.Mul(cc, s.privateKey.Scalar)
 	ss.Sub(rr, ss)
 
 	serC, err := cc.MarshalBinary()
@@ -138,5 +140,5 @@ func (s *Server) generateProof(b []Blinded, eval []SerializedElement) (*Proof, e
 	if err != nil {
 		return nil, err
 	}
-	return &Proof{pkSm, serC, serS}, nil
+	return &Proof{serC, serS}, nil
 }

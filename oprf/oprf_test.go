@@ -28,10 +28,10 @@ func TestOPRF(t *testing.T) {
 }
 
 func testSerialization(t *testing.T, suite oprf.SuiteID, mode oprf.Mode) {
-	keyPair, err := oprf.GenerateKeyPair(suite)
+	privateKey, err := oprf.GenerateKey(suite)
 	test.CheckNoErr(t, err, "invalid key generation")
 
-	server, err := oprf.NewServerWithKeyPair(suite, mode, *keyPair)
+	server, err := oprf.NewServerWithKey(suite, mode, privateKey)
 	test.CheckNoErr(t, err, "invalid setup of server")
 
 	input := []byte("hello world")
@@ -39,14 +39,14 @@ func testSerialization(t *testing.T, suite oprf.SuiteID, mode oprf.Mode) {
 	outputA, err := server.FullEvaluate(input, info)
 	test.CheckNoErr(t, err, "wrong full evaluate")
 
-	encoded, err := keyPair.Serialize()
+	encoded, err := privateKey.Serialize()
 	test.CheckNoErr(t, err, "wrong serialize")
 
-	recoveredKeyPair := new(oprf.KeyPair)
-	err = recoveredKeyPair.Deserialize(suite, encoded)
+	recoveredPrivateKey := new(oprf.PrivateKey)
+	err = recoveredPrivateKey.Deserialize(suite, encoded)
 	test.CheckNoErr(t, err, "wrong deserialize")
 
-	recoveredServer, err := oprf.NewServerWithKeyPair(suite, mode, *recoveredKeyPair)
+	recoveredServer, err := oprf.NewServerWithKey(suite, mode, recoveredPrivateKey)
 	test.CheckNoErr(t, err, "invalid setup of server with key")
 
 	outputB, err := recoveredServer.FullEvaluate(input, info)
@@ -60,11 +60,11 @@ func testSerialization(t *testing.T, suite oprf.SuiteID, mode oprf.Mode) {
 }
 
 func testAPI(t *testing.T, suite oprf.SuiteID, mode oprf.Mode) {
-	srv, err := oprf.NewServer(suite, mode)
+	server, err := oprf.NewServer(suite, mode)
 	if err != nil {
 		t.Fatal("invalid setup of server: " + err.Error())
 	}
-	if srv == nil {
+	if server == nil {
 		t.Fatal("invalid setup of server: no server.")
 	}
 
@@ -82,7 +82,7 @@ func testAPI(t *testing.T, suite oprf.SuiteID, mode oprf.Mode) {
 		t.Fatal("invalid blinding of client: " + err.Error())
 	}
 
-	eval, err := srv.Evaluate(cr.BlindedElements)
+	eval, err := server.Evaluate(cr.BlindedElements)
 	if err != nil {
 		t.Fatal("invalid evaluation of server: " + err.Error())
 	}
@@ -91,7 +91,8 @@ func testAPI(t *testing.T, suite oprf.SuiteID, mode oprf.Mode) {
 	}
 
 	info := []byte("test information")
-	clientOutputs, err := client.Finalize(cr, eval, info)
+	pkS := server.GetPublicKey()
+	clientOutputs, err := client.Finalize(cr, eval, info, pkS)
 	if err != nil {
 		t.Fatal("invalid unblinding of client: " + err.Error())
 	}
@@ -101,12 +102,12 @@ func testAPI(t *testing.T, suite oprf.SuiteID, mode oprf.Mode) {
 	}
 
 	for i := range inputs {
-		valid := srv.VerifyFinalize(inputs[i], info, clientOutputs[i])
+		valid := server.VerifyFinalize(inputs[i], info, clientOutputs[i])
 		if !valid {
 			t.Fatal("Invalid verification from the server")
 		}
 
-		serverOutput, err := srv.FullEvaluate(inputs[i], info)
+		serverOutput, err := server.FullEvaluate(inputs[i], info)
 		if err != nil {
 			t.Fatal("FullEvaluate failed", err)
 		}
