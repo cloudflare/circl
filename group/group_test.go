@@ -11,29 +11,28 @@ import (
 )
 
 func TestGroup(t *testing.T) {
-	const testTimes = 1 << 8
+	const testTimes = 1 << 7
 	for _, g := range []group.Group{
 		group.P256,
 		group.P384,
 		group.P521,
 	} {
 		g := g
-		r := g.Random()
 		n := g.(fmt.Stringer).String()
-		t.Run(n+"/Add", func(tt *testing.T) { testAdd(tt, testTimes, g, r) })
-		t.Run(n+"/Neg", func(tt *testing.T) { testNeg(tt, testTimes, g, r) })
-		t.Run(n+"/Mul", func(tt *testing.T) { testMul(tt, testTimes, g, r) })
-		t.Run(n+"/MulGen", func(tt *testing.T) { testMulGen(tt, testTimes, g, r) })
-		t.Run(n+"/Order", func(tt *testing.T) { testOrder(tt, testTimes, g, r) })
-		t.Run(n+"/Marshal", func(tt *testing.T) { testMarshal(tt, testTimes, g, r) })
-		t.Run(n+"/Scalar", func(tt *testing.T) { testScalar(tt, testTimes, g, r) })
+		t.Run(n+"/Add", func(tt *testing.T) { testAdd(tt, testTimes, g) })
+		t.Run(n+"/Neg", func(tt *testing.T) { testNeg(tt, testTimes, g) })
+		t.Run(n+"/Mul", func(tt *testing.T) { testMul(tt, testTimes, g) })
+		t.Run(n+"/MulGen", func(tt *testing.T) { testMulGen(tt, testTimes, g) })
+		t.Run(n+"/Order", func(tt *testing.T) { testOrder(tt, testTimes, g) })
+		t.Run(n+"/Marshal", func(tt *testing.T) { testMarshal(tt, testTimes, g) })
+		t.Run(n+"/Scalar", func(tt *testing.T) { testScalar(tt, testTimes, g) })
 	}
 }
 
-func testAdd(t *testing.T, testTimes int, g group.Group, r group.Randomizer) {
+func testAdd(t *testing.T, testTimes int, g group.Group) {
 	Q := g.NewElement()
 	for i := 0; i < testTimes; i++ {
-		P := r.RandomElement(rand.Reader)
+		P := g.RandomElement(rand.Reader)
 
 		got := Q.Dbl(P).Dbl(Q).Dbl(Q).Dbl(Q) // Q = 16P
 
@@ -48,10 +47,10 @@ func testAdd(t *testing.T, testTimes int, g group.Group, r group.Randomizer) {
 	}
 }
 
-func testNeg(t *testing.T, testTimes int, g group.Group, r group.Randomizer) {
+func testNeg(t *testing.T, testTimes int, g group.Group) {
 	Q := g.NewElement()
 	for i := 0; i < testTimes; i++ {
-		P := r.RandomElement(rand.Reader)
+		P := g.RandomElement(rand.Reader)
 		Q.Neg(P)
 		Q.Add(Q, P)
 		got := Q.IsIdentity()
@@ -62,12 +61,12 @@ func testNeg(t *testing.T, testTimes int, g group.Group, r group.Randomizer) {
 	}
 }
 
-func testMul(t *testing.T, testTimes int, g group.Group, r group.Randomizer) {
+func testMul(t *testing.T, testTimes int, g group.Group) {
 	Q := g.NewElement()
 	kInv := g.NewScalar()
 	for i := 0; i < testTimes; i++ {
-		P := r.RandomElement(rand.Reader)
-		k := r.RandomScalar(rand.Reader)
+		P := g.RandomElement(rand.Reader)
+		k := g.RandomScalar(rand.Reader)
 		kInv.Inv(k)
 
 		Q.Mul(P, k)
@@ -81,12 +80,12 @@ func testMul(t *testing.T, testTimes int, g group.Group, r group.Randomizer) {
 	}
 }
 
-func testMulGen(t *testing.T, testTimes int, g group.Group, r group.Randomizer) {
+func testMulGen(t *testing.T, testTimes int, g group.Group) {
 	G := g.Generator()
 	P := g.NewElement()
 	Q := g.NewElement()
 	for i := 0; i < testTimes; i++ {
-		k := r.RandomScalar(rand.Reader)
+		k := g.RandomScalar(rand.Reader)
 
 		P.Mul(G, k)
 		Q.MulGen(k)
@@ -99,11 +98,11 @@ func testMulGen(t *testing.T, testTimes int, g group.Group, r group.Randomizer) 
 	}
 }
 
-func testOrder(t *testing.T, testTimes int, g group.Group, r group.Randomizer) {
+func testOrder(t *testing.T, testTimes int, g group.Group) {
 	Q := g.NewElement()
 	order := g.Order()
 	for i := 0; i < testTimes; i++ {
-		P := r.RandomElement(rand.Reader)
+		P := g.RandomElement(rand.Reader)
 
 		Q.Mul(P, order)
 		got := Q.IsIdentity()
@@ -114,7 +113,7 @@ func testOrder(t *testing.T, testTimes int, g group.Group, r group.Randomizer) {
 	}
 }
 
-func testMarshal(t *testing.T, testTimes int, g group.Group, r group.Randomizer) {
+func testMarshal(t *testing.T, testTimes int, g group.Group) {
 	I := g.Identity()
 	got, _ := I.MarshalBinary()
 	want := []byte{0}
@@ -134,7 +133,7 @@ func testMarshal(t *testing.T, testTimes int, g group.Group, r group.Randomizer)
 	got1 := g.NewElement()
 	got2 := g.NewElement()
 	for i := 0; i < testTimes; i++ {
-		x := r.RandomElement(rand.Reader)
+		x := g.RandomElement(rand.Reader)
 		enc1, _ := x.MarshalBinary()
 		enc2, _ := x.MarshalBinaryCompress()
 
@@ -149,14 +148,14 @@ func testMarshal(t *testing.T, testTimes int, g group.Group, r group.Randomizer)
 	}
 }
 
-func testScalar(t *testing.T, testTimes int, g group.Group, r group.Randomizer) {
+func testScalar(t *testing.T, testTimes int, g group.Group) {
 	c := g.NewScalar()
 	d := g.NewScalar()
 	e := g.NewScalar()
 	f := g.NewScalar()
 	for i := 0; i < testTimes; i++ {
-		a := r.RandomScalar(rand.Reader)
-		b := r.RandomScalar(rand.Reader)
+		a := g.RandomScalar(rand.Reader)
+		b := g.RandomScalar(rand.Reader)
 		c.Add(a, b)
 		d.Sub(a, b)
 		e.Mul(c, d)
@@ -179,10 +178,9 @@ func BenchmarkElement(b *testing.B) {
 		group.P384,
 		group.P521,
 	} {
-		r := g.Random()
-		x := r.RandomElement(rand.Reader)
-		y := r.RandomElement(rand.Reader)
-		n := r.RandomScalar(rand.Reader)
+		x := g.RandomElement(rand.Reader)
+		y := g.RandomElement(rand.Reader)
+		n := g.RandomScalar(rand.Reader)
 		name := g.(fmt.Stringer).String()
 		b.Run(name+"/Add", func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
@@ -213,9 +211,8 @@ func BenchmarkScalar(b *testing.B) {
 		group.P384,
 		group.P521,
 	} {
-		r := g.Random()
-		x := r.RandomScalar(rand.Reader)
-		y := r.RandomScalar(rand.Reader)
+		x := g.RandomScalar(rand.Reader)
+		y := g.RandomScalar(rand.Reader)
 		name := g.(fmt.Stringer).String()
 		b.Run(name+"/Add", func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
@@ -230,6 +227,27 @@ func BenchmarkScalar(b *testing.B) {
 		b.Run(name+"/Inv", func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				y.Inv(x)
+			}
+		})
+	}
+}
+
+func BenchmarkHash(b *testing.B) {
+	for _, g := range []group.Group{
+		group.P256,
+		group.P384,
+		group.P521,
+	} {
+		g := g
+		name := g.(fmt.Stringer).String()
+		b.Run(name+"/HashToElement", func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				g.HashToElement(nil, nil)
+			}
+		})
+		b.Run(name+"/HashToScalar", func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				g.HashToScalar(nil, nil)
 			}
 		})
 	}

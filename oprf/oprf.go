@@ -103,8 +103,7 @@ func (s *suite) getDST(name string) []byte {
 }
 
 func (s *suite) generateKeyPair() *KeyPair {
-	r := s.Random()
-	privateKey := r.RandomScalar(rand.Reader)
+	privateKey := s.Group.RandomScalar(rand.Reader)
 	publicKey := s.NewElement()
 	publicKey.MulGen(privateKey)
 
@@ -153,7 +152,6 @@ func mustWrite(h io.Writer, bytes []byte) {
 }
 
 func (s *suite) computeComposites(
-	h2g group.Hasher,
 	pkSm []byte,
 	b []Blinded,
 	eval []SerializedElement,
@@ -178,6 +176,7 @@ func (s *suite) computeComposites(
 	Z := s.Group.Identity()
 	Mi := s.Group.NewElement()
 	Zi := s.Group.NewElement()
+	h2gDST := s.getDST(hashToGroupDST)
 	for i := range b {
 		h2Input := []byte{}
 
@@ -197,7 +196,7 @@ func (s *suite) computeComposites(
 		binary.BigEndian.PutUint16(lenBuf, uint16(len(dst)))
 		h2Input = append(append(h2Input, lenBuf...), dst...)
 
-		di := h2g.HashToScalar(h2Input)
+		di := s.Group.HashToScalar(h2Input, h2gDST)
 		err := Mi.UnmarshalBinary(b[i])
 		if err != nil {
 			return nil, nil, err
@@ -231,7 +230,7 @@ func (s *suite) computeComposites(
 	return serM, serZ, nil
 }
 
-func (s *suite) doChallenge(h2g group.Hasher, a [5][]byte) group.Scalar {
+func (s *suite) doChallenge(a [5][]byte) group.Scalar {
 	h2Input := []byte{}
 	lenBuf := []byte{0, 0}
 
@@ -244,5 +243,5 @@ func (s *suite) doChallenge(h2g group.Hasher, a [5][]byte) group.Scalar {
 	binary.BigEndian.PutUint16(lenBuf, uint16(len(dst)))
 	h2Input = append(append(h2Input, lenBuf...), dst...)
 
-	return h2g.HashToScalar(h2Input)
+	return s.Group.HashToScalar(h2Input, s.getDST(hashToGroupDST))
 }

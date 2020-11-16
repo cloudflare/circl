@@ -21,8 +21,17 @@ func (g wG) NewScalar() Scalar   { return &wScl{g, nil} }
 func (g wG) Identity() Element   { return &wElt{g, new(big.Int), new(big.Int)} }
 func (g wG) Generator() Element  { return &wElt{g, g.Params().Gx, g.Params().Gy} }
 func (g wG) Order() Scalar       { s := &wScl{g, nil}; s.fromBig(g.Params().N); return s }
-func (g wG) Random() Randomizer  { return wRnd{g, g.Hashes(nil)} }
-func (g wG) Hashes(dst []byte) Hasher {
+func (g wG) RandomElement(rd io.Reader) Element {
+	b := make([]byte, (g.Params().BitSize+7)/8)
+	_, _ = io.ReadFull(rd, b)
+	return g.HashToElement(b, nil)
+}
+func (g wG) RandomScalar(rd io.Reader) Scalar {
+	b := make([]byte, (g.Params().BitSize+7)/8)
+	_, _ = io.ReadFull(rd, b)
+	return g.HashToScalar(b, nil)
+}
+func (g wG) getHasher(dst []byte) wHash {
 	var Z, C2 big.Int
 	var h crypto.Hash
 	var L uint
@@ -218,44 +227,26 @@ func (s *wScl) UnmarshalBinary(b []byte) error {
 	return nil
 }
 
-type wRnd struct {
-	wG
-	Hasher
-}
-
-func (r wRnd) RandomElement(rd io.Reader) Element {
-	b := make([]byte, (r.Params().BitSize+7)/8)
-	_, _ = io.ReadFull(rd, b)
-	return r.HashToElement(b)
-}
-func (r wRnd) RandomScalar(rd io.Reader) Scalar {
-	b := make([]byte, (r.Params().BitSize+7)/8)
-	_, _ = io.ReadFull(rd, b)
-	return r.HashToScalar(b)
-}
-
 type wHash struct {
 	sswu3mod4
 	elt FieldHasher
 	scl FieldHasher
 }
 
-func (h wHash) EncodeToElement(b []byte) Element {
-	var u [1]big.Int
-	h.elt.HashToField(u[:], b)
-	return h.Map(&u[0])
-}
-func (h wHash) HashToElement(b []byte) Element {
+func (g wG) HashToElement(b, dst []byte) Element {
 	var u [2]big.Int
+	h := g.getHasher(dst)
 	h.elt.HashToField(u[:], b)
 	Q0 := h.Map(&u[0])
 	Q1 := h.Map(&u[1])
 	return Q0.Add(Q0, Q1)
 }
-func (h wHash) HashToScalar(b []byte) Scalar {
+
+func (g wG) HashToScalar(b, dst []byte) Scalar {
 	var u [1]big.Int
+	h := g.getHasher(dst)
 	h.scl.HashToField(u[:], b)
-	s := h.NewScalar().(*wScl)
+	s := g.NewScalar().(*wScl)
 	s.fromBig(&u[0])
 	return s
 }

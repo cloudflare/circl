@@ -3,8 +3,6 @@ package oprf
 import (
 	"crypto/rand"
 	"errors"
-
-	"github.com/cloudflare/circl/group"
 )
 
 // Client is a representation of a Client during protocol execution.
@@ -33,21 +31,19 @@ func (c *Client) Request(inputs [][]byte) (*ClientRequest, error) {
 		return nil, errors.New("few inputs")
 	}
 
-	rnd := c.suite.Group.Random()
 	blinds := make([]Blind, len(inputs))
 	for i := range inputs {
-		blinds[i] = rnd.RandomScalar(rand.Reader)
+		blinds[i] = c.suite.Group.RandomScalar(rand.Reader)
 	}
 
-	h2g := c.suite.Group.Hashes(c.getDST(hashToGroupDST))
-	return c.blind(h2g, inputs, blinds)
+	return c.blind(inputs, blinds)
 }
 
-func (c *Client) blind(h2g group.Hasher, inputs [][]byte, blinds []Blind) (*ClientRequest, error) {
+func (c *Client) blind(inputs [][]byte, blinds []Blind) (*ClientRequest, error) {
 	var err error
 	blindedElements := make([]Blinded, len(inputs))
 	for i := range inputs {
-		p := h2g.HashToElement(inputs[i])
+		p := c.suite.Group.HashToElement(inputs[i], c.suite.getDST(hashToGroupDST))
 		blindedElements[i], err = c.scalarMult(p, blinds[i])
 		if err != nil {
 			return nil, err
@@ -82,9 +78,8 @@ func (c *Client) Finalize(r *ClientRequest, e *Evaluation, info []byte) ([][]byt
 }
 
 func (c *Client) verifyProof(blinds []Blinded, e *Evaluation) bool {
-	h2g := c.suite.Group.Hashes(c.getDST(hashToGroupDST))
 	pkSm := e.Proof.PublicKey
-	a0, a1, err := c.computeComposites(h2g, pkSm, blinds, e.Elements, nil)
+	a0, a1, err := c.computeComposites(pkSm, blinds, e.Elements, nil)
 	if err != nil {
 		return false
 	}
@@ -135,7 +130,7 @@ func (c *Client) verifyProof(blinds []Blinded, e *Evaluation) bool {
 		return false
 	}
 
-	gotC := c.doChallenge(h2g, [5][]byte{pkSm, a0, a1, a2, a3})
+	gotC := c.doChallenge([5][]byte{pkSm, a0, a1, a2, a3})
 	return gotC.IsEqual(cc)
 }
 

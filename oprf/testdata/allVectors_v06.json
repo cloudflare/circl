@@ -1,8 +1,5 @@
 [
   {
-    "Ne": 32,
-    "Nh": 64,
-    "Ns": 32,
     "hash": "SHA512",
     "mode": 0,
     "skSm": "c604c785ada70d77a5256ae21767de8c3304115237d262134f5e46e512cf8e03",
@@ -32,9 +29,6 @@
     ]
   },
   {
-    "Ne": 32,
-    "Nh": 64,
-    "Ns": 32,
     "hash": "SHA512",
     "mode": 1,
     "pkSm": "eee7a9c7fec3460c27c160c683d46a4fd18f537c055c3998748b8e4cd8f29b3e",
@@ -87,9 +81,6 @@
     ]
   },
   {
-    "Ne": 56,
-    "Nh": 64,
-    "Ns": 56,
     "hash": "SHA512",
     "mode": 0,
     "skSm": "c4d5a15f0d5ffc354e340454ec779f575e4573a3886ab5e57e4da2985cea9e32f6d95539ce2c7189e1bd7462a21723e92e2e9955ef20a92c",
@@ -119,9 +110,6 @@
     ]
   },
   {
-    "Ne": 56,
-    "Nh": 64,
-    "Ns": 56,
     "hash": "SHA512",
     "mode": 1,
     "pkSm": "3ae16a2f8c506ebef74fafa9190e19447b07772e3077300b758411b941d8d61f6b1840b35a73578f6aeb09e1a302a9d68f1db1cb34e90014",
@@ -174,9 +162,6 @@
     ]
   },
   {
-    "Ne": 33,
-    "Nh": 32,
-    "Ns": 32,
     "hash": "SHA256",
     "mode": 0,
     "skSm": "2902c13bdc9993d3717bda68fc080b9802ae4effd5dc972d9f9fb3bbbf106ade",
@@ -206,9 +191,6 @@
     ]
   },
   {
-    "Ne": 33,
-    "Nh": 32,
-    "Ns": 32,
     "hash": "SHA256",
     "mode": 1,
     "pkSm": "03c335d2eebd0ccbd5b8a145c9c2ee7452f401dcd4301ab138b0b56fc1c72769cb",
@@ -261,9 +243,6 @@
     ]
   },
   {
-    "Ne": 49,
-    "Nh": 64,
-    "Ns": 48,
     "hash": "SHA512",
     "mode": 0,
     "skSm": "06cc9faa9dc7ab251997738a3a232f352c2059c25684e6ccea420f8d0c793f9f51171628f1d28bb7402ca4aea6465e27",
@@ -293,9 +272,6 @@
     ]
   },
   {
-    "Ne": 49,
-    "Nh": 64,
-    "Ns": 48,
     "hash": "SHA512",
     "mode": 1,
     "pkSm": "023112a158597bf66974ec2391209063aa489fc1e98fec51be3a81aeeac03b94dea1deee98515dc73c060a1432913d1a5d",
@@ -348,9 +324,6 @@
     ]
   },
   {
-    "Ne": 67,
-    "Nh": 64,
-    "Ns": 66,
     "hash": "SHA512",
     "mode": 0,
     "skSm": "01b68fade716a6a82d600444b26de335ba38cf092d80c7cf2cb55388d899515238094c800bdd9c65f71780ba85f5ae9b4703e17e559ca3ccd1944f9a70536c175f12",
@@ -380,9 +353,6 @@
     ]
   },
   {
-    "Ne": 67,
-    "Nh": 64,
-    "Ns": 66,
     "hash": "SHA512",
     "mode": 1,
     "pkSm": "02010dc16a63cb3e75fb306038b8364f55a1fff4e168538c4667cb1511260ecae34fe14916ca1d19a0f2e208f537ae634751a9b85d80b33e9c02563de40c86d1347679",

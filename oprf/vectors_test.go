@@ -94,7 +94,6 @@ func (v *vector) compareLists(t *testing.T, got, want [][]byte) {
 func (v *vector) test(t *testing.T) {
 	server, client := v.SetUpParties(t)
 	gg := client.GetGroup()
-	h2g := gg.Hashes(client.getDST(hashToGroupDST))
 
 	for i, vi := range v.Vectors {
 		inputs := toListBytes(t, vi.Input, "input")
@@ -106,7 +105,7 @@ func (v *vector) test(t *testing.T) {
 			test.CheckNoErr(t, err, "invalid blind")
 		}
 
-		clientReq, err := client.blind(h2g, inputs, blinds)
+		clientReq, err := client.blind(inputs, blinds)
 		test.CheckNoErr(t, err, "invalid client request")
 		v.compareLists(t,
 			clientReq.BlindedElements,

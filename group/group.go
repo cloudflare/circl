@@ -26,8 +26,10 @@ type Group interface {
 	Identity() Element
 	Generator() Element
 	Order() Scalar
-	Hashes([]byte) Hasher
-	Random() Randomizer
+	RandomElement(io.Reader) Element
+	RandomScalar(io.Reader) Scalar
+	HashToElement(data, dst []byte) Element
+	HashToScalar(data, dst []byte) Scalar
 }
 
 // Element represents an abstract element of a prime-order group.
@@ -54,19 +56,6 @@ type Scalar interface {
 	Inv(Scalar) Scalar
 	encoding.BinaryMarshaler
 	encoding.BinaryUnmarshaler
-}
-
-// Randomizer allows to get random group elements and scalars.
-type Randomizer interface {
-	RandomElement(io.Reader) Element
-	RandomScalar(io.Reader) Scalar
-}
-
-// Hasher allows to hash byte strings into group elements and scalars.
-type Hasher interface {
-	EncodeToElement([]byte) Element
-	HashToElement([]byte) Element
-	HashToScalar([]byte) Scalar
 }
 
 var (

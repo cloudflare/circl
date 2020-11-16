@@ -75,9 +75,7 @@ func (s *Server) Evaluate(blindedElements []Blinded) (*Evaluation, error) {
 
 // FullEvaluate performs a full evaluation at the server side.
 func (s *Server) FullEvaluate(input, info []byte) ([]byte, error) {
-	dst := s.getDST(hashToGroupDST)
-	H := s.Group.Hashes(dst)
-	p := H.HashToElement(input)
+	p := s.Group.HashToElement(input, s.getDST(hashToGroupDST))
 
 	ser, err := s.scalarMult(p, s.Kp.privateKey)
 	if err != nil {
@@ -102,10 +100,7 @@ func (s *Server) generateProof(b []Blinded, eval []SerializedElement) (*Proof, e
 		return nil, err
 	}
 
-	h2g := s.Group.Hashes(s.getDST(hashToGroupDST))
-	rnd := s.suite.Group.Random()
-
-	a0, a1, err := s.computeComposites(h2g, pkSm, b, eval, s.Kp.privateKey)
+	a0, a1, err := s.computeComposites(pkSm, b, eval, s.Kp.privateKey)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +109,7 @@ func (s *Server) generateProof(b []Blinded, eval []SerializedElement) (*Proof, e
 	if err != nil {
 		return nil, err
 	}
-	rr := rnd.RandomScalar(rand.Reader)
+	rr := s.suite.Group.RandomScalar(rand.Reader)
 
 	a2e := s.Group.NewElement()
 	a2e.MulGen(rr)
@@ -130,7 +125,7 @@ func (s *Server) generateProof(b []Blinded, eval []SerializedElement) (*Proof, e
 		return nil, err
 	}
 
-	cc := s.doChallenge(h2g, [5][]byte{pkSm, a0, a1, a2, a3})
+	cc := s.doChallenge([5][]byte{pkSm, a0, a1, a2, a3})
 	ss := s.suite.Group.NewScalar()
 	ss.Mul(cc, s.Kp.privateKey)
 	ss.Sub(rr, ss)
