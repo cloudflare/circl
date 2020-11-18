@@ -30,8 +30,8 @@ func init() {
 }
 
 // New returns an authenticaed KEM based on a short Weierstrass curve and HKDF
-// as the key derivation function. Optionally, a domain-separation tag can be provided.
-func New(id KemID, dst []byte) kem.AuthScheme {
+// as the key derivation function.
+func New(id KemID) kem.AuthScheme {
 	var c elliptic.Curve
 	var h crypto.Hash
 	switch id {
@@ -44,5 +44,5 @@ func New(id KemID, dst []byte) kem.AuthScheme {
 	default:
 		panic("invalid kemid")
 	}
-	return short{c.Params(), id, h, dst}
+	return short{c.Params(), id, h}
 }

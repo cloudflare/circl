@@ -10,11 +10,12 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
+const versionLabel = "HPKE-06"
+
 type xkem struct {
 	id   KemID
 	size int
 	h    crypto.Hash
-	dst  []byte
 }
 
 func (x xkem) Name() string               { return names[x.id] }
@@ -26,7 +27,7 @@ func (x xkem) PublicKeySize() int         { return x.size }
 func (x xkem) EncapsulationSeedSize() int { return x.size }
 
 func (x xkem) getSuiteID() (sid [5]byte) {
-	copy(sid[:], "KEM")
+	sid[0], sid[1], sid[2] = 'K', 'E', 'M'
 	binary.BigEndian.PutUint16(sid[3:5], x.id)
 	return
 }
@@ -56,8 +57,8 @@ func (x xkem) extractExpand(dh, kemCtx []byte) []byte {
 func (x xkem) labeledExtract(salt, label, info []byte) []byte {
 	suiteID := x.getSuiteID()
 	labeledIKM := append(append(append(append(
-		make([]byte, 0, len(x.dst)+len(suiteID)+len(label)+len(info)),
-		x.dst...),
+		make([]byte, 0, len(versionLabel)+len(suiteID)+len(label)+len(info)),
+		versionLabel...),
 		suiteID[:]...),
 		label...),
 		info...)
@@ -66,10 +67,10 @@ func (x xkem) labeledExtract(salt, label, info []byte) []byte {
 
 func (x xkem) labeledExpand(prk, label, info []byte, l uint16) []byte {
 	suiteID := x.getSuiteID()
-	labeledInfo := make([]byte, 2, 2+len(x.dst)+len(suiteID)+len(label)+len(info))
+	labeledInfo := make([]byte, 2, 2+len(versionLabel)+len(suiteID)+len(label)+len(info))
 	binary.BigEndian.PutUint16(labeledInfo[0:2], l)
 	labeledInfo = append(append(append(append(labeledInfo,
-		x.dst...),
+		versionLabel...),
 		suiteID[:]...),
 		label...),
 		info...)

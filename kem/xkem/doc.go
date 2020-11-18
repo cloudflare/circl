@@ -3,8 +3,8 @@ package xkem
 
 import (
 	"crypto"
-	_ "crypto/sha256" // linking packages
-	_ "crypto/sha512" // linking packages
+	_ "crypto/sha256" // linking sha256 packages.
+	_ "crypto/sha512" // linking sha512 packages.
 
 	"github.com/cloudflare/circl/dh/x25519"
 	"github.com/cloudflare/circl/dh/x448"
@@ -28,8 +28,8 @@ func init() {
 }
 
 // New returns an authenticaed KEM based on X25519 or X448 and using HKDF
-// as key derivation function. Optionally, a domain-separation tag can be provided.
-func New(id KemID, dst []byte) kem.AuthScheme {
+// as the key derivation function.
+func New(id KemID) kem.AuthScheme {
 	var h crypto.Hash
 	var s int
 	switch id {
@@ -38,7 +38,7 @@ func New(id KemID, dst []byte) kem.AuthScheme {
 	case KemX448Sha512:
 		s, h = x448.Size, crypto.SHA512
 	default:
-		panic("wrong kemID")
+		panic("invalid kemid")
 	}
-	return xkem{id, s, h, dst}
+	return xkem{id, s, h}
 }

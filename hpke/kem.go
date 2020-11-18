@@ -100,9 +100,9 @@ func (s Suite) getAuthKem() (kem.AuthScheme, error) {
 func (s Suite) GetKem() (dhkem kem.Scheme, err error) {
 	switch s.KemID {
 	case KemP256Sha256, KemP384Sha384, KemP521Sha512:
-		dhkem = short.New(s.KemID, []byte(versionLabel))
+		dhkem = short.New(s.KemID)
 	case KemX25519Sha256, KemX448Sha512:
-		dhkem = xkem.New(s.KemID, []byte(versionLabel))
+		dhkem = xkem.New(s.KemID)
 	default:
 		err = errors.New("invalid kemid")
 	}
