@@ -21,13 +21,13 @@ func (s *Sender) encap(pk crypto.PublicKey) (ct []byte, ss []byte, err error) {
 	}
 
 	if s.seed == nil {
-		ct, ss = k.Encapsulate(pub)
+		ct, ss, err = k.Encapsulate(pub)
 	} else if len(s.seed) >= k.SeedSize() {
-		ct, ss = k.EncapsulateDeterministically(pub, s.seed)
+		ct, ss, err = k.EncapsulateDeterministically(pub, s.seed)
 	} else {
 		return nil, nil, kem.ErrSeedSize
 	}
-	return ct, ss, nil
+	return ct, ss, err
 }
 
 func (s *Sender) encapAuth(pk crypto.PublicKey, sk crypto.PrivateKey) (ct []byte, ss []byte, err error) {
@@ -46,11 +46,11 @@ func (s *Sender) encapAuth(pk crypto.PublicKey, sk crypto.PrivateKey) (ct []byte
 	}
 
 	if s.seed == nil {
-		ct, ss = k.AuthEncapsulate(pub, priv)
+		ct, ss, err = k.AuthEncapsulate(pub, priv)
 	} else {
-		ct, ss = k.AuthEncapsulateDeterministically(pub, s.seed, priv)
+		ct, ss, err = k.AuthEncapsulateDeterministically(pub, s.seed, priv)
 	}
-	return ct, ss, nil
+	return ct, ss, err
 }
 
 func (r *Receiver) decap(sk crypto.PrivateKey, ct []byte) ([]byte, error) {
@@ -64,8 +64,7 @@ func (r *Receiver) decap(sk crypto.PrivateKey, ct []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	ss := k.Decapsulate(priv, ct)
-	return ss, nil
+	return k.Decapsulate(priv, ct)
 }
 
 func (r *Receiver) decapAuth(sk crypto.PrivateKey, ct []byte, pk crypto.PublicKey) ([]byte, error) {
@@ -83,8 +82,7 @@ func (r *Receiver) decapAuth(sk crypto.PrivateKey, ct []byte, pk crypto.PublicKe
 		return nil, err
 	}
 
-	ss := k.AuthDecapsulate(priv, ct, pub)
-	return ss, nil
+	return k.AuthDecapsulate(priv, ct, pub)
 }
 
 func (s Suite) getAuthKem() (kem.AuthScheme, error) {
@@ -106,7 +104,7 @@ func (s Suite) GetKem() (dhkem kem.Scheme, err error) {
 	case KemX25519Sha256, KemX448Sha512:
 		dhkem = xkem.New(s.KemID, []byte(versionLabel))
 	default:
-		err = errors.New("wrong kemID")
+		err = errors.New("invalid kemid")
 	}
 	return
 }

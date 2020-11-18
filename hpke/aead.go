@@ -21,7 +21,7 @@ type openCxt struct{ *encdecCxt }
 func (s Suite) aeadCtx(key, baseNonce, exporter []byte) (*encdecCxt, error) {
 	l := aeadParams[s.AeadID].Nn
 	if len(baseNonce) < int(l) {
-		return nil, errors.New("wrong nonce size")
+		return nil, errors.New("invalid nonce size")
 	}
 
 	var aead cipher.AEAD
@@ -36,7 +36,7 @@ func (s Suite) aeadCtx(key, baseNonce, exporter []byte) (*encdecCxt, error) {
 	case AeadCC20P1305:
 		aead, err = chacha20poly1305.New(key)
 	default:
-		err = errors.New("wrong AeadID")
+		err = errors.New("invalid AeadID")
 	}
 	if err != nil {
 		return nil, err

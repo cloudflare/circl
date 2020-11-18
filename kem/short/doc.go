@@ -1,12 +1,13 @@
-// Package short implements KEM based on a short Weierstrass curves.
+// Package short implements a KEM based on short Weierstrass curves.
 package short
 
 import (
 	"crypto"
 	"crypto/elliptic"
-	_ "crypto/sha256" // linking packages
-	_ "crypto/sha512" // linking packages
+	_ "crypto/sha256" // linking sha256 package.
+	_ "crypto/sha512" // linking sha512 package.
 
+	"github.com/cloudflare/circl/ecc/p384"
 	"github.com/cloudflare/circl/kem"
 )
 
@@ -14,9 +15,9 @@ import (
 type KemID = uint16
 
 const (
-	KemP256Sha256 KemID = iota + 0x0010
-	KemP384Sha384
-	KemP521Sha512
+	KemP256Sha256 KemID = 0x0010
+	KemP384Sha384 KemID = 0x0011
+	KemP521Sha512 KemID = 0x0012
 )
 
 var names map[KemID]string
@@ -29,7 +30,7 @@ func init() {
 }
 
 // New returns an authenticaed KEM based on a short Weierstrass curve and HKDF
-// as key derivation function. Optionally, a domain-separation tag can be provided.
+// as the key derivation function. Optionally, a domain-separation tag can be provided.
 func New(id KemID, dst []byte) kem.AuthScheme {
 	var c elliptic.Curve
 	var h crypto.Hash
@@ -37,11 +38,11 @@ func New(id KemID, dst []byte) kem.AuthScheme {
 	case KemP256Sha256:
 		c, h = elliptic.P256(), crypto.SHA256
 	case KemP384Sha384:
-		c, h = elliptic.P384(), crypto.SHA384
+		c, h = p384.P384(), crypto.SHA384
 	case KemP521Sha512:
 		c, h = elliptic.P521(), crypto.SHA512
 	default:
-		panic("wrong kemID")
+		panic("invalid kemid")
 	}
 	return short{c.Params(), id, h, dst}
 }

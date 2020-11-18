@@ -81,12 +81,12 @@ type Scheme interface {
 	EncapsulationSeedSize() int
 }
 
-// AuthScheme includes extra methods for authenticated public-key encapsulation.
+// AuthScheme represents a KEM that supports authenticated key encapsulation.
 type AuthScheme interface {
 	Scheme
-	AuthEncapsulate(pkr PublicKey, sks PrivateKey) (ct []byte, ss []byte)
-	AuthDecapsulate(skr PrivateKey, ct []byte, pks PublicKey) []byte
-	AuthEncapsulateDeterministically(pk PublicKey, seed []byte, sks PrivateKey) (ct, ss []byte)
+	AuthEncapsulate(pkr PublicKey, sks PrivateKey) (ct []byte, ss []byte, err error)
+	AuthDecapsulate(skr PrivateKey, ct []byte, pks PublicKey) ([]byte, error)
+	AuthEncapsulateDeterministically(pk PublicKey, seed []byte, sks PrivateKey) (ct, ss []byte, err error)
 }
 
 var (
