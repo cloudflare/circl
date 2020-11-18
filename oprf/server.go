@@ -31,7 +31,7 @@ func newServer(id SuiteID, m Mode, skS *PrivateKey) (*Server, error) {
 	}
 	if skS == nil {
 		skS = suite.generateKey()
-	} else if id != skS.SuiteID { // Verifies key corresponds to SuiteID.
+	} else if id != skS.s { // Verifies key corresponds to SuiteID.
 		return nil, errors.New("key doesn't match with suite")
 	}
 
@@ -56,7 +56,7 @@ func (s *Server) Evaluate(blindedElements []Blinded) (*Evaluation, error) {
 		if err != nil {
 			return nil, err
 		}
-		eval[i], err = s.scalarMult(p, s.privateKey.Scalar)
+		eval[i], err = s.scalarMult(p, s.privateKey.k)
 		if err != nil {
 			return nil, err
 		}
@@ -77,7 +77,7 @@ func (s *Server) Evaluate(blindedElements []Blinded) (*Evaluation, error) {
 func (s *Server) FullEvaluate(input, info []byte) ([]byte, error) {
 	p := s.Group.HashToElement(input, s.getDST(hashToGroupDST))
 
-	ser, err := s.scalarMult(p, s.privateKey.Scalar)
+	ser, err := s.scalarMult(p, s.privateKey.k)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func (s *Server) generateProof(b []Blinded, eval []SerializedElement) (*Proof, e
 		return nil, err
 	}
 
-	a0, a1, err := s.computeComposites(pkSm, b, eval, s.privateKey.Scalar)
+	a0, a1, err := s.computeComposites(pkSm, b, eval, s.privateKey.k)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func (s *Server) generateProof(b []Blinded, eval []SerializedElement) (*Proof, e
 
 	cc := s.doChallenge([5][]byte{pkSm, a0, a1, a2, a3})
 	ss := s.suite.Group.NewScalar()
-	ss.Mul(cc, s.privateKey.Scalar)
+	ss.Mul(cc, s.privateKey.k)
 	ss.Sub(rr, ss)
 
 	serC, err := cc.MarshalBinary()

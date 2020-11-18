@@ -36,7 +36,7 @@ func NewVerifiableClient(id SuiteID, pkS *PublicKey) (*Client, error) {
 	}
 	if pkS == nil {
 		return nil, errors.New("no public key was provided")
-	} else if id != pkS.SuiteID { // Verifies key corresponds to SuiteID.
+	} else if id != pkS.s { // Verifies key corresponds to SuiteID.
 		return nil, errors.New("key doesn't match with suite")
 	}
 	return &Client{*suite, pkS}, nil
@@ -130,7 +130,7 @@ func (c *Client) verifyProof(blinds []Blinded, e *Evaluation) bool {
 	if err != nil {
 		return false
 	}
-	cP.Mul(c.pkS.Element, cc)
+	cP.Mul(c.pkS.e, cc)
 	sG.Add(sG, cP)
 	a2, err := sG.MarshalBinary()
 	if err != nil {
