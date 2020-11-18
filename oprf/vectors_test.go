@@ -67,20 +67,31 @@ func readFile(t *testing.T, fileName string) []vector {
 	return v
 }
 
-func (v *vector) SetUpParties(t *testing.T) (*Server, *Client) {
+func (v *vector) SetUpParties(t *testing.T) (s *Server, c *Client) {
 	skSm := toBytes(t, v.SkSm, "private key")
-
 	privateKey := new(PrivateKey)
 	err := privateKey.Deserialize(v.ID, skSm)
 	test.CheckNoErr(t, err, "invalid private key")
 
-	server, err := NewServerWithKey(v.ID, v.Mode, privateKey)
+	if v.Mode == BaseMode {
+		s, err = NewServer(v.ID, privateKey)
+	} else if v.Mode == VerifiableMode {
+		s, err = NewVerifiableServer(v.ID, privateKey)
+	}
 	test.CheckNoErr(t, err, "invalid setup of server")
 
-	client, err := NewClient(v.ID, v.Mode)
+	if v.Mode == BaseMode {
+		c, err = NewClient(v.ID)
+	} else if v.Mode == VerifiableMode {
+		pkSm := toBytes(t, v.PkSm, "public key")
+		publicKey := new(PublicKey)
+		err = publicKey.Deserialize(v.ID, pkSm)
+		test.CheckNoErr(t, err, "invalid public key")
+		c, err = NewVerifiableClient(v.ID, publicKey)
+	}
 	test.CheckNoErr(t, err, "invalid setup of client")
 
-	return server, client
+	return s, c
 }
 
 func (v *vector) compareLists(t *testing.T, got, want [][]byte) {
@@ -135,7 +146,7 @@ func (v *vector) test(t *testing.T) {
 		)
 
 		info := toBytes(t, vi.Info, "info")
-		outputs, err := client.Finalize(clientReq, eval, info, publicKey)
+		outputs, err := client.Finalize(clientReq, eval, info)
 		test.CheckNoErr(t, err, "invalid finalize")
 		expectedOutputs := toListBytes(t, vi.Output, "output")
 		v.compareLists(t,

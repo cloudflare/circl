@@ -9,22 +9,22 @@
       {
         "Batch": 1,
         "Blind": "5ed895206bfc53316d307b23e46ecc6623afb3086da74189a416012be037e50b",
-        "BlindedElement": "648a5a3508aa41c32b119bf6da0199f5dedf44e622e426412991a6660cabcf36",
-        "EvaluationElement": "fc34c9332576963b9a2c5a4afacb78cb440eedce98dfa44d12fc5f7a9d223a19",
+        "BlindedElement": "5cccd309ec729aebe398c53e19c0ab09c24a29f01036960bdad109852e7bdb44",
+        "EvaluationElement": "86bd5eeabf29a87cb4a5c7207cb3ade5297e65f9b74c979bd3551891f4b21515",
         "Info": "736f6d655f696e666f",
         "Input": "00",
-        "Output": "00999fd3f5ddd9bd1574226729749cb19c8a6060fb231e1e573ab15439c19270d981936e8710cdb9df3f4d59243936c606d73dc5dc12b827f7bf084ff2b275fc",
-        "UnblindedElement": "c4d9a44269ec66e8332471b92f37081207ebca061beb4df621a309fce23c8809"
+        "Output": "53c8441196248d38e0cb0cff2434962cce879069f15fe78bd56474e0bc324df1cbff4dbbf190e2269e07e02496ec19674e4e8d316d4e211d9240de91027228de",
+        "UnblindedElement": "3c7f2d901c0d4f245503a186086fbdf5d8b4408432b25c5163e8b5a19c258348"
       },
       {
         "Batch": 1,
         "Blind": "ed8366feb6b1d05d1f46acb727061e43aadfafe9c10e5a64e7518d63e3263503",
-        "BlindedElement": "62beacd596ce27a45399522bb8edb69f3e9dbd3478bca8b370d801758a301667",
-        "EvaluationElement": "625bc0952c4c345772c8cf268d930a724a728c0117f77ac8151df322eb55357f",
+        "BlindedElement": "227d63ca69e93bd062193c1e97fff3d5ebf628f646009d77c4e22ba6429be154",
+        "EvaluationElement": "063b91a12e7cbb98dfeb75d8a7eeb83aacf9fd6df7e0b4197466fb77a27fa631",
         "Info": "736f6d655f696e666f",
         "Input": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
-        "Output": "28c9fbd38d6b3b366a6cec64ca622600ad4928e6860e4a645b0c926eb1168bd35280e4a84a20b333b1e329113ce9cc477b25c0f2743ccd52020db0d1c2c4028d",
-        "UnblindedElement": "cc3f3888d4abc0420e959bed3d4be03f88d38d262da82081df9cb639cd04776a"
+        "Output": "96fd02b11327e318655773bff4ebe3608090d1980c020d7cf399afdaae450b5d03d9fde445cd71bde6b0d186982e59f7f2d858fb6739a1ca26a037ff039f4f31",
+        "UnblindedElement": "804ec6774764ed50a0bbad0a5f477aa04df7323acab8f98ca6e468b7790bca4c"
       }
     ]
   },
@@ -39,44 +39,44 @@
       {
         "Batch": 1,
         "Blind": "89c61a42c8191a5ca41f2fe959843d333bcf43173b7de4c5c119e0e0d8b0e707",
-        "BlindedElement": "b00cd0b3bf341fd7b2dc1c22d569a05baf59578043f2e46c8471a5eb72775b65",
-        "EvaluationElement": "e6b9f6255bcd1a264bf88d3e5c1c163d2df374f6f6c82be3999fdf8fb6734074",
+        "BlindedElement": "78a09c84ecf234df4a46c3695f1be3b9c045476b6826bc7bc7827c29a4978022",
+        "EvaluationElement": "5679669e01363a05e3da803c0b0cd76bffecd8048ec81eeeb391b7301e93aa2e",
         "EvaluationProof": {
-          "c": "779090f5cc5274bd1295e056c484fac2607b2657dbbbcca47dcb26a2216e8a0f",
-          "s": "01d2127c14b81f08c48eab6b968d4593339226bf072963cc78da8bfa1bbf6306"
+          "c": "673b5e2d75540afdacd7b6183c3a84323f1822b60c8ee9d90088fa3b3a508908",
+          "s": "a1edd24e73bffabff314d9cc7ad1af6f0b2cae7ec88bcef08e7efedc9d0eb00e"
         },
         "Info": "736f6d655f696e666f",
         "Input": "00",
-        "Output": "1985127b2de75760e0af95961579906359dccf9a76b18aad8ed036dec48e51baca318d301bed3b0401ba6dc9a8410c7977b82c034e4137416b08130810ca1614",
-        "UnblindedElement": "706e886d7ac87e6081b58bc85dfa05a7e513dcccec6147754614a466c0def010"
+        "Output": "851f5e0b699b296cfd97428de293be225b687559962106a3701df6c8b6656c45bcb8e2cc6e9608d59d9a64bbcaa8ecfc08745f3b5c279fdef5f49e5696e4244e",
+        "UnblindedElement": "269a8a1f845eb7a767b8b2706198388bad8271bdbb5fac48ee2b21116395631f"
       },
       {
         "Batch": 1,
         "Blind": "8d665022e9ad52b74c04a426f8af36205e81997c2175079b22a0b0a16270c909",
-        "BlindedElement": "e8c58b5dc65f2ac254f6f71c2708e25f004eb25c850a485206569a3686030a37",
-        "EvaluationElement": "5629e40ddefd92771893d4485aeec7c39a23a50dff11c07ec6eb1dc01a285c29",
+        "BlindedElement": "8e7060a2608dbbb1ba03922d7c633daca752400da8ee75af7925e1affcf99871",
+        "EvaluationElement": "a8208b606a6af1f7e2c5b155f908197aa786aba72585103bba35fa9ad703f426",
         "EvaluationProof": {
-          "c": "4ae71214368c1143f3f96607ad169e0138886f2b70b0460b1614d67c3abe9909",
-          "s": "1dc8c08aa8ed9d1a635a416e507f677ea20bfff6ec47e1c335c99de3c942f50b"
+          "c": "025e0a1e109baa97cea27550cf432d596e48bab2b1b0cf95c9af25fd89431e06",
+          "s": "295f8cb05f90f6c28b9e707fe5acc29dbe31b50375a64403f965116afe5d7501"
         },
         "Info": "736f6d655f696e666f",
         "Input": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
-        "Output": "0e2161ddb74dafd8165f597b775686ac62d43463b5b20021acc4af672e2abd7993f0cf92d6b8c66c322ab57a5b1c137015a6c99059af8ef581ab75c551aabeee",
-        "UnblindedElement": "70cfa3bf546b5f93c44cccd5e23bf2b9c0d30b05967330394e99d02ecbc71860"
+        "Output": "afd882f35e4ae086fe00668b334f4290f70f63c89559b0b990d7b1d60c6157cc0ecb80e76e515fe66c24c06ef3a7638493431ad43cf00e03e980b13a2009b4ee",
+        "UnblindedElement": "ccfa691bc7c0bd5a19546bc748fecca1661480fe304e881b4ce661766ac2cf76"
       },
       {
         "Batch": 2,
         "Blind": "3af5aec325791592eee4a8860522f8444c8e71ac33af5186a9706137886dce08,8bcb0b70dac18de24eef12e737d6b28724d3e37774e0b092f9f70b255defaf04",
-        "BlindedElement": "7ac963d8a1e4f68a66e14e1b3fa84406719e16aeb0ec9d1eaba867a939c2d671,cae915c223a3da7bee552b9eea2c8d9d8ce9ac56b41910e1aef75af555724f4f",
-        "EvaluationElement": "822196a47d3eb43d1763c459b78d07c775d1fa1314be7ad4f381f1232fc49a34,9467a38af4e1b7875ebfda1dd345207dd59c6c4cb163c8246f46aa736b9ec234",
+        "BlindedElement": "b8a0b4d0c056628131cd8ed1ea87cacecf6e09740c14a32c3e0a2820e43afb3c,50a6b8dc62e95ac34320d7ceac08f4002710fdc49e56bde78b092d01cad93e50",
+        "EvaluationElement": "12619d1c02de52189fa92f312eabe3062f627f0a75ccacd416d6dd2b71286e31,0093e963653200cacd9215833086a59e333db4b5f260db6a44c81e8c7de59a5e",
         "EvaluationProof": {
-          "c": "89fc2a339eb096f9b65a704007e20fd83d489df6f9db4f7fd35d90ad863f4a04",
-          "s": "ee8f73fca96925929a54693c22fb2583a7d75e7ab2a55a7718b2b5ca6d838604"
+          "c": "5ed544c7e6b8f8ab3d15d1650577a76107ba28986c6a600f4eceff259110e40a",
+          "s": "1cf74024f8d29c73d92d536b60e196d78bdeaf6c3481b62e8cd8cf85c128be03"
         },
         "Info": "736f6d655f696e666f",
         "Input": "00,5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
-        "Output": "1985127b2de75760e0af95961579906359dccf9a76b18aad8ed036dec48e51baca318d301bed3b0401ba6dc9a8410c7977b82c034e4137416b08130810ca1614,0e2161ddb74dafd8165f597b775686ac62d43463b5b20021acc4af672e2abd7993f0cf92d6b8c66c322ab57a5b1c137015a6c99059af8ef581ab75c551aabeee",
-        "UnblindedElement": "706e886d7ac87e6081b58bc85dfa05a7e513dcccec6147754614a466c0def010,70cfa3bf546b5f93c44cccd5e23bf2b9c0d30b05967330394e99d02ecbc71860"
+        "Output": "851f5e0b699b296cfd97428de293be225b687559962106a3701df6c8b6656c45bcb8e2cc6e9608d59d9a64bbcaa8ecfc08745f3b5c279fdef5f49e5696e4244e,afd882f35e4ae086fe00668b334f4290f70f63c89559b0b990d7b1d60c6157cc0ecb80e76e515fe66c24c06ef3a7638493431ad43cf00e03e980b13a2009b4ee",
+        "UnblindedElement": "269a8a1f845eb7a767b8b2706198388bad8271bdbb5fac48ee2b21116395631f,ccfa691bc7c0bd5a19546bc748fecca1661480fe304e881b4ce661766ac2cf76"
       }
     ]
   },

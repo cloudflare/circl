@@ -5,8 +5,11 @@ import (
 	"errors"
 )
 
-// Client is a representation of a Client during protocol execution.
-type Client struct{ suite }
+// Client is a representation of a OPRF client during protocol execution.
+type Client struct {
+	suite
+	pkS *PublicKey
+}
 
 // ClientRequest is a structure to encapsulate the output of a Request call.
 type ClientRequest struct {
@@ -15,20 +18,28 @@ type ClientRequest struct {
 	BlindedElements []Blinded
 }
 
-// NewClient creates a new instantiation of a Client.
+// NewClient creates a client in base mode.
 func NewClient(id SuiteID) (*Client, error) {
-   // base mode
-}
-
-func NewVerifiableClient(id SuiteID, pks *PublicKey) (*Client, error) {
-   // verifiable mode
-}
-	suite, err := suiteFromID(id, m)
+	suite, err := suiteFromID(id, BaseMode)
 	if err != nil {
 		return nil, err
 	}
+	return &Client{*suite, nil}, nil
+}
 
-	return &Client{*suite}, nil
+// NewVerifiableClient creates a client in verifiable mode. A server's public
+// key must be provided.
+func NewVerifiableClient(id SuiteID, pkS *PublicKey) (*Client, error) {
+	suite, err := suiteFromID(id, VerifiableMode)
+	if err != nil {
+		return nil, err
+	}
+	if pkS == nil {
+		return nil, errors.New("no public key was provided")
+	} else if id != pkS.SuiteID { // Verifies key corresponds to SuiteID.
+		return nil, errors.New("key doesn't match with suite")
+	}
+	return &Client{*suite, pkS}, nil
 }
 
 // Request generates a request for server passing an array of inputs to be
@@ -62,17 +73,14 @@ func (c *Client) blind(inputs [][]byte, blinds []Blind) (*ClientRequest, error) 
 // Finalize computes the signed token from the server Evaluation and returns
 // the output of the OPRF protocol. The function uses server's public key
 // to verify the proof in verifiable mode.
-func (c *Client) Finalize(r *ClientRequest, e *Evaluation, info []byte, pkS *PublicKey) ([][]byte, error) {
+func (c *Client) Finalize(r *ClientRequest, e *Evaluation, info []byte) ([][]byte, error) {
 	l := len(r.blinds)
 	if len(r.BlindedElements) != l || len(e.Elements) != l {
 		return nil, errors.New("mismatch number of elements")
 	}
 
 	if c.Mode == VerifiableMode {
-		if pkS == nil {
-			return nil, errors.New("no public key provided")
-		}
-		if !c.verifyProof(r.BlindedElements, e, pkS) {
+		if !c.verifyProof(r.BlindedElements, e) {
 			return nil, errors.New("invalid proof")
 		}
 	}
@@ -88,8 +96,8 @@ func (c *Client) Finalize(r *ClientRequest, e *Evaluation, info []byte, pkS *Pub
 	return outputs, nil
 }
 
-func (c *Client) verifyProof(blinds []Blinded, e *Evaluation, pkS *PublicKey) bool {
-	pkSm, err := pkS.Serialize()
+func (c *Client) verifyProof(blinds []Blinded, e *Evaluation) bool {
+	pkSm, err := c.pkS.Serialize()
 	if err != nil {
 		return false
 	}
@@ -122,7 +130,7 @@ func (c *Client) verifyProof(blinds []Blinded, e *Evaluation, pkS *PublicKey) bo
 	if err != nil {
 		return false
 	}
-	cP.Mul(pkS.Element, cc)
+	cP.Mul(c.pkS.Element, cc)
 	sG.Add(sG, cP)
 	a2, err := sG.MarshalBinary()
 	if err != nil {

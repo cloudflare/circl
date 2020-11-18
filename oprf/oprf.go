@@ -45,11 +45,13 @@ const (
 	OPRFP521 SuiteID = 0x0005
 )
 
-// Mode specifies a variant of the OPRF protocol.
+// Mode specifies properties of the OPRF protocol.
 type Mode = uint8
 
 const (
-	BaseMode       Mode = 0x00
+	// BaseMode provides obliviousness.
+	BaseMode Mode = 0x00
+	// VerifiableMode provides obliviousness and verifiability.
 	VerifiableMode Mode = 0x01
 )
 
@@ -92,6 +94,7 @@ func suiteFromID(id SuiteID, m Mode) (*suite, error) {
 	}
 }
 
+func (s *suite) GetMode() Mode { return s.Mode }
 func (s *suite) getDST(name string) []byte {
 	return append(append(append([]byte{},
 		[]byte(version)...),

@@ -6,40 +6,34 @@ import (
 	"errors"
 )
 
-// Server is a representation of a Server during protocol execution.
+// Server is a representation of a OPRF server during protocol execution.
 type Server struct {
 	suite
 	privateKey PrivateKey
 }
 
-// NewServerWithKey creates a new instantiation of a Server. It can create
-// a server with existing keys or use pre-generated keys.
-func NewServerWithKey(id SuiteID, m Mode, skS *PrivateKey) (*Server, error) {
-	// Verifies keypair corresponds to SuiteID.
-	if id != skS.SuiteID {
-		return nil, errors.New("keys don't match with suite")
-	}
-
-	suite, err := suiteFromID(id, m)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Server{*suite, *skS}, nil
+// NewServer creates a Server in base mode, and generates a key if no skS is
+// provided.
+func NewServer(id SuiteID, skS *PrivateKey) (*Server, error) {
+	return newServer(id, BaseMode, skS)
 }
 
-// NewServer creates a new instantiation of a Server.
-func NewServer(id SuiteID) (*Server, error) {
-   // base mode
-}
+// NewVerifiableServer creates a Server in verifiable mode, and generates a
+// key if no skS is provided.
 func NewVerifiableServer(id SuiteID, skS *PrivateKey) (*Server, error) {
-   // verifiable mode
-}   
+	return newServer(id, VerifiableMode, skS)
+}
+
+func newServer(id SuiteID, m Mode, skS *PrivateKey) (*Server, error) {
 	suite, err := suiteFromID(id, m)
 	if err != nil {
 		return nil, err
 	}
-	skS := suite.generateKey()
+	if skS == nil {
+		skS = suite.generateKey()
+	} else if id != skS.SuiteID { // Verifies key corresponds to SuiteID.
+		return nil, errors.New("key doesn't match with suite")
+	}
 
 	return &Server{*suite, *skS}, nil
 }
@@ -50,7 +44,7 @@ func (s *Server) GetPublicKey() *PublicKey { return s.privateKey.Public() }
 func (s *Server) Evaluate(blindedElements []Blinded) (*Evaluation, error) {
 	l := len(blindedElements)
 	if l == 0 {
-		return nil, errors.New("few elements")
+		return nil, errors.New("no elements to evaluate")
 	}
 
 	var err error
@@ -79,7 +73,7 @@ func (s *Server) Evaluate(blindedElements []Blinded) (*Evaluation, error) {
 	return &Evaluation{eval, proof}, nil
 }
 
-// FullEvaluate performs a full evaluation at the server side.
+// FullEvaluate performs a full OPRF protocol at server-side.
 func (s *Server) FullEvaluate(input, info []byte) ([]byte, error) {
 	p := s.Group.HashToElement(input, s.getDST(hashToGroupDST))
 
@@ -91,13 +85,14 @@ func (s *Server) FullEvaluate(input, info []byte) ([]byte, error) {
 	return s.finalizeHash(input, ser, info), nil
 }
 
-// VerifyFinalize verifies the evaluation.
-func (s *Server) VerifyFinalize(input, info, output []byte) bool {
+// VerifyFinalize performs a full OPRF protocol and returns true if the output
+// matches the expected output.
+func (s *Server) VerifyFinalize(input, info, expectedOutput []byte) bool {
 	gotOutput, err := s.FullEvaluate(input, info)
 	if err != nil {
 		return false
 	}
-	return subtle.ConstantTimeCompare(gotOutput, output) == 1
+	return subtle.ConstantTimeCompare(gotOutput, expectedOutput) == 1
 }
 
 func (s *Server) generateProof(b []Blinded, eval []SerializedElement) (*Proof, error) {

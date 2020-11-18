@@ -31,7 +31,12 @@ func testSerialization(t *testing.T, suite oprf.SuiteID, mode oprf.Mode) {
 	privateKey, err := oprf.GenerateKey(suite)
 	test.CheckNoErr(t, err, "invalid key generation")
 
-	server, err := oprf.NewServerWithKey(suite, mode, privateKey)
+	var server *oprf.Server
+	if mode == oprf.BaseMode {
+		server, err = oprf.NewServer(suite, privateKey)
+	} else if mode == oprf.VerifiableMode {
+		server, err = oprf.NewVerifiableServer(suite, privateKey)
+	}
 	test.CheckNoErr(t, err, "invalid setup of server")
 
 	input := []byte("hello world")
@@ -46,7 +51,12 @@ func testSerialization(t *testing.T, suite oprf.SuiteID, mode oprf.Mode) {
 	err = recoveredPrivateKey.Deserialize(suite, encoded)
 	test.CheckNoErr(t, err, "wrong deserialize")
 
-	recoveredServer, err := oprf.NewServerWithKey(suite, mode, recoveredPrivateKey)
+	var recoveredServer *oprf.Server
+	if mode == oprf.BaseMode {
+		recoveredServer, err = oprf.NewServer(suite, recoveredPrivateKey)
+	} else if mode == oprf.VerifiableMode {
+		recoveredServer, err = oprf.NewVerifiableServer(suite, recoveredPrivateKey)
+	}
 	test.CheckNoErr(t, err, "invalid setup of server with key")
 
 	outputB, err := recoveredServer.FullEvaluate(input, info)
@@ -60,23 +70,25 @@ func testSerialization(t *testing.T, suite oprf.SuiteID, mode oprf.Mode) {
 }
 
 func testAPI(t *testing.T, suite oprf.SuiteID, mode oprf.Mode) {
-	server, err := oprf.NewServer(suite, mode)
-	if err != nil {
-		t.Fatal("invalid setup of server: " + err.Error())
+	var err error
+	var server *oprf.Server
+	if mode == oprf.BaseMode {
+		server, err = oprf.NewServer(suite, nil)
+	} else if mode == oprf.VerifiableMode {
+		server, err = oprf.NewVerifiableServer(suite, nil)
 	}
-	if server == nil {
-		t.Fatal("invalid setup of server: no server.")
-	}
+	test.CheckNoErr(t, err, "invalid setup of server")
 
-	client, err := oprf.NewClient(suite, mode)
-	if err != nil {
-		t.Fatal("invalid setup of client: " + err.Error())
+	var client *oprf.Client
+	if mode == oprf.BaseMode {
+		client, err = oprf.NewClient(suite)
+	} else if mode == oprf.VerifiableMode {
+		pkS := server.GetPublicKey()
+		client, err = oprf.NewVerifiableClient(suite, pkS)
 	}
+	test.CheckNoErr(t, err, "invalid setup of client")
 
-	inputs := [][]byte{
-		{0x00},
-		{0xFF},
-	}
+	inputs := [][]byte{{0x00}, {0xFF}}
 	cr, err := client.Request(inputs)
 	if err != nil {
 		t.Fatal("invalid blinding of client: " + err.Error())
@@ -91,8 +103,7 @@ func testAPI(t *testing.T, suite oprf.SuiteID, mode oprf.Mode) {
 	}
 
 	info := []byte("test information")
-	pkS := server.GetPublicKey()
-	clientOutputs, err := client.Finalize(cr, eval, info, pkS)
+	clientOutputs, err := client.Finalize(cr, eval, info)
 	if err != nil {
 		t.Fatal("invalid unblinding of client: " + err.Error())
 	}
