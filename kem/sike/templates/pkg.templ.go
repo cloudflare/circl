@@ -9,7 +9,7 @@ package {{.Pkg}}
 
 import (
 	"github.com/cloudflare/circl/dh/sidh"
-	"github.com/cloudflare/circl/internal/shake"
+	"github.com/cloudflare/circl/internal/sha3"
 	"github.com/cloudflare/circl/kem"
 
 	"bytes"
@@ -98,7 +98,7 @@ func (*scheme) DeriveKey(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 	if len(seed) != SeedSize {
 		panic(kem.ErrSeedSize)
 	}
-	h := shake.NewShake256()
+	h := sha3.NewShake256()
 	_, _ = h.Write(seed[:])
 	pk, sk, err := GenerateKey(&h)
 
@@ -109,45 +109,43 @@ func (*scheme) DeriveKey(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 	return pk, sk
 }
 
-func (sch *scheme) Encapsulate(pk kem.PublicKey) (ct []byte, ss []byte) {
+func (sch *scheme) Encapsulate(pk kem.PublicKey) (ct []byte, ss []byte, err error) {
 	var seed [EncapsulationSeedSize]byte
 	cryptoRand.Read(seed[:])
 	return sch.EncapsulateDeterministically(pk, seed[:])
 }
 
-func (sch *scheme) EncapsulateDeterministically(pk kem.PublicKey, seed []byte) (
-	ct []byte, ss []byte) {
-
+func (sch *scheme) EncapsulateDeterministically(pk kem.PublicKey, seed []byte) (ct []byte, ss []byte, err error) {
 	if len(seed) != EncapsulationSeedSize {
-		panic(kem.ErrSeedSize)
+		return nil, nil, kem.ErrSeedSize
 	}
 
 	pub, ok := pk.(*PublicKey)
 	if !ok {
-		panic(kem.ErrTypeMismatch)
+		return nil, nil, kem.ErrTypeMismatch
 	}
 
 	ct = make([]byte, sch.CiphertextSize())
 	ss = make([]byte, sch.SharedKeySize())
 
-	h := shake.NewShake256()
+	h := sha3.NewShake256()
 	_, _ = h.Write(seed[:])
 	ctx := sidh.NewSike{{.Bits}}(&h)
 
 	if err := ctx.Encapsulate(ct, ss, (*sidh.PublicKey)(pub)); err != nil {
-		panic(err)
+		return nil, nil, err
 	}
-	return
+	return ct, ss, nil
 }
 
-func (sch *scheme) Decapsulate(sk kem.PrivateKey, ct []byte) []byte {
+func (sch *scheme) Decapsulate(sk kem.PrivateKey, ct []byte) ([]byte, error) {
 	if len(ct) != sch.CiphertextSize() {
-		panic(kem.ErrCiphertextSize)
+		return nil, kem.ErrCiphertextSize
 	}
 
 	priv, ok := sk.(*PrivateKey)
 	if !ok {
-		panic(kem.ErrTypeMismatch)
+		return nil, kem.ErrTypeMismatch
 	}
 
 	sikePriv := (*sidh.PrivateKey)(priv)
@@ -159,10 +157,10 @@ func (sch *scheme) Decapsulate(sk kem.PrivateKey, ct []byte) []byte {
 
 	ctx := sidh.NewSike{{.Bits}}(nil)
 	if err := ctx.Decapsulate(ss, sikePriv, sikePub, ct); err != nil {
-		panic(err)
+		return nil, err
 	}
 
-	return ss
+	return ss, nil
 }
 
 func (sch *scheme) UnmarshalBinaryPublicKey(buf []byte) (kem.PublicKey, error) {
