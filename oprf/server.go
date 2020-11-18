@@ -29,7 +29,12 @@ func NewServerWithKey(id SuiteID, m Mode, skS *PrivateKey) (*Server, error) {
 }
 
 // NewServer creates a new instantiation of a Server.
-func NewServer(id SuiteID, m Mode) (*Server, error) {
+func NewServer(id SuiteID) (*Server, error) {
+   // base mode
+}
+func NewVerifiableServer(id SuiteID, skS *PrivateKey) (*Server, error) {
+   // verifiable mode
+}   
 	suite, err := suiteFromID(id, m)
 	if err != nil {
 		return nil, err

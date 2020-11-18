@@ -16,7 +16,13 @@ type ClientRequest struct {
 }
 
 // NewClient creates a new instantiation of a Client.
-func NewClient(id SuiteID, m Mode) (*Client, error) {
+func NewClient(id SuiteID) (*Client, error) {
+   // base mode
+}
+
+func NewVerifiableClient(id SuiteID, pks *PublicKey) (*Client, error) {
+   // verifiable mode
+}
 	suite, err := suiteFromID(id, m)
 	if err != nil {
 		return nil, err
