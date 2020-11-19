@@ -263,7 +263,10 @@ func (pk *PublicKey) Unpack(buf []byte) {
 
 type scheme struct{}
 
-var Scheme kem.Scheme = &scheme{}
+var sch kem.Scheme = &scheme{}
+
+// Scheme returns a KEM interface.
+func Scheme() kem.Scheme { return sch }
 
 func (*scheme) Name() string               { return "Kyber512" }
 func (*scheme) PublicKeySize() int         { return PublicKeySize }
@@ -273,8 +276,8 @@ func (*scheme) SharedKeySize() int         { return SharedKeySize }
 func (*scheme) CiphertextSize() int        { return CiphertextSize }
 func (*scheme) EncapsulationSeedSize() int { return EncapsulationSeedSize }
 
-func (sk *PrivateKey) Scheme() kem.Scheme { return Scheme }
-func (pk *PublicKey) Scheme() kem.Scheme  { return Scheme }
+func (sk *PrivateKey) Scheme() kem.Scheme { return sch }
+func (pk *PublicKey) Scheme() kem.Scheme  { return sch }
 
 func (sk *PrivateKey) MarshalBinary() ([]byte, error) {
 	var ret [PrivateKeySize]byte

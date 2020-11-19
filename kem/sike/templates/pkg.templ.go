@@ -28,7 +28,10 @@ const (
 
 type scheme struct{}
 
-var Scheme kem.Scheme = &scheme{}
+var sch kem.Scheme = &scheme{}
+
+// Scheme returns a KEM interface.
+func Scheme() kem.Scheme { return sch }
 
 var params *sidh.KEM
 
@@ -40,8 +43,8 @@ func (*scheme) SharedKeySize() int         { return params.SharedSecretSize() }
 func (*scheme) CiphertextSize() int        { return params.CiphertextSize() }
 func (*scheme) EncapsulationSeedSize() int { return EncapsulationSeedSize }
 
-func (sk *PrivateKey) Scheme() kem.Scheme { return Scheme }
-func (pk *PublicKey) Scheme() kem.Scheme  { return Scheme }
+func (sk *PrivateKey) Scheme() kem.Scheme { return sch }
+func (pk *PublicKey) Scheme() kem.Scheme  { return sch }
 
 func (sk *PrivateKey) MarshalBinary() ([]byte, error) {
 	csk := (*sidh.PrivateKey)(sk)

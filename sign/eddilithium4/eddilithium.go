@@ -181,8 +181,8 @@ func (sk *PrivateKey) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
-func (sk *PrivateKey) Scheme() sign.Scheme { return Scheme }
-func (pk *PublicKey) Scheme() sign.Scheme  { return Scheme }
+func (sk *PrivateKey) Scheme() sign.Scheme { return sch }
+func (pk *PublicKey) Scheme() sign.Scheme  { return sch }
 
 func (sk *PrivateKey) Equal(other crypto.PrivateKey) bool {
 	castOther, ok := other.(*PrivateKey)
