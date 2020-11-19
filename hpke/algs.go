@@ -6,7 +6,7 @@ import (
 	"crypto/cipher"
 
 	"github.com/cloudflare/circl/kem"
-	"github.com/cloudflare/circl/kem/short"
+	"github.com/cloudflare/circl/kem/shortkem"
 	"github.com/cloudflare/circl/kem/xkem"
 	"golang.org/x/crypto/chacha20poly1305"
 )
@@ -14,40 +14,40 @@ import (
 type KemID = uint16
 
 const (
-	KemP256Sha256   KemID = 0x10
-	KemP384Sha384   KemID = 0x11
-	KemP521Sha512   KemID = 0x12
-	KemX25519Sha256 KemID = 0x20
-	KemX448Sha512   KemID = 0x21
+	KemP256HkdfSha256   KemID = 0x10 // KEM based on P-256 curve with HKDF using SHA-256.
+	KemP384HkdfSha384   KemID = 0x11 // KEM based on P-384 curve with HKDF using SHA-384.
+	KemP521HkdfSha512   KemID = 0x12 // KEM based on P-521 curve with HKDF using SHA-512.
+	KemX25519HkdfSha256 KemID = 0x20 // KEM based on X25519 Diffie-Helman with HKDF using SHA-256.
+	KemX448HkdfSha512   KemID = 0x21 // KEM based on X448 Diffie-Helman with HKDF using SHA-512.
 )
 
 type KdfID = uint16
 
 const (
-	HkdfSha256 KdfID = 0x01
-	HkdfSha384 KdfID = 0x02
-	HkdfSha512 KdfID = 0x03
+	HkdfSha256 KdfID = 0x01 // HKDF using SHA-256 hash function.
+	HkdfSha384 KdfID = 0x02 // HKDF using SHA-384 hash function.
+	HkdfSha512 KdfID = 0x03 // HKDF using SHA-512 hash function.
 )
 
 type AeadID = uint16
 
 const (
-	AeadAES128GCM AeadID = 0x01
-	AeadAES256GCM AeadID = 0x02
-	AeadCC20P1305 AeadID = 0x03
+	AeadAES128GCM AeadID = 0x01 // AES-128 block cipher in Galois Counter Mode (GCM).
+	AeadAES256GCM AeadID = 0x02 // AES-256 block cipher in Galois Counter Mode (GCM).
+	AeadCC20P1305 AeadID = 0x03 // ChaCha20 stream cipher and Poly1305 MAC.
 )
 
-var kemParams map[KemID]kem.Scheme
+var kemParams map[KemID]func() kem.AuthScheme
 var kdfParams map[KdfID]crypto.Hash
 var aeadParams map[AeadID]aeadInfo
 
 func init() {
-	kemParams = make(map[KemID]kem.Scheme)
-	kemParams[KemP256Sha256] = short.KemP256Sha256
-	kemParams[KemP384Sha384] = short.KemP384Sha384
-	kemParams[KemP521Sha512] = short.KemP521Sha512
-	kemParams[KemX25519Sha256] = xkem.KemX25519Sha256
-	kemParams[KemX448Sha512] = xkem.KemX448Sha512
+	kemParams = make(map[KemID]func() kem.AuthScheme)
+	kemParams[KemP256HkdfSha256] = shortkem.P256HkdfSha256
+	kemParams[KemP384HkdfSha384] = shortkem.P384HkdfSha384
+	kemParams[KemP521HkdfSha512] = shortkem.P521HkdfSha512
+	kemParams[KemX25519HkdfSha256] = xkem.X25519HkdfSha256
+	kemParams[KemX448HkdfSha512] = xkem.X448HkdfSha512
 
 	kdfParams = make(map[KdfID]crypto.Hash)
 	kdfParams[HkdfSha256] = crypto.SHA256

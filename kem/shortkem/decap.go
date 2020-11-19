@@ -1,4 +1,4 @@
-package short
+package shortkem
 
 import "github.com/cloudflare/circl/kem"
 

@@ -14,7 +14,7 @@ import (
 )
 
 func TestVectors(t *testing.T) {
-	// Vector from https://github.com/cfrg/draft-irtf-cfrg-hpke/blob/draft-irtf-cfrg-hpke-06/test-vectors.json
+	// Test vectors from https://github.com/cfrg/draft-irtf-cfrg-hpke/blob/draft-irtf-cfrg-hpke-06/test-vectors.json
 	vectors := readFile(t, "testdata/vectors_v06.json")
 	for i, v := range vectors {
 		t.Run(fmt.Sprintf("v%v", i), v.verify)
@@ -25,7 +25,7 @@ func (v *vector) verify(t *testing.T) {
 	m := v.ModeID
 	s := Suite{v.KemID, v.KdfID, v.AeadID}
 
-	dhkem := s.GetKem()
+	dhkem := s.getKem()
 	sender, recv := v.getActors(t, dhkem, s)
 	sealer, opener := v.setup(t, dhkem, sender, recv, m, s)
 

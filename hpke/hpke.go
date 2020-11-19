@@ -1,11 +1,13 @@
-// Package hpke implements hybrid public key encryption.
+// Package hpke implements hybrid public/private-key encryption.
+//
+// HPKE works for any combination of an asymmetric-key encapsulation mechanism
+// (KEM), a key derivation function (KDF), and an authenticated symmetric-key
+// encryption scheme with additional data (AEAD).
+//
+// Specification in https://datatracker.ietf.org/doc/draft-irtf-cfrg-hpke
 package hpke
 
-import (
-	"crypto"
-
-	"github.com/cloudflare/circl/kem"
-)
+import "crypto"
 
 const versionLabel = "HPKE-06"
 
@@ -26,14 +28,18 @@ type Opener interface {
 	Open(ct, aad []byte) (pt []byte, err error)
 }
 
-// ModeID is
+// ModeID represents an HPKE variant.
 type ModeID = uint8
 
 const (
-	Base    ModeID = iota // Base is
-	PSK                   // PSK is
-	Auth                  // Auth is
-	AuthPSK               // AuthPSK is
+	// Base provides hybrid public-key encryption to a public key.
+	Base ModeID = 0x00
+	// PSK provides hybrid public-key encryption with authentication using a pre-shared key.
+	PSK ModeID = 0x01
+	// Auth provides hybrid public-key encryption with authentication using an asymmetric key.
+	Auth ModeID = 0x02
+	// AuthPSK provides hybrid public-key encryption with authentication using both a pre-shared key and an asymmetric key.
+	AuthPSK ModeID = 0x03
 )
 
 type Suite struct {
@@ -45,11 +51,10 @@ type Suite struct {
 type state struct {
 	Suite
 	modeID ModeID
-	kem.Scheme
-	skS   crypto.PrivateKey
-	pkS   crypto.PublicKey
-	psk   []byte
-	pskID []byte
+	skS    crypto.PrivateKey
+	pkS    crypto.PublicKey
+	psk    []byte
+	pskID  []byte
 }
 
 type Sender struct {

@@ -8,7 +8,7 @@ import (
 	"github.com/cloudflare/circl/kem/kyber/kyber1024"
 	"github.com/cloudflare/circl/kem/kyber/kyber512"
 	"github.com/cloudflare/circl/kem/kyber/kyber768"
-	"github.com/cloudflare/circl/kem/short"
+	"github.com/cloudflare/circl/kem/shortkem"
 	"github.com/cloudflare/circl/kem/sike/sikep434"
 	"github.com/cloudflare/circl/kem/sike/sikep503"
 	"github.com/cloudflare/circl/kem/sike/sikep751"
@@ -16,17 +16,17 @@ import (
 )
 
 var allSchemes = [...]kem.Scheme{
-	short.KemP256Sha256,
-	short.KemP384Sha384,
-	short.KemP521Sha512,
-	xkem.KemX25519Sha256,
-	xkem.KemX448Sha512,
-	kyber512.Scheme(),
-	kyber768.Scheme(),
-	kyber1024.Scheme(),
-	sikep434.Scheme(),
-	sikep503.Scheme(),
-	sikep751.Scheme(),
+	shortkem.P256HkdfSha256(),
+	shortkem.P384HkdfSha384(),
+	shortkem.P521HkdfSha512(),
+	xkem.X25519HkdfSha256(),
+	xkem.X448HkdfSha512(),
+	kyber512.Scheme,
+	kyber768.Scheme,
+	kyber1024.Scheme,
+	sikep434.Scheme,
+	sikep503.Scheme,
+	sikep751.Scheme,
 }
 
 var allSchemeNames map[string]kem.Scheme

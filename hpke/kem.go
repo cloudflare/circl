@@ -13,7 +13,7 @@ func (s *Sender) encap(pk crypto.PublicKey) (ct []byte, ss []byte, err error) {
 		return nil, nil, kem.ErrTypeMismatch
 	}
 
-	k := s.GetKem()
+	k := s.getKem()
 	if s.seed == nil {
 		ct, ss, err = k.Encapsulate(pub)
 	} else if len(s.seed) >= k.SeedSize() {
@@ -54,7 +54,7 @@ func (r *Receiver) decap(sk crypto.PrivateKey, ct []byte) ([]byte, error) {
 		return nil, kem.ErrTypeMismatch
 	}
 
-	k := r.GetKem()
+	k := r.getKem()
 	return k.Decapsulate(priv, ct)
 }
 
@@ -76,10 +76,10 @@ func (r *Receiver) decapAuth(sk crypto.PrivateKey, ct []byte, pk crypto.PublicKe
 	return k.AuthDecapsulate(priv, ct, pub)
 }
 
-func (s Suite) GetKem() kem.Scheme { return kemParams[s.KemID] }
+func (s Suite) getKem() kem.Scheme { return kemParams[s.KemID]() }
 
 func (s Suite) getAuthKem() (kem.AuthScheme, error) {
-	k := s.GetKem()
+	k := s.getKem()
 	a, ok := k.(kem.AuthScheme)
 	if !ok {
 		return nil, errors.New("kem is not authenticated")
