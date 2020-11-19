@@ -33,7 +33,7 @@ func (x xkem) AuthEncapsulateDeterministically(pkr kem.PublicKey, seed []byte, s
 }
 
 func (x xkem) encap(pkr kem.PublicKey, pke crypto.PublicKey, ske crypto.PrivateKey) (ct []byte, ss []byte, err error) {
-	dh := make([]byte, x.SharedKeySize())
+	dh := make([]byte, x.size)
 	enc, kemCtx, err := x.coreEncap(dh, pkr, ske, pke)
 	if err != nil {
 		return nil, nil, err
@@ -53,7 +53,7 @@ func (x xkem) authEncap(
 		return nil, nil, kem.ErrTypeMismatch
 	}
 
-	dhLen := x.SharedKeySize()
+	dhLen := x.size
 	dh := make([]byte, 2*dhLen)
 	enc, kemCtx, err := x.coreEncap(dh[:dhLen], pkr, ske, pke)
 	if err != nil {

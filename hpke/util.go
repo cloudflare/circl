@@ -21,12 +21,19 @@ func (s state) keySchedule(ss, info, psk, pskID []byte) (*encdecCxt, error) {
 
 	secret := s.labeledExtract(ss, []byte("secret"), psk)
 
-	aeadPar := aeadParams[s.AeadID]
-	key := s.labeledExpand(secret, []byte("key"), keySchCtx, aeadPar.Nk)
-	baseNonce := s.labeledExpand(secret, []byte("base_nonce"), keySchCtx, aeadPar.Nn)
-	exporterSecret := s.labeledExpand(secret, []byte("exp"), keySchCtx, kdfParams[s.KdfID].Nh)
+	Nk := uint16(aeadParams[s.AeadID].Nk)
+	key := s.labeledExpand(secret, []byte("key"), keySchCtx, Nk)
 
-	return s.aeadCtx(key, baseNonce, exporterSecret)
+	aead, err := aeadParams[s.AeadID].New(key)
+	if err != nil {
+		return nil, err
+	}
+
+	Nn := uint16(aead.NonceSize())
+	baseNonce := s.labeledExpand(secret, []byte("base_nonce"), keySchCtx, Nn)
+	exporterSecret := s.labeledExpand(secret, []byte("exp"), keySchCtx, uint16(kdfParams[s.KdfID].Size()))
+
+	return &encdecCxt{aead, s.Suite, baseNonce, make([]byte, Nn), exporterSecret}, nil
 }
 
 func (s state) verifyPSKInputs(psk, pskID []byte) error {
@@ -53,7 +60,7 @@ func (s Suite) String() string {
 }
 
 func (s Suite) getSuiteID() (id [10]byte) {
-	copy(id[:], "HPKE")
+	id[0], id[1], id[2], id[3] = 'H', 'P', 'K', 'E'
 	binary.BigEndian.PutUint16(id[4:6], s.KemID)
 	binary.BigEndian.PutUint16(id[6:8], s.KdfID)
 	binary.BigEndian.PutUint16(id[8:10], s.AeadID)
@@ -81,7 +88,7 @@ func (s Suite) labeledExtract(salt, label, ikm []byte) []byte {
 		suiteID[:]...),
 		label...),
 		ikm...)
-	return hkdf.Extract(kdfParams[s.KdfID].H.New, labeledIKM, salt)
+	return hkdf.Extract(kdfParams[s.KdfID].New, labeledIKM, salt)
 }
 
 func (s Suite) labeledExpand(prk, label, info []byte, l uint16) []byte {
@@ -94,7 +101,7 @@ func (s Suite) labeledExpand(prk, label, info []byte, l uint16) []byte {
 		label...),
 		info...)
 	b := make([]byte, l)
-	rd := hkdf.Expand(kdfParams[s.KdfID].H.New, prk, labeledInfo)
+	rd := hkdf.Expand(kdfParams[s.KdfID].New, prk, labeledInfo)
 	_, _ = io.ReadFull(rd, b)
 	return b
 }

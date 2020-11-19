@@ -5,8 +5,6 @@ import (
 	"errors"
 
 	"github.com/cloudflare/circl/kem"
-	"github.com/cloudflare/circl/kem/short"
-	"github.com/cloudflare/circl/kem/xkem"
 )
 
 func (s *Sender) encap(pk crypto.PublicKey) (ct []byte, ss []byte, err error) {
@@ -15,11 +13,7 @@ func (s *Sender) encap(pk crypto.PublicKey) (ct []byte, ss []byte, err error) {
 		return nil, nil, kem.ErrTypeMismatch
 	}
 
-	k, err := s.GetKem()
-	if err != nil {
-		return nil, nil, err
-	}
-
+	k := s.GetKem()
 	if s.seed == nil {
 		ct, ss, err = k.Encapsulate(pub)
 	} else if len(s.seed) >= k.SeedSize() {
@@ -27,6 +21,7 @@ func (s *Sender) encap(pk crypto.PublicKey) (ct []byte, ss []byte, err error) {
 	} else {
 		return nil, nil, kem.ErrSeedSize
 	}
+
 	return ct, ss, err
 }
 
@@ -59,11 +54,7 @@ func (r *Receiver) decap(sk crypto.PrivateKey, ct []byte) ([]byte, error) {
 		return nil, kem.ErrTypeMismatch
 	}
 
-	k, err := r.GetKem()
-	if err != nil {
-		return nil, err
-	}
-
+	k := r.GetKem()
 	return k.Decapsulate(priv, ct)
 }
 
@@ -85,26 +76,13 @@ func (r *Receiver) decapAuth(sk crypto.PrivateKey, ct []byte, pk crypto.PublicKe
 	return k.AuthDecapsulate(priv, ct, pub)
 }
 
+func (s Suite) GetKem() kem.Scheme { return kemParams[s.KemID] }
+
 func (s Suite) getAuthKem() (kem.AuthScheme, error) {
-	k, err := s.GetKem()
-	if err != nil {
-		return nil, err
-	}
+	k := s.GetKem()
 	a, ok := k.(kem.AuthScheme)
 	if !ok {
 		return nil, errors.New("kem is not authenticated")
 	}
 	return a, nil
-}
-
-func (s Suite) GetKem() (dhkem kem.Scheme, err error) {
-	switch s.KemID {
-	case KemP256Sha256, KemP384Sha384, KemP521Sha512:
-		dhkem = short.New(s.KemID)
-	case KemX25519Sha256, KemX448Sha512:
-		dhkem = xkem.New(s.KemID)
-	default:
-		err = errors.New("invalid kemid")
-	}
-	return
 }

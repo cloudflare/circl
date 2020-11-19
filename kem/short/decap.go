@@ -3,7 +3,7 @@ package short
 import "github.com/cloudflare/circl/kem"
 
 func (s short) Decapsulate(skr kem.PrivateKey, ct []byte) ([]byte, error) {
-	dh := make([]byte, s.SharedKeySize())
+	dh := make([]byte, s.byteSize())
 	kemCtx, err := s.coreDecap(dh, skr, ct)
 	if err != nil {
 		return nil, err
@@ -17,7 +17,7 @@ func (s short) AuthDecapsulate(skr kem.PrivateKey, ct []byte, pks kem.PublicKey)
 		return nil, kem.ErrTypeMismatch
 	}
 
-	dhLen := s.SharedKeySize()
+	dhLen := s.byteSize()
 	dh := make([]byte, 2*dhLen)
 	kemCtx, err := s.coreDecap(dh[:dhLen], skr, ct)
 	if err != nil {

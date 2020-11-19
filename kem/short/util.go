@@ -3,6 +3,8 @@ package short
 import (
 	"crypto"
 	"crypto/elliptic"
+	_ "crypto/sha256" // linking sha256 packages.
+	_ "crypto/sha512" // linking sha512 packages.
 	"encoding/binary"
 	"io"
 
@@ -12,19 +14,20 @@ import (
 const versionLabel = "HPKE-06"
 
 type short struct {
-	*elliptic.CurveParams
-	id KemID
-	h  crypto.Hash
+	elliptic.Curve
+	id   uint16
+	name string
+	crypto.Hash
 }
 
-func (s short) Name() string               { return names[s.id] }
-func (s short) SharedKeySize() int         { return s.byteSize() }
+func (s short) Name() string               { return s.name }
+func (s short) SharedKeySize() int         { return s.Size() }
 func (s short) PrivateKeySize() int        { return s.byteSize() }
 func (s short) SeedSize() int              { return s.byteSize() }
 func (s short) CiphertextSize() int        { return 1 + 2*s.byteSize() }
 func (s short) PublicKeySize() int         { return 1 + 2*s.byteSize() }
 func (s short) EncapsulationSeedSize() int { return s.byteSize() }
-func (s short) byteSize() int              { return (s.BitSize + 7) / 8 }
+func (s short) byteSize() int              { return (s.Params().BitSize + 7) / 8 }
 
 func (s short) getSuiteID() (sid [5]byte) {
 	sid[0], sid[1], sid[2] = 'K', 'E', 'M'
@@ -41,7 +44,7 @@ func (s short) calcDH(dh []byte, sk shortPrivKey, pk shortPubKey) {
 
 func (s short) extractExpand(dh, kemCtx []byte) []byte {
 	eaePkr := s.labeledExtract(nil, []byte("eae_prk"), dh)
-	return s.labeledExpand(eaePkr, []byte("shared_secret"), kemCtx, uint16(s.h.Size()))
+	return s.labeledExpand(eaePkr, []byte("shared_secret"), kemCtx, uint16(s.Size()))
 }
 
 func (s short) labeledExtract(salt, label, info []byte) []byte {
@@ -52,7 +55,7 @@ func (s short) labeledExtract(salt, label, info []byte) []byte {
 		suiteID[:]...),
 		label...),
 		info...)
-	return hkdf.Extract(s.h.New, labeledIKM, salt)
+	return hkdf.Extract(s.New, labeledIKM, salt)
 }
 
 func (s short) labeledExpand(prk, label, info []byte, l uint16) []byte {
@@ -65,7 +68,7 @@ func (s short) labeledExpand(prk, label, info []byte, l uint16) []byte {
 		label...),
 		info...)
 	b := make([]byte, l)
-	rd := hkdf.Expand(s.h.New, prk, labeledInfo)
+	rd := hkdf.Expand(s.New, prk, labeledInfo)
 	_, _ = io.ReadFull(rd, b)
 	return b
 }

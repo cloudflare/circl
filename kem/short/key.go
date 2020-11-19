@@ -21,7 +21,10 @@ func (k shortPubKey) Scheme() kem.Scheme             { return k.c }
 func (k shortPubKey) MarshalBinary() ([]byte, error) { return elliptic.Marshal(k.c, k.x, k.y), nil }
 func (k shortPubKey) Equal(pk kem.PublicKey) bool {
 	k1, ok := pk.(shortPubKey)
-	return ok && k.c.Params() == k1.c.Params() && k.x.Cmp(k1.x) == 0 && k.y.Cmp(k1.y) == 0
+	return ok &&
+		k.c.Params().Name == k1.c.Params().Name &&
+		k.x.Cmp(k1.x) == 0 &&
+		k.y.Cmp(k1.y) == 0
 }
 
 type shortPrivKey struct {
@@ -37,8 +40,9 @@ func (k shortPrivKey) MarshalBinary() ([]byte, error) {
 }
 func (k shortPrivKey) Equal(pk kem.PrivateKey) bool {
 	k1, ok := pk.(shortPrivKey)
-	return ok && k.c.Params() == k1.c.Params() &&
-		subtle.ConstantTimeCompare(k.k, k1.k) == 0
+	return ok &&
+		k.c.Params().Name == k1.c.Params().Name &&
+		subtle.ConstantTimeCompare(k.k, k1.k) == 1
 }
 func (k *shortPrivKey) Public() shortPubKey {
 	if k.pub == nil {
@@ -72,14 +76,14 @@ func (s short) DeriveKey(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 	}
 
 	var bitmask = byte(0xFF)
-	if s.BitSize == 521 {
+	if s.Params().BitSize == 521 {
 		bitmask = 0x01
 	}
 
 	dkpPrk := s.labeledExtract(nil, []byte("dkp_prk"), seed)
 	var bytes []byte
 	ctr := 0
-	for skBig := new(big.Int); skBig.Sign() == 0 || skBig.Cmp(s.N) >= 0; ctr++ {
+	for skBig := new(big.Int); skBig.Sign() == 0 || skBig.Cmp(s.Params().N) >= 0; ctr++ {
 		if ctr > 255 {
 			panic("derive key error")
 		}

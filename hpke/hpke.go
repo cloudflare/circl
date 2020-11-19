@@ -3,6 +3,8 @@ package hpke
 
 import (
 	"crypto"
+
+	"github.com/cloudflare/circl/kem"
 )
 
 const versionLabel = "HPKE-06"
@@ -43,10 +45,11 @@ type Suite struct {
 type state struct {
 	Suite
 	modeID ModeID
-	skS    crypto.PrivateKey
-	pkS    crypto.PublicKey
-	psk    []byte
-	pskID  []byte
+	kem.Scheme
+	skS   crypto.PrivateKey
+	pkS   crypto.PublicKey
+	psk   []byte
+	pskID []byte
 }
 
 type Sender struct {
@@ -122,8 +125,7 @@ func (r *Receiver) SetupAuthPSK(enc, psk, pskID []byte, pkS crypto.PublicKey) (O
 }
 
 func (s *Sender) allSetup() ([]byte, Sealer, error) {
-	var err error
-	err = s.validate()
+	err := s.validate()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -148,8 +150,7 @@ func (s *Sender) allSetup() ([]byte, Sealer, error) {
 }
 
 func (r *Receiver) allSetup() (Opener, error) {
-	var err error
-	err = r.validate()
+	err := r.validate()
 	if err != nil {
 		return nil, err
 	}

@@ -8,12 +8,19 @@ import (
 	"github.com/cloudflare/circl/kem/kyber/kyber1024"
 	"github.com/cloudflare/circl/kem/kyber/kyber512"
 	"github.com/cloudflare/circl/kem/kyber/kyber768"
+	"github.com/cloudflare/circl/kem/short"
 	"github.com/cloudflare/circl/kem/sike/sikep434"
 	"github.com/cloudflare/circl/kem/sike/sikep503"
 	"github.com/cloudflare/circl/kem/sike/sikep751"
+	"github.com/cloudflare/circl/kem/xkem"
 )
 
 var allSchemes = [...]kem.Scheme{
+	short.KemP256Sha256,
+	short.KemP384Sha384,
+	short.KemP521Sha512,
+	xkem.KemX25519Sha256,
+	xkem.KemX448Sha512,
 	kyber512.Scheme(),
 	kyber768.Scheme(),
 	kyber1024.Scheme(),

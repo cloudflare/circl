@@ -25,7 +25,9 @@ func (k xkemPubKey) MarshalBinary() ([]byte, error) {
 }
 func (k xkemPubKey) Equal(pk kem.PublicKey) bool {
 	k1, ok := pk.(xkemPubKey)
-	return ok && k.c.id == k1.c.id && bytes.Equal(k.k, k1.k)
+	return ok &&
+		k.c.id == k1.c.id &&
+		bytes.Equal(k.k, k1.k)
 }
 
 type xkemPrivKey struct {
@@ -41,18 +43,20 @@ func (k xkemPrivKey) MarshalBinary() ([]byte, error) {
 }
 func (k xkemPrivKey) Equal(pk kem.PrivateKey) bool {
 	k1, ok := pk.(xkemPrivKey)
-	return ok && k.c.id == k1.c.id && subtle.ConstantTimeCompare(k.k, k1.k) == 0
+	return ok &&
+		k.c.id == k1.c.id &&
+		subtle.ConstantTimeCompare(k.k, k1.k) == 1
 }
 func (k *xkemPrivKey) Public() xkemPubKey {
 	if k.pub == nil {
 		k.pub = &xkemPubKey{c: k.c, k: make([]byte, k.c.size)}
-		switch k.c.id {
-		case KemX25519Sha256:
+		switch k.c.size {
+		case x25519.Size:
 			var sk, pk x25519.Key
 			copy(sk[:], k.k)
 			x25519.KeyGen(&pk, &sk)
 			copy(k.pub.k, pk[:])
-		case KemX448Sha512:
+		case x448.Size:
 			var sk, pk x448.Key
 			copy(sk[:], k.k)
 			x448.KeyGen(&pk, &sk)

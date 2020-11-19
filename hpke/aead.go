@@ -1,11 +1,8 @@
 package hpke
 
 import (
-	"crypto/aes"
 	"crypto/cipher"
 	"errors"
-
-	"golang.org/x/crypto/chacha20poly1305"
 )
 
 type encdecCxt struct {
@@ -17,32 +14,6 @@ type encdecCxt struct {
 }
 type sealCxt struct{ *encdecCxt }
 type openCxt struct{ *encdecCxt }
-
-func (s Suite) aeadCtx(key, baseNonce, exporter []byte) (*encdecCxt, error) {
-	l := aeadParams[s.AeadID].Nn
-	if len(baseNonce) < int(l) {
-		return nil, errors.New("invalid nonce size")
-	}
-
-	var aead cipher.AEAD
-	var err error
-
-	switch s.AeadID {
-	case AeadAES128GCM, AeadAES256GCM:
-		var block cipher.Block
-		if block, err = aes.NewCipher(key); err == nil {
-			aead, err = cipher.NewGCM(block)
-		}
-	case AeadCC20P1305:
-		aead, err = chacha20poly1305.New(key)
-	default:
-		err = errors.New("invalid AeadID")
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &encdecCxt{aead, s, baseNonce, make([]byte, l), exporter}, nil
-}
 
 func (c *encdecCxt) Export(expCtx []byte, len uint16) []byte {
 	return c.s.labeledExpand(c.exporterSecret, []byte("sec"), expCtx, len)

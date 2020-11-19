@@ -2,6 +2,8 @@ package xkem
 
 import (
 	"crypto"
+	_ "crypto/sha256" // linking sha256 packages.
+	_ "crypto/sha512" // linking sha512 packages.
 	"encoding/binary"
 	"io"
 
@@ -13,13 +15,14 @@ import (
 const versionLabel = "HPKE-06"
 
 type xkem struct {
-	id   KemID
 	size int
+	id   uint16
+	name string
 	h    crypto.Hash
 }
 
-func (x xkem) Name() string               { return names[x.id] }
-func (x xkem) SharedKeySize() int         { return x.size }
+func (x xkem) Name() string               { return x.name }
+func (x xkem) SharedKeySize() int         { return x.h.Size() }
 func (x xkem) PrivateKeySize() int        { return x.size }
 func (x xkem) SeedSize() int              { return x.size }
 func (x xkem) CiphertextSize() int        { return x.size }
@@ -33,14 +36,14 @@ func (x xkem) getSuiteID() (sid [5]byte) {
 }
 
 func (x xkem) calcDH(dh []byte, priv xkemPrivKey, pub xkemPubKey) {
-	switch x.id {
-	case KemX25519Sha256:
+	switch x.size {
+	case x25519.Size:
 		var dd, sk, pk x25519.Key
 		copy(sk[:], priv.k)
 		copy(pk[:], pub.k)
 		x25519.Shared(&dd, &sk, &pk)
 		copy(dh, dd[:])
-	case KemX448Sha512:
+	case x448.Size:
 		var dd, sk, pk x448.Key
 		copy(sk[:], priv.k)
 		copy(pk[:], pub.k)

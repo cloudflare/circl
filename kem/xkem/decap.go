@@ -3,7 +3,7 @@ package xkem
 import "github.com/cloudflare/circl/kem"
 
 func (x xkem) Decapsulate(skr kem.PrivateKey, ct []byte) ([]byte, error) {
-	dh := make([]byte, x.SharedKeySize())
+	dh := make([]byte, x.size)
 	kemCtx, err := x.coreDecap(dh, skr, ct)
 	if err != nil {
 		return nil, err
@@ -17,7 +17,7 @@ func (x xkem) AuthDecapsulate(skr kem.PrivateKey, ct []byte, pks kem.PublicKey) 
 		return nil, kem.ErrTypeMismatch
 	}
 
-	dhLen := x.SharedKeySize()
+	dhLen := x.size
 	dh := make([]byte, 2*dhLen)
 	kemCtx, err := x.coreDecap(dh[:dhLen], skr, ct)
 	if err != nil {
