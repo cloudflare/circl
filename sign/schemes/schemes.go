@@ -12,10 +12,10 @@ import (
 )
 
 var allSchemes = [...]sign.Scheme{
-	ed25519.Scheme,
-	ed448.Scheme,
-	eddilithium3.Scheme,
-	eddilithium4.Scheme,
+	ed25519.Scheme(),
+	ed448.Scheme(),
+	eddilithium3.Scheme(),
+	eddilithium4.Scheme(),
 }
 
 var allSchemeNames map[string]sign.Scheme

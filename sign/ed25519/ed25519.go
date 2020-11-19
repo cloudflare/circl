@@ -116,9 +116,9 @@ func (priv PrivateKey) Seed() []byte {
 	return seed
 }
 
-func (priv PrivateKey) Scheme() sign.Scheme { return Scheme }
+func (priv PrivateKey) Scheme() sign.Scheme { return sch }
 
-func (pub PublicKey) Scheme() sign.Scheme { return Scheme }
+func (pub PublicKey) Scheme() sign.Scheme { return sch }
 
 func (priv PrivateKey) MarshalBinary() (data []byte, err error) {
 	privateKey := make(PrivateKey, PrivateKeySize)

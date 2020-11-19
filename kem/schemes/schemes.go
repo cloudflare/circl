@@ -14,12 +14,12 @@ import (
 )
 
 var allSchemes = [...]kem.Scheme{
-	kyber512.Scheme,
-	kyber768.Scheme,
-	kyber1024.Scheme,
-	sikep434.Scheme,
-	sikep503.Scheme,
-	sikep751.Scheme,
+	kyber512.Scheme(),
+	kyber768.Scheme(),
+	kyber1024.Scheme(),
+	sikep434.Scheme(),
+	sikep503.Scheme(),
+	sikep751.Scheme(),
 }
 
 var allSchemeNames map[string]kem.Scheme

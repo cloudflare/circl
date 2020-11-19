@@ -36,7 +36,7 @@ type Scheme interface {
 	// GenerateKey creates a new key pair.
 	GenerateKey() (PublicKey, PrivateKey, error)
 
-	// Encapsulate generates a shared key ss for the public key  and
+	// Encapsulate generates a shared key ss for the public key and
 	// encapsulates it into a ciphertext ct.
 	Encapsulate(pk PublicKey) (ct []byte, ss []byte, err error)
 
@@ -62,7 +62,7 @@ type Scheme interface {
 	// Size of packed public keys.
 	PublicKeySize() int
 
-	// Deterministicallly derives a keypair from a seed.  If you're unsure,
+	// Deterministicallly derives a keypair from a seed. If you're unsure,
 	// you're better off using GenerateKey().
 	//
 	// Panics if seed is not of length SeedSize().
@@ -73,7 +73,7 @@ type Scheme interface {
 
 	// EncapsulateDeterministically generates a shared key ss for the public
 	// key deterministically from the given seed and encapsulates it into
-	// a ciphertext ct.  If unsure, you're better off using Encapsulate().
+	// a ciphertext ct. If unsure, you're better off using Encapsulate().
 	EncapsulateDeterministically(pk PublicKey, seed []byte) (
 		ct, ss []byte, err error)
 

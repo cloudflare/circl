@@ -7,7 +7,10 @@ import (
 	"github.com/cloudflare/circl/sign"
 )
 
-var Scheme sign.Scheme = &scheme{}
+var sch sign.Scheme = &scheme{}
+
+// Scheme returns a signature interface.
+func Scheme() sign.Scheme { return sch }
 
 type scheme struct{}
 
