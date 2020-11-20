@@ -5,21 +5,22 @@ import (
 	"errors"
 )
 
-type encdecCxt struct {
+type encdecCtx struct {
 	cipher.AEAD
-	s              Suite
+	Suite
 	baseNonce      []byte
 	seq            []byte
 	exporterSecret []byte
 }
-type sealCxt struct{ *encdecCxt }
-type openCxt struct{ *encdecCxt }
 
-func (c *encdecCxt) Export(expCtx []byte, len uint16) []byte {
-	return c.s.labeledExpand(c.exporterSecret, []byte("sec"), expCtx, len)
+type sealCtx struct{ *encdecCtx }
+type openCtx struct{ *encdecCtx }
+
+func (c *encdecCtx) Export(expCtx []byte, len uint16) []byte {
+	return c.labeledExpand(c.exporterSecret, []byte("sec"), expCtx, len)
 }
 
-func (c *encdecCxt) calcNonce() []byte {
+func (c *encdecCtx) calcNonce() []byte {
 	out := make([]byte, len(c.seq))
 	for i := range c.baseNonce {
 		out[i] = c.baseNonce[i] ^ c.seq[i]
@@ -27,7 +28,7 @@ func (c *encdecCxt) calcNonce() []byte {
 	return out
 }
 
-func (c *encdecCxt) inc() error {
+func (c *encdecCtx) inc() error {
 	max := byte(0xFF)
 	of := max
 	for i := range c.seq {
@@ -41,12 +42,12 @@ func (c *encdecCxt) inc() error {
 		c.seq[i] = byte(w & 0xFF)
 	}
 	if of == max || carry != 0 {
-		return errors.New("seq overflow")
+		return errors.New("sequence number overflow")
 	}
 	return nil
 }
 
-func (c *sealCxt) Seal(pt, aad []byte) ([]byte, error) {
+func (c *sealCtx) Seal(pt, aad []byte) ([]byte, error) {
 	ct := c.AEAD.Seal(nil, c.calcNonce(), pt, aad)
 	err := c.inc()
 	if err != nil {
@@ -55,7 +56,7 @@ func (c *sealCxt) Seal(pt, aad []byte) ([]byte, error) {
 	return ct, nil
 }
 
-func (c *openCxt) Open(ct, aad []byte) ([]byte, error) {
+func (c *openCtx) Open(ct, aad []byte) ([]byte, error) {
 	pt, err := c.AEAD.Open(nil, c.calcNonce(), ct, aad)
 	if err != nil {
 		return nil, err

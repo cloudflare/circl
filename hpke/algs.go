@@ -14,27 +14,38 @@ import (
 type KemID = uint16
 
 const (
-	KemP256HkdfSha256   KemID = 0x10 // KEM based on P-256 curve with HKDF using SHA-256.
-	KemP384HkdfSha384   KemID = 0x11 // KEM based on P-384 curve with HKDF using SHA-384.
-	KemP521HkdfSha512   KemID = 0x12 // KEM based on P-521 curve with HKDF using SHA-512.
-	KemX25519HkdfSha256 KemID = 0x20 // KEM based on X25519 Diffie-Helman with HKDF using SHA-256.
-	KemX448HkdfSha512   KemID = 0x21 // KEM based on X448 Diffie-Helman with HKDF using SHA-512.
+	// KEM based on P-256 curve with HKDF using SHA-256.
+	KemP256HkdfSha256 KemID = 0x10
+	// KEM based on P-384 curve with HKDF using SHA-384.
+	KemP384HkdfSha384 KemID = 0x11
+	// KEM based on P-521 curve with HKDF using SHA-512.
+	KemP521HkdfSha512 KemID = 0x12
+	// KEM based on X25519 Diffie-Helman with HKDF using SHA-256.
+	KemX25519HkdfSha256 KemID = 0x20
+	// KEM based on X448 Diffie-Helman with HKDF using SHA-512.
+	KemX448HkdfSha512 KemID = 0x21
 )
 
 type KdfID = uint16
 
 const (
-	HkdfSha256 KdfID = 0x01 // HKDF using SHA-256 hash function.
-	HkdfSha384 KdfID = 0x02 // HKDF using SHA-384 hash function.
-	HkdfSha512 KdfID = 0x03 // HKDF using SHA-512 hash function.
+	// HKDF using SHA-256 hash function.
+	HkdfSha256 KdfID = 0x01
+	// HKDF using SHA-384 hash function.
+	HkdfSha384 KdfID = 0x02
+	// HKDF using SHA-512 hash function.
+	HkdfSha512 KdfID = 0x03
 )
 
 type AeadID = uint16
 
 const (
-	AeadAES128GCM AeadID = 0x01 // AES-128 block cipher in Galois Counter Mode (GCM).
-	AeadAES256GCM AeadID = 0x02 // AES-256 block cipher in Galois Counter Mode (GCM).
-	AeadCC20P1305 AeadID = 0x03 // ChaCha20 stream cipher and Poly1305 MAC.
+	// AES-128 block cipher in Galois Counter Mode (GCM).
+	AeadAES128GCM AeadID = 0x01
+	// AES-256 block cipher in Galois Counter Mode (GCM).
+	AeadAES256GCM AeadID = 0x02
+	// ChaCha20 stream cipher and Poly1305 MAC.
+	AeadCC20P1305 AeadID = 0x03
 )
 
 var kemParams map[KemID]func() kem.AuthScheme
@@ -57,7 +68,10 @@ func init() {
 	aeadParams = make(map[AeadID]aeadInfo)
 	aeadParams[AeadAES128GCM] = aeadInfo{aesGCM, 16}
 	aeadParams[AeadAES256GCM] = aeadInfo{aesGCM, 32}
-	aeadParams[AeadCC20P1305] = aeadInfo{chacha20poly1305.New, chacha20poly1305.KeySize}
+	aeadParams[AeadCC20P1305] = aeadInfo{
+		chacha20poly1305.New,
+		chacha20poly1305.KeySize,
+	}
 }
 
 type aeadInfo struct {

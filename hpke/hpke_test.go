@@ -14,7 +14,8 @@ import (
 )
 
 func TestVectors(t *testing.T) {
-	// Test vectors from https://github.com/cfrg/draft-irtf-cfrg-hpke/blob/draft-irtf-cfrg-hpke-06/test-vectors.json
+	// Test vectors from
+	// https://github.com/cfrg/draft-irtf-cfrg-hpke/blob/draft-irtf-cfrg-hpke-06/test-vectors.json
 	vectors := readFile(t, "testdata/vectors_v06.json")
 	for i, v := range vectors {
 		t.Run(fmt.Sprintf("v%v", i), v.verify)
@@ -25,18 +26,22 @@ func (v *vector) verify(t *testing.T) {
 	m := v.ModeID
 	s := Suite{v.KemID, v.KdfID, v.AeadID}
 
-	dhkem := s.getKem()
+	dhkem := kemParams[v.KemID]()
 	sender, recv := v.getActors(t, dhkem, s)
 	sealer, opener := v.setup(t, dhkem, sender, recv, m, s)
 
-	v.checkAead(t, (sealer.(*sealCxt)).encdecCxt, m, s)
-	v.checkAead(t, (opener.(*openCxt)).encdecCxt, m, s)
+	v.checkAead(t, (sealer.(*sealCtx)).encdecCtx, m, s)
+	v.checkAead(t, (opener.(*openCtx)).encdecCtx, m, s)
 	v.checkEncryptions(t, sealer, opener, m, s)
 	v.checkExports(t, sealer, m, s)
 	v.checkExports(t, opener, m, s)
 }
 
-func (v *vector) getActors(t *testing.T, dhkem kem.Scheme, s Suite) (*Sender, *Receiver) {
+func (v *vector) getActors(
+	t *testing.T,
+	dhkem kem.Scheme,
+	s Suite,
+) (*Sender, *Receiver) {
 	h := fmt.Sprintf("%v\n", s)
 
 	pkR, err := dhkem.UnmarshalBinaryPublicKey(hexB(v.PkRm))
@@ -53,7 +58,7 @@ func (v *vector) getActors(t *testing.T, dhkem kem.Scheme, s Suite) (*Sender, *R
 
 func (v *vector) setup(t *testing.T, dhkem kem.Scheme,
 	se *Sender, re *Receiver,
-	m ModeID, s Suite,
+	m modeID, s Suite,
 ) (Sealer, Opener) {
 	h := fmt.Sprintf("mode: %v %v\n", m, s)
 	var x func() ([]byte, Sealer, error)
@@ -108,7 +113,7 @@ func (v *vector) setup(t *testing.T, dhkem kem.Scheme,
 	return sealer, opener
 }
 
-func (v *vector) checkAead(t *testing.T, e *encdecCxt, m ModeID, s Suite) {
+func (v *vector) checkAead(t *testing.T, e *encdecCtx, m modeID, s Suite) {
 	got := e.baseNonce
 	want := hexB(v.BaseNonce)
 	if !bytes.Equal(got, want) {
@@ -122,7 +127,13 @@ func (v *vector) checkAead(t *testing.T, e *encdecCxt, m ModeID, s Suite) {
 	}
 }
 
-func (v *vector) checkEncryptions(t *testing.T, se Sealer, op Opener, m ModeID, s Suite) {
+func (v *vector) checkEncryptions(
+	t *testing.T,
+	se Sealer,
+	op Opener,
+	m modeID,
+	s Suite,
+) {
 	for j, encv := range v.Encryptions {
 		pt := hexB(encv.Plaintext)
 		aad := hexB(encv.Aad)
@@ -140,7 +151,7 @@ func (v *vector) checkEncryptions(t *testing.T, se Sealer, op Opener, m ModeID, 
 	}
 }
 
-func (v *vector) checkExports(t *testing.T, exp Exporter, m ModeID, s Suite) {
+func (v *vector) checkExports(t *testing.T, exp Exporter, m modeID, s Suite) {
 	for j, expv := range v.Exports {
 		ctx := hexB(expv.ExportContext)
 		want := hexB(expv.ExportValue)

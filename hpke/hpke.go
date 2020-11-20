@@ -4,7 +4,7 @@
 // (KEM), a key derivation function (KDF), and an authenticated symmetric-key
 // encryption scheme with additional data (AEAD).
 //
-// Specification in https://datatracker.ietf.org/doc/draft-irtf-cfrg-hpke
+// Specification in https://www.ietf.org/archive/id/draft-irtf-cfrg-hpke-06.html
 package hpke
 
 import "github.com/cloudflare/circl/kem"
@@ -28,18 +28,21 @@ type Opener interface {
 	Open(ct, aad []byte) (pt []byte, err error)
 }
 
-// ModeID represents an HPKE variant.
-type ModeID = uint8
+// modeID represents an HPKE variant.
+type modeID = uint8
 
 const (
 	// Base provides hybrid public-key encryption to a public key.
-	Base ModeID = 0x00
-	// PSK provides hybrid public-key encryption with authentication using a pre-shared key.
-	PSK ModeID = 0x01
-	// Auth provides hybrid public-key encryption with authentication using an asymmetric key.
-	Auth ModeID = 0x02
-	// AuthPSK provides hybrid public-key encryption with authentication using both a pre-shared key and an asymmetric key.
-	AuthPSK ModeID = 0x03
+	Base modeID = 0x00
+	// PSK provides hybrid public-key encryption with authentication using a
+	// pre-shared key.
+	PSK modeID = 0x01
+	// Auth provides hybrid public-key encryption with authentication using an
+	// asymmetric key.
+	Auth modeID = 0x02
+	// AuthPSK provides hybrid public-key encryption with authentication using
+	// both a pre-shared key and an asymmetric key.
+	AuthPSK modeID = 0x03
 )
 
 type Suite struct {
@@ -50,7 +53,7 @@ type Suite struct {
 
 type state struct {
 	Suite
-	modeID ModeID
+	modeID modeID
 	skS    kem.PrivateKey
 	pkS    kem.PublicKey
 	psk    []byte
@@ -72,18 +75,28 @@ func (s *Sender) Setup() (enc []byte, seal Sealer, err error) {
 	s.modeID = Base
 	return s.allSetup()
 }
-func (s *Sender) SetupAuth(skS kem.PrivateKey) (enc []byte, seal Sealer, err error) {
+
+func (s *Sender) SetupAuth(
+	skS kem.PrivateKey,
+) (enc []byte, seal Sealer, err error) {
 	s.modeID = Auth
 	s.state.skS = skS
 	return s.allSetup()
 }
-func (s *Sender) SetupPSK(psk, pskID []byte) (enc []byte, seal Sealer, err error) {
+
+func (s *Sender) SetupPSK(
+	psk, pskID []byte,
+) (enc []byte, seal Sealer, err error) {
 	s.modeID = PSK
 	s.state.psk = psk
 	s.state.pskID = pskID
 	return s.allSetup()
 }
-func (s *Sender) SetupAuthPSK(skS kem.PrivateKey, psk, pskID []byte) (enc []byte, seal Sealer, err error) {
+
+func (s *Sender) SetupAuthPSK(
+	skS kem.PrivateKey,
+	psk, pskID []byte,
+) (enc []byte, seal Sealer, err error) {
 	s.modeID = AuthPSK
 	s.state.skS = skS
 	s.state.psk = psk
@@ -120,7 +133,11 @@ func (r *Receiver) SetupPSK(enc, psk, pskID []byte) (Opener, error) {
 	r.state.pskID = pskID
 	return r.allSetup()
 }
-func (r *Receiver) SetupAuthPSK(enc, psk, pskID []byte, pkS kem.PublicKey) (Opener, error) {
+
+func (r *Receiver) SetupAuthPSK(
+	enc, psk, pskID []byte,
+	pkS kem.PublicKey,
+) (Opener, error) {
 	r.modeID = AuthPSK
 	r.enc = enc
 	r.state.psk = psk
@@ -151,7 +168,7 @@ func (s *Sender) allSetup() ([]byte, Sealer, error) {
 		return nil, nil, err
 	}
 
-	return enc, &sealCxt{ctx}, nil
+	return enc, &sealCtx{ctx}, nil
 }
 
 func (r *Receiver) allSetup() (Opener, error) {
@@ -175,5 +192,5 @@ func (r *Receiver) allSetup() (Opener, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &openCxt{ctx}, nil
+	return &openCtx{ctx}, nil
 }

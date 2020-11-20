@@ -9,7 +9,7 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
-func (s state) keySchedule(ss, info, psk, pskID []byte) (*encdecCxt, error) {
+func (s state) keySchedule(ss, info, psk, pskID []byte) (*encdecCtx, error) {
 	if err := s.verifyPSKInputs(psk, pskID); err != nil {
 		return nil, err
 	}
@@ -31,9 +31,20 @@ func (s state) keySchedule(ss, info, psk, pskID []byte) (*encdecCxt, error) {
 
 	Nn := uint16(aead.NonceSize())
 	baseNonce := s.labeledExpand(secret, []byte("base_nonce"), keySchCtx, Nn)
-	exporterSecret := s.labeledExpand(secret, []byte("exp"), keySchCtx, uint16(kdfParams[s.KdfID].Size()))
+	exporterSecret := s.labeledExpand(
+		secret,
+		[]byte("exp"),
+		keySchCtx,
+		uint16(kdfParams[s.KdfID].Size()),
+	)
 
-	return &encdecCxt{aead, s.Suite, baseNonce, make([]byte, Nn), exporterSecret}, nil
+	return &encdecCtx{
+		aead,
+		s.Suite,
+		baseNonce,
+		make([]byte, Nn),
+		exporterSecret,
+	}, nil
 }
 
 func (s state) verifyPSKInputs(psk, pskID []byte) error {
@@ -56,7 +67,12 @@ func (s state) verifyPSKInputs(psk, pskID []byte) error {
 }
 
 func (s Suite) String() string {
-	return fmt.Sprintf("kem_id: %v kdf_id: %v aead_id: %v", s.KemID, s.KdfID, s.AeadID)
+	return fmt.Sprintf(
+		"kem_id: %v kdf_id: %v aead_id: %v",
+		s.KemID,
+		s.KdfID,
+		s.AeadID,
+	)
 }
 
 func (s Suite) getSuiteID() (id [10]byte) {
@@ -93,7 +109,8 @@ func (s Suite) labeledExtract(salt, label, ikm []byte) []byte {
 
 func (s Suite) labeledExpand(prk, label, info []byte, l uint16) []byte {
 	suiteID := s.getSuiteID()
-	labeledInfo := make([]byte, 2, 2+len(versionLabel)+len(suiteID)+len(label)+len(info))
+	labeledInfo := make([]byte,
+		2, 2+len(versionLabel)+len(suiteID)+len(label)+len(info))
 	binary.BigEndian.PutUint16(labeledInfo[0:2], l)
 	labeledInfo = append(append(append(append(labeledInfo,
 		versionLabel...),
