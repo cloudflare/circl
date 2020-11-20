@@ -1,10 +1,6 @@
 package xkem
 
-import (
-	"crypto"
-
-	"github.com/cloudflare/circl/kem"
-)
+import "github.com/cloudflare/circl/kem"
 
 func (x xkem) Encapsulate(pkr kem.PublicKey) (ct []byte, ss []byte, err error) {
 	pke, ske, err := x.GenerateKey()
@@ -32,7 +28,7 @@ func (x xkem) AuthEncapsulateDeterministically(pkr kem.PublicKey, seed []byte, s
 	return x.authEncap(pkr, sks, pke, ske)
 }
 
-func (x xkem) encap(pkr kem.PublicKey, pke crypto.PublicKey, ske crypto.PrivateKey) (ct []byte, ss []byte, err error) {
+func (x xkem) encap(pkr kem.PublicKey, pke kem.PublicKey, ske kem.PrivateKey) (ct []byte, ss []byte, err error) {
 	dh := make([]byte, x.size)
 	enc, kemCtx, err := x.coreEncap(dh, pkr, ske, pke)
 	if err != nil {
@@ -45,8 +41,8 @@ func (x xkem) encap(pkr kem.PublicKey, pke crypto.PublicKey, ske crypto.PrivateK
 func (x xkem) authEncap(
 	pkr kem.PublicKey,
 	sks kem.PrivateKey,
-	pke crypto.PublicKey,
-	ske crypto.PrivateKey,
+	pke kem.PublicKey,
+	ske kem.PrivateKey,
 ) (ct []byte, ss []byte, err error) {
 	skS, ok := sks.(xkemPrivKey)
 	if !ok {
@@ -75,8 +71,8 @@ func (x xkem) authEncap(
 func (x xkem) coreEncap(
 	dh []byte,
 	pkr kem.PublicKey,
-	ske crypto.PrivateKey,
-	pke crypto.PublicKey,
+	ske kem.PrivateKey,
+	pke kem.PublicKey,
 ) (enc []byte, kemCtx []byte, err error) {
 	pkR, ok := pkr.(xkemPubKey)
 	if !ok {

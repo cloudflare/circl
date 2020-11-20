@@ -21,12 +21,12 @@ var allSchemes = [...]kem.Scheme{
 	shortkem.P521HkdfSha512(),
 	xkem.X25519HkdfSha256(),
 	xkem.X448HkdfSha512(),
-	kyber512.Scheme,
-	kyber768.Scheme,
-	kyber1024.Scheme,
-	sikep434.Scheme,
-	sikep503.Scheme,
-	sikep751.Scheme,
+	kyber512.Scheme(),
+	kyber768.Scheme(),
+	kyber1024.Scheme(),
+	sikep434.Scheme(),
+	sikep503.Scheme(),
+	sikep751.Scheme(),
 }
 
 var allSchemeNames map[string]kem.Scheme

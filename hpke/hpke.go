@@ -7,7 +7,7 @@
 // Specification in https://datatracker.ietf.org/doc/draft-irtf-cfrg-hpke
 package hpke
 
-import "crypto"
+import "github.com/cloudflare/circl/kem"
 
 const versionLabel = "HPKE-06"
 
@@ -51,20 +51,20 @@ type Suite struct {
 type state struct {
 	Suite
 	modeID ModeID
-	skS    crypto.PrivateKey
-	pkS    crypto.PublicKey
+	skS    kem.PrivateKey
+	pkS    kem.PublicKey
 	psk    []byte
 	pskID  []byte
 }
 
 type Sender struct {
 	state
-	pkR  crypto.PublicKey
+	pkR  kem.PublicKey
 	info []byte
 	seed []byte
 }
 
-func (s Suite) NewSender(pkR crypto.PublicKey, info, seed []byte) *Sender {
+func (s Suite) NewSender(pkR kem.PublicKey, info, seed []byte) *Sender {
 	return &Sender{state: state{Suite: s}, pkR: pkR, info: info, seed: seed}
 }
 
@@ -72,7 +72,7 @@ func (s *Sender) Setup() (enc []byte, seal Sealer, err error) {
 	s.modeID = Base
 	return s.allSetup()
 }
-func (s *Sender) SetupAuth(skS crypto.PrivateKey) (enc []byte, seal Sealer, err error) {
+func (s *Sender) SetupAuth(skS kem.PrivateKey) (enc []byte, seal Sealer, err error) {
 	s.modeID = Auth
 	s.state.skS = skS
 	return s.allSetup()
@@ -83,7 +83,7 @@ func (s *Sender) SetupPSK(psk, pskID []byte) (enc []byte, seal Sealer, err error
 	s.state.pskID = pskID
 	return s.allSetup()
 }
-func (s *Sender) SetupAuthPSK(skS crypto.PrivateKey, psk, pskID []byte) (enc []byte, seal Sealer, err error) {
+func (s *Sender) SetupAuthPSK(skS kem.PrivateKey, psk, pskID []byte) (enc []byte, seal Sealer, err error) {
 	s.modeID = AuthPSK
 	s.state.skS = skS
 	s.state.psk = psk
@@ -93,12 +93,12 @@ func (s *Sender) SetupAuthPSK(skS crypto.PrivateKey, psk, pskID []byte) (enc []b
 
 type Receiver struct {
 	state
-	skR  crypto.PrivateKey
+	skR  kem.PrivateKey
 	enc  []byte
 	info []byte
 }
 
-func (s Suite) NewReceiver(skR crypto.PrivateKey, info []byte) *Receiver {
+func (s Suite) NewReceiver(skR kem.PrivateKey, info []byte) *Receiver {
 	return &Receiver{state: state{Suite: s}, skR: skR, info: info}
 }
 
@@ -107,7 +107,7 @@ func (r *Receiver) Setup(enc []byte) (Opener, error) {
 	r.enc = enc
 	return r.allSetup()
 }
-func (r *Receiver) SetupAuth(enc []byte, pkS crypto.PublicKey) (Opener, error) {
+func (r *Receiver) SetupAuth(enc []byte, pkS kem.PublicKey) (Opener, error) {
 	r.modeID = Auth
 	r.enc = enc
 	r.state.pkS = pkS
@@ -120,7 +120,7 @@ func (r *Receiver) SetupPSK(enc, psk, pskID []byte) (Opener, error) {
 	r.state.pskID = pskID
 	return r.allSetup()
 }
-func (r *Receiver) SetupAuthPSK(enc, psk, pskID []byte, pkS crypto.PublicKey) (Opener, error) {
+func (r *Receiver) SetupAuthPSK(enc, psk, pskID []byte, pkS kem.PublicKey) (Opener, error) {
 	r.modeID = AuthPSK
 	r.enc = enc
 	r.state.psk = psk

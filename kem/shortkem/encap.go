@@ -1,10 +1,6 @@
 package shortkem
 
-import (
-	"crypto"
-
-	"github.com/cloudflare/circl/kem"
-)
+import "github.com/cloudflare/circl/kem"
 
 func (s short) Encapsulate(pkr kem.PublicKey) (ct []byte, ss []byte, err error) {
 	pke, ske, err := s.GenerateKey()
@@ -32,7 +28,7 @@ func (s short) AuthEncapsulateDeterministically(pkr kem.PublicKey, seed []byte, 
 	return s.authEncap(pkr, sks, pke, ske)
 }
 
-func (s short) encap(pkr kem.PublicKey, pke crypto.PublicKey, ske crypto.PrivateKey) (ct []byte, ss []byte, err error) {
+func (s short) encap(pkr kem.PublicKey, pke kem.PublicKey, ske kem.PrivateKey) (ct []byte, ss []byte, err error) {
 	dh := make([]byte, s.byteSize())
 	enc, kemCtx, err := s.coreEncap(dh, pkr, ske, pke)
 	if err != nil {
@@ -42,7 +38,7 @@ func (s short) encap(pkr kem.PublicKey, pke crypto.PublicKey, ske crypto.Private
 	return enc, ss, nil
 }
 
-func (s short) authEncap(pkr kem.PublicKey, sks kem.PrivateKey, pke crypto.PublicKey, ske crypto.PrivateKey) (ct []byte, ss []byte, err error) {
+func (s short) authEncap(pkr kem.PublicKey, sks kem.PrivateKey, pke kem.PublicKey, ske kem.PrivateKey) (ct []byte, ss []byte, err error) {
 	skS, ok := sks.(shortPrivKey)
 	if !ok {
 		panic(kem.ErrTypeMismatch)
@@ -70,8 +66,8 @@ func (s short) authEncap(pkr kem.PublicKey, sks kem.PrivateKey, pke crypto.Publi
 func (s short) coreEncap(
 	dh []byte,
 	pkr kem.PublicKey,
-	ske crypto.PrivateKey,
-	pke crypto.PublicKey,
+	ske kem.PrivateKey,
+	pke kem.PublicKey,
 ) (enc []byte, kemCtx []byte, err error) {
 	pkR, ok := pkr.(shortPubKey)
 	if !ok {
