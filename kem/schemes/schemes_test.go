@@ -143,4 +143,5 @@ func Example_schemes() {
 	// SIKEp434
 	// SIKEp503
 	// SIKEp751
+	// Temporary-Kyber-Sike
 }

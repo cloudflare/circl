@@ -16,6 +16,7 @@ import (
 
 	"github.com/cloudflare/circl/hpke"
 	"github.com/cloudflare/circl/kem"
+	"github.com/cloudflare/circl/kem/hybrid"
 	"github.com/cloudflare/circl/kem/kyber/kyber1024"
 	"github.com/cloudflare/circl/kem/kyber/kyber512"
 	"github.com/cloudflare/circl/kem/kyber/kyber768"
@@ -36,6 +37,7 @@ var allSchemes = [...]kem.Scheme{
 	sikep434.Scheme(),
 	sikep503.Scheme(),
 	sikep751.Scheme(),
+	hybrid.KyberSike(), // XXX temporary for testing
 }
 
 var allSchemeNames map[string]kem.Scheme
