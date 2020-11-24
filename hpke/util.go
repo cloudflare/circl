@@ -1,6 +1,7 @@
 package hpke
 
 import (
+	"crypto"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -21,10 +22,10 @@ func (s state) keySchedule(ss, info, psk, pskID []byte) (*encdecCtx, error) {
 
 	secret := s.labeledExtract(ss, []byte("secret"), psk)
 
-	Nk := uint16(aeadParams[s.AeadID].Nk)
+	Nk := uint16(s.AeadID.KeySize())
 	key := s.labeledExpand(secret, []byte("key"), keySchCtx, Nk)
 
-	aead, err := aeadParams[s.AeadID].New(key)
+	aead, err := s.AeadID.New(key)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +36,7 @@ func (s state) keySchedule(ss, info, psk, pskID []byte) (*encdecCtx, error) {
 		secret,
 		[]byte("exp"),
 		keySchCtx,
-		uint16(kdfParams[s.KdfID].Size()),
+		uint16(s.KdfID.Hash().Size()),
 	)
 
 	return &encdecCtx{
@@ -77,23 +78,16 @@ func (s Suite) String() string {
 
 func (s Suite) getSuiteID() (id [10]byte) {
 	id[0], id[1], id[2], id[3] = 'H', 'P', 'K', 'E'
-	binary.BigEndian.PutUint16(id[4:6], s.KemID)
-	binary.BigEndian.PutUint16(id[6:8], s.KdfID)
-	binary.BigEndian.PutUint16(id[8:10], s.AeadID)
+	binary.BigEndian.PutUint16(id[4:6], uint16(s.KemID))
+	binary.BigEndian.PutUint16(id[6:8], uint16(s.KdfID))
+	binary.BigEndian.PutUint16(id[8:10], uint16(s.AeadID))
 	return
 }
 
-func (s Suite) validate() error {
-	if _, ok := kemParams[s.KemID]; !ok {
-		return errors.New("kdfID not supported")
-	}
-	if _, ok := kdfParams[s.KdfID]; !ok {
-		return errors.New("kemID not supported")
-	}
-	if _, ok := aeadParams[s.AeadID]; !ok {
-		return errors.New("aeadID not supported")
-	}
-	return nil
+func (s Suite) IsValid() bool {
+	return s.KemID.Scheme() != nil &&
+		s.KdfID.Hash() != crypto.Hash(0) &&
+		s.AeadID.KeySize() != 0
 }
 
 func (s Suite) labeledExtract(salt, label, ikm []byte) []byte {
@@ -104,7 +98,7 @@ func (s Suite) labeledExtract(salt, label, ikm []byte) []byte {
 		suiteID[:]...),
 		label...),
 		ikm...)
-	return hkdf.Extract(kdfParams[s.KdfID].New, labeledIKM, salt)
+	return hkdf.Extract(s.KdfID.Hash().New, labeledIKM, salt)
 }
 
 func (s Suite) labeledExpand(prk, label, info []byte, l uint16) []byte {
@@ -118,7 +112,7 @@ func (s Suite) labeledExpand(prk, label, info []byte, l uint16) []byte {
 		label...),
 		info...)
 	b := make([]byte, l)
-	rd := hkdf.Expand(kdfParams[s.KdfID].New, prk, labeledInfo)
+	rd := hkdf.Expand(s.KdfID.Hash().New, prk, labeledInfo)
 	_, _ = io.ReadFull(rd, b)
 	return b
 }

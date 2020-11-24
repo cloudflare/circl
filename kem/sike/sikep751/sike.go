@@ -1,6 +1,6 @@
 // Code generated from pkg.templ.go. DO NOT EDIT.
 
-// sikep751 implements the key encapsulation mechanism SIKEp751.
+// Package sikep751 implements the key encapsulation mechanism SIKEp751.
 package sikep751
 
 import (
@@ -14,7 +14,11 @@ import (
 	"io"
 )
 
-type PrivateKey sidh.PrivateKey
+type PrivateKey struct {
+	sk *sidh.PrivateKey
+	pk *sidh.PublicKey
+}
+
 type PublicKey sidh.PublicKey
 
 const (
@@ -43,9 +47,8 @@ func (sk *PrivateKey) Scheme() kem.Scheme { return sch }
 func (pk *PublicKey) Scheme() kem.Scheme  { return sch }
 
 func (sk *PrivateKey) MarshalBinary() ([]byte, error) {
-	csk := (*sidh.PrivateKey)(sk)
-	ret := make([]byte, csk.Size())
-	csk.Export(ret)
+	ret := make([]byte, sk.sk.Size())
+	sk.sk.Export(ret)
 	return ret, nil
 }
 
@@ -57,6 +60,14 @@ func (sk *PrivateKey) Equal(other kem.PrivateKey) bool {
 	a, _ := sk.MarshalBinary()
 	b, _ := oth.MarshalBinary()
 	return subtle.ConstantTimeCompare(a, b) == 1
+}
+
+func (sk *PrivateKey) Public() kem.PublicKey {
+	if sk.pk == nil {
+		sk.pk = sidh.NewPublicKey(sidh.Fp751, sidh.KeyVariantSike)
+		sk.sk.GeneratePublicKey(sk.pk)
+	}
+	return (*PublicKey)(sk.pk)
 }
 
 func (pk *PublicKey) Equal(other kem.PublicKey) bool {
@@ -78,15 +89,13 @@ func (pk *PublicKey) MarshalBinary() ([]byte, error) {
 
 func GenerateKey(rand io.Reader) (kem.PublicKey, kem.PrivateKey, error) {
 	sk := sidh.NewPrivateKey(sidh.Fp751, sidh.KeyVariantSike)
-	pk := sidh.NewPublicKey(sidh.Fp751, sidh.KeyVariantSike)
 
 	if err := sk.Generate(rand); err != nil {
 		return nil, nil, err
 	}
+	priv := &PrivateKey{sk: sk}
 
-	sk.GeneratePublicKey(pk)
-
-	return (*PublicKey)(pk), (*PrivateKey)(sk), nil
+	return priv.Public(), priv, nil
 }
 
 func (*scheme) GenerateKey() (kem.PublicKey, kem.PrivateKey, error) {
@@ -147,15 +156,13 @@ func (sch *scheme) Decapsulate(sk kem.PrivateKey, ct []byte) ([]byte, error) {
 		return nil, kem.ErrTypeMismatch
 	}
 
-	sikePriv := (*sidh.PrivateKey)(priv)
-
 	sikePub := sidh.NewPublicKey(sidh.Fp751, sidh.KeyVariantSike)
-	sikePriv.GeneratePublicKey(sikePub)
+	priv.sk.GeneratePublicKey(sikePub)
 
 	ss := make([]byte, sch.SharedKeySize())
 
 	ctx := sidh.NewSike751(nil)
-	if err := ctx.Decapsulate(ss, sikePriv, sikePub, ct); err != nil {
+	if err := ctx.Decapsulate(ss, priv.sk, sikePub, ct); err != nil {
 		return nil, err
 	}
 
@@ -181,7 +188,7 @@ func (sch *scheme) UnmarshalBinaryPrivateKey(buf []byte) (kem.PrivateKey, error)
 	if err := sk.Import(buf); err != nil {
 		return nil, err
 	}
-	return (*PrivateKey)(sk), nil
+	return &PrivateKey{sk: sk}, nil
 }
 
 func init() {

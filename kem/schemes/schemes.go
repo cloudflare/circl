@@ -4,23 +4,22 @@ package schemes
 import (
 	"strings"
 
+	"github.com/cloudflare/circl/hpke"
 	"github.com/cloudflare/circl/kem"
 	"github.com/cloudflare/circl/kem/kyber/kyber1024"
 	"github.com/cloudflare/circl/kem/kyber/kyber512"
 	"github.com/cloudflare/circl/kem/kyber/kyber768"
-	"github.com/cloudflare/circl/kem/shortkem"
 	"github.com/cloudflare/circl/kem/sike/sikep434"
 	"github.com/cloudflare/circl/kem/sike/sikep503"
 	"github.com/cloudflare/circl/kem/sike/sikep751"
-	"github.com/cloudflare/circl/kem/xkem"
 )
 
 var allSchemes = [...]kem.Scheme{
-	shortkem.P256HkdfSha256(),
-	shortkem.P384HkdfSha384(),
-	shortkem.P521HkdfSha512(),
-	xkem.X25519HkdfSha256(),
-	xkem.X448HkdfSha512(),
+	hpke.DHKemP256HkdfSha256.Scheme(),
+	hpke.DHKemP384HkdfSha384.Scheme(),
+	hpke.DHKemP521HkdfSha512.Scheme(),
+	hpke.DHKemX25519HkdfSha256.Scheme(),
+	hpke.DHKemX448HkdfSha512.Scheme(),
 	kyber512.Scheme(),
 	kyber768.Scheme(),
 	kyber1024.Scheme(),

@@ -7,7 +7,11 @@
 // Specification in https://www.ietf.org/archive/id/draft-irtf-cfrg-hpke-06.html
 package hpke
 
-import "github.com/cloudflare/circl/kem"
+import (
+	"errors"
+
+	"github.com/cloudflare/circl/kem"
+)
 
 const versionLabel = "HPKE-06"
 
@@ -67,8 +71,11 @@ type Sender struct {
 	seed []byte
 }
 
-func (s Suite) NewSender(pkR kem.PublicKey, info, seed []byte) *Sender {
-	return &Sender{state: state{Suite: s}, pkR: pkR, info: info, seed: seed}
+func (s Suite) NewSender(pkR kem.PublicKey, info, seed []byte) (*Sender, error) {
+	if !s.IsValid() {
+		return nil, errors.New("invalid suite")
+	}
+	return &Sender{state: state{Suite: s}, pkR: pkR, info: info, seed: seed}, nil
 }
 
 func (s *Sender) Setup() (enc []byte, seal Sealer, err error) {
@@ -111,8 +118,11 @@ type Receiver struct {
 	info []byte
 }
 
-func (s Suite) NewReceiver(skR kem.PrivateKey, info []byte) *Receiver {
-	return &Receiver{state: state{Suite: s}, skR: skR, info: info}
+func (s Suite) NewReceiver(skR kem.PrivateKey, info []byte) (*Receiver, error) {
+	if !s.IsValid() {
+		return nil, errors.New("invalid suite")
+	}
+	return &Receiver{state: state{Suite: s}, skR: skR, info: info}, nil
 }
 
 func (r *Receiver) Setup(enc []byte) (Opener, error) {
@@ -147,17 +157,26 @@ func (r *Receiver) SetupAuthPSK(
 }
 
 func (s *Sender) allSetup() ([]byte, Sealer, error) {
-	err := s.validate()
-	if err != nil {
-		return nil, nil, err
-	}
-
+	var err error
 	var enc, ss []byte
+	k := s.KemID.Scheme()
 	switch s.modeID {
 	case Base, PSK:
-		enc, ss, err = s.encap(s.pkR)
+		if s.seed == nil {
+			enc, ss, err = k.Encapsulate(s.pkR)
+		} else if len(s.seed) >= k.SeedSize() {
+			enc, ss, err = k.EncapsulateDeterministically(s.pkR, s.seed)
+		} else {
+			err = kem.ErrSeedSize
+		}
 	case Auth, AuthPSK:
-		enc, ss, err = s.encapAuth(s.pkR, s.skS)
+		if s.seed == nil {
+			enc, ss, err = k.AuthEncapsulate(s.pkR, s.skS)
+		} else if len(s.seed) >= k.SeedSize() {
+			enc, ss, err = k.AuthEncapsulateDeterministically(s.pkR, s.seed, s.skS)
+		} else {
+			err = kem.ErrSeedSize
+		}
 	}
 	if err != nil {
 		return nil, nil, err
@@ -172,17 +191,14 @@ func (s *Sender) allSetup() ([]byte, Sealer, error) {
 }
 
 func (r *Receiver) allSetup() (Opener, error) {
-	err := r.validate()
-	if err != nil {
-		return nil, err
-	}
-
+	var err error
 	var ss []byte
+	k := r.KemID.Scheme()
 	switch r.modeID {
 	case Base, PSK:
-		ss, err = r.decap(r.skR, r.enc)
+		ss, err = k.Decapsulate(r.skR, r.enc)
 	case Auth, AuthPSK:
-		ss, err = r.decapAuth(r.skR, r.enc, r.pkS)
+		ss, err = k.AuthDecapsulate(r.skR, r.enc, r.pkS)
 	}
 	if err != nil {
 		return nil, err

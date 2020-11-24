@@ -26,6 +26,7 @@ type PrivateKey interface {
 
 	encoding.BinaryMarshaler
 	Equal(PrivateKey) bool
+	Public() PublicKey
 }
 
 // A Scheme represents a specific instance of a KEM.

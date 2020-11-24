@@ -1,6 +1,6 @@
 // Code generated from pkg.templ.go. DO NOT EDIT.
 
-// kyber768 implements the IND-CCA2 secure key encapsulation mechanism
+// Package kyber768 implements the IND-CCA2 secure key encapsulation mechanism
 // Kyber768.CCAKEM as submitted to round 3 of the NIST PQC competition and
 // described in
 //
@@ -8,10 +8,9 @@
 package kyber768
 
 import (
+	"github.com/cloudflare/circl/internal/sha3"
 	"github.com/cloudflare/circl/kem"
 	cpapke "github.com/cloudflare/circl/pke/kyber/kyber768"
-
-	"github.com/cloudflare/circl/internal/sha3"
 
 	"bytes"
 	cryptoRand "crypto/rand"
@@ -73,7 +72,7 @@ func NewKeyFromSeed(seed []byte) (*PublicKey, *PrivateKey) {
 	// Compute H(pk)
 	var ppk [cpapke.PublicKeySize]byte
 	sk.pk.Pack(ppk[:])
-	h := sha3.New256() // XXX use internal sha3
+	h := sha3.New256()
 	h.Write(ppk[:])
 	h.Sum(sk.hpk[:0])
 	copy(pk.hpk[:], sk.hpk[:])
@@ -315,6 +314,13 @@ func (pk *PublicKey) Equal(other kem.PublicKey) bool {
 		return false
 	}
 	return bytes.Equal(pk.hpk[:], oth.hpk[:])
+}
+
+func (sk *PrivateKey) Public() kem.PublicKey {
+	pk := new(PublicKey)
+	pk.pk = sk.pk
+	copy(pk.hpk[:], sk.hpk[:])
+	return pk
 }
 
 func (pk *PublicKey) MarshalBinary() ([]byte, error) {

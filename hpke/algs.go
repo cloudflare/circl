@@ -4,29 +4,49 @@ import (
 	"crypto"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/elliptic"
+	"errors"
 
+	"github.com/cloudflare/circl/dh/x25519"
+	"github.com/cloudflare/circl/dh/x448"
+	"github.com/cloudflare/circl/ecc/p384"
 	"github.com/cloudflare/circl/kem"
-	"github.com/cloudflare/circl/kem/shortkem"
-	"github.com/cloudflare/circl/kem/xkem"
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
-type KemID = uint16
+type KemID uint16
 
 const (
-	// KEM based on P-256 curve with HKDF using SHA-256.
-	KemP256HkdfSha256 KemID = 0x10
-	// KEM based on P-384 curve with HKDF using SHA-384.
-	KemP384HkdfSha384 KemID = 0x11
-	// KEM based on P-521 curve with HKDF using SHA-512.
-	KemP521HkdfSha512 KemID = 0x12
-	// KEM based on X25519 Diffie-Helman with HKDF using SHA-256.
-	KemX25519HkdfSha256 KemID = 0x20
-	// KEM based on X448 Diffie-Helman with HKDF using SHA-512.
-	KemX448HkdfSha512 KemID = 0x21
+	// DHKemP256HkdfSha256 is a KEM using P256 curve with HKDF based on SHA-256.
+	DHKemP256HkdfSha256 KemID = 0x10
+	// DHKemP384HkdfSha384 is a KEM using P384 curve with HKDF based on SHA-384.
+	DHKemP384HkdfSha384 KemID = 0x11
+	// DHKemP521HkdfSha512 is a KEM using P521 curve with HKDF based on SHA-512.
+	DHKemP521HkdfSha512 KemID = 0x12
+	// DHKemX25519HkdfSha256 is a KEM using X25519 Diffie-Hellman function with HKDF based on SHA-256.
+	DHKemX25519HkdfSha256 KemID = 0x20
+	// DHKemX448HkdfSha512 is a KEM using X448 Diffie-Hellman function with HKDF based on SHA-512.
+	DHKemX448HkdfSha512 KemID = 0x21
 )
 
-type KdfID = uint16
+func (k KemID) Scheme() kem.AuthScheme {
+	switch k {
+	case DHKemP256HkdfSha256:
+		return dhkemP256HkdfSha256
+	case DHKemP384HkdfSha384:
+		return dhkemP384HkdfSha384
+	case DHKemP521HkdfSha512:
+		return dhkemP521HkdfSha512
+	case DHKemX25519HkdfSha256:
+		return dhkemX25519HkdfSha256
+	case DHKemX448HkdfSha512:
+		return dhkemX448HkdfSha512
+	default:
+		return nil
+	}
+}
+
+type KdfID uint16
 
 const (
 	// HKDF using SHA-256 hash function.
@@ -37,7 +57,20 @@ const (
 	HkdfSha512 KdfID = 0x03
 )
 
-type AeadID = uint16
+func (k KdfID) Hash() crypto.Hash {
+	switch k {
+	case HkdfSha256:
+		return crypto.SHA256
+	case HkdfSha384:
+		return crypto.SHA384
+	case HkdfSha512:
+		return crypto.SHA512
+	default:
+		return crypto.Hash(0)
+	}
+}
+
+type AeadID uint16
 
 const (
 	// AES-128 block cipher in Galois Counter Mode (GCM).
@@ -48,35 +81,28 @@ const (
 	AeadCC20P1305 AeadID = 0x03
 )
 
-var kemParams map[KemID]func() kem.AuthScheme
-var kdfParams map[KdfID]crypto.Hash
-var aeadParams map[AeadID]aeadInfo
-
-func init() {
-	kemParams = make(map[KemID]func() kem.AuthScheme)
-	kemParams[KemP256HkdfSha256] = shortkem.P256HkdfSha256
-	kemParams[KemP384HkdfSha384] = shortkem.P384HkdfSha384
-	kemParams[KemP521HkdfSha512] = shortkem.P521HkdfSha512
-	kemParams[KemX25519HkdfSha256] = xkem.X25519HkdfSha256
-	kemParams[KemX448HkdfSha512] = xkem.X448HkdfSha512
-
-	kdfParams = make(map[KdfID]crypto.Hash)
-	kdfParams[HkdfSha256] = crypto.SHA256
-	kdfParams[HkdfSha384] = crypto.SHA384
-	kdfParams[HkdfSha512] = crypto.SHA512
-
-	aeadParams = make(map[AeadID]aeadInfo)
-	aeadParams[AeadAES128GCM] = aeadInfo{aesGCM, 16}
-	aeadParams[AeadAES256GCM] = aeadInfo{aesGCM, 32}
-	aeadParams[AeadCC20P1305] = aeadInfo{
-		chacha20poly1305.New,
-		chacha20poly1305.KeySize,
+func (a AeadID) New(key []byte) (cipher.AEAD, error) {
+	switch a {
+	case AeadAES128GCM, AeadAES256GCM:
+		return aesGCM(key)
+	case AeadCC20P1305:
+		return chacha20poly1305.New(key)
+	default:
+		return nil, errors.New("invalid aeadID")
 	}
 }
 
-type aeadInfo struct {
-	New func(key []byte) (cipher.AEAD, error)
-	Nk  uint
+func (a AeadID) KeySize() uint {
+	switch a {
+	case AeadAES128GCM:
+		return 16
+	case AeadAES256GCM:
+		return 32
+	case AeadCC20P1305:
+		return chacha20poly1305.KeySize
+	default:
+		return 0
+	}
 }
 
 func aesGCM(key []byte) (cipher.AEAD, error) {
@@ -85,4 +111,39 @@ func aesGCM(key []byte) (cipher.AEAD, error) {
 		return nil, err
 	}
 	return cipher.NewGCM(block)
+}
+
+var dhkemP256HkdfSha256, dhkemP384HkdfSha384, dhkemP521HkdfSha512 shortKem
+var dhkemX25519HkdfSha256, dhkemX448HkdfSha512 xkem
+
+func init() {
+	dhkemP256HkdfSha256.Curve = elliptic.P256()
+	dhkemP256HkdfSha256.kemBase.id = DHKemP256HkdfSha256
+	dhkemP256HkdfSha256.kemBase.name = "HpkeDHKemP256HkdfSha256"
+	dhkemP256HkdfSha256.kemBase.Hash = crypto.SHA256
+	dhkemP256HkdfSha256.kemBase.dh = dhkemP256HkdfSha256
+
+	dhkemP384HkdfSha384.Curve = p384.P384()
+	dhkemP384HkdfSha384.kemBase.id = DHKemP384HkdfSha384
+	dhkemP384HkdfSha384.kemBase.name = "HpkeDHKemP384HkdfSha384"
+	dhkemP384HkdfSha384.kemBase.Hash = crypto.SHA384
+	dhkemP384HkdfSha384.kemBase.dh = dhkemP384HkdfSha384
+
+	dhkemP521HkdfSha512.Curve = elliptic.P521()
+	dhkemP521HkdfSha512.kemBase.id = DHKemP521HkdfSha512
+	dhkemP521HkdfSha512.kemBase.name = "HpkeDHKemP521HkdfSha512"
+	dhkemP521HkdfSha512.kemBase.Hash = crypto.SHA512
+	dhkemP521HkdfSha512.kemBase.dh = dhkemP521HkdfSha512
+
+	dhkemX25519HkdfSha256.size = x25519.Size
+	dhkemX25519HkdfSha256.kemBase.id = DHKemX25519HkdfSha256
+	dhkemX25519HkdfSha256.kemBase.name = "HpkeDHKemX25519HkdfSha256"
+	dhkemX25519HkdfSha256.kemBase.Hash = crypto.SHA256
+	dhkemX25519HkdfSha256.kemBase.dh = dhkemX25519HkdfSha256
+
+	dhkemX448HkdfSha512.size = x448.Size
+	dhkemX448HkdfSha512.kemBase.id = DHKemX448HkdfSha512
+	dhkemX448HkdfSha512.kemBase.name = "HpkeDHKemX448HkdfSha512"
+	dhkemX448HkdfSha512.kemBase.Hash = crypto.SHA512
+	dhkemX448HkdfSha512.kemBase.dh = dhkemX448HkdfSha512
 }
