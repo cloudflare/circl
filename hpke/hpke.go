@@ -15,18 +15,23 @@ import (
 
 const versionLabel = "HPKE-06"
 
-// Exporter is
+// Exporter allows exporting secrets from the encryption Context using a
+// variable-length PRF. Export takes as input a context string expCtx and a
+// desired length (in bytes), and produces a secret derived from the internal
+// exporter secret using the corresponding KDF Expand function.
 type Exporter interface {
 	Export(expCtx []byte, len uint16) []byte
 }
 
-// Sealer is
+// Sealer encrypts a plaintext using AEAD encryption. Optionally, this
+// scheme allows to include additional data.
 type Sealer interface {
 	Exporter
 	Seal(pt, aad []byte) (ct []byte, err error)
 }
 
-// Opener is
+// Opener decrypts a ciphertext using AEAD encryption. Optionally, this
+// scheme allows to include additional data.
 type Opener interface {
 	Exporter
 	Open(ct, aad []byte) (pt []byte, err error)
@@ -36,19 +41,20 @@ type Opener interface {
 type modeID = uint8
 
 const (
-	// Base provides hybrid public-key encryption to a public key.
-	Base modeID = 0x00
-	// PSK provides hybrid public-key encryption with authentication using a
+	// modeBase provides hybrid public-key encryption to a public key.
+	modeBase modeID = 0x00
+	// modePSK provides hybrid public-key encryption with authentication using a
 	// pre-shared key.
-	PSK modeID = 0x01
-	// Auth provides hybrid public-key encryption with authentication using an
-	// asymmetric key.
-	Auth modeID = 0x02
-	// AuthPSK provides hybrid public-key encryption with authentication using
-	// both a pre-shared key and an asymmetric key.
-	AuthPSK modeID = 0x03
+	modePSK modeID = 0x01
+	// modeAuth provides hybrid public-key encryption with authentication using
+	// an asymmetric key.
+	modeAuth modeID = 0x02
+	// modeAuthPSK provides hybrid public-key encryption with authentication
+	// using both a pre-shared key and an asymmetric key.
+	modeAuthPSK modeID = 0x03
 )
 
+// Suite is a tuple of primitives to perform HPKE.
 type Suite struct {
 	KemID  KemID
 	KdfID  KdfID
@@ -64,6 +70,7 @@ type state struct {
 	pskID  []byte
 }
 
+// Sender performs hybrid public-key encryption.
 type Sender struct {
 	state
 	pkR  kem.PublicKey
@@ -71,46 +78,63 @@ type Sender struct {
 	seed []byte
 }
 
-func (s Suite) NewSender(pkR kem.PublicKey, info, seed []byte) (*Sender, error) {
-	if !s.IsValid() {
+// NewSender creates a Sender with knowledge of the receiver's public-key.
+func (s Suite) NewSender(
+	pkR kem.PublicKey,
+	info, seed []byte,
+) (*Sender, error) {
+	if !s.isValid() {
 		return nil, errors.New("invalid suite")
 	}
-	return &Sender{state: state{Suite: s}, pkR: pkR, info: info, seed: seed}, nil
+	return &Sender{
+		state: state{Suite: s},
+		pkR:   pkR,
+		info:  info,
+		seed:  seed,
+	}, nil
 }
 
+// Setup provides hybrid public-key encryption to a public key.
 func (s *Sender) Setup() (enc []byte, seal Sealer, err error) {
-	s.modeID = Base
+	s.modeID = modeBase
 	return s.allSetup()
 }
 
+// SetupAuth provides hybrid public-key encryption with authentication using
+// an asymmetric key.
 func (s *Sender) SetupAuth(
 	skS kem.PrivateKey,
 ) (enc []byte, seal Sealer, err error) {
-	s.modeID = Auth
+	s.modeID = modeAuth
 	s.state.skS = skS
 	return s.allSetup()
 }
 
+// SetupPSK provides hybrid public-key encryption with authentication using a
+// pre-shared key.
 func (s *Sender) SetupPSK(
 	psk, pskID []byte,
 ) (enc []byte, seal Sealer, err error) {
-	s.modeID = PSK
+	s.modeID = modePSK
 	s.state.psk = psk
 	s.state.pskID = pskID
 	return s.allSetup()
 }
 
+// SetupAuthPSK provides hybrid public-key encryption with authentication
+// using both a pre-shared key and an asymmetric key.
 func (s *Sender) SetupAuthPSK(
 	skS kem.PrivateKey,
 	psk, pskID []byte,
 ) (enc []byte, seal Sealer, err error) {
-	s.modeID = AuthPSK
+	s.modeID = modeAuthPSK
 	s.state.skS = skS
 	s.state.psk = psk
 	s.state.pskID = pskID
 	return s.allSetup()
 }
 
+// Receiver performs hybrid public-key decryption.
 type Receiver struct {
 	state
 	skR  kem.PrivateKey
@@ -118,37 +142,47 @@ type Receiver struct {
 	info []byte
 }
 
+// NewReceiver creates a Receiver with knwoledge of a private-key.
 func (s Suite) NewReceiver(skR kem.PrivateKey, info []byte) (*Receiver, error) {
-	if !s.IsValid() {
+	if !s.isValid() {
 		return nil, errors.New("invalid suite")
 	}
 	return &Receiver{state: state{Suite: s}, skR: skR, info: info}, nil
 }
 
+// Setup provides hybrid public-key encryption to a public key.
 func (r *Receiver) Setup(enc []byte) (Opener, error) {
-	r.modeID = Base
+	r.modeID = modeBase
 	r.enc = enc
 	return r.allSetup()
 }
-func (r *Receiver) SetupAuth(enc []byte, pkS kem.PublicKey) (Opener, error) {
-	r.modeID = Auth
-	r.enc = enc
-	r.state.pkS = pkS
-	return r.allSetup()
-}
+
+// SetupPSK provides hybrid public-key encryption with authentication using a
+// pre-shared key.
 func (r *Receiver) SetupPSK(enc, psk, pskID []byte) (Opener, error) {
-	r.modeID = PSK
+	r.modeID = modePSK
 	r.enc = enc
 	r.state.psk = psk
 	r.state.pskID = pskID
 	return r.allSetup()
 }
 
+// SetupAuth provides hybrid public-key encryption with authentication using
+// an asymmetric key.
+func (r *Receiver) SetupAuth(enc []byte, pkS kem.PublicKey) (Opener, error) {
+	r.modeID = modeAuth
+	r.enc = enc
+	r.state.pkS = pkS
+	return r.allSetup()
+}
+
+// SetupAuthPSK provides hybrid public-key encryption with authentication
+// using both a pre-shared key and an asymmetric key.
 func (r *Receiver) SetupAuthPSK(
 	enc, psk, pskID []byte,
 	pkS kem.PublicKey,
 ) (Opener, error) {
-	r.modeID = AuthPSK
+	r.modeID = modeAuthPSK
 	r.enc = enc
 	r.state.psk = psk
 	r.state.pskID = pskID
@@ -161,7 +195,7 @@ func (s *Sender) allSetup() ([]byte, Sealer, error) {
 	var enc, ss []byte
 	k := s.KemID.Scheme()
 	switch s.modeID {
-	case Base, PSK:
+	case modeBase, modePSK:
 		if s.seed == nil {
 			enc, ss, err = k.Encapsulate(s.pkR)
 		} else if len(s.seed) >= k.SeedSize() {
@@ -169,7 +203,7 @@ func (s *Sender) allSetup() ([]byte, Sealer, error) {
 		} else {
 			err = kem.ErrSeedSize
 		}
-	case Auth, AuthPSK:
+	case modeAuth, modeAuthPSK:
 		if s.seed == nil {
 			enc, ss, err = k.AuthEncapsulate(s.pkR, s.skS)
 		} else if len(s.seed) >= k.SeedSize() {
@@ -195,9 +229,9 @@ func (r *Receiver) allSetup() (Opener, error) {
 	var ss []byte
 	k := r.KemID.Scheme()
 	switch r.modeID {
-	case Base, PSK:
+	case modeBase, modePSK:
 		ss, err = k.Decapsulate(r.skR, r.enc)
-	case Auth, AuthPSK:
+	case modeAuth, modeAuthPSK:
 		ss, err = k.AuthDecapsulate(r.skR, r.enc, r.pkS)
 	}
 	if err != nil {

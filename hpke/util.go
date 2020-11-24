@@ -55,11 +55,11 @@ func (s state) verifyPSKInputs(psk, pskID []byte) error {
 		return errors.New("inconsistent psk inputs")
 	}
 	switch s.modeID {
-	case Base | Auth:
+	case modeBase | modeAuth:
 		if gotPSK {
 			return errors.New("psk input provided when not needed")
 		}
-	case PSK | AuthPSK:
+	case modePSK | modeAuthPSK:
 		if !gotPSK {
 			return errors.New("missing required psk input")
 		}
@@ -84,7 +84,7 @@ func (s Suite) getSuiteID() (id [10]byte) {
 	return
 }
 
-func (s Suite) IsValid() bool {
+func (s Suite) isValid() bool {
 	return s.KemID.Scheme() != nil &&
 		s.KdfID.Hash() != crypto.Hash(0) &&
 		s.AeadID.KeySize() != 0

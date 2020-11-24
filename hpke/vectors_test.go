@@ -69,14 +69,14 @@ func (v *vector) setup(t *testing.T, dhkem kem.Scheme,
 	var y func([]byte) (Opener, error)
 
 	switch v.ModeID {
-	case Base:
+	case modeBase:
 		x = func() ([]byte, Sealer, error) {
 			return se.Setup()
 		}
 		y = func(enc []byte) (Opener, error) {
 			return re.Setup(enc)
 		}
-	case PSK:
+	case modePSK:
 		psk, pskid := hexB(v.Psk), hexB(v.PskID)
 		x = func() ([]byte, Sealer, error) {
 			return se.SetupPSK(psk, pskid)
@@ -84,7 +84,7 @@ func (v *vector) setup(t *testing.T, dhkem kem.Scheme,
 		y = func(enc []byte) (Opener, error) {
 			return re.SetupPSK(enc, psk, pskid)
 		}
-	case Auth:
+	case modeAuth:
 		x = func() ([]byte, Sealer, error) {
 			skS, err := dhkem.UnmarshalBinaryPrivateKey(hexB(v.SkSm))
 			test.CheckNoErr(t, err, h+"bad private key")
@@ -95,7 +95,7 @@ func (v *vector) setup(t *testing.T, dhkem kem.Scheme,
 			test.CheckNoErr(t, err, h+"bad public key")
 			return re.SetupAuth(enc, pkS)
 		}
-	case AuthPSK:
+	case modeAuthPSK:
 		psk, pskid := hexB(v.Psk), hexB(v.PskID)
 		x = func() ([]byte, Sealer, error) {
 			skS, err := dhkem.UnmarshalBinaryPrivateKey(hexB(v.SkSm))
