@@ -21,7 +21,10 @@ func (c *encdecCtx) Export(expCtx []byte, len uint16) []byte {
 }
 
 func (c *encdecCtx) calcNonce() []byte {
-	nonce := make([]byte, c.NonceSize())
+	nonce := (&[12]byte{})[:]
+	if len := c.NonceSize(); len != 12 {
+		nonce = make([]byte, len)
+	}
 	for i := range c.baseNonce {
 		nonce[i] = c.baseNonce[i] ^ c.seq[i]
 	}
