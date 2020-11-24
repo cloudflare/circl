@@ -21,11 +21,11 @@ func (c *encdecCtx) Export(expCtx []byte, len uint16) []byte {
 }
 
 func (c *encdecCtx) calcNonce() []byte {
-	out := make([]byte, len(c.seq))
+	nonce := make([]byte, c.NonceSize())
 	for i := range c.baseNonce {
-		out[i] = c.baseNonce[i] ^ c.seq[i]
+		nonce[i] = c.baseNonce[i] ^ c.seq[i]
 	}
-	return out
+	return nonce
 }
 
 func (c *encdecCtx) inc() error {

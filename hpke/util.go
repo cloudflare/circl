@@ -10,51 +10,51 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
-func (s state) keySchedule(ss, info, psk, pskID []byte) (*encdecCtx, error) {
-	if err := s.verifyPSKInputs(psk, pskID); err != nil {
+func (st state) keySchedule(ss, info, psk, pskID []byte) (*encdecCtx, error) {
+	if err := st.verifyPSKInputs(psk, pskID); err != nil {
 		return nil, err
 	}
 
-	pskIDHash := s.labeledExtract(nil, []byte("psk_id_hash"), pskID)
-	infoHash := s.labeledExtract(nil, []byte("info_hash"), info)
-	keySchCtx := append([]byte{s.modeID}, pskIDHash...)
+	pskIDHash := st.labeledExtract(nil, []byte("psk_id_hash"), pskID)
+	infoHash := st.labeledExtract(nil, []byte("info_hash"), info)
+	keySchCtx := append([]byte{st.modeID}, pskIDHash...)
 	keySchCtx = append(keySchCtx, infoHash...)
 
-	secret := s.labeledExtract(ss, []byte("secret"), psk)
+	secret := st.labeledExtract(ss, []byte("secret"), psk)
 
-	Nk := uint16(s.AeadID.KeySize())
-	key := s.labeledExpand(secret, []byte("key"), keySchCtx, Nk)
+	Nk := uint16(st.AeadID.KeySize())
+	key := st.labeledExpand(secret, []byte("key"), keySchCtx, Nk)
 
-	aead, err := s.AeadID.New(key)
+	aead, err := st.AeadID.New(key)
 	if err != nil {
 		return nil, err
 	}
 
 	Nn := uint16(aead.NonceSize())
-	baseNonce := s.labeledExpand(secret, []byte("base_nonce"), keySchCtx, Nn)
-	exporterSecret := s.labeledExpand(
+	baseNonce := st.labeledExpand(secret, []byte("base_nonce"), keySchCtx, Nn)
+	exporterSecret := st.labeledExpand(
 		secret,
 		[]byte("exp"),
 		keySchCtx,
-		uint16(s.KdfID.Hash().Size()),
+		uint16(st.KdfID.Hash().Size()),
 	)
 
 	return &encdecCtx{
 		aead,
-		s.Suite,
+		st.Suite,
 		baseNonce,
 		make([]byte, Nn),
 		exporterSecret,
 	}, nil
 }
 
-func (s state) verifyPSKInputs(psk, pskID []byte) error {
+func (st state) verifyPSKInputs(psk, pskID []byte) error {
 	gotPSK := psk != nil
 	gotPSKID := pskID != nil
 	if gotPSK != gotPSKID {
 		return errors.New("inconsistent psk inputs")
 	}
-	switch s.modeID {
+	switch st.modeID {
 	case modeBase | modeAuth:
 		if gotPSK {
 			return errors.New("psk input provided when not needed")
@@ -67,42 +67,40 @@ func (s state) verifyPSKInputs(psk, pskID []byte) error {
 	return nil
 }
 
-func (s Suite) String() string {
+func (suite Suite) String() string {
 	return fmt.Sprintf(
 		"kem_id: %v kdf_id: %v aead_id: %v",
-		s.KemID,
-		s.KdfID,
-		s.AeadID,
+		suite.KemID, suite.KdfID, suite.AeadID,
 	)
 }
 
-func (s Suite) getSuiteID() (id [10]byte) {
+func (suite Suite) getSuiteID() (id [10]byte) {
 	id[0], id[1], id[2], id[3] = 'H', 'P', 'K', 'E'
-	binary.BigEndian.PutUint16(id[4:6], uint16(s.KemID))
-	binary.BigEndian.PutUint16(id[6:8], uint16(s.KdfID))
-	binary.BigEndian.PutUint16(id[8:10], uint16(s.AeadID))
+	binary.BigEndian.PutUint16(id[4:6], uint16(suite.KemID))
+	binary.BigEndian.PutUint16(id[6:8], uint16(suite.KdfID))
+	binary.BigEndian.PutUint16(id[8:10], uint16(suite.AeadID))
 	return
 }
 
-func (s Suite) isValid() bool {
-	return s.KemID.Scheme() != nil &&
-		s.KdfID.Hash() != crypto.Hash(0) &&
-		s.AeadID.KeySize() != 0
+func (suite Suite) isValid() bool {
+	return suite.KemID.Scheme() != nil &&
+		suite.KdfID.Hash() != crypto.Hash(0) &&
+		suite.AeadID.KeySize() != 0
 }
 
-func (s Suite) labeledExtract(salt, label, ikm []byte) []byte {
-	suiteID := s.getSuiteID()
+func (suite Suite) labeledExtract(salt, label, ikm []byte) []byte {
+	suiteID := suite.getSuiteID()
 	labeledIKM := append(append(append(append(
 		make([]byte, 0, len(versionLabel)+len(suiteID)+len(label)+len(ikm)),
 		versionLabel...),
 		suiteID[:]...),
 		label...),
 		ikm...)
-	return hkdf.Extract(s.KdfID.Hash().New, labeledIKM, salt)
+	return hkdf.Extract(suite.KdfID.Hash().New, labeledIKM, salt)
 }
 
-func (s Suite) labeledExpand(prk, label, info []byte, l uint16) []byte {
-	suiteID := s.getSuiteID()
+func (suite Suite) labeledExpand(prk, label, info []byte, l uint16) []byte {
+	suiteID := suite.getSuiteID()
 	labeledInfo := make([]byte,
 		2, 2+len(versionLabel)+len(suiteID)+len(label)+len(info))
 	binary.BigEndian.PutUint16(labeledInfo[0:2], l)
@@ -112,7 +110,7 @@ func (s Suite) labeledExpand(prk, label, info []byte, l uint16) []byte {
 		label...),
 		info...)
 	b := make([]byte, l)
-	rd := hkdf.Expand(s.KdfID.Hash().New, prk, labeledInfo)
+	rd := hkdf.Expand(suite.KdfID.Hash().New, prk, labeledInfo)
 	_, _ = io.ReadFull(rd, b)
 	return b
 }

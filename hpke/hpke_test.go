@@ -25,8 +25,8 @@ func Example_hpke() {
 
 	// Alice gets Bob's public key.
 	seed := make([]byte, k.SeedSize())
-	Alice, _ := s.NewSender(publicBob, info, seed)
-	enc, sealer, _ := Alice.Setup()
+	Alice, _ := s.NewSender(publicBob, info)
+	enc, sealer, _ := Alice.Setup(seed)
 
 	// Alice encrypts some plaintext and sends the ciphertext to Bob.
 	ptAlice := []byte("text encrypted to Bob's public key")

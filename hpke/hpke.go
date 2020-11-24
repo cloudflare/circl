@@ -68,62 +68,59 @@ type state struct {
 	pkS    kem.PublicKey
 	psk    []byte
 	pskID  []byte
+	info   []byte
 }
 
 // Sender performs hybrid public-key encryption.
 type Sender struct {
 	state
-	pkR  kem.PublicKey
-	info []byte
-	seed []byte
+	pkR kem.PublicKey
 }
 
 // NewSender creates a Sender with knowledge of the receiver's public-key.
-func (s Suite) NewSender(
-	pkR kem.PublicKey,
-	info, seed []byte,
-) (*Sender, error) {
-	if !s.isValid() {
+func (suite Suite) NewSender(pkR kem.PublicKey, info []byte) (*Sender, error) {
+	if !suite.isValid() {
 		return nil, errors.New("invalid suite")
 	}
 	return &Sender{
-		state: state{Suite: s},
+		state: state{Suite: suite, info: info},
 		pkR:   pkR,
-		info:  info,
-		seed:  seed,
 	}, nil
 }
 
 // Setup provides hybrid public-key encryption to a public key.
-func (s *Sender) Setup() (enc []byte, seal Sealer, err error) {
+func (s *Sender) Setup(seed []byte) (enc []byte, seal Sealer, err error) {
 	s.modeID = modeBase
-	return s.allSetup()
+	return s.allSetup(seed)
 }
 
 // SetupAuth provides hybrid public-key encryption with authentication using
 // an asymmetric key.
 func (s *Sender) SetupAuth(
+	seed []byte,
 	skS kem.PrivateKey,
 ) (enc []byte, seal Sealer, err error) {
 	s.modeID = modeAuth
 	s.state.skS = skS
-	return s.allSetup()
+	return s.allSetup(seed)
 }
 
 // SetupPSK provides hybrid public-key encryption with authentication using a
 // pre-shared key.
 func (s *Sender) SetupPSK(
+	seed []byte,
 	psk, pskID []byte,
 ) (enc []byte, seal Sealer, err error) {
 	s.modeID = modePSK
 	s.state.psk = psk
 	s.state.pskID = pskID
-	return s.allSetup()
+	return s.allSetup(seed)
 }
 
 // SetupAuthPSK provides hybrid public-key encryption with authentication
 // using both a pre-shared key and an asymmetric key.
 func (s *Sender) SetupAuthPSK(
+	seed []byte,
 	skS kem.PrivateKey,
 	psk, pskID []byte,
 ) (enc []byte, seal Sealer, err error) {
@@ -131,23 +128,25 @@ func (s *Sender) SetupAuthPSK(
 	s.state.skS = skS
 	s.state.psk = psk
 	s.state.pskID = pskID
-	return s.allSetup()
+	return s.allSetup(seed)
 }
 
 // Receiver performs hybrid public-key decryption.
 type Receiver struct {
 	state
-	skR  kem.PrivateKey
-	enc  []byte
-	info []byte
+	skR kem.PrivateKey
+	enc []byte
 }
 
 // NewReceiver creates a Receiver with knwoledge of a private-key.
-func (s Suite) NewReceiver(skR kem.PrivateKey, info []byte) (*Receiver, error) {
-	if !s.isValid() {
+func (suite Suite) NewReceiver(
+	skR kem.PrivateKey,
+	info []byte,
+) (*Receiver, error) {
+	if !suite.isValid() {
 		return nil, errors.New("invalid suite")
 	}
-	return &Receiver{state: state{Suite: s}, skR: skR, info: info}, nil
+	return &Receiver{state: state{Suite: suite, info: info}, skR: skR}, nil
 }
 
 // Setup provides hybrid public-key encryption to a public key.
@@ -190,24 +189,24 @@ func (r *Receiver) SetupAuthPSK(
 	return r.allSetup()
 }
 
-func (s *Sender) allSetup() ([]byte, Sealer, error) {
+func (s *Sender) allSetup(seed []byte) ([]byte, Sealer, error) {
 	var err error
 	var enc, ss []byte
 	k := s.KemID.Scheme()
 	switch s.modeID {
 	case modeBase, modePSK:
-		if s.seed == nil {
+		if seed == nil {
 			enc, ss, err = k.Encapsulate(s.pkR)
-		} else if len(s.seed) >= k.SeedSize() {
-			enc, ss, err = k.EncapsulateDeterministically(s.pkR, s.seed)
+		} else if len(seed) >= k.SeedSize() {
+			enc, ss, err = k.EncapsulateDeterministically(s.pkR, seed)
 		} else {
 			err = kem.ErrSeedSize
 		}
 	case modeAuth, modeAuthPSK:
-		if s.seed == nil {
+		if seed == nil {
 			enc, ss, err = k.AuthEncapsulate(s.pkR, s.skS)
-		} else if len(s.seed) >= k.SeedSize() {
-			enc, ss, err = k.AuthEncapsulateDeterministically(s.pkR, s.seed, s.skS)
+		} else if len(seed) >= k.SeedSize() {
+			enc, ss, err = k.AuthEncapsulateDeterministically(s.pkR, seed, s.skS)
 		} else {
 			err = kem.ErrSeedSize
 		}
