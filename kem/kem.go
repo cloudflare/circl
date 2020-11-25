@@ -39,7 +39,7 @@ type Scheme interface {
 
 	// Encapsulate generates a shared key ss for the public key and
 	// encapsulates it into a ciphertext ct.
-	Encapsulate(pk PublicKey) (ct []byte, ss []byte, err error)
+	Encapsulate(pk PublicKey) (ct, ss []byte, err error)
 
 	// Returns the shared key encapsulated in ciphertext ct for the
 	// private key sk.
@@ -85,9 +85,8 @@ type Scheme interface {
 // AuthScheme represents a KEM that supports authenticated key encapsulation.
 type AuthScheme interface {
 	Scheme
-	AuthEncapsulate(pkr PublicKey, sks PrivateKey) (ct []byte, ss []byte, err error)
+	AuthEncapsulate(pkr PublicKey, sks PrivateKey) (ct, ss []byte, err error)
 	AuthDecapsulate(skr PrivateKey, ct []byte, pks PublicKey) ([]byte, error)
-	AuthEncapsulateDeterministically(pk PublicKey, seed []byte, sks PrivateKey) (ct, ss []byte, err error)
 }
 
 var (

@@ -23,9 +23,11 @@ const (
 	DHKemP384HkdfSha384 KemID = 0x11
 	// DHKemP521HkdfSha512 is a KEM using P521 curve with HKDF based on SHA-512.
 	DHKemP521HkdfSha512 KemID = 0x12
-	// DHKemX25519HkdfSha256 is a KEM using X25519 Diffie-Hellman function with HKDF based on SHA-256.
+	// DHKemX25519HkdfSha256 is a KEM using X25519 Diffie-Hellman function with
+	// HKDF based on SHA-256.
 	DHKemX25519HkdfSha256 KemID = 0x20
-	// DHKemX448HkdfSha512 is a KEM using X448 Diffie-Hellman function with HKDF based on SHA-512.
+	// DHKemX448HkdfSha512 is a KEM using X448 Diffie-Hellman function with HKDF
+	// based on SHA-512.
 	DHKemX448HkdfSha512 KemID = 0x21
 )
 

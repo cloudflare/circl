@@ -90,15 +90,6 @@ func (k kemBase) AuthEncapsulate(
 	return k.authEncap(pkr, sks, pke, ske)
 }
 
-func (k kemBase) AuthEncapsulateDeterministically(
-	pkr kem.PublicKey,
-	seed []byte,
-	sks kem.PrivateKey,
-) (ct, ss []byte, err error) {
-	pke, ske := k.dh.DeriveKey(seed)
-	return k.authEncap(pkr, sks, pke, ske)
-}
-
 func (k kemBase) Encapsulate(
 	pkr kem.PublicKey,
 ) (ct []byte, ss []byte, err error) {

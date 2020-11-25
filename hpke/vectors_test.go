@@ -26,9 +26,11 @@ func (v *vector) verify(t *testing.T) {
 	m := v.ModeID
 	s := Suite{KemID(v.KemID), KdfID(v.KdfID), AeadID(v.AeadID)}
 
+	seed := hexB(v.IkmE)
 	dhkem := s.KemID.Scheme()
-	sender, recv := v.getActors(t, dhkem, s)
-	sealer, opener := v.setup(t, dhkem, sender, recv, m, s)
+	seededKem := SeededKem{seed, dhkem}
+	sender, recv := v.getActors(t, seededKem, s)
+	sealer, opener := v.setup(t, seededKem, sender, recv, m, s)
 
 	v.checkAead(t, (sealer.(*sealCtx)).encdecCtx, m, s)
 	v.checkAead(t, (opener.(*openCtx)).encdecCtx, m, s)
@@ -60,19 +62,41 @@ func (v *vector) getActors(
 	return sender, recv
 }
 
-func (v *vector) setup(t *testing.T, dhkem kem.Scheme,
+type SeededKem struct {
+	seed []byte
+	kem.AuthScheme
+}
+
+func (a SeededKem) Encapsulate(pk kem.PublicKey) (
+	ct []byte, ss []byte, err error) {
+	return a.AuthScheme.EncapsulateDeterministically(pk, a.seed)
+}
+
+func (a SeededKem) AuthEncapsulate(pkr kem.PublicKey, sks kem.PrivateKey) (
+	ct []byte, ss []byte, err error) {
+	if kb, ok := a.AuthScheme.(shortKem); ok {
+		pke, ske := kb.dh.DeriveKey(a.seed)
+		return kb.authEncap(pkr, sks, pke, ske)
+	}
+	if kb, ok := a.AuthScheme.(xkem); ok {
+		pke, ske := kb.dh.DeriveKey(a.seed)
+		return kb.authEncap(pkr, sks, pke, ske)
+	}
+	panic("bad kem")
+}
+
+func (v *vector) setup(t *testing.T, k kem.AuthScheme,
 	se *Sender, re *Receiver,
 	m modeID, s Suite,
 ) (Sealer, Opener) {
 	h := fmt.Sprintf("mode: %v %v\n", m, s)
 	var x func() ([]byte, Sealer, error)
 	var y func([]byte) (Opener, error)
-	seed := hexB(v.IkmE)
 
 	switch v.ModeID {
 	case modeBase:
 		x = func() ([]byte, Sealer, error) {
-			return se.Setup(seed)
+			return se.buildBase().allSetup(k)
 		}
 		y = func(enc []byte) (Opener, error) {
 			return re.Setup(enc)
@@ -80,31 +104,31 @@ func (v *vector) setup(t *testing.T, dhkem kem.Scheme,
 	case modePSK:
 		psk, pskid := hexB(v.Psk), hexB(v.PskID)
 		x = func() ([]byte, Sealer, error) {
-			return se.SetupPSK(seed, psk, pskid)
+			return se.buildPSK(psk, pskid).allSetup(k)
 		}
 		y = func(enc []byte) (Opener, error) {
 			return re.SetupPSK(enc, psk, pskid)
 		}
 	case modeAuth:
 		x = func() ([]byte, Sealer, error) {
-			skS, err := dhkem.UnmarshalBinaryPrivateKey(hexB(v.SkSm))
+			skS, err := k.UnmarshalBinaryPrivateKey(hexB(v.SkSm))
 			test.CheckNoErr(t, err, h+"bad private key")
-			return se.SetupAuth(seed, skS)
+			return se.buildAuth(skS).allSetup(k)
 		}
 		y = func(enc []byte) (Opener, error) {
-			pkS, err := dhkem.UnmarshalBinaryPublicKey(hexB(v.PkSm))
+			pkS, err := k.UnmarshalBinaryPublicKey(hexB(v.PkSm))
 			test.CheckNoErr(t, err, h+"bad public key")
 			return re.SetupAuth(enc, pkS)
 		}
 	case modeAuthPSK:
 		psk, pskid := hexB(v.Psk), hexB(v.PskID)
 		x = func() ([]byte, Sealer, error) {
-			skS, err := dhkem.UnmarshalBinaryPrivateKey(hexB(v.SkSm))
+			skS, err := k.UnmarshalBinaryPrivateKey(hexB(v.SkSm))
 			test.CheckNoErr(t, err, h+"bad private key")
-			return se.SetupAuthPSK(seed, skS, psk, pskid)
+			return se.buildAuthPSK(skS, psk, pskid).allSetup(k)
 		}
 		y = func(enc []byte) (Opener, error) {
-			pkS, err := dhkem.UnmarshalBinaryPublicKey(hexB(v.PkSm))
+			pkS, err := k.UnmarshalBinaryPublicKey(hexB(v.PkSm))
 			test.CheckNoErr(t, err, h+"bad public key")
 			return re.SetupAuthPSK(enc, psk, pskid, pkS)
 		}

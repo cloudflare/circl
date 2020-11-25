@@ -5,7 +5,8 @@
 // (KEM), a key derivation function (KDF), and an authenticated symmetric-key
 // encryption scheme with additional data (AEAD).
 //
-// Specification in https://www.ietf.org/archive/id/draft-irtf-cfrg-hpke-06.html
+// Specification in
+// https://www.ietf.org/archive/id/draft-irtf-cfrg-hpke-06.html
 package hpke
 
 import (
@@ -93,46 +94,58 @@ func (suite Suite) NewSender(pkR kem.PublicKey, info []byte) (*Sender, error) {
 
 // Setup generates a new HPKE context used for Base Mode encryption.
 // Returns the Sealer and corresponding encapsulated key.
-func (s *Sender) Setup(seed []byte) (enc []byte, seal Sealer, err error) {
+func (s *Sender) Setup() (enc []byte, seal Sealer, err error) {
+	return s.buildBase().allSetup(s.KemID.Scheme())
+}
+
+func (s *Sender) buildBase() *Sender {
 	s.modeID = modeBase
-	return s.allSetup(seed)
+	return s
 }
 
 // SetupAuth generates a new HPKE context used for Auth Mode encryption.
 // Returns the Sealer and corresponding encapsulated key.
-func (s *Sender) SetupAuth(
-	seed []byte,
-	skS kem.PrivateKey,
-) (enc []byte, seal Sealer, err error) {
+func (s *Sender) SetupAuth(skS kem.PrivateKey) (
+	enc []byte, seal Sealer, err error,
+) {
+	return s.buildAuth(skS).allSetup(s.KemID.Scheme())
+}
+
+func (s *Sender) buildAuth(skS kem.PrivateKey) *Sender {
 	s.modeID = modeAuth
 	s.state.skS = skS
-	return s.allSetup(seed)
+	return s
 }
 
 // SetupPSK generates a new HPKE context used for PSK Mode encryption.
 // Returns the Sealer and corresponding encapsulated key.
-func (s *Sender) SetupPSK(
-	seed []byte,
-	psk, pskID []byte,
-) (enc []byte, seal Sealer, err error) {
+func (s *Sender) SetupPSK(psk, pskID []byte) (
+	enc []byte, seal Sealer, err error,
+) {
+	return s.buildPSK(psk, pskID).allSetup(s.KemID.Scheme())
+}
+
+func (s *Sender) buildPSK(psk, pskID []byte) *Sender {
 	s.modeID = modePSK
 	s.state.psk = psk
 	s.state.pskID = pskID
-	return s.allSetup(seed)
+	return s
 }
 
 // SetupAuthPSK generates a new HPKE context used for Auth-PSK Mode encryption.
 // Returns the Sealer and corresponding encapsulated key.
-func (s *Sender) SetupAuthPSK(
-	seed []byte,
-	skS kem.PrivateKey,
-	psk, pskID []byte,
-) (enc []byte, seal Sealer, err error) {
+func (s *Sender) SetupAuthPSK(skS kem.PrivateKey, psk, pskID []byte) (
+	enc []byte, seal Sealer, err error,
+) {
+	return s.buildAuthPSK(skS, psk, pskID).allSetup(s.KemID.Scheme())
+}
+
+func (s *Sender) buildAuthPSK(skS kem.PrivateKey, psk, pskID []byte) *Sender {
 	s.modeID = modeAuthPSK
 	s.state.skS = skS
 	s.state.psk = psk
 	s.state.pskID = pskID
-	return s.allSetup(seed)
+	return s
 }
 
 // Receiver performs hybrid public-key decryption.
@@ -162,7 +175,7 @@ func (r *Receiver) Setup(enc []byte) (Opener, error) {
 }
 
 // SetupAuth generates a new HPKE context used for Auth Mode encryption.
-// SetupAuth takes an encapsulated key, and a public key; and returns an opener.
+// SetupAuth takes an encapsulated key and a public key, and returns an opener.
 func (r *Receiver) SetupAuth(enc []byte, pkS kem.PublicKey) (Opener, error) {
 	r.modeID = modeAuth
 	r.enc = enc
@@ -196,27 +209,15 @@ func (r *Receiver) SetupAuthPSK(
 	return r.allSetup()
 }
 
-func (s *Sender) allSetup(seed []byte) ([]byte, Sealer, error) {
+func (s *Sender) allSetup(k kem.AuthScheme) ([]byte, Sealer, error) {
 	var err error
 	var enc, ss []byte
-	k := s.KemID.Scheme()
+
 	switch s.modeID {
 	case modeBase, modePSK:
-		if seed == nil {
-			enc, ss, err = k.Encapsulate(s.pkR)
-		} else if len(seed) >= k.SeedSize() {
-			enc, ss, err = k.EncapsulateDeterministically(s.pkR, seed)
-		} else {
-			err = kem.ErrSeedSize
-		}
+		enc, ss, err = k.Encapsulate(s.pkR)
 	case modeAuth, modeAuthPSK:
-		if seed == nil {
-			enc, ss, err = k.AuthEncapsulate(s.pkR, s.skS)
-		} else if len(seed) >= k.SeedSize() {
-			enc, ss, err = k.AuthEncapsulateDeterministically(s.pkR, seed, s.skS)
-		} else {
-			err = kem.ErrSeedSize
-		}
+		enc, ss, err = k.AuthEncapsulate(s.pkR, s.skS)
 	}
 	if err != nil {
 		return nil, nil, err

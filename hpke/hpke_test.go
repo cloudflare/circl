@@ -7,20 +7,23 @@ import (
 	"github.com/cloudflare/circl/hpke"
 )
 
-func Example_hpke() {
+func Example() {
 	// import "github.com/cloudflare/circl/hpke"
 
 	// HPKE suite is a domain parameter.
 	s := hpke.Suite{
-		hpke.DHKemP256HkdfSha256,
-		hpke.HkdfSha256,
-		hpke.AeadAES128GCM,
+		hpke.DHKemP384HkdfSha384,
+		hpke.HkdfSha384,
+		hpke.AeadAES256GCM,
 	}
 	info := []byte("public info string, known to both Alice and Bob")
 
 	// Bob prepares to receive messages and announces his public key.
 	k := s.KemID.Scheme()
-	publicBob, privateBob, _ := k.GenerateKey()
+	publicBob, privateBob, err := k.GenerateKey()
+	if err != nil {
+		panic(err)
+	}
 	Bob, err := s.NewReceiver(privateBob, info)
 	if err != nil {
 		panic(err)
@@ -31,9 +34,7 @@ func Example_hpke() {
 	if err != nil {
 		panic(err)
 	}
-
-	seed := make([]byte, k.SeedSize())
-	enc, sealer, err := Alice.Setup(seed)
+	enc, sealer, err := Alice.Setup()
 	if err != nil {
 		panic(err)
 	}

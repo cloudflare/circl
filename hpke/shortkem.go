@@ -42,8 +42,10 @@ func (s shortKem) calcDH(dh []byte, sk kem.PrivateKey, pk kem.PublicKey) error {
 	copy(dh[l-len(b):l], b)
 	return nil
 }
+
 func (s shortKem) DeriveKey(seed []byte) (kem.PublicKey, kem.PrivateKey) {
-	// Implementation based on https://www.ietf.org/archive/id/draft-irtf-cfrg-hpke-06.html#name-derivekeypair
+	// Implementation based on
+	// https://www.ietf.org/archive/id/draft-irtf-cfrg-hpke-06.html#name-derivekeypair
 	if len(seed) != s.SeedSize() {
 		panic(kem.ErrSeedSize)
 	}
@@ -104,7 +106,9 @@ type shortPubKey struct {
 	x, y *big.Int
 }
 
-func (k *shortPubKey) String() string     { return fmt.Sprintf("x: %v\ny: %v", k.x.Text(16), k.y.Text(16)) }
+func (k *shortPubKey) String() string {
+	return fmt.Sprintf("x: %v\ny: %v", k.x.Text(16), k.y.Text(16))
+}
 func (k *shortPubKey) Scheme() kem.Scheme { return k.c }
 func (k *shortPubKey) MarshalBinary() ([]byte, error) {
 	return elliptic.Marshal(k.c, k.x, k.y), nil
