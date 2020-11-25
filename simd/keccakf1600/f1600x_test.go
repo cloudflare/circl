@@ -15,6 +15,29 @@ var permutationOfZeroes = [25]uint64{
 	0xEAF1FF7B5CECA249,
 }
 
+func TestKeccakF1600x2(t *testing.T) {
+	test := func(t *testing.T, f func(s *StateX2, a []uint64)) {
+		t.Helper()
+		var state StateX2
+		a := state.Initialize()
+		f(&state, a)
+		for i := 0; i < 25; i++ {
+			for j := 0; j < 2; j++ {
+				if a[2*i+j] != permutationOfZeroes[i] {
+					t.Fatalf("%X", a)
+				}
+			}
+		}
+	}
+
+	t.Run("Generic", func(t *testing.T) {
+		test(t, func(s *StateX2, a []uint64) { permuteScalarX2(a) })
+	})
+	t.Run("SIMD", func(t *testing.T) {
+		test(t, func(s *StateX2, a []uint64) { s.Permute() })
+	})
+}
+
 func TestKeccakF1600x4(t *testing.T) {
 	test := func(t *testing.T, f func(s *StateX4, a []uint64)) {
 		t.Helper()
@@ -31,10 +54,28 @@ func TestKeccakF1600x4(t *testing.T) {
 	}
 
 	t.Run("Generic", func(t *testing.T) {
-		test(t, func(s *StateX4, a []uint64) { permuteScalar(a) })
+		test(t, func(s *StateX4, a []uint64) { permuteScalarX4(a) })
 	})
 	t.Run("SIMD", func(t *testing.T) {
 		test(t, func(s *StateX4, a []uint64) { s.Permute() })
+	})
+}
+
+func BenchmarkF1600x2(b *testing.B) {
+	benchmark := func(b *testing.B, f func(s *StateX2, a []uint64)) {
+		var state StateX2
+		a := state.Initialize()
+
+		for i := 0; i < b.N; i++ {
+			f(&state, a)
+		}
+	}
+
+	b.Run("Generic", func(b *testing.B) {
+		benchmark(b, func(s *StateX2, a []uint64) { permuteScalarX2(a) })
+	})
+	b.Run("SIMD", func(b *testing.B) {
+		benchmark(b, func(s *StateX2, a []uint64) { s.Permute() })
 	})
 }
 
@@ -49,7 +90,7 @@ func BenchmarkF1600x4(b *testing.B) {
 	}
 
 	b.Run("Generic", func(b *testing.B) {
-		benchmark(b, func(s *StateX4, a []uint64) { permuteScalar(a) })
+		benchmark(b, func(s *StateX4, a []uint64) { permuteScalarX4(a) })
 	})
 	b.Run("SIMD", func(b *testing.B) {
 		benchmark(b, func(s *StateX4, a []uint64) { s.Permute() })
