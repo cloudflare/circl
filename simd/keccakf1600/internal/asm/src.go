@@ -1,4 +1,5 @@
 //go:generate go run src.go -out ../../f1600x4_amd64.s -stubs ../../f1600x4stubs_amd64.go -pkg keccakf1600
+// +build ignore
 
 // AVX2 fourway parallelized Keccak-f[1600].
 
