@@ -1,4 +1,4 @@
-// +build arm64
+// +build arm64,!noasm
 
 #include "textflag.h"
 

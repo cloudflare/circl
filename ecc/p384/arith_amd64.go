@@ -1,4 +1,4 @@
-// +build amd64
+// +build amd64,!noasm
 
 package p384
 
