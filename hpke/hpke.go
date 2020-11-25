@@ -1,4 +1,5 @@
-// Package hpke implements the Hybrid Public Key Encryption (HPKE) as specified by draft-irtf-cfrg-hpke-06.
+// Package hpke implements the Hybrid Public Key Encryption (HPKE) as specified
+// by draft-irtf-cfrg-hpke-06.
 //
 // HPKE works for any combination of an asymmetric-key encapsulation mechanism
 // (KEM), a key derivation function (KDF), and an authenticated symmetric-key
@@ -23,15 +24,17 @@ type Exporter interface {
 	Export(expCtx []byte, len uint16) []byte
 }
 
-// Sealer encrypts a plaintext using an AEAD encryption. The caller supplies the plaintext and
-// associated data; the nonce is stored internally by the sealer and incremented after each call.
+// Sealer encrypts a plaintext using an AEAD encryption. The caller supplies
+// the plaintext and associated data; the nonce is stored internally by the
+// sealer and incremented after each call.
 type Sealer interface {
 	Exporter
 	Seal(pt, aad []byte) (ct []byte, err error)
 }
 
-// Opener decrypts a ciphertext using AEAD encryption. Optionally, this
-// scheme allows to include additional data.
+// Opener decrypts a ciphertext using an AEAD encryption. The caller supplies
+// the ciphertext and associated data; the nonce is stored internally by the
+// Opener and incremented after each call.
 type Opener interface {
 	Exporter
 	Open(ct, aad []byte) (pt []byte, err error)
@@ -150,15 +153,26 @@ func (suite Suite) NewReceiver(
 	return &Receiver{state: state{Suite: suite, info: info}, skR: skR}, nil
 }
 
-// Setup provides hybrid public-key encryption to a public key.
+// Setup generates a new HPKE context used for Base Mode encryption.
+// Setup takes an encapsulated key and returns an opener.
 func (r *Receiver) Setup(enc []byte) (Opener, error) {
 	r.modeID = modeBase
 	r.enc = enc
 	return r.allSetup()
 }
 
-// SetupPSK provides hybrid public-key encryption with authentication using a
-// pre-shared key.
+// SetupAuth generates a new HPKE context used for Auth Mode encryption.
+// SetupAuth takes an encapsulated key, and a public key; and returns an opener.
+func (r *Receiver) SetupAuth(enc []byte, pkS kem.PublicKey) (Opener, error) {
+	r.modeID = modeAuth
+	r.enc = enc
+	r.state.pkS = pkS
+	return r.allSetup()
+}
+
+// SetupPSK generates a new HPKE context used for PSK Mode encryption.
+// SetupPSK takes an encapsulated key, and a pre-shared key; and returns an
+// opener.
 func (r *Receiver) SetupPSK(enc, psk, pskID []byte) (Opener, error) {
 	r.modeID = modePSK
 	r.enc = enc
@@ -167,17 +181,9 @@ func (r *Receiver) SetupPSK(enc, psk, pskID []byte) (Opener, error) {
 	return r.allSetup()
 }
 
-// SetupAuth provides hybrid public-key encryption with authentication using
-// an asymmetric key.
-func (r *Receiver) SetupAuth(enc []byte, pkS kem.PublicKey) (Opener, error) {
-	r.modeID = modeAuth
-	r.enc = enc
-	r.state.pkS = pkS
-	return r.allSetup()
-}
-
-// SetupAuthPSK provides hybrid public-key encryption with authentication
-// using both a pre-shared key and an asymmetric key.
+// SetupAuthPSK generates a new HPKE context used for Auth-PSK Mode encryption.
+// SetupAuthPSK takes an encapsulated key, a public key, and a pre-shared key;
+// and returns an opener.
 func (r *Receiver) SetupAuthPSK(
 	enc, psk, pskID []byte,
 	pkS kem.PublicKey,

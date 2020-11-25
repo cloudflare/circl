@@ -2,6 +2,7 @@ package schemes_test
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/cloudflare/circl/kem/schemes"
@@ -122,4 +123,24 @@ func TestApi(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Example_schemes() {
+	// import "github.com/cloudflare/circl/kem/schemes"
+
+	for _, sch := range schemes.All() {
+		fmt.Println(sch.Name())
+	}
+	// Output:
+	// HpkeDHKemP256HkdfSha256
+	// HpkeDHKemP384HkdfSha384
+	// HpkeDHKemP521HkdfSha512
+	// HpkeDHKemX25519HkdfSha256
+	// HpkeDHKemX448HkdfSha512
+	// Kyber512
+	// Kyber768
+	// Kyber1024
+	// SIKEp434
+	// SIKEp503
+	// SIKEp751
 }

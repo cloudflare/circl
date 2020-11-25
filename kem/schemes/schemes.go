@@ -1,4 +1,14 @@
 // Package schemes contains a register of KEM schemes.
+//
+// Schemes Implemented
+//
+// Based on standard elliptic curves:
+//  HpkeDHKemP256HkdfSha256, HpkeDHKemP384HkdfSha384, HpkeDHKemP521HkdfSha512
+// Based on standard Diffie-Hellman functions:
+//  HpkeDHKemX25519HkdfSha256, HpkeDHKemX448HkdfSha512
+// Post-quantum kems:
+//  Kyber512, Kyber768, Kyber1024
+//  SIKEp434, SIKEp503, SIKEp751
 package schemes
 
 import (

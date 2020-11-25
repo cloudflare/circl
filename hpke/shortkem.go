@@ -37,7 +37,7 @@ func (s shortKem) calcDH(dh []byte, sk kem.PrivateKey, pk kem.PublicKey) error {
 		return kem.ErrTypeMismatch
 	}
 	l := len(dh)
-	x, _ := s.ScalarMult(PK.x, PK.y, SK.k)
+	x, _ := s.ScalarMult(PK.x, PK.y, SK.k) // only x-coordinate is used.
 	b := x.Bytes()
 	copy(dh[l-len(b):l], b)
 	return nil

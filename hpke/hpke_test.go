@@ -21,21 +21,40 @@ func Example_hpke() {
 	// Bob prepares to receive messages and announces his public key.
 	k := s.KemID.Scheme()
 	publicBob, privateBob, _ := k.GenerateKey()
-	Bob, _ := s.NewReceiver(privateBob, info)
+	Bob, err := s.NewReceiver(privateBob, info)
+	if err != nil {
+		panic(err)
+	}
 
 	// Alice gets Bob's public key.
+	Alice, err := s.NewSender(publicBob, info)
+	if err != nil {
+		panic(err)
+	}
+
 	seed := make([]byte, k.SeedSize())
-	Alice, _ := s.NewSender(publicBob, info)
-	enc, sealer, _ := Alice.Setup(seed)
+	enc, sealer, err := Alice.Setup(seed)
+	if err != nil {
+		panic(err)
+	}
 
 	// Alice encrypts some plaintext and sends the ciphertext to Bob.
 	ptAlice := []byte("text encrypted to Bob's public key")
 	aad := []byte("additional public data")
-	ct, _ := sealer.Seal(ptAlice, aad)
+	ct, err := sealer.Seal(ptAlice, aad)
+	if err != nil {
+		panic(err)
+	}
 
 	// Bob decrypts the ciphertext.
-	opener, _ := Bob.Setup(enc)
-	ptBob, _ := opener.Open(ct, aad)
+	opener, err := Bob.Setup(enc)
+	if err != nil {
+		panic(err)
+	}
+	ptBob, err := opener.Open(ct, aad)
+	if err != nil {
+		panic(err)
+	}
 
 	// Plaintext was sent successfully.
 	fmt.Println(bytes.Equal(ptAlice, ptBob))

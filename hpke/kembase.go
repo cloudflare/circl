@@ -12,7 +12,7 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
-type dhKEM interface {
+type dhKem interface {
 	sizeDH() int
 	calcDH(dh []byte, sk kem.PrivateKey, pk kem.PublicKey) error
 	GenerateKey() (kem.PublicKey, kem.PrivateKey, error)
@@ -25,7 +25,7 @@ type kemBase struct {
 	id   KemID
 	name string
 	crypto.Hash
-	dh dhKEM
+	dh dhKem
 }
 
 func (k kemBase) Name() string       { return k.name }
@@ -73,7 +73,9 @@ func (k kemBase) labeledExpand(prk, label, info []byte, l uint16) []byte {
 		info...)
 	b := make([]byte, l)
 	rd := hkdf.Expand(k.New, prk, labeledInfo)
-	_, _ = io.ReadFull(rd, b)
+	if n, err := io.ReadFull(rd, b); err != nil || n != int(l) {
+		panic(err)
+	}
 	return b
 }
 

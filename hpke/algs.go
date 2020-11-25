@@ -78,14 +78,14 @@ const (
 	// AES-256 block cipher in Galois Counter Mode (GCM).
 	AeadAES256GCM AeadID = 0x02
 	// ChaCha20 stream cipher and Poly1305 MAC.
-	AeadCC20P1305 AeadID = 0x03
+	AeadChaCha20Poly1305 AeadID = 0x03
 )
 
 func (a AeadID) New(key []byte) (cipher.AEAD, error) {
 	switch a {
 	case AeadAES128GCM, AeadAES256GCM:
 		return aesGCM(key)
-	case AeadCC20P1305:
+	case AeadChaCha20Poly1305:
 		return chacha20poly1305.New(key)
 	default:
 		return nil, errors.New("invalid aeadID")
@@ -98,7 +98,7 @@ func (a AeadID) KeySize() uint {
 		return 16
 	case AeadAES256GCM:
 		return 32
-	case AeadCC20P1305:
+	case AeadChaCha20Poly1305:
 		return chacha20poly1305.KeySize
 	default:
 		return 0
