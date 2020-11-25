@@ -16,7 +16,7 @@ func Example_hpke() {
 		hpke.HkdfSha256,
 		hpke.AeadAES128GCM,
 	}
-	info := []byte("common info between Alice and Bob")
+	info := []byte("public info string, known to both Alice and Bob")
 
 	// Bob prepares to receive messages and announces his public key.
 	k := s.KemID.Scheme()

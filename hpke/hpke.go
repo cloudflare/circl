@@ -1,4 +1,4 @@
-// Package hpke implements hybrid public/private-key encryption.
+// Package hpke implements the Hybrid Public Key Encryption (HPKE) as specified by draft-irtf-cfrg-hpke-06.
 //
 // HPKE works for any combination of an asymmetric-key encapsulation mechanism
 // (KEM), a key derivation function (KDF), and an authenticated symmetric-key
@@ -15,7 +15,7 @@ import (
 
 const versionLabel = "HPKE-06"
 
-// Exporter allows exporting secrets from the encryption Context using a
+// Exporter allows exporting secrets from an HPKE context using a
 // variable-length PRF. Export takes as input a context string expCtx and a
 // desired length (in bytes), and produces a secret derived from the internal
 // exporter secret using the corresponding KDF Expand function.
@@ -23,8 +23,8 @@ type Exporter interface {
 	Export(expCtx []byte, len uint16) []byte
 }
 
-// Sealer encrypts a plaintext using AEAD encryption. Optionally, this
-// scheme allows to include additional data.
+// Sealer encrypts a plaintext using an AEAD encryption. The caller supplies the plaintext and
+// associated data; the nonce is stored internally by the sealer and incremented after each call.
 type Sealer interface {
 	Exporter
 	Seal(pt, aad []byte) (ct []byte, err error)
@@ -41,20 +41,20 @@ type Opener interface {
 type modeID = uint8
 
 const (
-	// modeBase provides hybrid public-key encryption to a public key.
+	// modeBase provides hybrid public-key encryption.
 	modeBase modeID = 0x00
 	// modePSK provides hybrid public-key encryption with authentication using a
 	// pre-shared key.
 	modePSK modeID = 0x01
 	// modeAuth provides hybrid public-key encryption with authentication using
-	// an asymmetric key.
+	// the sender's secret key.
 	modeAuth modeID = 0x02
 	// modeAuthPSK provides hybrid public-key encryption with authentication
 	// using both a pre-shared key and an asymmetric key.
 	modeAuthPSK modeID = 0x03
 )
 
-// Suite is a tuple of primitives to perform HPKE.
+// Suite is an HPKE cipher suite consisting of a KEM, KDF, and AEAD algorithm.
 type Suite struct {
 	KemID  KemID
 	KdfID  KdfID
@@ -88,14 +88,15 @@ func (suite Suite) NewSender(pkR kem.PublicKey, info []byte) (*Sender, error) {
 	}, nil
 }
 
-// Setup provides hybrid public-key encryption to a public key.
+// Setup generates a new HPKE context used for Base Mode encryption.
+// Returns the Sealer and corresponding encapsulated key.
 func (s *Sender) Setup(seed []byte) (enc []byte, seal Sealer, err error) {
 	s.modeID = modeBase
 	return s.allSetup(seed)
 }
 
-// SetupAuth provides hybrid public-key encryption with authentication using
-// an asymmetric key.
+// SetupAuth generates a new HPKE context used for Auth Mode encryption.
+// Returns the Sealer and corresponding encapsulated key.
 func (s *Sender) SetupAuth(
 	seed []byte,
 	skS kem.PrivateKey,
@@ -105,8 +106,8 @@ func (s *Sender) SetupAuth(
 	return s.allSetup(seed)
 }
 
-// SetupPSK provides hybrid public-key encryption with authentication using a
-// pre-shared key.
+// SetupPSK generates a new HPKE context used for PSK Mode encryption.
+// Returns the Sealer and corresponding encapsulated key.
 func (s *Sender) SetupPSK(
 	seed []byte,
 	psk, pskID []byte,
@@ -117,8 +118,8 @@ func (s *Sender) SetupPSK(
 	return s.allSetup(seed)
 }
 
-// SetupAuthPSK provides hybrid public-key encryption with authentication
-// using both a pre-shared key and an asymmetric key.
+// SetupAuthPSK generates a new HPKE context used for Auth-PSK Mode encryption.
+// Returns the Sealer and corresponding encapsulated key.
 func (s *Sender) SetupAuthPSK(
 	seed []byte,
 	skS kem.PrivateKey,
