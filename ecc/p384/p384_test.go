@@ -1,18 +1,17 @@
-// +build arm64 amd64
-
-package p384
+package p384_test
 
 import (
 	"crypto/elliptic"
 	"crypto/rand"
-	"math/big"
+	"fmt"
 	"testing"
 
+	"github.com/cloudflare/circl/ecc/p384"
 	"github.com/cloudflare/circl/internal/test"
 )
 
 func TestIsOnCurveTrue(t *testing.T) {
-	CirclCurve := P384()
+	CirclCurve := p384.P384()
 	k := make([]byte, 384/8)
 	for i := 0; i < 128; i++ {
 		_, _ = rand.Read(k)
@@ -35,7 +34,7 @@ func TestIsOnCurveTrue(t *testing.T) {
 
 func TestAffine(t *testing.T) {
 	const testTimes = 1 << 7
-	CirclCurve := P384()
+	CirclCurve := p384.P384()
 	StdCurve := elliptic.P384()
 	params := StdCurve.Params()
 
@@ -75,107 +74,9 @@ func TestAffine(t *testing.T) {
 	})
 }
 
-func TestScalarMult(t *testing.T) {
-	const testTimes = 1 << 7
-	CirclCurve := P384()
-	StdCurve := elliptic.P384()
-	params := StdCurve.Params()
-
-	t.Run("toOdd", func(t *testing.T) {
-		var c curve
-		k := []byte{0xF0}
-		oddK, _ := c.toOdd(k)
-		got := len(oddK)
-		want := 48
-		if got != want {
-			test.ReportError(t, got, want)
-		}
-
-		oddK[sizeFp-1] = 0x0
-		smallOddK, _ := c.toOdd(oddK)
-		got = len(smallOddK)
-		want = 48
-		if got != want {
-			test.ReportError(t, got, want)
-		}
-	})
-
-	t.Run("k=0", func(t *testing.T) {
-		k := []byte{0x0}
-		gotX, gotY := CirclCurve.ScalarMult(params.Gx, params.Gy, k)
-		got := CirclCurve.IsAtInfinity(gotX, gotY)
-		want := true
-		if got != want {
-			test.ReportError(t, got, want)
-		}
-	})
-
-	t.Run("special k", func(t *testing.T) {
-		cases := []struct { // known cases that require complete addition
-			w uint
-			k int
-		}{
-			{w: 2, k: 2},
-			{w: 5, k: 6},
-			{w: 6, k: 38},
-			{w: 7, k: 102},
-			{w: 9, k: 230},
-			{w: 12, k: 742},
-			{w: 14, k: 4838},
-			{w: 17, k: 21222},
-			{w: 19, k: 152294},
-		}
-
-		var c curve
-
-		for _, caseI := range cases {
-			k := big.NewInt(int64(caseI.k)).Bytes()
-			gotX, gotY := c.scalarMultOmega(params.Gx, params.Gy, k, caseI.w)
-			wantX, wantY := StdCurve.ScalarMult(params.Gx, params.Gy, k)
-
-			if gotX.Cmp(wantX) != 0 {
-				test.ReportError(t, gotX, wantX, caseI)
-			}
-			if gotY.Cmp(wantY) != 0 {
-				test.ReportError(t, gotY, wantY, caseI)
-			}
-		}
-	})
-
-	t.Run("random k", func(t *testing.T) {
-		for i := 0; i < testTimes; i++ {
-			k, _ := rand.Int(rand.Reader, params.N)
-			gotX, gotY := CirclCurve.ScalarMult(params.Gx, params.Gy, k.Bytes())
-			wantX, wantY := StdCurve.ScalarMult(params.Gx, params.Gy, k.Bytes())
-
-			if gotX.Cmp(wantX) != 0 {
-				test.ReportError(t, gotX, wantX, k)
-			}
-			if gotY.Cmp(wantY) != 0 {
-				test.ReportError(t, gotY, wantY)
-			}
-		}
-	})
-
-	t.Run("wrong P", func(t *testing.T) {
-		for i := 0; i < testTimes; i++ {
-			k, _ := rand.Int(rand.Reader, params.N)
-			x, _ := rand.Int(rand.Reader, params.P)
-			y, _ := rand.Int(rand.Reader, params.P)
-
-			got := CirclCurve.IsOnCurve(CirclCurve.ScalarMult(x, y, k.Bytes()))
-			want := StdCurve.IsOnCurve(StdCurve.ScalarMult(x, y, k.Bytes()))
-
-			if got != want {
-				test.ReportError(t, got, want, k, x, y)
-			}
-		}
-	})
-}
-
 func TestScalarBaseMult(t *testing.T) {
-	const testTimes = 1 << 7
-	CirclCurve := P384()
+	const testTimes = 1 << 6
+	CirclCurve := p384.P384()
 	StdCurve := elliptic.P384()
 
 	t.Run("0P", func(t *testing.T) {
@@ -238,9 +139,56 @@ func TestScalarBaseMult(t *testing.T) {
 	})
 }
 
+func TestScalarMult(t *testing.T) {
+	const testTimes = 1 << 6
+	CirclCurve := p384.P384()
+	StdCurve := elliptic.P384()
+	params := StdCurve.Params()
+
+	t.Run("k=0", func(t *testing.T) {
+		k := []byte{0x0}
+		gotX, gotY := CirclCurve.ScalarMult(params.Gx, params.Gy, k)
+		got := CirclCurve.IsAtInfinity(gotX, gotY)
+		want := true
+		if got != want {
+			test.ReportError(t, got, want)
+		}
+	})
+
+	t.Run("random k", func(t *testing.T) {
+		for i := 0; i < testTimes; i++ {
+			k, _ := rand.Int(rand.Reader, params.N)
+			gotX, gotY := CirclCurve.ScalarMult(params.Gx, params.Gy, k.Bytes())
+			wantX, wantY := StdCurve.ScalarMult(params.Gx, params.Gy, k.Bytes())
+
+			if gotX.Cmp(wantX) != 0 {
+				test.ReportError(t, gotX, wantX, k)
+			}
+			if gotY.Cmp(wantY) != 0 {
+				test.ReportError(t, gotY, wantY)
+			}
+		}
+	})
+
+	t.Run("wrong P", func(t *testing.T) {
+		for i := 0; i < testTimes; i++ {
+			k, _ := rand.Int(rand.Reader, params.N)
+			x, _ := rand.Int(rand.Reader, params.P)
+			y, _ := rand.Int(rand.Reader, params.P)
+
+			got := CirclCurve.IsOnCurve(CirclCurve.ScalarMult(x, y, k.Bytes()))
+			want := StdCurve.IsOnCurve(StdCurve.ScalarMult(x, y, k.Bytes()))
+
+			if got != want {
+				test.ReportError(t, got, want, k, x, y)
+			}
+		}
+	})
+}
+
 func TestCombinedMult(t *testing.T) {
 	const testTimes = 1 << 7
-	CirclCurve := P384()
+	CirclCurve := p384.P384()
 	StdCurve := elliptic.P384()
 	params := StdCurve.Params()
 
@@ -264,14 +212,46 @@ func TestCombinedMult(t *testing.T) {
 	}
 }
 
-func TestAbsolute(t *testing.T) {
-	cases := []int32{-2, -1, 0, 1, 2}
-	expected := []int32{2, 1, 0, 1, 2}
-	for i := range cases {
-		got := absolute(cases[i])
-		want := expected[i]
-		if got != want {
-			test.ReportError(t, got, want, cases[i])
+func BenchmarkScalarMult(b *testing.B) {
+	curve := p384.P384()
+	params := curve.Params()
+
+	K, _ := rand.Int(rand.Reader, params.N)
+	M, _ := rand.Int(rand.Reader, params.N)
+	N, _ := rand.Int(rand.Reader, params.N)
+	k := K.Bytes()
+	m := M.Bytes()
+	n := N.Bytes()
+
+	b.Run("kG", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			curve.ScalarBaseMult(k)
 		}
-	}
+	})
+	b.Run("kP", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			curve.ScalarMult(params.Gx, params.Gy, k)
+		}
+	})
+	b.Run("kG+lP", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, _ = curve.CombinedMult(params.Gx, params.Gy, m, n)
+		}
+	})
+}
+
+func Example_p384() {
+	// import "github.com/cloudflare/circl/ecc/p384"
+	// import "crypto/elliptic"
+	circl := p384.P384()
+	stdlib := elliptic.P384()
+
+	params := circl.Params()
+	K, _ := rand.Int(rand.Reader, params.N)
+	k := K.Bytes()
+
+	x1, y1 := circl.ScalarBaseMult(k)
+	x2, y2 := stdlib.ScalarBaseMult(k)
+	fmt.Printf("%v, %v", x1.Cmp(x2) == 0, y1.Cmp(y2) == 0)
+	// Output: true, true
 }
