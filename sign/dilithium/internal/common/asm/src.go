@@ -1,4 +1,5 @@
 //go:generate go run src.go -out ../amd64.s -stubs ../stubs_amd64.go -pkg common
+// +build ignore
 
 // AVX2 optimized version of Poly.[Inv]NTT().  See the comments on the generic
 // implementation for details on the maths involved.
@@ -1285,7 +1286,6 @@ func mulBy2toDAVX2() {
 
 	RET()
 }
-
 
 func main() {
 	ConstraintExpr("amd64")
