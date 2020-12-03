@@ -1,6 +1,7 @@
 package hpke
 
 import (
+	"bytes"
 	"crypto/rand"
 	"testing"
 
@@ -9,7 +10,7 @@ import (
 
 func TestAeadExporter(t *testing.T) {
 	suite := Suite{KdfID: HkdfSha256, AeadID: AeadAes128Gcm}
-	exporter := &encdecCtx{Suite: suite}
+	exporter := &encdecCtx{suite: suite}
 	maxLength := uint(255 * suite.KdfID.Hash().Size())
 
 	err := test.CheckPanic(func() {
@@ -29,8 +30,14 @@ func TestAeadSeqOverflow(t *testing.T) {
 	Nn := aead.NonceSize()
 	nonce := make([]byte, Nn)
 	_, _ = rand.Read(nonce)
-	sealer := &sealCtx{&encdecCtx{suite, aead, nonce, make([]byte, Nn), nil}}
-	opener := &openCtx{&encdecCtx{suite, aead, nonce, make([]byte, Nn), nil}}
+	sealer := &sealCtx{
+		nil,
+		&encdecCtx{nil, suite, nil, nil, nonce, make([]byte, Nn), aead},
+	}
+	opener := &openCtx{
+		nil,
+		&encdecCtx{nil, suite, nil, nil, nonce, make([]byte, Nn), aead},
+	}
 
 	pt := []byte("plaintext")
 	aad := []byte("aad")
@@ -76,5 +83,83 @@ func TestAeadSeqOverflow(t *testing.T) {
 	}
 	if gotIncorrect != wantIncorrect {
 		test.ReportError(t, gotIncorrect, wantIncorrect)
+	}
+}
+
+func contextEqual(a, b *encdecCtx) bool {
+	an := make([]byte, a.NonceSize())
+	bn := make([]byte, b.NonceSize())
+	ac := a.AEAD.Seal(nil, an, nil, nil)
+	bc := b.AEAD.Seal(nil, bn, nil, nil)
+	return bytes.Equal(a.raw, b.raw) &&
+		a.suite == b.suite &&
+		bytes.Equal(a.exporterSecret, b.exporterSecret) &&
+		bytes.Equal(a.key, b.key) &&
+		bytes.Equal(a.baseNonce, b.baseNonce) &&
+		bytes.Equal(a.seq, b.seq) &&
+		bytes.Equal(ac, bc)
+}
+
+func TestContextSerialization(t *testing.T) {
+	s := Suite{
+		DHKemP384HkdfSha384,
+		HkdfSha384,
+		AeadAes256Gcm,
+	}
+	info := []byte("some info string")
+
+	pk, sk, err := s.KemID.Scheme().GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	receiver, err := s.NewReceiver(sk, info)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sender, err := s.NewSender(pk, info)
+	if err != nil {
+		t.Fatal(err)
+	}
+	enc, sealer, err := sender.Setup(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	opener, err := receiver.Setup(enc)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rawSealer, err := sealer.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rawOpener, err := opener.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	parsedSealer, err := UnmarshalSealer(rawSealer)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !contextEqual(
+		sealer.(*sealCtx).encdecCtx,
+		parsedSealer.(*sealCtx).encdecCtx) {
+		t.Error("parsed sealer does not match original")
+	}
+
+	parsedOpener, err := UnmarshalOpener(rawOpener)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !contextEqual(
+		opener.(*openCtx).encdecCtx,
+		parsedOpener.(*openCtx).encdecCtx) {
+		t.Error("parsed opener does not match original")
 	}
 }

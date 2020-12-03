@@ -19,19 +19,22 @@ import (
 
 const versionLabel = "HPKE-06"
 
-// Exporter allows exporting secrets from an HPKE context using a
-// variable-length PRF.
-type Exporter interface {
+// Context defines the capabilities of an HPKE context.
+type Context interface {
 	// Export takes a context string expCtx and a desired length (in bytes),
 	// and produces a secret derived from the internal exporter secret using
 	// the corresponding KDF Expand function. It panics if length is greater
 	// than 255*N bytes, where N is the size (in bytes) of the KDF's output.
 	Export(expCtx []byte, length uint) []byte
+	// Suite returns the cipher suite corresponding to this context.
+	Suite() Suite
+	// Marshal returns the binary representation of the context.
+	Marshal() ([]byte, error)
 }
 
 // Sealer encrypts a plaintext using an AEAD encryption.
 type Sealer interface {
-	Exporter
+	Context
 	// Seal takes a plaintext and associated data to produce a ciphertext.
 	// The nonce is handled by the Sealer and incremented after each call.
 	Seal(pt, aad []byte) (ct []byte, err error)
@@ -39,7 +42,7 @@ type Sealer interface {
 
 // Opener decrypts a ciphertext using an AEAD encryption.
 type Opener interface {
-	Exporter
+	Context
 	// Open takes a ciphertext and associated data to recover, if successful,
 	// the plaintext. The nonce is handled by the Opener and incremented after
 	// each call.
@@ -247,7 +250,7 @@ func (s *Sender) allSetup(rnd io.Reader) ([]byte, Sealer, error) {
 		return nil, nil, err
 	}
 
-	return enc, &sealCtx{ctx}, nil
+	return enc, &sealCtx{nil, ctx}, nil
 }
 
 func (r *Receiver) allSetup() (Opener, error) {
@@ -268,5 +271,5 @@ func (r *Receiver) allSetup() (Opener, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &openCtx{ctx}, nil
+	return &openCtx{nil, ctx}, nil
 }

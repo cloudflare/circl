@@ -1,7 +1,6 @@
 package hpke
 
 import (
-	"crypto"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -40,11 +39,13 @@ func (st state) keySchedule(ss, info, psk, pskID []byte) (*encdecCtx, error) {
 	)
 
 	return &encdecCtx{
+		nil,
 		st.Suite,
-		aead,
+		exporterSecret,
+		key,
 		baseNonce,
 		make([]byte, Nn),
-		exporterSecret,
+		aead,
 	}, nil
 }
 
@@ -83,9 +84,9 @@ func (suite Suite) getSuiteID() (id [10]byte) {
 }
 
 func (suite Suite) isValid() bool {
-	return suite.KemID.Scheme() != nil &&
-		suite.KdfID.Hash() != crypto.Hash(0) &&
-		suite.AeadID.KeySize() != 0
+	return suite.KemID.IsValid() &&
+		suite.KdfID.IsValid() &&
+		suite.AeadID.IsValid()
 }
 
 func (suite Suite) labeledExtract(salt, label, ikm []byte) []byte {
