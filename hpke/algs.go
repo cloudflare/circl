@@ -17,17 +17,20 @@ import (
 type KemID uint16
 
 const (
-	// DHKemP256HkdfSha256 is a KEM using P256 curve with HKDF based on SHA-256.
+	// DHKemP256HkdfSha256 is a KEM using the P256 curve with HKDF based on
+	// SHA-256.
 	DHKemP256HkdfSha256 KemID = 0x10
-	// DHKemP384HkdfSha384 is a KEM using P384 curve with HKDF based on SHA-384.
+	// DHKemP384HkdfSha384 is a KEM using the P384 curve with HKDF based on
+	// SHA-384.
 	DHKemP384HkdfSha384 KemID = 0x11
-	// DHKemP521HkdfSha512 is a KEM using P521 curve with HKDF based on SHA-512.
+	// DHKemP521HkdfSha512 is a KEM using the P521 curve with HKDF based on
+	// SHA-512.
 	DHKemP521HkdfSha512 KemID = 0x12
-	// DHKemX25519HkdfSha256 is a KEM using X25519 Diffie-Hellman function with
-	// HKDF based on SHA-256.
+	// DHKemX25519HkdfSha256 is a KEM using the X25519 Diffie-Hellman function
+	// with HKDF based on SHA-256.
 	DHKemX25519HkdfSha256 KemID = 0x20
-	// DHKemX448HkdfSha512 is a KEM using X448 Diffie-Hellman function with HKDF
-	// based on SHA-512.
+	// DHKemX448HkdfSha512 is a KEM using the X448 Diffie-Hellman function with
+	// HKDF based on SHA-512.
 	DHKemX448HkdfSha512 KemID = 0x21
 )
 
@@ -46,6 +49,28 @@ func (k KemID) Scheme() kem.AuthScheme {
 	default:
 		return nil
 	}
+}
+
+func (k KemID) validatePublicKey(pk kem.PublicKey) bool {
+	var ok = false
+	switch k {
+	case DHKemP256HkdfSha256, DHKemP384HkdfSha384, DHKemP521HkdfSha512:
+		_, ok = pk.(*shortPubKey)
+	case DHKemX25519HkdfSha256, DHKemX448HkdfSha512:
+		_, ok = pk.(*xkemPubKey)
+	}
+	return ok
+}
+
+func (k KemID) validatePrivateKey(sk kem.PrivateKey) bool {
+	var ok = false
+	switch k {
+	case DHKemP256HkdfSha256, DHKemP384HkdfSha384, DHKemP521HkdfSha512:
+		_, ok = sk.(*shortPrivKey)
+	case DHKemX25519HkdfSha256, DHKemX448HkdfSha512:
+		_, ok = sk.(*xkemPrivKey)
+	}
+	return ok
 }
 
 type KdfID uint16
@@ -76,16 +101,18 @@ type AeadID uint16
 
 const (
 	// AES-128 block cipher in Galois Counter Mode (GCM).
-	AeadAES128GCM AeadID = 0x01
+	AeadAes128Gcm AeadID = 0x01
 	// AES-256 block cipher in Galois Counter Mode (GCM).
-	AeadAES256GCM AeadID = 0x02
+	AeadAes256Gcm AeadID = 0x02
 	// ChaCha20 stream cipher and Poly1305 MAC.
 	AeadChaCha20Poly1305 AeadID = 0x03
 )
 
+// New instantiates an AEAD cipher from the identifier, returns an error if the
+// identifier is not known.
 func (a AeadID) New(key []byte) (cipher.AEAD, error) {
 	switch a {
-	case AeadAES128GCM, AeadAES256GCM:
+	case AeadAes128Gcm, AeadAes256Gcm:
 		return aesGCM(key)
 	case AeadChaCha20Poly1305:
 		return chacha20poly1305.New(key)
@@ -94,11 +121,12 @@ func (a AeadID) New(key []byte) (cipher.AEAD, error) {
 	}
 }
 
+// KeySize returns the size in bytes of the keys used by AEAD cipher.
 func (a AeadID) KeySize() uint {
 	switch a {
-	case AeadAES128GCM:
+	case AeadAes128Gcm:
 		return 16
-	case AeadAES256GCM:
+	case AeadAes256Gcm:
 		return 32
 	case AeadChaCha20Poly1305:
 		return chacha20poly1305.KeySize

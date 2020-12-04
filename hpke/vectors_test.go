@@ -28,7 +28,7 @@ func (v *vector) verify(t *testing.T) {
 
 	seed := hexB(v.IkmE)
 	dhkem := s.KemID.Scheme()
-	seededKem := SeededKem{seed, dhkem}
+	seededKem := seededKem{seed, dhkem}
 	sender, recv := v.getActors(t, seededKem, s)
 	sealer, opener := v.setup(t, seededKem, sender, recv, m, s)
 
@@ -62,25 +62,23 @@ func (v *vector) getActors(
 	return sender, recv
 }
 
-type SeededKem struct {
+type seededKem struct {
 	seed []byte
 	kem.AuthScheme
 }
 
-func (a SeededKem) Encapsulate(pk kem.PublicKey) (
+func (a seededKem) Encapsulate(pk kem.PublicKey) (
 	ct []byte, ss []byte, err error) {
 	return a.AuthScheme.EncapsulateDeterministically(pk, a.seed)
 }
 
-func (a SeededKem) AuthEncapsulate(pkr kem.PublicKey, sks kem.PrivateKey) (
+func (a seededKem) AuthEncapsulate(pkr kem.PublicKey, sks kem.PrivateKey) (
 	ct []byte, ss []byte, err error) {
 	if kb, ok := a.AuthScheme.(shortKem); ok {
-		pke, ske := kb.dh.DeriveKey(a.seed)
-		return kb.authEncap(pkr, sks, pke, ske)
+		return kb.authEncap(pkr, sks, a.seed)
 	}
 	if kb, ok := a.AuthScheme.(xkem); ok {
-		pke, ske := kb.dh.DeriveKey(a.seed)
-		return kb.authEncap(pkr, sks, pke, ske)
+		return kb.authEncap(pkr, sks, a.seed)
 	}
 	panic("bad kem")
 }
@@ -113,7 +111,9 @@ func (v *vector) setup(t *testing.T, k kem.AuthScheme,
 		x = func() ([]byte, Sealer, error) {
 			skS, err := k.UnmarshalBinaryPrivateKey(hexB(v.SkSm))
 			test.CheckNoErr(t, err, h+"bad private key")
-			return se.buildAuth(skS).allSetup(k)
+			se, err = se.buildAuth(skS)
+			test.CheckNoErr(t, err, h+"bad private key")
+			return se.allSetup(k)
 		}
 		y = func(enc []byte) (Opener, error) {
 			pkS, err := k.UnmarshalBinaryPublicKey(hexB(v.PkSm))
@@ -125,7 +125,9 @@ func (v *vector) setup(t *testing.T, k kem.AuthScheme,
 		x = func() ([]byte, Sealer, error) {
 			skS, err := k.UnmarshalBinaryPrivateKey(hexB(v.SkSm))
 			test.CheckNoErr(t, err, h+"bad private key")
-			return se.buildAuthPSK(skS, psk, pskid).allSetup(k)
+			se, err = se.buildAuthPSK(skS, psk, pskid)
+			test.CheckNoErr(t, err, h+"bad private key")
+			return se.allSetup(k)
 		}
 		y = func(enc []byte) (Opener, error) {
 			pkS, err := k.UnmarshalBinaryPublicKey(hexB(v.PkSm))
@@ -185,7 +187,7 @@ func (v *vector) checkExports(t *testing.T, exp Exporter, m modeID, s Suite) {
 		ctx := hexB(expv.ExportContext)
 		want := hexB(expv.ExportValue)
 
-		got := exp.Export(ctx, uint16(expv.ExportLength))
+		got := exp.Export(ctx, uint(expv.ExportLength))
 		if !bytes.Equal(got, want) {
 			test.ReportError(t, got, want, m, s, j)
 		}

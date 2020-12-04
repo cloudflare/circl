@@ -3,11 +3,12 @@ package hpke
 import (
 	"crypto/cipher"
 	"errors"
+	"fmt"
 )
 
 type encdecCtx struct {
-	cipher.AEAD
 	Suite
+	cipher.AEAD
 	baseNonce      []byte
 	seq            []byte
 	exporterSecret []byte
@@ -16,8 +17,12 @@ type encdecCtx struct {
 type sealCtx struct{ *encdecCtx }
 type openCtx struct{ *encdecCtx }
 
-func (c *encdecCtx) Export(expCtx []byte, len uint16) []byte {
-	return c.labeledExpand(c.exporterSecret, []byte("sec"), expCtx, len)
+func (c *encdecCtx) Export(expCtx []byte, length uint) []byte {
+	maxLength := uint(255 * c.KdfID.Hash().Size())
+	if length > maxLength {
+		panic(fmt.Errorf("size greater than %v", maxLength))
+	}
+	return c.labeledExpand(c.exporterSecret, []byte("sec"), expCtx, uint16(length))
 }
 
 func (c *encdecCtx) calcNonce() []byte {
@@ -37,6 +42,9 @@ func (c *encdecCtx) inc() error {
 	for i := range c.seq {
 		of &= c.seq[i]
 	}
+	if of == max {
+		return errors.New("sequence number overflow")
+	}
 
 	carry := uint(1)
 	for i := len(c.seq) - 1; i >= 0; i-- {
@@ -44,7 +52,7 @@ func (c *encdecCtx) inc() error {
 		carry = w >> 8
 		c.seq[i] = byte(w & 0xFF)
 	}
-	if of == max || carry != 0 {
+	if carry != 0 {
 		return errors.New("sequence number overflow")
 	}
 	return nil

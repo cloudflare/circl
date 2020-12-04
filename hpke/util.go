@@ -40,8 +40,8 @@ func (st state) keySchedule(ss, info, psk, pskID []byte) (*encdecCtx, error) {
 	)
 
 	return &encdecCtx{
-		aead,
 		st.Suite,
+		aead,
 		baseNonce,
 		make([]byte, Nn),
 		exporterSecret,

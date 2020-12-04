@@ -14,7 +14,7 @@ func Example() {
 	s := hpke.Suite{
 		hpke.DHKemP384HkdfSha384,
 		hpke.HkdfSha384,
-		hpke.AeadAES256GCM,
+		hpke.AeadAes256Gcm,
 	}
 	info := []byte("public info string, known to both Alice and Bob")
 

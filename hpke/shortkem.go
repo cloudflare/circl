@@ -28,14 +28,8 @@ func (s shortKem) byteSize() int { return (s.Params().BitSize + 7) / 8 }
 
 func (s shortKem) sizeDH() int { return s.byteSize() }
 func (s shortKem) calcDH(dh []byte, sk kem.PrivateKey, pk kem.PublicKey) error {
-	PK, ok := pk.(*shortPubKey)
-	if !ok {
-		return kem.ErrTypeMismatch
-	}
-	SK, ok := sk.(*shortPrivKey)
-	if !ok {
-		return kem.ErrTypeMismatch
-	}
+	PK := pk.(*shortPubKey)
+	SK := sk.(*shortPrivKey)
 	l := len(dh)
 	x, _ := s.ScalarMult(PK.x, PK.y, SK.k) // only x-coordinate is used.
 	b := x.Bytes()
@@ -76,6 +70,7 @@ func (s shortKem) DeriveKey(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 	copy(sk.k[l-len(bytes):], bytes)
 	return sk.Public(), sk
 }
+
 func (s shortKem) GenerateKey() (kem.PublicKey, kem.PrivateKey, error) {
 	sk, x, y, err := elliptic.GenerateKey(s, rand.Reader)
 	pub := &shortPubKey{s, x, y}

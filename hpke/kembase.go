@@ -2,9 +2,9 @@ package hpke
 
 import (
 	"crypto"
+	"crypto/rand"
 	_ "crypto/sha256" // linking sha256 packages.
 	_ "crypto/sha512" // linking sha512 packages.
-	"encoding"
 	"encoding/binary"
 	"io"
 
@@ -15,7 +15,7 @@ import (
 type dhKem interface {
 	sizeDH() int
 	calcDH(dh []byte, sk kem.PrivateKey, pk kem.PublicKey) error
-	GenerateKey() (kem.PublicKey, kem.PrivateKey, error)
+	SeedSize() int
 	DeriveKey(seed []byte) (kem.PublicKey, kem.PrivateKey)
 	UnmarshalBinaryPrivateKey(data []byte) (kem.PrivateKey, error)
 	UnmarshalBinaryPublicKey(data []byte) (kem.PublicKey, error)
@@ -73,48 +73,47 @@ func (k kemBase) labeledExpand(prk, label, info []byte, l uint16) []byte {
 		info...)
 	b := make([]byte, l)
 	rd := hkdf.Expand(k.New, prk, labeledInfo)
-	if n, err := io.ReadFull(rd, b); err != nil || n != int(l) {
+	if _, err := io.ReadFull(rd, b); err != nil {
 		panic(err)
 	}
 	return b
 }
 
-func (k kemBase) AuthEncapsulate(
-	pkr kem.PublicKey,
-	sks kem.PrivateKey,
-) (ct []byte, ss []byte, err error) {
-	pke, ske, err := k.dh.GenerateKey()
+func (k kemBase) AuthEncapsulate(pkr kem.PublicKey, sks kem.PrivateKey) (
+	ct []byte, ss []byte, err error,
+) {
+	seed := make([]byte, k.dh.SeedSize())
+	_, err = io.ReadFull(rand.Reader, seed)
 	if err != nil {
 		return nil, nil, err
 	}
-	return k.authEncap(pkr, sks, pke, ske)
+
+	return k.authEncap(pkr, sks, seed)
 }
 
-func (k kemBase) Encapsulate(
-	pkr kem.PublicKey,
-) (ct []byte, ss []byte, err error) {
-	pke, ske, err := k.dh.GenerateKey()
+func (k kemBase) Encapsulate(pkr kem.PublicKey) (
+	ct []byte, ss []byte, err error,
+) {
+	seed := make([]byte, k.dh.SeedSize())
+	_, err = io.ReadFull(rand.Reader, seed)
 	if err != nil {
 		return nil, nil, err
 	}
-	return k.encap(pkr, pke, ske)
+
+	return k.encap(pkr, seed)
 }
 
-func (k kemBase) EncapsulateDeterministically(
-	pkr kem.PublicKey,
-	seed []byte,
-) (ct, ss []byte, err error) {
-	pke, ske := k.dh.DeriveKey(seed)
-	return k.encap(pkr, pke, ske)
+func (k kemBase) EncapsulateDeterministically(pkr kem.PublicKey, seed []byte) (
+	ct, ss []byte, err error) {
+	return k.encap(pkr, seed)
 }
 
 func (k kemBase) encap(
 	pkR kem.PublicKey,
-	pkE encoding.BinaryMarshaler, // kem.PublicKey
-	skE kem.PrivateKey,
+	seed []byte,
 ) (ct []byte, ss []byte, err error) {
 	dh := make([]byte, k.dh.sizeDH())
-	enc, kemCtx, err := k.coreEncap(dh, pkR, skE, pkE)
+	enc, kemCtx, err := k.coreEncap(dh, pkR, seed)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -125,12 +124,11 @@ func (k kemBase) encap(
 func (k kemBase) authEncap(
 	pkR kem.PublicKey,
 	skS kem.PrivateKey,
-	pkE encoding.BinaryMarshaler, // kem.PublicKey
-	skE kem.PrivateKey,
+	seed []byte,
 ) (ct []byte, ss []byte, err error) {
 	dhLen := k.dh.sizeDH()
 	dh := make([]byte, 2*dhLen)
-	enc, kemCtx, err := k.coreEncap(dh[:dhLen], pkR, skE, pkE)
+	enc, kemCtx, err := k.coreEncap(dh[:dhLen], pkR, seed)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -154,9 +152,9 @@ func (k kemBase) authEncap(
 func (k kemBase) coreEncap(
 	dh []byte,
 	pkR kem.PublicKey,
-	skE kem.PrivateKey,
-	pkE encoding.BinaryMarshaler, // kem.PublicKey
+	seed []byte,
 ) (enc []byte, kemCtx []byte, err error) {
+	pkE, skE := k.dh.DeriveKey(seed)
 	err = k.dh.calcDH(dh, skE, pkR)
 	if err != nil {
 		return nil, nil, err
