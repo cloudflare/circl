@@ -26,11 +26,9 @@ func (v *vector) verify(t *testing.T) {
 	m := v.ModeID
 	s := Suite{KemID(v.KemID), KdfID(v.KdfID), AeadID(v.AeadID)}
 
-	seed := hexB(v.IkmE)
 	dhkem := s.KemID.Scheme()
-	seededKem := seededKem{seed, dhkem}
-	sender, recv := v.getActors(t, seededKem, s)
-	sealer, opener := v.setup(t, seededKem, sender, recv, m, s)
+	sender, recv := v.getActors(t, dhkem, s)
+	sealer, opener := v.setup(t, dhkem, sender, recv, m, s)
 
 	v.checkAead(t, (sealer.(*sealCtx)).encdecCtx, m, s)
 	v.checkAead(t, (opener.(*openCtx)).encdecCtx, m, s)
@@ -39,11 +37,8 @@ func (v *vector) verify(t *testing.T) {
 	v.checkExports(t, opener, m, s)
 }
 
-func (v *vector) getActors(
-	t *testing.T,
-	dhkem kem.Scheme,
-	s Suite,
-) (*Sender, *Receiver) {
+func (v *vector) getActors(t *testing.T, dhkem kem.Scheme, s Suite) (
+	*Sender, *Receiver) {
 	h := fmt.Sprintf("%v\n", s)
 
 	pkR, err := dhkem.UnmarshalBinaryPublicKey(hexB(v.PkRm))
@@ -62,84 +57,63 @@ func (v *vector) getActors(
 	return sender, recv
 }
 
-type seededKem struct {
-	seed []byte
-	kem.AuthScheme
-}
-
-func (a seededKem) Encapsulate(pk kem.PublicKey) (
-	ct []byte, ss []byte, err error) {
-	return a.AuthScheme.EncapsulateDeterministically(pk, a.seed)
-}
-
-func (a seededKem) AuthEncapsulate(pkr kem.PublicKey, sks kem.PrivateKey) (
-	ct []byte, ss []byte, err error) {
-	if kb, ok := a.AuthScheme.(shortKem); ok {
-		return kb.authEncap(pkr, sks, a.seed)
-	}
-	if kb, ok := a.AuthScheme.(xkem); ok {
-		return kb.authEncap(pkr, sks, a.seed)
-	}
-	panic("bad kem")
-}
-
 func (v *vector) setup(t *testing.T, k kem.AuthScheme,
 	se *Sender, re *Receiver,
 	m modeID, s Suite,
-) (Sealer, Opener) {
-	h := fmt.Sprintf("mode: %v %v\n", m, s)
-	var x func() ([]byte, Sealer, error)
-	var y func([]byte) (Opener, error)
+) (sealer Sealer, opener Opener) {
+	seed := hexB(v.IkmE)
+	rd := bytes.NewReader(seed)
+
+	var enc []byte
+	var skS kem.PrivateKey
+	var pkS kem.PublicKey
+	var errS, errR, errPK, errSK error
 
 	switch v.ModeID {
 	case modeBase:
-		x = func() ([]byte, Sealer, error) {
-			return se.buildBase().allSetup(k)
+		enc, sealer, errS = se.Setup(rd)
+		if errS == nil {
+			opener, errR = re.Setup(enc)
 		}
-		y = func(enc []byte) (Opener, error) {
-			return re.Setup(enc)
-		}
+
 	case modePSK:
 		psk, pskid := hexB(v.Psk), hexB(v.PskID)
-		x = func() ([]byte, Sealer, error) {
-			return se.buildPSK(psk, pskid).allSetup(k)
+		enc, sealer, errS = se.SetupPSK(rd, psk, pskid)
+		if errS == nil {
+			opener, errR = re.SetupPSK(enc, psk, pskid)
 		}
-		y = func(enc []byte) (Opener, error) {
-			return re.SetupPSK(enc, psk, pskid)
-		}
+
 	case modeAuth:
-		x = func() ([]byte, Sealer, error) {
-			skS, err := k.UnmarshalBinaryPrivateKey(hexB(v.SkSm))
-			test.CheckNoErr(t, err, h+"bad private key")
-			se, err = se.buildAuth(skS)
-			test.CheckNoErr(t, err, h+"bad private key")
-			return se.allSetup(k)
+		skS, errSK = k.UnmarshalBinaryPrivateKey(hexB(v.SkSm))
+		if errSK == nil {
+			pkS, errPK = k.UnmarshalBinaryPublicKey(hexB(v.PkSm))
+			if errPK == nil {
+				enc, sealer, errS = se.SetupAuth(rd, skS)
+				if errS == nil {
+					opener, errR = re.SetupAuth(enc, pkS)
+				}
+			}
 		}
-		y = func(enc []byte) (Opener, error) {
-			pkS, err := k.UnmarshalBinaryPublicKey(hexB(v.PkSm))
-			test.CheckNoErr(t, err, h+"bad public key")
-			return re.SetupAuth(enc, pkS)
-		}
+
 	case modeAuthPSK:
 		psk, pskid := hexB(v.Psk), hexB(v.PskID)
-		x = func() ([]byte, Sealer, error) {
-			skS, err := k.UnmarshalBinaryPrivateKey(hexB(v.SkSm))
-			test.CheckNoErr(t, err, h+"bad private key")
-			se, err = se.buildAuthPSK(skS, psk, pskid)
-			test.CheckNoErr(t, err, h+"bad private key")
-			return se.allSetup(k)
-		}
-		y = func(enc []byte) (Opener, error) {
-			pkS, err := k.UnmarshalBinaryPublicKey(hexB(v.PkSm))
-			test.CheckNoErr(t, err, h+"bad public key")
-			return re.SetupAuthPSK(enc, psk, pskid, pkS)
+		skS, errSK = k.UnmarshalBinaryPrivateKey(hexB(v.SkSm))
+		if errSK == nil {
+			pkS, errPK = k.UnmarshalBinaryPublicKey(hexB(v.PkSm))
+			if errPK == nil {
+				enc, sealer, errS = se.SetupAuthPSK(rd, skS, psk, pskid)
+				if errS == nil {
+					opener, errR = re.SetupAuthPSK(enc, psk, pskid, pkS)
+				}
+			}
 		}
 	}
 
-	enc, sealer, errS := x()
+	h := fmt.Sprintf("mode: %v %v\n", m, s)
 	test.CheckNoErr(t, errS, h+"error on sender setup")
-	opener, errR := y(enc)
 	test.CheckNoErr(t, errR, h+"error on receiver setup")
+	test.CheckNoErr(t, errSK, h+"bad private key")
+	test.CheckNoErr(t, errPK, h+"bad public key")
 
 	return sealer, opener
 }

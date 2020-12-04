@@ -10,7 +10,9 @@
 package hpke
 
 import (
+	"crypto/rand"
 	"errors"
+	"io"
 
 	"github.com/cloudflare/circl/kem"
 )
@@ -101,75 +103,50 @@ func (suite Suite) NewSender(pkR kem.PublicKey, info []byte) (*Sender, error) {
 
 // Setup generates a new HPKE context used for Base Mode encryption.
 // Returns the Sealer and corresponding encapsulated key.
-func (s *Sender) Setup() (enc []byte, seal Sealer, err error) {
-	return s.buildBase().allSetup(s.KemID.Scheme())
-}
-
-func (s *Sender) buildBase() *Sender {
+func (s *Sender) Setup(rnd io.Reader) (enc []byte, seal Sealer, err error) {
 	s.modeID = modeBase
-	return s
+	return s.allSetup(rnd)
 }
 
 // SetupAuth generates a new HPKE context used for Auth Mode encryption.
 // Returns the Sealer and corresponding encapsulated key.
-func (s *Sender) SetupAuth(skS kem.PrivateKey) (
+func (s *Sender) SetupAuth(rnd io.Reader, skS kem.PrivateKey) (
 	enc []byte, seal Sealer, err error,
 ) {
-	_, err = s.buildAuth(skS)
-	if err != nil {
-		return nil, nil, err
-	}
-	return s.allSetup(s.KemID.Scheme())
-}
-
-func (s *Sender) buildAuth(skS kem.PrivateKey) (*Sender, error) {
 	if !s.KemID.validatePrivateKey(skS) {
-		return nil, kem.ErrTypeMismatch
+		return nil, nil, kem.ErrTypeMismatch
 	}
 
 	s.modeID = modeAuth
 	s.state.skS = skS
-	return s, nil
+	return s.allSetup(rnd)
 }
 
 // SetupPSK generates a new HPKE context used for PSK Mode encryption.
 // Returns the Sealer and corresponding encapsulated key.
-func (s *Sender) SetupPSK(psk, pskID []byte) (
+func (s *Sender) SetupPSK(rnd io.Reader, psk, pskID []byte) (
 	enc []byte, seal Sealer, err error,
 ) {
-	return s.buildPSK(psk, pskID).allSetup(s.KemID.Scheme())
-}
-
-func (s *Sender) buildPSK(psk, pskID []byte) *Sender {
 	s.modeID = modePSK
 	s.state.psk = psk
 	s.state.pskID = pskID
-	return s
+	return s.allSetup(rnd)
 }
 
 // SetupAuthPSK generates a new HPKE context used for Auth-PSK Mode encryption.
 // Returns the Sealer and corresponding encapsulated key.
-func (s *Sender) SetupAuthPSK(skS kem.PrivateKey, psk, pskID []byte) (
-	enc []byte, seal Sealer, err error,
-) {
-	_, err = s.buildAuthPSK(skS, psk, pskID)
-	if err != nil {
-		return nil, nil, err
-	}
-	return s.allSetup(s.KemID.Scheme())
-}
-
-func (s *Sender) buildAuthPSK(skS kem.PrivateKey, psk, pskID []byte) (
-	*Sender, error) {
+func (s *Sender) SetupAuthPSK(
+	rnd io.Reader, skS kem.PrivateKey, psk, pskID []byte,
+) (enc []byte, seal Sealer, err error) {
 	if !s.KemID.validatePrivateKey(skS) {
-		return nil, kem.ErrTypeMismatch
+		return nil, nil, kem.ErrTypeMismatch
 	}
 
 	s.modeID = modeAuthPSK
 	s.state.skS = skS
 	s.state.psk = psk
 	s.state.pskID = pskID
-	return s, nil
+	return s.allSetup(rnd)
 }
 
 // Receiver performs hybrid public-key decryption.
@@ -242,15 +219,24 @@ func (r *Receiver) SetupAuthPSK(enc, psk, pskID []byte, pkS kem.PublicKey) (
 	return r.allSetup()
 }
 
-func (s *Sender) allSetup(k kem.AuthScheme) ([]byte, Sealer, error) {
-	var err error
-	var enc, ss []byte
+func (s *Sender) allSetup(rnd io.Reader) ([]byte, Sealer, error) {
+	k := s.KemID.Scheme()
 
+	seed := make([]byte, k.SeedSize())
+	if rnd == nil {
+		rnd = rand.Reader
+	}
+	_, err := io.ReadFull(rnd, seed)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var enc, ss []byte
 	switch s.modeID {
 	case modeBase, modePSK:
-		enc, ss, err = k.Encapsulate(s.pkR)
+		enc, ss, err = k.EncapsulateDeterministically(s.pkR, seed)
 	case modeAuth, modeAuthPSK:
-		enc, ss, err = k.AuthEncapsulate(s.pkR, s.skS)
+		enc, ss, err = k.AuthEncapsulateDeterministically(s.pkR, s.skS, seed)
 	}
 	if err != nil {
 		return nil, nil, err

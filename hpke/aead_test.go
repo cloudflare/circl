@@ -18,7 +18,7 @@ func TestAeadExporter(t *testing.T) {
 	test.CheckNoErr(t, err, "exporter max size")
 }
 
-func TestAeadSeqOverflows(t *testing.T) {
+func TestAeadSeqOverflow(t *testing.T) {
 	suite := Suite{AeadID: AeadAes128Gcm}
 
 	key := make([]byte, suite.AeadID.KeySize())

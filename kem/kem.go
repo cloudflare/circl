@@ -86,6 +86,7 @@ type Scheme interface {
 type AuthScheme interface {
 	Scheme
 	AuthEncapsulate(pkr PublicKey, sks PrivateKey) (ct, ss []byte, err error)
+	AuthEncapsulateDeterministically(pkr PublicKey, sks PrivateKey, seed []byte) (ct, ss []byte, err error)
 	AuthDecapsulate(skr PrivateKey, ct []byte, pks PublicKey) ([]byte, error)
 }
 

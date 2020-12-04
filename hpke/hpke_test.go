@@ -2,6 +2,7 @@ package hpke_test
 
 import (
 	"bytes"
+	"crypto/rand"
 	"fmt"
 
 	"github.com/cloudflare/circl/hpke"
@@ -9,6 +10,7 @@ import (
 
 func Example() {
 	// import "github.com/cloudflare/circl/hpke"
+	// inport "crypto/rand"
 
 	// HPKE suite is a domain parameter.
 	s := hpke.Suite{
@@ -34,7 +36,7 @@ func Example() {
 	if err != nil {
 		panic(err)
 	}
-	enc, sealer, err := Alice.Setup()
+	enc, sealer, err := Alice.Setup(rand.Reader)
 	if err != nil {
 		panic(err)
 	}
