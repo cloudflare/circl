@@ -100,7 +100,7 @@ func contextEqual(a, b *encdecCtx) bool {
 		bytes.Equal(ac, bc)
 }
 
-func TestContextSerialization(t *testing.T) {
+func setupTest() (*Sender, *Receiver, error) {
 	s := Suite{
 		DHKemP384HkdfSha384,
 		HkdfSha384,
@@ -110,17 +110,27 @@ func TestContextSerialization(t *testing.T) {
 
 	pk, sk, err := s.KemID.Scheme().GenerateKey()
 	if err != nil {
-		t.Fatal(err)
+		return nil, nil, err
 	}
 	receiver, err := s.NewReceiver(sk, info)
 	if err != nil {
-		t.Fatal(err)
+		return nil, nil, err
 	}
 
 	sender, err := s.NewSender(pk, info)
 	if err != nil {
+		return nil, nil, err
+	}
+
+	return sender, receiver, nil
+}
+
+func TestContextSerialization(t *testing.T) {
+	sender, receiver, err := setupTest()
+	if err != nil {
 		t.Fatal(err)
 	}
+
 	enc, sealer, err := sender.Setup(rand.Reader)
 	if err != nil {
 		t.Fatal(err)
@@ -161,5 +171,39 @@ func TestContextSerialization(t *testing.T) {
 		opener.(*openCtx).encdecCtx,
 		parsedOpener.(*openCtx).encdecCtx) {
 		t.Error("parsed opener does not match original")
+	}
+}
+
+var (
+	pt, ad [100]byte
+)
+
+func BenchmarkPublicKeyEncryption(b *testing.B) {
+	sender, _, err := setupTest()
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, sealer, err := sender.Setup(rand.Reader)
+		if err != nil {
+			b.Fatal(err)
+		}
+		_, _ = sealer.Seal(pt[:], ad[:])
+	}
+}
+
+func BenchmarkKeyEncapsulationThenEncryption(b *testing.B) {
+	sender, _, err := setupTest()
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.ResetTimer()
+	_, sealer, err := sender.Setup(rand.Reader)
+	if err != nil {
+		b.Fatal(err)
+	}
+	for i := 0; i < b.N; i++ {
+		_, _ = sealer.Seal(pt[:], ad[:])
 	}
 }
