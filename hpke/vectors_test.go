@@ -156,12 +156,12 @@ func (v *vector) checkEncryptions(
 	}
 }
 
-func (v *vector) checkExports(t *testing.T, exp Exporter, m modeID, s Suite) {
+func (v *vector) checkExports(t *testing.T, context Context, m modeID, s Suite) {
 	for j, expv := range v.Exports {
 		ctx := hexB(expv.ExportContext)
 		want := hexB(expv.ExportValue)
 
-		got := exp.Export(ctx, uint(expv.ExportLength))
+		got := context.Export(ctx, uint(expv.ExportLength))
 		if !bytes.Equal(got, want) {
 			test.ReportError(t, got, want, m, s, j)
 		}
