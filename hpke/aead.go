@@ -6,11 +6,12 @@ import (
 )
 
 type encdecContext struct {
-	Suite
 	cipher.AEAD
+	suite          Suite
+	exporterSecret []byte
+	key            []byte
 	baseNonce      []byte
 	sequenceNumber []byte
-	exporterSecret []byte
 }
 
 type sealContext struct{ *encdecContext }
@@ -21,12 +22,16 @@ type openContext struct{ *encdecContext }
 // using the corresponding KDF Expand function. It panics if length is greater
 // than 255*N bytes, where N is the size (in bytes) of the KDF's output.
 func (c *encdecContext) Export(exporterContext []byte, length uint) []byte {
-	maxLength := uint(255 * c.KdfID.Hash().Size())
+	maxLength := uint(255 * c.suite.KdfID.Hash().Size())
 	if length > maxLength {
 		panic(fmt.Errorf("size greater than %v", maxLength))
 	}
-	return c.labeledExpand(c.exporterSecret, []byte("sec"),
+	return c.suite.labeledExpand(c.exporterSecret, []byte("sec"),
 		exporterContext, uint16(length))
+}
+
+func (c *encdecContext) Suite() Suite {
+	return c.suite
 }
 
 func (c *encdecContext) calcNonce() []byte {

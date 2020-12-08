@@ -33,6 +33,19 @@ const (
 	DHKemX448HkdfSha512 KemID = 0x21
 )
 
+func (k KemID) IsValid() bool {
+	switch k {
+	case DHKemP256HkdfSha256,
+		DHKemP384HkdfSha384,
+		DHKemP521HkdfSha512,
+		DHKemX25519HkdfSha256,
+		DHKemX448HkdfSha512:
+		return true
+	default:
+		return false
+	}
+}
+
 func (k KemID) Scheme() kem.AuthScheme {
 	switch k {
 	case DHKemP256HkdfSha256:
@@ -87,6 +100,17 @@ const (
 	HkdfSha512 KdfID = 0x03
 )
 
+func (k KdfID) IsValid() bool {
+	switch k {
+	case HkdfSha256,
+		HkdfSha384,
+		HkdfSha512:
+		return true
+	default:
+		return false
+	}
+}
+
 func (k KdfID) Hash() crypto.Hash {
 	switch k {
 	case HkdfSha256:
@@ -121,6 +145,17 @@ func (a AeadID) New(key []byte) (cipher.AEAD, error) {
 		return chacha20poly1305.New(key)
 	default:
 		panic("invalid AeadID")
+	}
+}
+
+func (a AeadID) IsValid() bool {
+	switch a {
+	case AeadAes128Gcm,
+		AeadAes256Gcm,
+		AeadChaCha20Poly1305:
+		return true
+	default:
+		return false
 	}
 }
 

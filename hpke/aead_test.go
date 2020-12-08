@@ -9,7 +9,7 @@ import (
 
 func TestAeadExporter(t *testing.T) {
 	suite := Suite{KdfID: HkdfSha256, AeadID: AeadAes128Gcm}
-	exporter := &encdecContext{Suite: suite}
+	exporter := &encdecContext{suite: suite}
 	maxLength := uint(255 * suite.KdfID.Hash().Size())
 
 	err := test.CheckPanic(func() {
@@ -29,8 +29,8 @@ func TestAeadSeqOverflow(t *testing.T) {
 	Nn := aead.NonceSize()
 	nonce := make([]byte, Nn)
 	_, _ = rand.Read(nonce)
-	sealer := &sealContext{&encdecContext{suite, aead, nonce, make([]byte, Nn), nil}}
-	opener := &openContext{&encdecContext{suite, aead, nonce, make([]byte, Nn), nil}}
+	sealer := &sealContext{&encdecContext{aead, suite, nil, nil, nonce, make([]byte, Nn)}}
+	opener := &openContext{&encdecContext{aead, suite, nil, nil, nonce, make([]byte, Nn)}}
 
 	pt := []byte("plaintext")
 	aad := []byte("aad")
