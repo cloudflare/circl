@@ -132,11 +132,11 @@ func Example_schemes() {
 		fmt.Println(sch.Name())
 	}
 	// Output:
-	// HpkeDHKemP256HkdfSha256
-	// HpkeDHKemP384HkdfSha384
-	// HpkeDHKemP521HkdfSha512
-	// HpkeDHKemX25519HkdfSha256
-	// HpkeDHKemX448HkdfSha512
+	// HPKE_DHKEM_P256_HKDF_SHA256
+	// HPKE_DHKEM_P384_HKDF_SHA384
+	// HPKE_DHKEM_P521_HKDF_SHA512
+	// HPKE_DHKEM_X25519_HKDF_SHA256
+	// HPKE_DHKEM_X448_HKDF_SHA512
 	// Kyber512
 	// Kyber768
 	// Kyber1024

@@ -9,9 +9,9 @@ import (
 // marshal serializes an HPKE context.
 func (c *encdecContext) marshal() ([]byte, error) {
 	var b cryptobyte.Builder
-	b.AddUint16(uint16(c.suite.KemID))
-	b.AddUint16(uint16(c.suite.KdfID))
-	b.AddUint16(uint16(c.suite.AeadID))
+	b.AddUint16(c.suite.KemID.uint16)
+	b.AddUint16(c.suite.KdfID.uint16)
+	b.AddUint16(c.suite.AeadID.uint16)
 	b.AddUint8LengthPrefixed(func(b *cryptobyte.Builder) {
 		b.AddBytes(c.exporterSecret)
 	})
@@ -30,15 +30,16 @@ func (c *encdecContext) marshal() ([]byte, error) {
 // unmarshalContext parses an HPKE context.
 func unmarshalContext(raw []byte) (*encdecContext, error) {
 	var (
-		err error
-		t   cryptobyte.String
+		err                  error
+		kemID, kdfID, aeadID uint16
+		t                    cryptobyte.String
 	)
 
 	c := new(encdecContext)
 	s := cryptobyte.String(raw)
-	if !s.ReadUint16((*uint16)(&c.suite.KemID)) ||
-		!s.ReadUint16((*uint16)(&c.suite.KdfID)) ||
-		!s.ReadUint16((*uint16)(&c.suite.AeadID)) ||
+	if !s.ReadUint16(&kemID) ||
+		!s.ReadUint16(&kdfID) ||
+		!s.ReadUint16(&aeadID) ||
 		!s.ReadUint8LengthPrefixed(&t) ||
 		!t.ReadBytes(&c.exporterSecret, len(t)) ||
 		!s.ReadUint8LengthPrefixed(&t) ||
@@ -50,9 +51,22 @@ func unmarshalContext(raw []byte) (*encdecContext, error) {
 		return nil, errors.New("failed to parse context")
 	}
 
-	if !c.suite.isValid() {
-		return nil, errHpkeInvalidSuite
+	kem, err := KEM.Parse(int(kemID))
+	if err != nil {
+		return nil, errInvalidKEM
 	}
+
+	kdf, err := KDF.Parse(int(kdfID))
+	if err != nil {
+		return nil, errInvalidKDF
+	}
+
+	aead, err := AEAD.Parse(int(aeadID))
+	if err != nil {
+		return nil, errInvalidAEAD
+	}
+
+	c.suite = Suite{*kem, *kdf, *aead}
 
 	Nh := c.suite.KdfID.Hash().Size()
 	if len(c.exporterSecret) != Nh {

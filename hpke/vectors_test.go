@@ -24,30 +24,37 @@ func TestVectors(t *testing.T) {
 
 func (v *vector) verify(t *testing.T) {
 	m := v.ModeID
-	s := NewSuite(KemID(v.KemID), KdfID(v.KdfID), AeadID(v.AeadID))
+	kemID, err := KEM.Parse(v.KemID)
+	test.CheckNoErr(t, err, "parsing KEM")
+	kdfID, err := KDF.Parse(v.KdfID)
+	test.CheckNoErr(t, err, "parsing KDF")
+	aeadID, err := AEAD.Parse(v.AeadID)
+	test.CheckNoErr(t, err, "parsing AEAD")
+
+	s := Suite{*kemID, *kdfID, *aeadID}
 
 	dhkem := s.KemID.Scheme()
 	sender, recv := v.getActors(t, dhkem, s)
 	sealer, opener := v.setup(t, dhkem, sender, recv, m, s)
 
-	v.checkAead(t, (sealer.(*sealContext)).encdecContext, m, s)
-	v.checkAead(t, (opener.(*openContext)).encdecContext, m, s)
-	v.checkEncryptions(t, sealer, opener, m, s)
-	v.checkExports(t, sealer, m, s)
-	v.checkExports(t, opener, m, s)
+	v.checkAead(t, (sealer.(*sealContext)).encdecContext, m)
+	v.checkAead(t, (opener.(*openContext)).encdecContext, m)
+	v.checkEncryptions(t, sealer, opener, m)
+	v.checkExports(t, sealer, m)
+	v.checkExports(t, opener, m)
 }
 
 func (v *vector) getActors(t *testing.T, dhkem kem.Scheme, s Suite) (
 	*Sender, *Receiver) {
-	h := fmt.Sprintf("%v\n", s)
+	h := s.String() + "\n"
 
-	pkR, err := dhkem.UnmarshalBinaryPublicKey(hexB(v.PkRm))
+	pkR, err := dhkem.UnmarshalBinaryPublicKey(hexB(t, v.PkRm))
 	test.CheckNoErr(t, err, h+"bad public key")
 
-	skR, err := dhkem.UnmarshalBinaryPrivateKey(hexB(v.SkRm))
+	skR, err := dhkem.UnmarshalBinaryPrivateKey(hexB(t, v.SkRm))
 	test.CheckNoErr(t, err, h+"bad private key")
 
-	info := hexB(v.Info)
+	info := hexB(t, v.Info)
 	sender, err := s.NewSender(pkR, info)
 	test.CheckNoErr(t, err, h+"err sender")
 
@@ -61,7 +68,7 @@ func (v *vector) setup(t *testing.T, k kem.AuthScheme,
 	se *Sender, re *Receiver,
 	m modeID, s Suite,
 ) (sealer Sealer, opener Opener) {
-	seed := hexB(v.IkmE)
+	seed := hexB(t, v.IkmE)
 	rd := bytes.NewReader(seed)
 
 	var enc []byte
@@ -77,16 +84,16 @@ func (v *vector) setup(t *testing.T, k kem.AuthScheme,
 		}
 
 	case modePSK:
-		psk, pskid := hexB(v.Psk), hexB(v.PskID)
+		psk, pskid := hexB(t, v.Psk), hexB(t, v.PskID)
 		enc, sealer, errS = se.SetupPSK(rd, psk, pskid)
 		if errS == nil {
 			opener, errR = re.SetupPSK(enc, psk, pskid)
 		}
 
 	case modeAuth:
-		skS, errSK = k.UnmarshalBinaryPrivateKey(hexB(v.SkSm))
+		skS, errSK = k.UnmarshalBinaryPrivateKey(hexB(t, v.SkSm))
 		if errSK == nil {
-			pkS, errPK = k.UnmarshalBinaryPublicKey(hexB(v.PkSm))
+			pkS, errPK = k.UnmarshalBinaryPublicKey(hexB(t, v.PkSm))
 			if errPK == nil {
 				enc, sealer, errS = se.SetupAuth(rd, skS)
 				if errS == nil {
@@ -96,10 +103,10 @@ func (v *vector) setup(t *testing.T, k kem.AuthScheme,
 		}
 
 	case modeAuthPSK:
-		psk, pskid := hexB(v.Psk), hexB(v.PskID)
-		skS, errSK = k.UnmarshalBinaryPrivateKey(hexB(v.SkSm))
+		psk, pskid := hexB(t, v.Psk), hexB(t, v.PskID)
+		skS, errSK = k.UnmarshalBinaryPrivateKey(hexB(t, v.SkSm))
 		if errSK == nil {
-			pkS, errPK = k.UnmarshalBinaryPublicKey(hexB(v.PkSm))
+			pkS, errPK = k.UnmarshalBinaryPublicKey(hexB(t, v.PkSm))
 			if errPK == nil {
 				enc, sealer, errS = se.SetupAuthPSK(rd, skS, psk, pskid)
 				if errS == nil {
@@ -118,17 +125,17 @@ func (v *vector) setup(t *testing.T, k kem.AuthScheme,
 	return sealer, opener
 }
 
-func (v *vector) checkAead(t *testing.T, e *encdecContext, m modeID, s Suite) {
+func (v *vector) checkAead(t *testing.T, e *encdecContext, m modeID) {
 	got := e.baseNonce
-	want := hexB(v.BaseNonce)
+	want := hexB(t, v.BaseNonce)
 	if !bytes.Equal(got, want) {
-		test.ReportError(t, got, want, m, s)
+		test.ReportError(t, got, want, m, e.Suite())
 	}
 
 	got = e.exporterSecret
-	want = hexB(v.ExporterSecret)
+	want = hexB(t, v.ExporterSecret)
 	if !bytes.Equal(got, want) {
-		test.ReportError(t, got, want, m, s)
+		test.ReportError(t, got, want, m, e.Suite())
 	}
 }
 
@@ -137,11 +144,10 @@ func (v *vector) checkEncryptions(
 	se Sealer,
 	op Opener,
 	m modeID,
-	s Suite,
 ) {
 	for j, encv := range v.Encryptions {
-		pt := hexB(encv.Plaintext)
-		aad := hexB(encv.Aad)
+		pt := hexB(t, encv.Plaintext)
+		aad := hexB(t, encv.Aad)
 
 		ct, err := se.Seal(pt, aad)
 		test.CheckNoErr(t, err, "error on sealing")
@@ -151,24 +157,29 @@ func (v *vector) checkEncryptions(
 
 		want := pt
 		if !bytes.Equal(got, want) {
-			test.ReportError(t, got, want, m, s, j)
+			test.ReportError(t, got, want, m, se.Suite(), j)
 		}
 	}
 }
 
-func (v *vector) checkExports(t *testing.T, context Context, m modeID, s Suite) {
+func (v *vector) checkExports(t *testing.T, context Context, m modeID) {
 	for j, expv := range v.Exports {
-		ctx := hexB(expv.ExportContext)
-		want := hexB(expv.ExportValue)
+		ctx := hexB(t, expv.ExportContext)
+		want := hexB(t, expv.ExportValue)
 
 		got := context.Export(ctx, uint(expv.ExportLength))
 		if !bytes.Equal(got, want) {
-			test.ReportError(t, got, want, m, s, j)
+			test.ReportError(t, got, want, m, context.Suite(), j)
 		}
 	}
 }
 
-func hexB(x string) []byte { z, _ := hex.DecodeString(x); return z }
+func hexB(t *testing.T, x string) []byte {
+	t.Helper()
+	z, err := hex.DecodeString(x)
+	test.CheckNoErr(t, err, "")
+	return z
+}
 
 func readFile(t *testing.T, fileName string) []vector {
 	jsonFile, err := os.Open(fileName)
@@ -187,9 +198,9 @@ func readFile(t *testing.T, fileName string) []vector {
 
 type vector struct {
 	ModeID             uint8  `json:"mode"`
-	KemID              uint16 `json:"kem_id"`
-	KdfID              uint16 `json:"kdf_id"`
-	AeadID             uint16 `json:"aead_id"`
+	KemID              int    `json:"kem_id"`
+	KdfID              int    `json:"kdf_id"`
+	AeadID             int    `json:"aead_id"`
 	Info               string `json:"info"`
 	IkmR               string `json:"ikmR"`
 	IkmE               string `json:"ikmE"`

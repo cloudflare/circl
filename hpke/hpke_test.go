@@ -13,11 +13,11 @@ func Example() {
 	// import "crypto/rand"
 
 	// HPKE suite is a domain parameter.
-	s := hpke.NewSuite(
-		hpke.DHKemP384HkdfSha384,
-		hpke.HkdfSha384,
-		hpke.AeadAes256Gcm,
-	)
+	s := hpke.Suite{
+		hpke.KEM.P384.HKDF.SHA384,
+		hpke.KDF.HKDF.SHA384,
+		hpke.AEAD.AES256GCM,
+	}
 	info := []byte("public info string, known to both Alice and Bob")
 
 	// Bob prepares to receive messages and announces his public key.
@@ -62,4 +62,31 @@ func Example() {
 	// Plaintext was sent successfully.
 	fmt.Println(bytes.Equal(ptAlice, ptBob))
 	// Output: true
+}
+
+func Example_kEMID() {
+	id, err := hpke.KEM.Parse(0x10)
+	if err != nil {
+		fmt.Print(err)
+	}
+	fmt.Print(*id == hpke.KEM.P256.HKDF.SHA256)
+	// Outputs: true
+}
+
+func Example_kDFID() {
+	id, err := hpke.KDF.Parse(0x1)
+	if err != nil {
+		fmt.Print(err)
+	}
+	fmt.Print(*id == hpke.KDF.HKDF.SHA256)
+	// Outputs: true
+}
+
+func Example_aEADID() {
+	id, err := hpke.AEAD.Parse(1)
+	if err != nil {
+		fmt.Print(err)
+	}
+	fmt.Print(*id == hpke.AEAD.AES128GCM)
+	// Outputs: true
 }

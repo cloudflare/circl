@@ -56,7 +56,7 @@ func (c *encdecContext) increment() error {
 		allOnes &= c.sequenceNumber[i]
 	}
 	if allOnes == byte(0xFF) {
-		return errAeadSeqOverflows
+		return errAEADSeqOverflows
 	}
 
 	// performs an increment by 1 and verifies whether the sequence overflows.
@@ -67,7 +67,7 @@ func (c *encdecContext) increment() error {
 		c.sequenceNumber[i] = byte(sum & 0xFF)
 	}
 	if carry != 0 {
-		return errAeadSeqOverflows
+		return errAEADSeqOverflows
 	}
 	return nil
 }

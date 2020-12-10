@@ -71,23 +71,17 @@ func (st state) verifyPSKInputs(psk, pskID []byte) error {
 
 func (suite Suite) String() string {
 	return fmt.Sprintf(
-		"kem_id: %v kdf_id: %v aead_id: %v",
+		"kem: %v kdf: %v aead: %v",
 		suite.KemID, suite.KdfID, suite.AeadID,
 	)
 }
 
 func (suite Suite) getSuiteID() (id [10]byte) {
 	id[0], id[1], id[2], id[3] = 'H', 'P', 'K', 'E'
-	binary.BigEndian.PutUint16(id[4:6], uint16(suite.KemID))
-	binary.BigEndian.PutUint16(id[6:8], uint16(suite.KdfID))
-	binary.BigEndian.PutUint16(id[8:10], uint16(suite.AeadID))
+	binary.BigEndian.PutUint16(id[4:6], suite.KemID.uint16)
+	binary.BigEndian.PutUint16(id[6:8], suite.KdfID.uint16)
+	binary.BigEndian.PutUint16(id[8:10], suite.AeadID.uint16)
 	return
-}
-
-func (suite Suite) isValid() bool {
-	return suite.KemID.IsValid() &&
-		suite.KdfID.IsValid() &&
-		suite.AeadID.IsValid()
 }
 
 func (suite Suite) labeledExtract(salt, label, ikm []byte) []byte {

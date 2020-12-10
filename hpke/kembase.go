@@ -22,7 +22,7 @@ type dhKem interface {
 }
 
 type kemBase struct {
-	id   KemID
+	id   kemID
 	name string
 	crypto.Hash
 	dh dhKem
@@ -33,7 +33,7 @@ func (k kemBase) SharedKeySize() int { return k.Hash.Size() }
 
 func (k kemBase) getSuiteID() (sid [5]byte) {
 	sid[0], sid[1], sid[2] = 'K', 'E', 'M'
-	binary.BigEndian.PutUint16(sid[3:5], uint16(k.id))
+	binary.BigEndian.PutUint16(sid[3:5], k.id.uint16)
 	return
 }
 

@@ -8,7 +8,7 @@ import (
 )
 
 func TestAeadExporter(t *testing.T) {
-	suite := Suite{KdfID: HkdfSha256, AeadID: AeadAes128Gcm}
+	suite := Suite{KdfID: KDF.HKDF.SHA256, AeadID: AEAD.AES128GCM}
 	exporter := &encdecContext{suite: suite}
 	maxLength := uint(255 * suite.KdfID.Hash().Size())
 
@@ -19,7 +19,7 @@ func TestAeadExporter(t *testing.T) {
 }
 
 func TestAeadSeqOverflow(t *testing.T) {
-	suite := Suite{AeadID: AeadAes128Gcm}
+	suite := Suite{AeadID: AEAD.AES128GCM}
 
 	key := make([]byte, suite.AeadID.KeySize())
 	_, _ = rand.Read(key)

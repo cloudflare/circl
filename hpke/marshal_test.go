@@ -20,7 +20,7 @@ func contextEqual(a, b *encdecContext) bool {
 }
 
 func TestContextSerialization(t *testing.T) {
-	s := NewSuite(DHKemP384HkdfSha384, HkdfSha384, AeadAes256Gcm)
+	s := Suite{KEM.P384.HKDF.SHA384, KDF.HKDF.SHA384, AEAD.AES256GCM}
 	info := []byte("some info string")
 
 	pk, sk, err := s.KemID.Scheme().GenerateKeyPair()
