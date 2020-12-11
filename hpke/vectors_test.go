@@ -24,9 +24,14 @@ func TestVectors(t *testing.T) {
 
 func (v *vector) verify(t *testing.T) {
 	m := v.ModeID
-	s := NewSuite(KEM(v.KemID), KDF(v.KdfID), AEAD(v.AeadID))
-
-	dhkem := s.KEMScheme()
+	kemID := KEM(v.KemID)
+	kdfID := KDF(v.KdfID)
+	aeadID := AEAD(v.AeadID)
+	test.CheckOk(kemID.IsValid(), "unknown KEM algorithm", t)
+	test.CheckOk(kdfID.IsValid(), "unknown KDF algorithm", t)
+	test.CheckOk(aeadID.IsValid(), "unknown AEAD algorithm", t)
+	s := NewSuite(kemID, kdfID, aeadID)
+	dhkem := s.kemID.Scheme()
 	sender, recv := v.getActors(t, dhkem, s)
 	sealer, opener := v.setup(t, dhkem, sender, recv, m, s)
 
@@ -57,7 +62,7 @@ func (v *vector) getActors(t *testing.T, dhkem kem.Scheme, s Suite) (
 	return sender, recv
 }
 
-func (v *vector) setup(t *testing.T, k kem.AuthScheme,
+func (v *vector) setup(t *testing.T, k kem.Scheme,
 	se *Sender, re *Receiver,
 	m modeID, s Suite,
 ) (sealer Sealer, opener Opener) {

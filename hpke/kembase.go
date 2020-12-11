@@ -25,7 +25,7 @@ type kemBase struct {
 	id   KEM
 	name string
 	crypto.Hash
-	dh dhKEM
+	dhKEM
 }
 
 func (k kemBase) Name() string       { return k.name }
@@ -82,7 +82,7 @@ func (k kemBase) labeledExpand(prk, label, info []byte, l uint16) []byte {
 func (k kemBase) AuthEncapsulate(pkr kem.PublicKey, sks kem.PrivateKey) (
 	ct []byte, ss []byte, err error,
 ) {
-	seed := make([]byte, k.dh.SeedSize())
+	seed := make([]byte, k.SeedSize())
 	_, err = io.ReadFull(rand.Reader, seed)
 	if err != nil {
 		return nil, nil, err
@@ -94,7 +94,7 @@ func (k kemBase) AuthEncapsulate(pkr kem.PublicKey, sks kem.PrivateKey) (
 func (k kemBase) Encapsulate(pkr kem.PublicKey) (
 	ct []byte, ss []byte, err error,
 ) {
-	seed := make([]byte, k.dh.SeedSize())
+	seed := make([]byte, k.SeedSize())
 	_, err = io.ReadFull(rand.Reader, seed)
 	if err != nil {
 		return nil, nil, err
@@ -118,7 +118,7 @@ func (k kemBase) encap(
 	pkR kem.PublicKey,
 	seed []byte,
 ) (ct []byte, ss []byte, err error) {
-	dh := make([]byte, k.dh.sizeDH())
+	dh := make([]byte, k.sizeDH())
 	enc, kemCtx, err := k.coreEncap(dh, pkR, seed)
 	if err != nil {
 		return nil, nil, err
@@ -132,14 +132,14 @@ func (k kemBase) authEncap(
 	skS kem.PrivateKey,
 	seed []byte,
 ) (ct []byte, ss []byte, err error) {
-	dhLen := k.dh.sizeDH()
+	dhLen := k.sizeDH()
 	dh := make([]byte, 2*dhLen)
 	enc, kemCtx, err := k.coreEncap(dh[:dhLen], pkR, seed)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	err = k.dh.calcDH(dh[dhLen:], skS, pkR)
+	err = k.calcDH(dh[dhLen:], skS, pkR)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -160,8 +160,8 @@ func (k kemBase) coreEncap(
 	pkR kem.PublicKey,
 	seed []byte,
 ) (enc []byte, kemCtx []byte, err error) {
-	pkE, skE := k.dh.DeriveKeyPair(seed)
-	err = k.dh.calcDH(dh, skE, pkR)
+	pkE, skE := k.DeriveKeyPair(seed)
+	err = k.calcDH(dh, skE, pkR)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -180,7 +180,7 @@ func (k kemBase) coreEncap(
 }
 
 func (k kemBase) Decapsulate(skr kem.PrivateKey, ct []byte) ([]byte, error) {
-	dh := make([]byte, k.dh.sizeDH())
+	dh := make([]byte, k.sizeDH())
 	kemCtx, err := k.coreDecap(dh, skr, ct)
 	if err != nil {
 		return nil, err
@@ -193,14 +193,14 @@ func (k kemBase) AuthDecapsulate(
 	ct []byte,
 	pkS kem.PublicKey,
 ) ([]byte, error) {
-	dhLen := k.dh.sizeDH()
+	dhLen := k.sizeDH()
 	dh := make([]byte, 2*dhLen)
 	kemCtx, err := k.coreDecap(dh[:dhLen], skR, ct)
 	if err != nil {
 		return nil, err
 	}
 
-	err = k.dh.calcDH(dh[dhLen:], skR, pkS)
+	err = k.calcDH(dh[dhLen:], skR, pkS)
 	if err != nil {
 		return nil, err
 	}
@@ -218,12 +218,12 @@ func (k kemBase) coreDecap(
 	skR kem.PrivateKey,
 	ct []byte,
 ) ([]byte, error) {
-	pkE, err := k.dh.UnmarshalBinaryPublicKey(ct)
+	pkE, err := k.UnmarshalBinaryPublicKey(ct)
 	if err != nil {
 		return nil, err
 	}
 
-	err = k.dh.calcDH(dh, skR, pkE)
+	err = k.calcDH(dh, skR, pkE)
 	if err != nil {
 		return nil, err
 	}

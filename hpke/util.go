@@ -4,10 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"io"
-
-	"github.com/cloudflare/circl/kem"
-	"golang.org/x/crypto/hkdf"
 )
 
 func (st state) keySchedule(ss, info, psk, pskID []byte) (*encdecContext, error) {
@@ -38,7 +34,7 @@ func (st state) keySchedule(ss, info, psk, pskID []byte) (*encdecContext, error)
 		secret,
 		[]byte("exp"),
 		keySchCtx,
-		uint16(st.kdfID.Hash().Size()),
+		uint16(st.kdfID.ExtractSize()),
 	)
 
 	return &encdecContext{
@@ -70,7 +66,7 @@ func (st state) verifyPSKInputs(psk, pskID []byte) error {
 	return nil
 }
 
-// Params returns the algorithm identifiers of the suite.
+// Params returns the codepoints for the algorithms comprising the suite.
 func (suite Suite) Params() (KEM, KDF, AEAD) {
 	return suite.kemID, suite.kdfID, suite.aeadID
 }
@@ -90,9 +86,6 @@ func (suite Suite) getSuiteID() (id [10]byte) {
 	return
 }
 
-// KEMScheme returns an instance of the KEM.
-func (suite Suite) KEMScheme() kem.AuthScheme { return suite.kemID.Scheme() }
-
 func (suite Suite) isValid() bool {
 	return suite.kemID.IsValid() &&
 		suite.kdfID.IsValid() &&
@@ -107,7 +100,7 @@ func (suite Suite) labeledExtract(salt, label, ikm []byte) []byte {
 		suiteID[:]...),
 		label...),
 		ikm...)
-	return hkdf.Extract(suite.kdfID.Hash().New, labeledIKM, salt)
+	return suite.kdfID.Extract(labeledIKM, salt)
 }
 
 func (suite Suite) labeledExpand(prk, label, info []byte, l uint16) []byte {
@@ -120,8 +113,5 @@ func (suite Suite) labeledExpand(prk, label, info []byte, l uint16) []byte {
 		suiteID[:]...),
 		label...),
 		info...)
-	b := make([]byte, l)
-	rd := hkdf.Expand(suite.kdfID.Hash().New, prk, labeledInfo)
-	_, _ = io.ReadFull(rd, b)
-	return b
+	return suite.kdfID.Expand(prk, labeledInfo, uint(l))
 }
