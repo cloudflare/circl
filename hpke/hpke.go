@@ -25,8 +25,9 @@ type Context interface {
 	encoding.BinaryMarshaler
 	// Export takes a context string exporterContext and a desired length (in
 	// bytes), and produces a secret derived from the internal exporter secret
-	// using the corresponding KDF Expand function. It panics if length is greater
-	// than 255*N bytes, where N is the size (in bytes) of the KDF's output.
+	// using the corresponding KDF Expand function. It panics if length is
+	// greater than 255*N bytes, where N is the size (in bytes) of the KDF's
+	// output.
 	Export(exporterContext []byte, length uint) []byte
 	// Suite returns the cipher suite corresponding to this context.
 	Suite() Suite
@@ -165,7 +166,7 @@ type Receiver struct {
 	enc []byte
 }
 
-// NewReceiver creates a Receiver with knwoledge of a private key.
+// NewReceiver creates a Receiver with knowledge of a private key.
 func (suite Suite) NewReceiver(skR kem.PrivateKey, info []byte) (
 	*Receiver, error,
 ) {
@@ -226,12 +227,12 @@ func (r *Receiver) SetupAuthPSK(enc, psk, pskID []byte, pkS kem.PublicKey) (
 }
 
 func (s *Sender) allSetup(rnd io.Reader) ([]byte, Sealer, error) {
-	k := s.KEMScheme()
+	scheme := s.kemID.Scheme()
 
 	if rnd == nil {
 		rnd = rand.Reader
 	}
-	seed := make([]byte, k.SeedSize())
+	seed := make([]byte, scheme.SeedSize())
 	_, err := io.ReadFull(rnd, seed)
 	if err != nil {
 		return nil, nil, err
@@ -240,9 +241,9 @@ func (s *Sender) allSetup(rnd io.Reader) ([]byte, Sealer, error) {
 	var enc, ss []byte
 	switch s.modeID {
 	case modeBase, modePSK:
-		enc, ss, err = k.EncapsulateDeterministically(s.pkR, seed)
+		enc, ss, err = scheme.EncapsulateDeterministically(s.pkR, seed)
 	case modeAuth, modeAuthPSK:
-		enc, ss, err = k.AuthEncapsulateDeterministically(s.pkR, s.skS, seed)
+		enc, ss, err = scheme.AuthEncapsulateDeterministically(s.pkR, s.skS, seed)
 	}
 	if err != nil {
 		return nil, nil, err
@@ -259,12 +260,12 @@ func (s *Sender) allSetup(rnd io.Reader) ([]byte, Sealer, error) {
 func (r *Receiver) allSetup() (Opener, error) {
 	var err error
 	var ss []byte
-	k := r.KEMScheme()
+	scheme := r.kemID.Scheme()
 	switch r.modeID {
 	case modeBase, modePSK:
-		ss, err = k.Decapsulate(r.skR, r.enc)
+		ss, err = scheme.Decapsulate(r.skR, r.enc)
 	case modeAuth, modeAuthPSK:
-		ss, err = k.AuthDecapsulate(r.skR, r.enc, r.pkS)
+		ss, err = scheme.AuthDecapsulate(r.skR, r.enc, r.pkS)
 	}
 	if err != nil {
 		return nil, err
@@ -284,6 +285,6 @@ var (
 	errInvalidAEAD            = errors.New("hpke: invalid AEAD identifier")
 	errInvalidKEMPublicKey    = errors.New("hpke: invalid KEM public key")
 	errInvalidKEMPrivateKey   = errors.New("hpke: invalid KEM private key")
-	errInvalidKEMSharedSecret = errors.New("hpke: invalid shared secret")
+	errInvalidKEMSharedSecret = errors.New("hpke: invalid KEM shared secret")
 	errAEADSeqOverflows       = errors.New("hpke: AEAD sequence number overflows")
 )

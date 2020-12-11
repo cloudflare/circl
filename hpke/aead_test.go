@@ -10,7 +10,7 @@ import (
 func TestAeadExporter(t *testing.T) {
 	suite := Suite{kdfID: KDF_HKDF_SHA256, aeadID: AEAD_AES128GCM}
 	exporter := &encdecContext{suite: suite}
-	maxLength := uint(255 * suite.kdfID.Hash().Size())
+	maxLength := uint(255 * suite.kdfID.ExtractSize())
 
 	err := test.CheckPanic(func() {
 		exporter.Export([]byte("exporter"), maxLength+1)

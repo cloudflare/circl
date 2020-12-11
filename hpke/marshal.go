@@ -54,7 +54,7 @@ func unmarshalContext(raw []byte) (*encdecContext, error) {
 		return nil, errInvalidHPKESuite
 	}
 
-	Nh := c.suite.kdfID.Hash().Size()
+	Nh := c.suite.kdfID.ExtractSize()
 	if len(c.exporterSecret) != Nh {
 		return nil, errors.New("invalid exporter secret length")
 	}

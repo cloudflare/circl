@@ -23,7 +23,7 @@ func TestContextSerialization(t *testing.T) {
 	s := NewSuite(KEM_P384_HKDF_SHA384, KDF_HKDF_SHA384, AEAD_AES256GCM)
 	info := []byte("some info string")
 
-	pk, sk, err := s.KEMScheme().GenerateKeyPair()
+	pk, sk, err := s.kemID.Scheme().GenerateKeyPair()
 	if err != nil {
 		t.Fatal(err)
 	}

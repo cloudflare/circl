@@ -5,12 +5,16 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/elliptic"
+	"fmt"
+	"hash"
+	"io"
 
 	"github.com/cloudflare/circl/dh/x25519"
 	"github.com/cloudflare/circl/dh/x448"
 	"github.com/cloudflare/circl/ecc/p384"
 	"github.com/cloudflare/circl/kem"
 	"golang.org/x/crypto/chacha20poly1305"
+	"golang.org/x/crypto/hkdf"
 )
 
 type KEM uint16
@@ -31,6 +35,7 @@ const (
 	KEM_X448_HKDF_SHA512 KEM = 0x21
 )
 
+// IsValid returns true if the KEM identifier is supported by the HPKE package.
 func (k KEM) IsValid() bool {
 	switch k {
 	case KEM_P256_HKDF_SHA256,
@@ -44,6 +49,8 @@ func (k KEM) IsValid() bool {
 	}
 }
 
+// Scheme returns an instance of a KEM that supports authentication. Panics if
+// the KEM identifier is invalid.
 func (k KEM) Scheme() kem.AuthScheme {
 	switch k {
 	case KEM_P256_HKDF_SHA256:
@@ -110,14 +117,57 @@ func (k KDF) IsValid() bool {
 	}
 }
 
-func (k KDF) Hash() crypto.Hash {
+// ExtractSize returns the size (in bytes) of the pseudorandom key produced
+// by KDF.Extract.
+func (k KDF) ExtractSize() int {
 	switch k {
 	case KDF_HKDF_SHA256:
-		return crypto.SHA256
+		return crypto.SHA256.Size()
 	case KDF_HKDF_SHA384:
-		return crypto.SHA384
+		return crypto.SHA384.Size()
 	case KDF_HKDF_SHA512:
-		return crypto.SHA512
+		return crypto.SHA512.Size()
+	default:
+		panic(errInvalidKDF)
+	}
+}
+
+// Extract derives a pseudorandom key from a high-entropy, secret input and a
+// salt. The size of the output is determined by KDF.ExtractSize.
+func (k KDF) Extract(secret, salt []byte) (pseudorandomKey []byte) {
+	return hkdf.Extract(k.hash(), secret, salt)
+}
+
+// Expand derives a variable length pseudorandom string from a pseudorandom key
+// and an information string. Panics if the pseudorandom key is less
+// than N bytes, or if the output length is greater than 255*N bytes,
+// where N is the size returned by KDF.Extract function.
+func (k KDF) Expand(pseudorandomKey, info []byte, outputLen uint) []byte {
+	extractSize := k.ExtractSize()
+	if len(pseudorandomKey) < extractSize {
+		panic(fmt.Errorf("pseudorandom key must be %v bytes", extractSize))
+	}
+	maxLength := uint(255 * extractSize)
+	if outputLen > maxLength {
+		panic(fmt.Errorf("output length must be less than %v bytes", maxLength))
+	}
+	output := make([]byte, outputLen)
+	rd := hkdf.Expand(k.hash(), pseudorandomKey[:extractSize], info)
+	_, err := io.ReadFull(rd, output)
+	if err != nil {
+		panic(err)
+	}
+	return output
+}
+
+func (k KDF) hash() func() hash.Hash {
+	switch k {
+	case KDF_HKDF_SHA256:
+		return crypto.SHA256.New
+	case KDF_HKDF_SHA384:
+		return crypto.SHA384.New
+	case KDF_HKDF_SHA512:
+		return crypto.SHA512.New
 	default:
 		panic(errInvalidKDF)
 	}
@@ -173,7 +223,7 @@ func (a AEAD) KeySize() uint {
 	case AEAD_ChaCha20Poly1305:
 		return chacha20poly1305.KeySize
 	default:
-		panic("invalid AEAD")
+		panic(errInvalidAEAD)
 	}
 }
 
@@ -185,29 +235,29 @@ func init() {
 	dhkemp256hkdfsha256.kemBase.id = KEM_P256_HKDF_SHA256
 	dhkemp256hkdfsha256.kemBase.name = "HPKE_KEM_P256_HKDF_SHA256"
 	dhkemp256hkdfsha256.kemBase.Hash = crypto.SHA256
-	dhkemp256hkdfsha256.kemBase.dh = dhkemp256hkdfsha256
+	dhkemp256hkdfsha256.kemBase.dhKEM = dhkemp256hkdfsha256
 
 	dhkemp384hkdfsha384.Curve = p384.P384()
 	dhkemp384hkdfsha384.kemBase.id = KEM_P384_HKDF_SHA384
 	dhkemp384hkdfsha384.kemBase.name = "HPKE_KEM_P384_HKDF_SHA384"
 	dhkemp384hkdfsha384.kemBase.Hash = crypto.SHA384
-	dhkemp384hkdfsha384.kemBase.dh = dhkemp384hkdfsha384
+	dhkemp384hkdfsha384.kemBase.dhKEM = dhkemp384hkdfsha384
 
 	dhkemp521hkdfsha512.Curve = elliptic.P521()
 	dhkemp521hkdfsha512.kemBase.id = KEM_P521_HKDF_SHA512
 	dhkemp521hkdfsha512.kemBase.name = "HPKE_KEM_P521_HKDF_SHA512"
 	dhkemp521hkdfsha512.kemBase.Hash = crypto.SHA512
-	dhkemp521hkdfsha512.kemBase.dh = dhkemp521hkdfsha512
+	dhkemp521hkdfsha512.kemBase.dhKEM = dhkemp521hkdfsha512
 
 	dhkemx25519hkdfsha256.size = x25519.Size
 	dhkemx25519hkdfsha256.kemBase.id = KEM_X25519_HKDF_SHA256
 	dhkemx25519hkdfsha256.kemBase.name = "HPKE_KEM_X25519_HKDF_SHA256"
 	dhkemx25519hkdfsha256.kemBase.Hash = crypto.SHA256
-	dhkemx25519hkdfsha256.kemBase.dh = dhkemx25519hkdfsha256
+	dhkemx25519hkdfsha256.kemBase.dhKEM = dhkemx25519hkdfsha256
 
 	dhkemx448hkdfsha512.size = x448.Size
 	dhkemx448hkdfsha512.kemBase.id = KEM_X448_HKDF_SHA512
 	dhkemx448hkdfsha512.kemBase.name = "HPKE_KEM_X448_HKDF_SHA512"
 	dhkemx448hkdfsha512.kemBase.Hash = crypto.SHA512
-	dhkemx448hkdfsha512.kemBase.dh = dhkemx448hkdfsha512
+	dhkemx448hkdfsha512.kemBase.dhKEM = dhkemx448hkdfsha512
 }
