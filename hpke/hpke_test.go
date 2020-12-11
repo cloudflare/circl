@@ -14,14 +14,14 @@ func Example() {
 
 	// HPKE suite is a domain parameter.
 	s := hpke.NewSuite(
-		hpke.DHKemP384HkdfSha384,
-		hpke.HkdfSha384,
-		hpke.AeadAes256Gcm,
+		hpke.KEM_P384_HKDF_SHA384,
+		hpke.KDF_HKDF_SHA384,
+		hpke.AEAD_AES256GCM,
 	)
 	info := []byte("public info string, known to both Alice and Bob")
 
 	// Bob prepares to receive messages and announces his public key.
-	k := s.KemID.Scheme()
+	k := s.KEMScheme()
 	publicBob, privateBob, err := k.GenerateKeyPair()
 	if err != nil {
 		panic(err)

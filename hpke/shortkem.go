@@ -12,27 +12,27 @@ import (
 	"github.com/cloudflare/circl/kem"
 )
 
-type shortKem struct {
+type shortKEM struct {
 	kemBase
 	elliptic.Curve
 }
 
-func (s shortKem) PrivateKeySize() int        { return s.byteSize() }
-func (s shortKem) SeedSize() int              { return s.byteSize() }
-func (s shortKem) CiphertextSize() int        { return 1 + 2*s.byteSize() }
-func (s shortKem) PublicKeySize() int         { return 1 + 2*s.byteSize() }
-func (s shortKem) EncapsulationSeedSize() int { return s.byteSize() }
+func (s shortKEM) PrivateKeySize() int        { return s.byteSize() }
+func (s shortKEM) SeedSize() int              { return s.byteSize() }
+func (s shortKEM) CiphertextSize() int        { return 1 + 2*s.byteSize() }
+func (s shortKEM) PublicKeySize() int         { return 1 + 2*s.byteSize() }
+func (s shortKEM) EncapsulationSeedSize() int { return s.byteSize() }
 
-func (s shortKem) byteSize() int { return (s.Params().BitSize + 7) / 8 }
+func (s shortKEM) byteSize() int { return (s.Params().BitSize + 7) / 8 }
 
-func (s shortKem) sizeDH() int { return s.byteSize() }
-func (s shortKem) calcDH(dh []byte, sk kem.PrivateKey, pk kem.PublicKey) error {
-	PK := pk.(*shortPubKey)
-	SK := sk.(*shortPrivKey)
+func (s shortKEM) sizeDH() int { return s.byteSize() }
+func (s shortKEM) calcDH(dh []byte, sk kem.PrivateKey, pk kem.PublicKey) error {
+	PK := pk.(*shortKEMPubKey)
+	SK := sk.(*shortKEMPrivKey)
 	l := len(dh)
 	x, _ := s.ScalarMult(PK.x, PK.y, SK.priv) // only x-coordinate is used.
 	if x.Sign() == 0 {
-		return errKemInvalidSharedSecret
+		return errInvalidKEMSharedSecret
 	}
 	b := x.Bytes()
 	copy(dh[l-len(b):l], b)
@@ -43,7 +43,7 @@ func (s shortKem) calcDH(dh []byte, sk kem.PrivateKey, pk kem.PublicKey) error {
 // you're better off using GenerateKey().
 //
 // Panics if seed is not of length SeedSize().
-func (s shortKem) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
+func (s shortKEM) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 	// Implementation based on
 	// https://www.ietf.org/archive/id/draft-irtf-cfrg-hpke-06.html#name-derivekeypair
 	if len(seed) != s.SeedSize() {
@@ -72,54 +72,54 @@ func (s shortKem) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 		skBig.SetBytes(bytes)
 	}
 	l := s.PrivateKeySize()
-	sk := &shortPrivKey{s, make([]byte, l), nil}
+	sk := &shortKEMPrivKey{s, make([]byte, l), nil}
 	copy(sk.priv[l-len(bytes):], bytes)
 	return sk.Public(), sk
 }
-func (s shortKem) GenerateKeyPair() (kem.PublicKey, kem.PrivateKey, error) {
+func (s shortKEM) GenerateKeyPair() (kem.PublicKey, kem.PrivateKey, error) {
 	sk, x, y, err := elliptic.GenerateKey(s, rand.Reader)
-	pub := &shortPubKey{s, x, y}
-	return pub, &shortPrivKey{s, sk, pub}, err
+	pub := &shortKEMPubKey{s, x, y}
+	return pub, &shortKEMPrivKey{s, sk, pub}, err
 }
 
-func (s shortKem) UnmarshalBinaryPrivateKey(data []byte) (
+func (s shortKEM) UnmarshalBinaryPrivateKey(data []byte) (
 	kem.PrivateKey, error) {
 	l := s.PrivateKeySize()
 	if len(data) < l {
-		return nil, errKemInvalidPrivateKey
+		return nil, errInvalidKEMPrivateKey
 	}
-	sk := &shortPrivKey{s, make([]byte, l), nil}
+	sk := &shortKEMPrivKey{s, make([]byte, l), nil}
 	copy(sk.priv[l-len(data):l], data[:l])
 	return sk, nil
 }
-func (s shortKem) UnmarshalBinaryPublicKey(data []byte) (kem.PublicKey, error) {
+func (s shortKEM) UnmarshalBinaryPublicKey(data []byte) (kem.PublicKey, error) {
 	x, y := elliptic.Unmarshal(s, data)
 	if x == nil {
-		return nil, errKemInvalidPublicKey
+		return nil, errInvalidKEMPublicKey
 	}
-	return &shortPubKey{s, x, y}, nil
+	return &shortKEMPubKey{s, x, y}, nil
 }
 
-type shortPubKey struct {
-	scheme shortKem
+type shortKEMPubKey struct {
+	scheme shortKEM
 	x, y   *big.Int
 }
 
-func (k *shortPubKey) String() string {
+func (k *shortKEMPubKey) String() string {
 	return fmt.Sprintf("x: %v\ny: %v", k.x.Text(16), k.y.Text(16))
 }
-func (k *shortPubKey) Scheme() kem.Scheme { return k.scheme }
-func (k *shortPubKey) MarshalBinary() ([]byte, error) {
+func (k *shortKEMPubKey) Scheme() kem.Scheme { return k.scheme }
+func (k *shortKEMPubKey) MarshalBinary() ([]byte, error) {
 	return elliptic.Marshal(k.scheme, k.x, k.y), nil
 }
-func (k *shortPubKey) Equal(pk kem.PublicKey) bool {
-	k1, ok := pk.(*shortPubKey)
+func (k *shortKEMPubKey) Equal(pk kem.PublicKey) bool {
+	k1, ok := pk.(*shortKEMPubKey)
 	return ok &&
 		k.scheme.Params().Name == k1.scheme.Params().Name &&
 		k.x.Cmp(k1.x) == 0 &&
 		k.y.Cmp(k1.y) == 0
 }
-func (k *shortPubKey) Validate() bool {
+func (k *shortKEMPubKey) Validate() bool {
 	p := k.scheme.Params().P
 	notAtInfinity := k.x.Sign() > 0 && k.y.Sign() > 0
 	lessThanP := k.x.Cmp(p) < 0 && k.y.Cmp(p) < 0
@@ -127,31 +127,31 @@ func (k *shortPubKey) Validate() bool {
 	return notAtInfinity && lessThanP && onCurve
 }
 
-type shortPrivKey struct {
-	scheme shortKem
+type shortKEMPrivKey struct {
+	scheme shortKEM
 	priv   []byte
-	pub    *shortPubKey
+	pub    *shortKEMPubKey
 }
 
-func (k *shortPrivKey) String() string     { return fmt.Sprintf("%x", k.priv) }
-func (k *shortPrivKey) Scheme() kem.Scheme { return k.scheme }
-func (k *shortPrivKey) MarshalBinary() ([]byte, error) {
+func (k *shortKEMPrivKey) String() string     { return fmt.Sprintf("%x", k.priv) }
+func (k *shortKEMPrivKey) Scheme() kem.Scheme { return k.scheme }
+func (k *shortKEMPrivKey) MarshalBinary() ([]byte, error) {
 	return append(make([]byte, 0, k.scheme.PrivateKeySize()), k.priv...), nil
 }
-func (k *shortPrivKey) Equal(pk kem.PrivateKey) bool {
-	k1, ok := pk.(*shortPrivKey)
+func (k *shortKEMPrivKey) Equal(pk kem.PrivateKey) bool {
+	k1, ok := pk.(*shortKEMPrivKey)
 	return ok &&
 		k.scheme.Params().Name == k1.scheme.Params().Name &&
 		subtle.ConstantTimeCompare(k.priv, k1.priv) == 1
 }
-func (k *shortPrivKey) Public() kem.PublicKey {
+func (k *shortKEMPrivKey) Public() kem.PublicKey {
 	if k.pub == nil {
 		x, y := k.scheme.ScalarBaseMult(k.priv)
-		k.pub = &shortPubKey{k.scheme, x, y}
+		k.pub = &shortKEMPubKey{k.scheme, x, y}
 	}
 	return k.pub
 }
-func (k *shortPrivKey) Validate() bool {
+func (k *shortKEMPrivKey) Validate() bool {
 	n := new(big.Int).SetBytes(k.priv)
 	order := k.scheme.Curve.Params().N
 	return len(k.priv) == k.scheme.PrivateKeySize() && n.Cmp(order) < 0

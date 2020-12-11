@@ -67,18 +67,17 @@ const (
 
 // Suite is an HPKE cipher suite consisting of a KEM, KDF, and AEAD algorithm.
 type Suite struct {
-	KemID  KemID
-	KdfID  KdfID
-	AeadID AeadID
-	_      struct{}
+	kemID  KEM
+	kdfID  KDF
+	aeadID AEAD
 }
 
-// NewSuite builds a Suite from a specified set of algorithms. Panics if an
-// algorithm identifier is not valid.
-func NewSuite(kemID KemID, kdfID KdfID, aeadID AeadID) Suite {
-	s := Suite{KemID: kemID, KdfID: kdfID, AeadID: aeadID}
+// NewSuite builds a Suite from a specified set of algorithms. Panics
+// if an algorithm identifier is not valid.
+func NewSuite(kemID KEM, kdfID KDF, aeadID AEAD) Suite {
+	s := Suite{kemID, kdfID, aeadID}
 	if !s.isValid() {
-		panic(errHpkeInvalidSuite)
+		panic(errInvalidHPKESuite)
 	}
 	return s
 }
@@ -101,8 +100,8 @@ type Sender struct {
 
 // NewSender creates a Sender with knowledge of the receiver's public-key.
 func (suite Suite) NewSender(pkR kem.PublicKey, info []byte) (*Sender, error) {
-	if !suite.KemID.validatePublicKey(pkR) {
-		return nil, errKemInvalidPublicKey
+	if !suite.kemID.validatePublicKey(pkR) {
+		return nil, errInvalidKEMPublicKey
 	}
 
 	return &Sender{
@@ -123,8 +122,8 @@ func (s *Sender) Setup(rnd io.Reader) (enc []byte, seal Sealer, err error) {
 func (s *Sender) SetupAuth(rnd io.Reader, skS kem.PrivateKey) (
 	enc []byte, seal Sealer, err error,
 ) {
-	if !s.KemID.validatePrivateKey(skS) {
-		return nil, nil, errKemInvalidPrivateKey
+	if !s.kemID.validatePrivateKey(skS) {
+		return nil, nil, errInvalidKEMPrivateKey
 	}
 
 	s.modeID = modeAuth
@@ -148,8 +147,8 @@ func (s *Sender) SetupPSK(rnd io.Reader, psk, pskID []byte) (
 func (s *Sender) SetupAuthPSK(rnd io.Reader, skS kem.PrivateKey, psk, pskID []byte) (
 	enc []byte, seal Sealer, err error,
 ) {
-	if !s.KemID.validatePrivateKey(skS) {
-		return nil, nil, errKemInvalidPrivateKey
+	if !s.kemID.validatePrivateKey(skS) {
+		return nil, nil, errInvalidKEMPrivateKey
 	}
 
 	s.modeID = modeAuthPSK
@@ -170,8 +169,8 @@ type Receiver struct {
 func (suite Suite) NewReceiver(skR kem.PrivateKey, info []byte) (
 	*Receiver, error,
 ) {
-	if !suite.KemID.validatePrivateKey(skR) {
-		return nil, errKemInvalidPrivateKey
+	if !suite.kemID.validatePrivateKey(skR) {
+		return nil, errInvalidKEMPrivateKey
 	}
 
 	return &Receiver{state: state{Suite: suite, info: info}, skR: skR}, nil
@@ -188,8 +187,8 @@ func (r *Receiver) Setup(enc []byte) (Opener, error) {
 // SetupAuth generates a new HPKE context used for Auth Mode encryption.
 // SetupAuth takes an encapsulated key and a public key, and returns an Opener.
 func (r *Receiver) SetupAuth(enc []byte, pkS kem.PublicKey) (Opener, error) {
-	if !r.KemID.validatePublicKey(pkS) {
-		return nil, errKemInvalidPublicKey
+	if !r.kemID.validatePublicKey(pkS) {
+		return nil, errInvalidKEMPublicKey
 	}
 
 	r.modeID = modeAuth
@@ -214,8 +213,8 @@ func (r *Receiver) SetupPSK(enc, psk, pskID []byte) (Opener, error) {
 // and returns an Opener.
 func (r *Receiver) SetupAuthPSK(enc, psk, pskID []byte, pkS kem.PublicKey) (
 	Opener, error) {
-	if !r.KemID.validatePublicKey(pkS) {
-		return nil, errKemInvalidPublicKey
+	if !r.kemID.validatePublicKey(pkS) {
+		return nil, errInvalidKEMPublicKey
 	}
 
 	r.modeID = modeAuthPSK
@@ -227,7 +226,7 @@ func (r *Receiver) SetupAuthPSK(enc, psk, pskID []byte, pkS kem.PublicKey) (
 }
 
 func (s *Sender) allSetup(rnd io.Reader) ([]byte, Sealer, error) {
-	k := s.KemID.Scheme()
+	k := s.KEMScheme()
 
 	if rnd == nil {
 		rnd = rand.Reader
@@ -260,7 +259,7 @@ func (s *Sender) allSetup(rnd io.Reader) ([]byte, Sealer, error) {
 func (r *Receiver) allSetup() (Opener, error) {
 	var err error
 	var ss []byte
-	k := r.KemID.Scheme()
+	k := r.KEMScheme()
 	switch r.modeID {
 	case modeBase, modePSK:
 		ss, err = k.Decapsulate(r.skR, r.enc)
@@ -279,9 +278,12 @@ func (r *Receiver) allSetup() (Opener, error) {
 }
 
 var (
-	errHpkeInvalidSuite       = errors.New("invalid hpke suite")
-	errKemInvalidPublicKey    = errors.New("invalid kem public key")
-	errKemInvalidPrivateKey   = errors.New("invalid kem private key")
-	errKemInvalidSharedSecret = errors.New("invalid shared secret")
-	errAeadSeqOverflows       = errors.New("aead sequence number overflows")
+	errInvalidHPKESuite       = errors.New("hpke: invalid HPKE suite")
+	errInvalidKDF             = errors.New("hpke: invalid KDF identifier")
+	errInvalidKEM             = errors.New("hpke: invalid KEM identifier")
+	errInvalidAEAD            = errors.New("hpke: invalid AEAD identifier")
+	errInvalidKEMPublicKey    = errors.New("hpke: invalid KEM public key")
+	errInvalidKEMPrivateKey   = errors.New("hpke: invalid KEM private key")
+	errInvalidKEMSharedSecret = errors.New("hpke: invalid shared secret")
+	errAEADSeqOverflows       = errors.New("hpke: AEAD sequence number overflows")
 )
