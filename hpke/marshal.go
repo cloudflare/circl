@@ -9,9 +9,9 @@ import (
 // marshal serializes an HPKE context.
 func (c *encdecContext) marshal() ([]byte, error) {
 	var b cryptobyte.Builder
-	b.AddUint16(uint16(c.suite.KemID))
-	b.AddUint16(uint16(c.suite.KdfID))
-	b.AddUint16(uint16(c.suite.AeadID))
+	b.AddUint16(uint16(c.suite.kemID))
+	b.AddUint16(uint16(c.suite.kdfID))
+	b.AddUint16(uint16(c.suite.aeadID))
 	b.AddUint8LengthPrefixed(func(b *cryptobyte.Builder) {
 		b.AddBytes(c.exporterSecret)
 	})
@@ -36,9 +36,9 @@ func unmarshalContext(raw []byte) (*encdecContext, error) {
 
 	c := new(encdecContext)
 	s := cryptobyte.String(raw)
-	if !s.ReadUint16((*uint16)(&c.suite.KemID)) ||
-		!s.ReadUint16((*uint16)(&c.suite.KdfID)) ||
-		!s.ReadUint16((*uint16)(&c.suite.AeadID)) ||
+	if !s.ReadUint16((*uint16)(&c.suite.kemID)) ||
+		!s.ReadUint16((*uint16)(&c.suite.kdfID)) ||
+		!s.ReadUint16((*uint16)(&c.suite.aeadID)) ||
 		!s.ReadUint8LengthPrefixed(&t) ||
 		!t.ReadBytes(&c.exporterSecret, len(t)) ||
 		!s.ReadUint8LengthPrefixed(&t) ||
@@ -51,20 +51,20 @@ func unmarshalContext(raw []byte) (*encdecContext, error) {
 	}
 
 	if !c.suite.isValid() {
-		return nil, errHpkeInvalidSuite
+		return nil, errInvalidHPKESuite
 	}
 
-	Nh := c.suite.KdfID.Hash().Size()
+	Nh := c.suite.kdfID.Hash().Size()
 	if len(c.exporterSecret) != Nh {
 		return nil, errors.New("invalid exporter secret length")
 	}
 
-	Nk := int(c.suite.AeadID.KeySize())
+	Nk := int(c.suite.aeadID.KeySize())
 	if len(c.key) != Nk {
 		return nil, errors.New("invalid key length")
 	}
 
-	c.AEAD, err = c.suite.AeadID.New(c.key)
+	c.AEAD, err = c.suite.aeadID.New(c.key)
 	if err != nil {
 		return nil, err
 	}

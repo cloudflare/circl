@@ -14,28 +14,28 @@ import (
 	"github.com/cloudflare/circl/kem"
 )
 
-type xkem struct {
+type xKEM struct {
 	kemBase
 	size int
 }
 
-func (x xkem) PrivateKeySize() int        { return x.size }
-func (x xkem) SeedSize() int              { return x.size }
-func (x xkem) CiphertextSize() int        { return x.size }
-func (x xkem) PublicKeySize() int         { return x.size }
-func (x xkem) EncapsulationSeedSize() int { return x.size }
+func (x xKEM) PrivateKeySize() int        { return x.size }
+func (x xKEM) SeedSize() int              { return x.size }
+func (x xKEM) CiphertextSize() int        { return x.size }
+func (x xKEM) PublicKeySize() int         { return x.size }
+func (x xKEM) EncapsulationSeedSize() int { return x.size }
 
-func (x xkem) sizeDH() int { return x.size }
-func (x xkem) calcDH(dh []byte, sk kem.PrivateKey, pk kem.PublicKey) error {
-	PK := pk.(*xkemPubKey)
-	SK := sk.(*xkemPrivKey)
+func (x xKEM) sizeDH() int { return x.size }
+func (x xKEM) calcDH(dh []byte, sk kem.PrivateKey, pk kem.PublicKey) error {
+	PK := pk.(*xKEMPubKey)
+	SK := sk.(*xKEMPrivKey)
 	switch x.size {
 	case x25519.Size:
 		var ss, sKey, pKey x25519.Key
 		copy(sKey[:], SK.priv)
 		copy(pKey[:], PK.pub)
 		if !x25519.Shared(&ss, &sKey, &pKey) {
-			return errKemInvalidSharedSecret
+			return errInvalidKEMSharedSecret
 		}
 		copy(dh, ss[:])
 	case x448.Size:
@@ -43,7 +43,7 @@ func (x xkem) calcDH(dh []byte, sk kem.PrivateKey, pk kem.PublicKey) error {
 		copy(sKey[:], SK.priv)
 		copy(pKey[:], PK.pub)
 		if !x448.Shared(&ss, &sKey, &pKey) {
-			return errKemInvalidSharedSecret
+			return errInvalidKEMSharedSecret
 		}
 		copy(dh, ss[:])
 	}
@@ -54,13 +54,13 @@ func (x xkem) calcDH(dh []byte, sk kem.PrivateKey, pk kem.PublicKey) error {
 // you're better off using GenerateKey().
 //
 // Panics if seed is not of length SeedSize().
-func (x xkem) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
+func (x xKEM) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 	// Implementation based on
 	// https://www.ietf.org/archive/id/draft-irtf-cfrg-hpke-06.html#name-derivekeypair
 	if len(seed) != x.SeedSize() {
 		panic(kem.ErrSeedSize)
 	}
-	sk := &xkemPrivKey{scheme: x, priv: make([]byte, x.size)}
+	sk := &xKEMPrivKey{scheme: x, priv: make([]byte, x.size)}
 	dkpPrk := x.labeledExtract(nil, []byte("dkp_prk"), seed)
 	bytes := x.labeledExpand(
 		dkpPrk,
@@ -71,71 +71,71 @@ func (x xkem) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 	copy(sk.priv, bytes)
 	return sk.Public(), sk
 }
-func (x xkem) GenerateKeyPair() (kem.PublicKey, kem.PrivateKey, error) {
-	sk := &xkemPrivKey{scheme: x, priv: make([]byte, x.PrivateKeySize())}
+func (x xKEM) GenerateKeyPair() (kem.PublicKey, kem.PrivateKey, error) {
+	sk := &xKEMPrivKey{scheme: x, priv: make([]byte, x.PrivateKeySize())}
 	_, err := io.ReadFull(rand.Reader, sk.priv)
 	if err != nil {
 		return nil, nil, err
 	}
 	return sk.Public(), sk, nil
 }
-func (x xkem) UnmarshalBinaryPrivateKey(data []byte) (kem.PrivateKey, error) {
+func (x xKEM) UnmarshalBinaryPrivateKey(data []byte) (kem.PrivateKey, error) {
 	l := x.PrivateKeySize()
 	if len(data) < l {
-		return nil, errKemInvalidPrivateKey
+		return nil, errInvalidKEMPrivateKey
 	}
-	sk := &xkemPrivKey{x, make([]byte, l), nil}
+	sk := &xKEMPrivKey{x, make([]byte, l), nil}
 	copy(sk.priv, data[:l])
 	return sk, nil
 }
-func (x xkem) UnmarshalBinaryPublicKey(data []byte) (kem.PublicKey, error) {
+func (x xKEM) UnmarshalBinaryPublicKey(data []byte) (kem.PublicKey, error) {
 	l := x.PublicKeySize()
 	if len(data) < l {
-		return nil, errKemInvalidPublicKey
+		return nil, errInvalidKEMPublicKey
 	}
-	pk := &xkemPubKey{x, make([]byte, l)}
+	pk := &xKEMPubKey{x, make([]byte, l)}
 	copy(pk.pub, data[:l])
 	return pk, nil
 }
 
-type xkemPubKey struct {
-	scheme xkem
+type xKEMPubKey struct {
+	scheme xKEM
 	pub    []byte
 }
 
-func (k *xkemPubKey) String() string     { return fmt.Sprintf("%x", k.pub) }
-func (k *xkemPubKey) Scheme() kem.Scheme { return k.scheme }
-func (k *xkemPubKey) MarshalBinary() ([]byte, error) {
+func (k *xKEMPubKey) String() string     { return fmt.Sprintf("%x", k.pub) }
+func (k *xKEMPubKey) Scheme() kem.Scheme { return k.scheme }
+func (k *xKEMPubKey) MarshalBinary() ([]byte, error) {
 	return append(make([]byte, 0, k.scheme.PublicKeySize()), k.pub...), nil
 }
-func (k *xkemPubKey) Equal(pk kem.PublicKey) bool {
-	k1, ok := pk.(*xkemPubKey)
+func (k *xKEMPubKey) Equal(pk kem.PublicKey) bool {
+	k1, ok := pk.(*xKEMPubKey)
 	return ok &&
 		k.scheme.id == k1.scheme.id &&
 		bytes.Equal(k.pub, k1.pub)
 }
-func (k *xkemPubKey) Validate() bool { return len(k.pub) == k.scheme.PublicKeySize() }
+func (k *xKEMPubKey) Validate() bool { return len(k.pub) == k.scheme.PublicKeySize() }
 
-type xkemPrivKey struct {
-	scheme xkem
+type xKEMPrivKey struct {
+	scheme xKEM
 	priv   []byte
-	pub    *xkemPubKey
+	pub    *xKEMPubKey
 }
 
-func (k *xkemPrivKey) String() string     { return fmt.Sprintf("%x", k.priv) }
-func (k *xkemPrivKey) Scheme() kem.Scheme { return k.scheme }
-func (k *xkemPrivKey) MarshalBinary() ([]byte, error) {
+func (k *xKEMPrivKey) String() string     { return fmt.Sprintf("%x", k.priv) }
+func (k *xKEMPrivKey) Scheme() kem.Scheme { return k.scheme }
+func (k *xKEMPrivKey) MarshalBinary() ([]byte, error) {
 	return append(make([]byte, 0, k.scheme.PrivateKeySize()), k.priv...), nil
 }
-func (k *xkemPrivKey) Equal(pk kem.PrivateKey) bool {
-	k1, ok := pk.(*xkemPrivKey)
+func (k *xKEMPrivKey) Equal(pk kem.PrivateKey) bool {
+	k1, ok := pk.(*xKEMPrivKey)
 	return ok &&
 		k.scheme.id == k1.scheme.id &&
 		subtle.ConstantTimeCompare(k.priv, k1.priv) == 1
 }
-func (k *xkemPrivKey) Public() kem.PublicKey {
+func (k *xKEMPrivKey) Public() kem.PublicKey {
 	if k.pub == nil {
-		k.pub = &xkemPubKey{scheme: k.scheme, pub: make([]byte, k.scheme.size)}
+		k.pub = &xKEMPubKey{scheme: k.scheme, pub: make([]byte, k.scheme.size)}
 		switch k.scheme.size {
 		case x25519.Size:
 			var sk, pk x25519.Key
@@ -151,4 +151,4 @@ func (k *xkemPrivKey) Public() kem.PublicKey {
 	}
 	return k.pub
 }
-func (k *xkemPrivKey) Validate() bool { return len(k.priv) == k.scheme.PrivateKeySize() }
+func (k *xKEMPrivKey) Validate() bool { return len(k.priv) == k.scheme.PrivateKeySize() }

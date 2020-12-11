@@ -3,9 +3,9 @@
 // Schemes Implemented
 //
 // Based on standard elliptic curves:
-//  HpkeDHKemP256HkdfSha256, HpkeDHKemP384HkdfSha384, HpkeDHKemP521HkdfSha512
+//  HPKE_KEM_P256_HKDF_SHA256, HPKE_KEM_P384_HKDF_SHA384, HPKE_KEM_P521_HKDF_SHA512
 // Based on standard Diffie-Hellman functions:
-//  HpkeDHKemX25519HkdfSha256, HpkeDHKemX448HkdfSha512
+//  HPKE_KEM_X25519_HKDF_SHA256, HPKE_KEM_X448_HKDF_SHA512
 // Post-quantum kems:
 //  Kyber512, Kyber768, Kyber1024
 //  SIKEp434, SIKEp503, SIKEp751
@@ -25,11 +25,11 @@ import (
 )
 
 var allSchemes = [...]kem.Scheme{
-	hpke.DHKemP256HkdfSha256.Scheme(),
-	hpke.DHKemP384HkdfSha384.Scheme(),
-	hpke.DHKemP521HkdfSha512.Scheme(),
-	hpke.DHKemX25519HkdfSha256.Scheme(),
-	hpke.DHKemX448HkdfSha512.Scheme(),
+	hpke.KEM_P256_HKDF_SHA256.Scheme(),
+	hpke.KEM_P384_HKDF_SHA384.Scheme(),
+	hpke.KEM_P521_HKDF_SHA512.Scheme(),
+	hpke.KEM_X25519_HKDF_SHA256.Scheme(),
+	hpke.KEM_X448_HKDF_SHA512.Scheme(),
 	kyber512.Scheme(),
 	kyber768.Scheme(),
 	kyber1024.Scheme(),

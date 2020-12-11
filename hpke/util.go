@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/cloudflare/circl/kem"
 	"golang.org/x/crypto/hkdf"
 )
 
@@ -23,10 +24,10 @@ func (st state) keySchedule(ss, info, psk, pskID []byte) (*encdecContext, error)
 
 	secret := st.labeledExtract(ss, []byte("secret"), psk)
 
-	Nk := uint16(st.AeadID.KeySize())
+	Nk := uint16(st.aeadID.KeySize())
 	key := st.labeledExpand(secret, []byte("key"), keySchCtx, Nk)
 
-	aead, err := st.AeadID.New(key)
+	aead, err := st.aeadID.New(key)
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +38,7 @@ func (st state) keySchedule(ss, info, psk, pskID []byte) (*encdecContext, error)
 		secret,
 		[]byte("exp"),
 		keySchCtx,
-		uint16(st.KdfID.Hash().Size()),
+		uint16(st.kdfID.Hash().Size()),
 	)
 
 	return &encdecContext{
@@ -69,25 +70,33 @@ func (st state) verifyPSKInputs(psk, pskID []byte) error {
 	return nil
 }
 
+// Params returns the algorithm identifiers of the suite.
+func (suite Suite) Params() (KEM, KDF, AEAD) {
+	return suite.kemID, suite.kdfID, suite.aeadID
+}
+
 func (suite Suite) String() string {
 	return fmt.Sprintf(
 		"kem_id: %v kdf_id: %v aead_id: %v",
-		suite.KemID, suite.KdfID, suite.AeadID,
+		suite.kemID, suite.kdfID, suite.aeadID,
 	)
 }
 
 func (suite Suite) getSuiteID() (id [10]byte) {
 	id[0], id[1], id[2], id[3] = 'H', 'P', 'K', 'E'
-	binary.BigEndian.PutUint16(id[4:6], uint16(suite.KemID))
-	binary.BigEndian.PutUint16(id[6:8], uint16(suite.KdfID))
-	binary.BigEndian.PutUint16(id[8:10], uint16(suite.AeadID))
+	binary.BigEndian.PutUint16(id[4:6], uint16(suite.kemID))
+	binary.BigEndian.PutUint16(id[6:8], uint16(suite.kdfID))
+	binary.BigEndian.PutUint16(id[8:10], uint16(suite.aeadID))
 	return
 }
 
+// KEMScheme returns an instance of the KEM.
+func (suite Suite) KEMScheme() kem.AuthScheme { return suite.kemID.Scheme() }
+
 func (suite Suite) isValid() bool {
-	return suite.KemID.IsValid() &&
-		suite.KdfID.IsValid() &&
-		suite.AeadID.IsValid()
+	return suite.kemID.IsValid() &&
+		suite.kdfID.IsValid() &&
+		suite.aeadID.IsValid()
 }
 
 func (suite Suite) labeledExtract(salt, label, ikm []byte) []byte {
@@ -98,7 +107,7 @@ func (suite Suite) labeledExtract(salt, label, ikm []byte) []byte {
 		suiteID[:]...),
 		label...),
 		ikm...)
-	return hkdf.Extract(suite.KdfID.Hash().New, labeledIKM, salt)
+	return hkdf.Extract(suite.kdfID.Hash().New, labeledIKM, salt)
 }
 
 func (suite Suite) labeledExpand(prk, label, info []byte, l uint16) []byte {
@@ -112,7 +121,7 @@ func (suite Suite) labeledExpand(prk, label, info []byte, l uint16) []byte {
 		label...),
 		info...)
 	b := make([]byte, l)
-	rd := hkdf.Expand(suite.KdfID.Hash().New, prk, labeledInfo)
+	rd := hkdf.Expand(suite.kdfID.Hash().New, prk, labeledInfo)
 	_, _ = io.ReadFull(rd, b)
 	return b
 }

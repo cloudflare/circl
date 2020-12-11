@@ -13,146 +13,150 @@ import (
 	"golang.org/x/crypto/chacha20poly1305"
 )
 
-type KemID uint16
+type KEM uint16
 
+//nolint:golint,stylecheck
 const (
-	// DHKemP256HkdfSha256 is a KEM using the P256 curve with HKDF based on
-	// SHA-256.
-	DHKemP256HkdfSha256 KemID = 0x10
-	// DHKemP384HkdfSha384 is a KEM using the P384 curve with HKDF based on
-	// SHA-384.
-	DHKemP384HkdfSha384 KemID = 0x11
-	// DHKemP521HkdfSha512 is a KEM using the P521 curve with HKDF based on
-	// SHA-512.
-	DHKemP521HkdfSha512 KemID = 0x12
-	// DHKemX25519HkdfSha256 is a KEM using the X25519 Diffie-Hellman function
-	// with HKDF based on SHA-256.
-	DHKemX25519HkdfSha256 KemID = 0x20
-	// DHKemX448HkdfSha512 is a KEM using the X448 Diffie-Hellman function with
-	// HKDF based on SHA-512.
-	DHKemX448HkdfSha512 KemID = 0x21
+	// KEM_P256_HKDF_SHA256 is a KEM using P256 curve and HKDF with SHA-256.
+	KEM_P256_HKDF_SHA256 KEM = 0x10
+	// KEM_P384_HKDF_SHA384 is a KEM using P384 curve and HKDF with SHA-384.
+	KEM_P384_HKDF_SHA384 KEM = 0x11
+	// KEM_P521_HKDF_SHA512 is a KEM using P521 curve and HKDF with SHA-512.
+	KEM_P521_HKDF_SHA512 KEM = 0x12
+	// KEM_X25519_HKDF_SHA256 is a KEM using X25519 Diffie-Hellman function
+	// and HKDF with SHA-256.
+	KEM_X25519_HKDF_SHA256 KEM = 0x20
+	// KEM_X448_HKDF_SHA512 is a KEM using X448 Diffie-Hellman function and
+	// HKDF with SHA-512.
+	KEM_X448_HKDF_SHA512 KEM = 0x21
 )
 
-func (k KemID) IsValid() bool {
+func (k KEM) IsValid() bool {
 	switch k {
-	case DHKemP256HkdfSha256,
-		DHKemP384HkdfSha384,
-		DHKemP521HkdfSha512,
-		DHKemX25519HkdfSha256,
-		DHKemX448HkdfSha512:
+	case KEM_P256_HKDF_SHA256,
+		KEM_P384_HKDF_SHA384,
+		KEM_P521_HKDF_SHA512,
+		KEM_X25519_HKDF_SHA256,
+		KEM_X448_HKDF_SHA512:
 		return true
 	default:
 		return false
 	}
 }
 
-func (k KemID) Scheme() kem.AuthScheme {
+func (k KEM) Scheme() kem.AuthScheme {
 	switch k {
-	case DHKemP256HkdfSha256:
-		return dhkemP256HkdfSha256
-	case DHKemP384HkdfSha384:
-		return dhkemP384HkdfSha384
-	case DHKemP521HkdfSha512:
-		return dhkemP521HkdfSha512
-	case DHKemX25519HkdfSha256:
-		return dhkemX25519HkdfSha256
-	case DHKemX448HkdfSha512:
-		return dhkemX448HkdfSha512
+	case KEM_P256_HKDF_SHA256:
+		return dhkemp256hkdfsha256
+	case KEM_P384_HKDF_SHA384:
+		return dhkemp384hkdfsha384
+	case KEM_P521_HKDF_SHA512:
+		return dhkemp521hkdfsha512
+	case KEM_X25519_HKDF_SHA256:
+		return dhkemx25519hkdfsha256
+	case KEM_X448_HKDF_SHA512:
+		return dhkemx448hkdfsha512
 	default:
-		return nil
+		panic(errInvalidKEM)
 	}
 }
 
-func (k KemID) validatePublicKey(pk kem.PublicKey) bool {
+func (k KEM) validatePublicKey(pk kem.PublicKey) bool {
 	switch k {
-	case DHKemP256HkdfSha256, DHKemP384HkdfSha384, DHKemP521HkdfSha512:
-		pub, ok := pk.(*shortPubKey)
+	case KEM_P256_HKDF_SHA256, KEM_P384_HKDF_SHA384, KEM_P521_HKDF_SHA512:
+		pub, ok := pk.(*shortKEMPubKey)
 		return ok && k == pub.scheme.id && pub.Validate()
-	case DHKemX25519HkdfSha256, DHKemX448HkdfSha512:
-		pub, ok := pk.(*xkemPubKey)
+	case KEM_X25519_HKDF_SHA256, KEM_X448_HKDF_SHA512:
+		pub, ok := pk.(*xKEMPubKey)
 		return ok && k == pub.scheme.id && pub.Validate()
 	default:
-		panic("invalid KemID")
+		panic(errInvalidKEM)
 	}
 }
 
-func (k KemID) validatePrivateKey(sk kem.PrivateKey) bool {
+func (k KEM) validatePrivateKey(sk kem.PrivateKey) bool {
 	switch k {
-	case DHKemP256HkdfSha256, DHKemP384HkdfSha384, DHKemP521HkdfSha512:
-		priv, ok := sk.(*shortPrivKey)
+	case KEM_P256_HKDF_SHA256, KEM_P384_HKDF_SHA384, KEM_P521_HKDF_SHA512:
+		priv, ok := sk.(*shortKEMPrivKey)
 		return ok && k == priv.scheme.id && priv.Validate()
-	case DHKemX25519HkdfSha256, DHKemX448HkdfSha512:
-		priv, ok := sk.(*xkemPrivKey)
+	case KEM_X25519_HKDF_SHA256, KEM_X448_HKDF_SHA512:
+		priv, ok := sk.(*xKEMPrivKey)
 		return ok && k == priv.scheme.id && priv.Validate()
 	default:
-		panic("invalid KemID")
+		panic(errInvalidKEM)
 	}
 }
 
-type KdfID uint16
+type KDF uint16
 
+//nolint:golint,stylecheck
 const (
-	// HKDF using SHA-256 hash function.
-	HkdfSha256 KdfID = 0x01
-	// HKDF using SHA-384 hash function.
-	HkdfSha384 KdfID = 0x02
-	// HKDF using SHA-512 hash function.
-	HkdfSha512 KdfID = 0x03
+	// KDF_HKDF_SHA256 is a KDF using HKDF with SHA-256.
+	KDF_HKDF_SHA256 KDF = 0x01
+	// KDF_HKDF_SHA384 is a KDF using HKDF with SHA-384.
+	KDF_HKDF_SHA384 KDF = 0x02
+	// KDF_HKDF_SHA512 is a KDF using HKDF with SHA-512.
+	KDF_HKDF_SHA512 KDF = 0x03
 )
 
-func (k KdfID) IsValid() bool {
+func (k KDF) IsValid() bool {
 	switch k {
-	case HkdfSha256,
-		HkdfSha384,
-		HkdfSha512:
+	case KDF_HKDF_SHA256,
+		KDF_HKDF_SHA384,
+		KDF_HKDF_SHA512:
 		return true
 	default:
 		return false
 	}
 }
 
-func (k KdfID) Hash() crypto.Hash {
+func (k KDF) Hash() crypto.Hash {
 	switch k {
-	case HkdfSha256:
+	case KDF_HKDF_SHA256:
 		return crypto.SHA256
-	case HkdfSha384:
+	case KDF_HKDF_SHA384:
 		return crypto.SHA384
-	case HkdfSha512:
+	case KDF_HKDF_SHA512:
 		return crypto.SHA512
 	default:
-		panic("invalid KdfID")
+		panic(errInvalidKDF)
 	}
 }
 
-type AeadID uint16
+type AEAD uint16
 
+//nolint:golint,stylecheck
 const (
-	// AES-128 block cipher in Galois Counter Mode (GCM).
-	AeadAes128Gcm AeadID = 0x01
-	// AES-256 block cipher in Galois Counter Mode (GCM).
-	AeadAes256Gcm AeadID = 0x02
-	// ChaCha20 stream cipher and Poly1305 MAC.
-	AeadChaCha20Poly1305 AeadID = 0x03
+	// AEAD_AES128GCM is AES-128 block cipher in Galois Counter Mode (GCM).
+	AEAD_AES128GCM AEAD = 0x01
+	// AEAD_AES256GCM is AES-256 block cipher in Galois Counter Mode (GCM).
+	AEAD_AES256GCM AEAD = 0x02
+	// AEAD_ChaCha20Poly1305 is ChaCha20 stream cipher and Poly1305 MAC.
+	AEAD_ChaCha20Poly1305 AEAD = 0x03
 )
 
 // New instantiates an AEAD cipher from the identifier, returns an error if the
 // identifier is not known.
-func (a AeadID) New(key []byte) (cipher.AEAD, error) {
+func (a AEAD) New(key []byte) (cipher.AEAD, error) {
 	switch a {
-	case AeadAes128Gcm, AeadAes256Gcm:
-		return aesGCM(key)
-	case AeadChaCha20Poly1305:
+	case AEAD_AES128GCM, AEAD_AES256GCM:
+		block, err := aes.NewCipher(key)
+		if err != nil {
+			return nil, err
+		}
+		return cipher.NewGCM(block)
+	case AEAD_ChaCha20Poly1305:
 		return chacha20poly1305.New(key)
 	default:
-		panic("invalid AeadID")
+		panic(errInvalidAEAD)
 	}
 }
 
-func (a AeadID) IsValid() bool {
+func (a AEAD) IsValid() bool {
 	switch a {
-	case AeadAes128Gcm,
-		AeadAes256Gcm,
-		AeadChaCha20Poly1305:
+	case AEAD_AES128GCM,
+		AEAD_AES256GCM,
+		AEAD_ChaCha20Poly1305:
 		return true
 	default:
 		return false
@@ -160,58 +164,50 @@ func (a AeadID) IsValid() bool {
 }
 
 // KeySize returns the size in bytes of the keys used by AEAD cipher.
-func (a AeadID) KeySize() uint {
+func (a AEAD) KeySize() uint {
 	switch a {
-	case AeadAes128Gcm:
+	case AEAD_AES128GCM:
 		return 16
-	case AeadAes256Gcm:
+	case AEAD_AES256GCM:
 		return 32
-	case AeadChaCha20Poly1305:
+	case AEAD_ChaCha20Poly1305:
 		return chacha20poly1305.KeySize
 	default:
-		panic("invalid AeadID")
+		panic("invalid AEAD")
 	}
 }
 
-func aesGCM(key []byte) (cipher.AEAD, error) {
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-	return cipher.NewGCM(block)
-}
-
-var dhkemP256HkdfSha256, dhkemP384HkdfSha384, dhkemP521HkdfSha512 shortKem
-var dhkemX25519HkdfSha256, dhkemX448HkdfSha512 xkem
+var dhkemp256hkdfsha256, dhkemp384hkdfsha384, dhkemp521hkdfsha512 shortKEM
+var dhkemx25519hkdfsha256, dhkemx448hkdfsha512 xKEM
 
 func init() {
-	dhkemP256HkdfSha256.Curve = elliptic.P256()
-	dhkemP256HkdfSha256.kemBase.id = DHKemP256HkdfSha256
-	dhkemP256HkdfSha256.kemBase.name = "HpkeDHKemP256HkdfSha256"
-	dhkemP256HkdfSha256.kemBase.Hash = crypto.SHA256
-	dhkemP256HkdfSha256.kemBase.dh = dhkemP256HkdfSha256
+	dhkemp256hkdfsha256.Curve = elliptic.P256()
+	dhkemp256hkdfsha256.kemBase.id = KEM_P256_HKDF_SHA256
+	dhkemp256hkdfsha256.kemBase.name = "HPKE_KEM_P256_HKDF_SHA256"
+	dhkemp256hkdfsha256.kemBase.Hash = crypto.SHA256
+	dhkemp256hkdfsha256.kemBase.dh = dhkemp256hkdfsha256
 
-	dhkemP384HkdfSha384.Curve = p384.P384()
-	dhkemP384HkdfSha384.kemBase.id = DHKemP384HkdfSha384
-	dhkemP384HkdfSha384.kemBase.name = "HpkeDHKemP384HkdfSha384"
-	dhkemP384HkdfSha384.kemBase.Hash = crypto.SHA384
-	dhkemP384HkdfSha384.kemBase.dh = dhkemP384HkdfSha384
+	dhkemp384hkdfsha384.Curve = p384.P384()
+	dhkemp384hkdfsha384.kemBase.id = KEM_P384_HKDF_SHA384
+	dhkemp384hkdfsha384.kemBase.name = "HPKE_KEM_P384_HKDF_SHA384"
+	dhkemp384hkdfsha384.kemBase.Hash = crypto.SHA384
+	dhkemp384hkdfsha384.kemBase.dh = dhkemp384hkdfsha384
 
-	dhkemP521HkdfSha512.Curve = elliptic.P521()
-	dhkemP521HkdfSha512.kemBase.id = DHKemP521HkdfSha512
-	dhkemP521HkdfSha512.kemBase.name = "HpkeDHKemP521HkdfSha512"
-	dhkemP521HkdfSha512.kemBase.Hash = crypto.SHA512
-	dhkemP521HkdfSha512.kemBase.dh = dhkemP521HkdfSha512
+	dhkemp521hkdfsha512.Curve = elliptic.P521()
+	dhkemp521hkdfsha512.kemBase.id = KEM_P521_HKDF_SHA512
+	dhkemp521hkdfsha512.kemBase.name = "HPKE_KEM_P521_HKDF_SHA512"
+	dhkemp521hkdfsha512.kemBase.Hash = crypto.SHA512
+	dhkemp521hkdfsha512.kemBase.dh = dhkemp521hkdfsha512
 
-	dhkemX25519HkdfSha256.size = x25519.Size
-	dhkemX25519HkdfSha256.kemBase.id = DHKemX25519HkdfSha256
-	dhkemX25519HkdfSha256.kemBase.name = "HpkeDHKemX25519HkdfSha256"
-	dhkemX25519HkdfSha256.kemBase.Hash = crypto.SHA256
-	dhkemX25519HkdfSha256.kemBase.dh = dhkemX25519HkdfSha256
+	dhkemx25519hkdfsha256.size = x25519.Size
+	dhkemx25519hkdfsha256.kemBase.id = KEM_X25519_HKDF_SHA256
+	dhkemx25519hkdfsha256.kemBase.name = "HPKE_KEM_X25519_HKDF_SHA256"
+	dhkemx25519hkdfsha256.kemBase.Hash = crypto.SHA256
+	dhkemx25519hkdfsha256.kemBase.dh = dhkemx25519hkdfsha256
 
-	dhkemX448HkdfSha512.size = x448.Size
-	dhkemX448HkdfSha512.kemBase.id = DHKemX448HkdfSha512
-	dhkemX448HkdfSha512.kemBase.name = "HpkeDHKemX448HkdfSha512"
-	dhkemX448HkdfSha512.kemBase.Hash = crypto.SHA512
-	dhkemX448HkdfSha512.kemBase.dh = dhkemX448HkdfSha512
+	dhkemx448hkdfsha512.size = x448.Size
+	dhkemx448hkdfsha512.kemBase.id = KEM_X448_HKDF_SHA512
+	dhkemx448hkdfsha512.kemBase.name = "HPKE_KEM_X448_HKDF_SHA512"
+	dhkemx448hkdfsha512.kemBase.Hash = crypto.SHA512
+	dhkemx448hkdfsha512.kemBase.dh = dhkemx448hkdfsha512
 }

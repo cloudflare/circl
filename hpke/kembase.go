@@ -12,7 +12,7 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
-type dhKem interface {
+type dhKEM interface {
 	sizeDH() int
 	calcDH(dh []byte, sk kem.PrivateKey, pk kem.PublicKey) error
 	SeedSize() int
@@ -22,10 +22,10 @@ type dhKem interface {
 }
 
 type kemBase struct {
-	id   KemID
+	id   KEM
 	name string
 	crypto.Hash
-	dh dhKem
+	dh dhKEM
 }
 
 func (k kemBase) Name() string       { return k.name }
