@@ -1,7 +1,9 @@
 package hpke
 
 import (
+	"bytes"
 	"crypto/rand"
+	"fmt"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/test"
@@ -18,19 +20,70 @@ func TestAeadExporter(t *testing.T) {
 	test.CheckNoErr(t, err, "exporter max size")
 }
 
-func TestAeadSeqOverflow(t *testing.T) {
+func setupAeadTest() (*sealContext, *openContext, error) {
 	suite := Suite{aeadID: AEAD_AES128GCM}
 	key := make([]byte, suite.aeadID.KeySize())
-	_, _ = rand.Read(key)
+	if n, err := rand.Read(key); err != nil {
+		return nil, nil, err
+	} else if n != len(key) {
+		return nil, nil, fmt.Errorf("unexpected key size: got %d; want %d", n, len(key))
+	}
+
 	aead, err := suite.aeadID.New(key)
-	test.CheckNoErr(t, err, "bad key")
+	if err != nil {
+		return nil, nil, err
+	}
 
 	Nn := aead.NonceSize()
-	nonce := make([]byte, Nn)
-	_, _ = rand.Read(nonce)
-	sealer := &sealContext{&encdecContext{aead, suite, nil, nil, nonce, make([]byte, Nn)}}
-	opener := &openContext{&encdecContext{aead, suite, nil, nil, nonce, make([]byte, Nn)}}
+	baseNonce := make([]byte, Nn)
+	if n, err := rand.Read(baseNonce); err != nil {
+		return nil, nil, err
+	} else if n != len(baseNonce) {
+		return nil, nil, fmt.Errorf("unexpected base nonce size: got %d; want %d", n, len(baseNonce))
+	}
 
+	sealer := &sealContext{&encdecContext{
+		suite, nil, nil, baseNonce, make([]byte, Nn), aead, make([]byte, Nn)},
+	}
+	opener := &openContext{&encdecContext{
+		suite, nil, nil, baseNonce, make([]byte, Nn), aead, make([]byte, Nn)},
+	}
+	return sealer, opener, nil
+}
+
+func TestAeadNonceUpdate(t *testing.T) {
+	sealer, opener, err := setupAeadTest()
+	test.CheckNoErr(t, err, "setup failed")
+
+	pt := []byte("plaintext")
+	aad := []byte("aad")
+
+	numAttempts := 2
+	var prevCt []byte
+	for i := 0; i < numAttempts; i++ {
+		ct, err := sealer.Seal(pt, aad)
+		if err != nil {
+			t.Fatalf("encryption failed: %s", err)
+		}
+
+		if prevCt != nil && bytes.Equal(ct, prevCt) {
+			t.Error("ciphertext matches the previous (nonce not updated)")
+		}
+
+		_, err = opener.Open(ct, aad)
+		if err != nil {
+			t.Errorf("decryption failed: %s", err)
+		}
+
+		prevCt = ct
+	}
+}
+
+func TestAeadSeqOverflow(t *testing.T) {
+	sealer, opener, err := setupAeadTest()
+	test.CheckNoErr(t, err, "setup failed")
+
+	Nn := len(sealer.baseNonce)
 	pt := []byte("plaintext")
 	aad := []byte("aad")
 

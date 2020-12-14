@@ -6,12 +6,16 @@ import (
 )
 
 type encdecContext struct {
-	cipher.AEAD
+	// Serialized parameters
 	suite          Suite
 	exporterSecret []byte
 	key            []byte
 	baseNonce      []byte
 	sequenceNumber []byte
+
+	// Operational parameters
+	cipher.AEAD
+	nonce []byte
 }
 
 type sealContext struct{ *encdecContext }
@@ -36,17 +40,10 @@ func (c *encdecContext) Suite() Suite {
 }
 
 func (c *encdecContext) calcNonce() []byte {
-	nonce := (&[16]byte{})[:]
-	size := c.NonceSize()
-	if size > len(nonce) {
-		nonce = make([]byte, size)
-	}
-	nonce = nonce[:size]
-
 	for i := range c.baseNonce {
-		nonce[i] = c.baseNonce[i] ^ c.sequenceNumber[i]
+		c.nonce[i] = c.baseNonce[i] ^ c.sequenceNumber[i]
 	}
-	return nonce
+	return c.nonce
 }
 
 func (c *encdecContext) increment() error {

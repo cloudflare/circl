@@ -16,7 +16,9 @@ func contextEqual(a, b *encdecContext) bool {
 		bytes.Equal(a.key, b.key) &&
 		bytes.Equal(a.baseNonce, b.baseNonce) &&
 		bytes.Equal(a.sequenceNumber, b.sequenceNumber) &&
-		bytes.Equal(ac, bc)
+		bytes.Equal(ac, bc) &&
+		len(a.nonce) == len(b.nonce) &&
+		len(a.nonce) == len(a.baseNonce)
 }
 
 func TestContextSerialization(t *testing.T) {
