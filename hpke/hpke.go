@@ -1,5 +1,5 @@
 // Package hpke implements the Hybrid Public Key Encryption (HPKE) standard
-// specified by draft-irtf-cfrg-hpke-06.
+// specified by draft-irtf-cfrg-hpke-07.
 //
 // HPKE works for any combination of a public-key encapsulation mechanism
 // (KEM), a key derivation function (KDF), and an authenticated encryption
@@ -7,6 +7,10 @@
 //
 // Specification in
 // https://datatracker.ietf.org/doc/draft-irtf-cfrg-hpke
+//
+// BUG(cjpatton): This package does not implement the "Export-Only" mode of the
+// HPKE context. In particular, it does not recognize the AEAD codepoint
+// reserved for this purpose (0xFFFF).
 package hpke
 
 import (
@@ -18,7 +22,7 @@ import (
 	"github.com/cloudflare/circl/kem"
 )
 
-const versionLabel = "HPKE-06"
+const versionLabel = "HPKE-07"
 
 // Context defines the capabilities of an HPKE context.
 type Context interface {

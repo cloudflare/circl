@@ -88,9 +88,9 @@ func unmarshalContext(raw []byte) (*encdecContext, error) {
 // enum { sealer(0), opener(1) } HpkeRole;
 //
 // struct {
-//     HpkeKemId kem_id;   // draft-irtf-cfrg-hpke-06
-//     HpkeKdfId kdf_id;   // draft-irtf-cfrg-hpke-06
-//     HpkeAeadId aead_id; // draft-irtf-cfrg-hpke-06
+//     HpkeKemId kem_id;   // draft-irtf-cfrg-hpke-07
+//     HpkeKdfId kdf_id;   // draft-irtf-cfrg-hpke-07
+//     HpkeAeadId aead_id; // draft-irtf-cfrg-hpke-07
 //     opaque exporter_secret<0..255>;
 //     opaque key<0..255>;
 //     opaque base_nonce<0..255>;

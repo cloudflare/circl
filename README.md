@@ -40,7 +40,7 @@ Version numbers are [Semvers](https://semver.org/). We release a minor version f
 | Key Exchange / Digital signatures | P-384 | Our optimizations reduce the burden when moving from P-256 to P-384. |  ECDSA and ECDH using Suite B at top secret level. |
 | Digital Signatures | Ed25519, Ed448 | RFC-8032 provides new signature schemes based on Edwards curves. | Digital certificates and authentication. |
 | Key Encapsulation | P-256, P-384, P-521, X25519 and X448 | Key encapsulation methods based on Diffie-Hellman. | HPKE |
-| Hybrid Public-Key Encryption | Base, Auth, PSK, AuthPSK | [HPKE](https://www.ietf.org/archive/id/draft-irtf-cfrg-hpke-06.html) is a combination of KEM and AEAD. | TLS |
+| Hybrid Public-Key Encryption | Base, Auth, PSK, AuthPSK | [HPKE](https://www.ietf.org/archive/id/draft-irtf-cfrg-hpke-07.html) is a combination of KEM and AEAD. | TLS |
 | PQ KEM/PKE | Kyber | Lattice (M-LWE) based IND-CCA2 secure key encapsulation mechanism and IND-CPA secure public key encryption  | Post-Quantum Key exchange |
 | PQ Digital Signatures | Dilithium, Hybrid modes | Lattice (Module LWE) based signature scheme | Post-Quantum PKI |
 
