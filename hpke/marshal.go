@@ -76,6 +76,7 @@ func unmarshalContext(raw []byte) (*encdecContext, error) {
 	if len(c.sequenceNumber) != Nn {
 		return nil, errors.New("invalid sequence number length")
 	}
+	c.nonce = make([]byte, Nn)
 
 	return c, nil
 }
