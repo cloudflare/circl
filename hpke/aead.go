@@ -2,13 +2,11 @@ package hpke
 
 import (
 	"crypto/cipher"
-	"fmt"
 )
 
 type encdecContext struct {
 	// Serialized parameters
-	suite          Suite
-	exporterSecret []byte
+	expContext
 	key            []byte
 	baseNonce      []byte
 	sequenceNumber []byte
@@ -20,24 +18,6 @@ type encdecContext struct {
 
 type sealContext struct{ *encdecContext }
 type openContext struct{ *encdecContext }
-
-// Export takes a context string exporterContext and a desired length (in
-// bytes), and produces a secret derived from the internal exporter secret
-// using the corresponding KDF Expand function. It panics if length is
-// greater than 255*N bytes, where N is the size (in bytes) of the KDF's
-// output.
-func (c *encdecContext) Export(exporterContext []byte, length uint) []byte {
-	maxLength := uint(255 * c.suite.kdfID.ExtractSize())
-	if length > maxLength {
-		panic(fmt.Errorf("output length must be lesser than %v bytes", maxLength))
-	}
-	return c.suite.labeledExpand(c.exporterSecret, []byte("sec"),
-		exporterContext, uint16(length))
-}
-
-func (c *encdecContext) Suite() Suite {
-	return c.suite
-}
 
 func (c *encdecContext) calcNonce() []byte {
 	for i := range c.baseNonce {

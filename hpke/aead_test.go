@@ -9,17 +9,6 @@ import (
 	"github.com/cloudflare/circl/internal/test"
 )
 
-func TestAeadExporter(t *testing.T) {
-	suite := Suite{kdfID: KDF_HKDF_SHA256, aeadID: AEAD_AES128GCM}
-	exporter := &encdecContext{suite: suite}
-	maxLength := uint(255 * suite.kdfID.ExtractSize())
-
-	err := test.CheckPanic(func() {
-		exporter.Export([]byte("exporter"), maxLength+1)
-	})
-	test.CheckNoErr(t, err, "exporter max size")
-}
-
 func setupAeadTest() (*sealContext, *openContext, error) {
 	suite := Suite{aeadID: AEAD_AES128GCM}
 	key := make([]byte, suite.aeadID.KeySize())
@@ -42,11 +31,25 @@ func setupAeadTest() (*sealContext, *openContext, error) {
 		return nil, nil, fmt.Errorf("unexpected base nonce size: got %d; want %d", n, len(baseNonce))
 	}
 
-	sealer := &sealContext{&encdecContext{
-		suite, nil, nil, baseNonce, make([]byte, Nn), aead, make([]byte, Nn)},
+	sealer := &sealContext{
+		&encdecContext{
+			expContext{suite, nil},
+			nil,
+			baseNonce,
+			make([]byte, Nn),
+			aead,
+			make([]byte, Nn),
+		},
 	}
-	opener := &openContext{&encdecContext{
-		suite, nil, nil, baseNonce, make([]byte, Nn), aead, make([]byte, Nn)},
+	opener := &openContext{
+		&encdecContext{
+			expContext{suite, nil},
+			nil,
+			baseNonce,
+			make([]byte, Nn),
+			aead,
+			make([]byte, Nn),
+		},
 	}
 	return sealer, opener, nil
 }

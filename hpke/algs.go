@@ -183,6 +183,8 @@ const (
 	AEAD_AES256GCM AEAD = 0x02
 	// AEAD_ChaCha20Poly1305 is ChaCha20 stream cipher and Poly1305 MAC.
 	AEAD_ChaCha20Poly1305 AEAD = 0x03
+	// AEAD_ExportOnly signifies that the HPKE context not used for encryption.
+	AEAD_ExportOnly = 0xffff
 )
 
 // New instantiates an AEAD cipher from the identifier, returns an error if the
@@ -206,7 +208,8 @@ func (a AEAD) IsValid() bool {
 	switch a {
 	case AEAD_AES128GCM,
 		AEAD_AES256GCM,
-		AEAD_ChaCha20Poly1305:
+		AEAD_ChaCha20Poly1305,
+		AEAD_ExportOnly:
 		return true
 	default:
 		return false
@@ -222,6 +225,8 @@ func (a AEAD) KeySize() uint {
 		return 32
 	case AEAD_ChaCha20Poly1305:
 		return chacha20poly1305.KeySize
+	case AEAD_ExportOnly:
+		panic("AEAD key size undefined")
 	default:
 		panic(errInvalidAEAD)
 	}

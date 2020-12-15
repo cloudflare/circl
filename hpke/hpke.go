@@ -7,10 +7,6 @@
 //
 // Specification in
 // https://datatracker.ietf.org/doc/draft-irtf-cfrg-hpke
-//
-// BUG(cjpatton): This package does not implement the "Export-Only" mode of the
-// HPKE context. In particular, it does not recognize the AEAD codepoint
-// reserved for this purpose (0xFFFF).
 package hpke
 
 import (
@@ -26,7 +22,6 @@ const versionLabel = "HPKE-07"
 
 // Context defines the capabilities of an HPKE context.
 type Context interface {
-	encoding.BinaryMarshaler
 	// Export takes a context string exporterContext and a desired length (in
 	// bytes), and produces a secret derived from the internal exporter secret
 	// using the corresponding KDF Expand function. It panics if length is
@@ -39,6 +34,7 @@ type Context interface {
 
 // Sealer encrypts a plaintext using an AEAD encryption.
 type Sealer interface {
+	encoding.BinaryMarshaler
 	Context
 	// Seal takes a plaintext and associated data to produce a ciphertext.
 	// The nonce is handled by the Sealer and incremented after each call.
@@ -47,6 +43,7 @@ type Sealer interface {
 
 // Opener decrypts a ciphertext using an AEAD encryption.
 type Opener interface {
+	encoding.BinaryMarshaler
 	Context
 	// Open takes a ciphertext and associated data to recover, if successful,
 	// the plaintext. The nonce is handled by the Opener and incremented after

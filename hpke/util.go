@@ -20,6 +20,23 @@ func (st state) keySchedule(ss, info, psk, pskID []byte) (*encdecContext, error)
 
 	secret := st.labeledExtract(ss, []byte("secret"), psk)
 
+	exporterSecret := st.labeledExpand(
+		secret,
+		[]byte("exp"),
+		keySchCtx,
+		uint16(st.kdfID.ExtractSize()),
+	)
+
+	// XXX This is a hack that is only meant to get the test vectors to pass.
+	// Because the AEAD scheme isn't set, calling Seal() or Open() will panic. I
+	// What I think we want is an alternative code path that returns a
+	// *expContext only.
+	if st.Suite.isExportOnly() {
+		return &encdecContext{
+			expContext{st.Suite, exporterSecret}, nil, nil, nil, nil, nil,
+		}, nil
+	}
+
 	Nk := uint16(st.aeadID.KeySize())
 	key := st.labeledExpand(secret, []byte("key"), keySchCtx, Nk)
 
@@ -30,16 +47,12 @@ func (st state) keySchedule(ss, info, psk, pskID []byte) (*encdecContext, error)
 
 	Nn := uint16(aead.NonceSize())
 	baseNonce := st.labeledExpand(secret, []byte("base_nonce"), keySchCtx, Nn)
-	exporterSecret := st.labeledExpand(
-		secret,
-		[]byte("exp"),
-		keySchCtx,
-		uint16(st.kdfID.ExtractSize()),
-	)
 
 	return &encdecContext{
-		st.Suite,
-		exporterSecret,
+		expContext{
+			st.Suite,
+			exporterSecret,
+		},
 		key,
 		baseNonce,
 		make([]byte, Nn),
@@ -91,6 +104,10 @@ func (suite Suite) isValid() bool {
 	return suite.kemID.IsValid() &&
 		suite.kdfID.IsValid() &&
 		suite.aeadID.IsValid()
+}
+
+func (suite Suite) isExportOnly() bool {
+	return suite.aeadID == AEAD_ExportOnly
 }
 
 func (suite Suite) labeledExtract(salt, label, ikm []byte) []byte {
