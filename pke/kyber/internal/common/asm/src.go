@@ -1087,7 +1087,7 @@ func normalizeAVX2() {
 		}
 
 		// Just like the generic implementation, we do a Barrett reduction
-		// followed by a conditional substraction.
+		// followed by a conditional subtraction.
 
 		// Recall that the Barrett reduction of x is given by
 		//
@@ -1114,7 +1114,7 @@ func normalizeAVX2() {
 		VPSUBW(ts[2], xs[2], xs[2])
 		VPSUBW(ts[3], xs[3], xs[3])
 
-		// x is now Barrett reduced.  Next we conditionally substract q to
+		// x is now Barrett reduced.  Next we conditionally subtract q to
 		// normalize it.
 		//
 		//  x -= Q
