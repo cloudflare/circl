@@ -15,8 +15,8 @@ import (
 
 func TestVectors(t *testing.T) {
 	// Test vectors from
-	// https://github.com/cfrg/draft-irtf-cfrg-hpke/blob/draft-irtf-cfrg-hpke-06/test-vectors.json
-	vectors := readFile(t, "testdata/vectors_v06.json")
+	// https://github.com/cfrg/draft-irtf-cfrg-hpke/blob/draft-irtf-cfrg-hpke-07/test-vectors.json
+	vectors := readFile(t, "testdata/vectors_v07.json")
 	for i, v := range vectors {
 		t.Run(fmt.Sprintf("v%v", i), v.verify)
 	}
@@ -24,16 +24,20 @@ func TestVectors(t *testing.T) {
 
 func (v *vector) verify(t *testing.T) {
 	m := v.ModeID
-	kemID := KEM(v.KemID)
-	kdfID := KDF(v.KdfID)
-	aeadID := AEAD(v.AeadID)
-	test.CheckOk(kemID.IsValid(), "unknown KEM algorithm", t)
-	test.CheckOk(kdfID.IsValid(), "unknown KDF algorithm", t)
-	test.CheckOk(aeadID.IsValid(), "unknown AEAD algorithm", t)
-	s := NewSuite(kemID, kdfID, aeadID)
-	dhkem := s.kemID.Scheme()
-	sender, recv := v.getActors(t, dhkem, s)
-	sealer, opener := v.setup(t, dhkem, sender, recv, m, s)
+	kem, kdf, aead := KEM(v.KemID), KDF(v.KdfID), AEAD(v.AeadID)
+	if !kem.IsValid() {
+		t.Skipf("Skipping test with unknown KEM: %x", kem)
+	}
+	if !kdf.IsValid() {
+		t.Skipf("Skipping test with unknown KDF: %x", kdf)
+	}
+	if !aead.IsValid() {
+		t.Skipf("Skipping test with unknown AEAD: %x", aead)
+	}
+	s := NewSuite(kem, kdf, aead)
+
+	sender, recv := v.getActors(t, kem.Scheme(), s)
+	sealer, opener := v.setup(t, kem.Scheme(), sender, recv, m, s)
 
 	v.checkAead(t, (sealer.(*sealContext)).encdecContext, m)
 	v.checkAead(t, (opener.(*openContext)).encdecContext, m)
