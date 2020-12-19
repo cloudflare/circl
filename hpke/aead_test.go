@@ -79,6 +79,56 @@ func TestAeadNonceUpdate(t *testing.T) {
 	}
 }
 
+func TestOpenPhaseMismatch(t *testing.T) {
+	sealer, opener, err := setupAeadTest()
+	test.CheckNoErr(t, err, "setup failed")
+
+	pt := []byte("plaintext")
+	aad := []byte("aad")
+
+	ct, err := sealer.Seal(pt, aad)
+	if err != nil {
+		t.Fatalf("encryption failed: %s", err)
+	}
+
+	recovered, err := opener.Open(ct, aad)
+	if err != nil {
+		t.Fatalf("decryption failed: %s", err)
+	}
+
+	if !bytes.Equal(pt, recovered) {
+		t.Fatal("Plaintext mismatch")
+	}
+
+	_, err = opener.Open(ct, aad)
+	if err == nil {
+		t.Fatal("decryption succeeded when it should have failed")
+	}
+}
+
+func TestSealPhaseMismatch(t *testing.T) {
+	sealer, opener, err := setupAeadTest()
+	test.CheckNoErr(t, err, "setup failed")
+
+	pt := []byte("plaintext")
+	aad := []byte("aad")
+
+	_, err = sealer.Seal(pt, aad)
+	if err != nil {
+		t.Fatalf("encryption failed: %s", err)
+	}
+
+	ct, err := sealer.Seal(pt, aad)
+	if err != nil {
+		t.Fatalf("encryption failed: %s", err)
+	}
+
+	_, err = opener.Open(ct, aad)
+	if err == nil {
+		t.Fatal("decryption succeeded when it should have failed")
+	}
+}
+
 func TestAeadSeqOverflow(t *testing.T) {
 	sealer, opener, err := setupAeadTest()
 	test.CheckNoErr(t, err, "setup failed")
