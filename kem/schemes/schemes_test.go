@@ -143,5 +143,7 @@ func Example_schemes() {
 	// SIKEp434
 	// SIKEp503
 	// SIKEp751
-	// Temporary-Kyber-Sike
+	// Kyber512-X25519
+	// Kyber768-X448
+	// Kyber1024-X448
 }

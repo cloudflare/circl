@@ -37,7 +37,9 @@ var allSchemes = [...]kem.Scheme{
 	sikep434.Scheme(),
 	sikep503.Scheme(),
 	sikep751.Scheme(),
-	hybrid.KyberSike(), // XXX temporary for testing
+	hybrid.Kyber512X25519(),
+	hybrid.Kyber768X448(),
+	hybrid.Kyber1024X448(),
 }
 
 var allSchemeNames map[string]kem.Scheme
