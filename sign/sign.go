@@ -49,11 +49,15 @@ type Scheme interface {
 
 	// Creates a signature using the PrivateKey on the given message and
 	// returns the signature. opts are additional options which can be nil.
+	//
+	// Panics if key is nil or wrong type or opts context is not supported.
 	Sign(sk PrivateKey, message []byte, opts *SignatureOpts) []byte
 
 	// Checks whether the given signature is a valid signature set by
 	// the private key corresponding to the given public key on the
 	// given message. opts are additional options which can be nil.
+	//
+	// Panics if key is nil or wrong type or opts context is not supported.
 	Verify(pk PublicKey, message []byte, signature []byte, opts *SignatureOpts) bool
 
 	// Deterministically derives a keypair from a seed. If you're unsure,
