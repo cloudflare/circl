@@ -24,7 +24,7 @@ func CheckOk(result bool, msg string, t testing.TB) {
 	t.Helper()
 
 	if !result {
-		t.Error(msg)
+		t.Fatal(msg)
 	}
 }
 
@@ -33,11 +33,11 @@ func CheckOk(result bool, msg string, t testing.TB) {
 func checkErr(t testing.TB, err error, mustFail bool, msg string) {
 	t.Helper()
 	if err != nil && !mustFail {
-		t.Error(msg, ":", err)
+		t.Fatalf("msg: %v\nerr: %v", msg, err)
 	}
 
 	if err == nil && mustFail {
-		t.Error(msg, ":", err)
+		t.Fatalf("msg: %v\nerr: %v", msg, err)
 	}
 }
 

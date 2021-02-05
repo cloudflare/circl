@@ -26,6 +26,7 @@ type PrivateKey interface {
 
 	encoding.BinaryMarshaler
 	Equal(PrivateKey) bool
+	Public() PublicKey
 }
 
 // A Scheme represents a specific instance of a KEM.
@@ -33,12 +34,12 @@ type Scheme interface {
 	// Name of the scheme
 	Name() string
 
-	// GenerateKey creates a new key pair.
-	GenerateKey() (PublicKey, PrivateKey, error)
+	// GenerateKeyPair creates a new key pair.
+	GenerateKeyPair() (PublicKey, PrivateKey, error)
 
 	// Encapsulate generates a shared key ss for the public key and
 	// encapsulates it into a ciphertext ct.
-	Encapsulate(pk PublicKey) (ct []byte, ss []byte, err error)
+	Encapsulate(pk PublicKey) (ct, ss []byte, err error)
 
 	// Returns the shared key encapsulated in ciphertext ct for the
 	// private key sk.
@@ -62,11 +63,10 @@ type Scheme interface {
 	// Size of packed public keys.
 	PublicKeySize() int
 
-	// Deterministicallly derives a keypair from a seed. If you're unsure,
-	// you're better off using GenerateKey().
-	//
-	// Panics if seed is not of length SeedSize().
-	DeriveKey(seed []byte) (PublicKey, PrivateKey)
+	// DeriveKeyPair deterministicallly derives a pair of keys from a seed.
+	// Panics if the length of seed is not equal to the value returned by
+	// SeedSize.
+	DeriveKeyPair(seed []byte) (PublicKey, PrivateKey)
 
 	// Size of seed used in DeriveKey
 	SeedSize() int
@@ -79,6 +79,14 @@ type Scheme interface {
 
 	// Size of seed used in EncapsulateDeterministically().
 	EncapsulationSeedSize() int
+}
+
+// AuthScheme represents a KEM that supports authenticated key encapsulation.
+type AuthScheme interface {
+	Scheme
+	AuthEncapsulate(pkr PublicKey, sks PrivateKey) (ct, ss []byte, err error)
+	AuthEncapsulateDeterministically(pkr PublicKey, sks PrivateKey, seed []byte) (ct, ss []byte, err error)
+	AuthDecapsulate(skr PrivateKey, ct []byte, pks PublicKey) ([]byte, error)
 }
 
 var (

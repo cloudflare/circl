@@ -59,4 +59,7 @@
 // They produce output of the same length, with the same security strengths
 // against all attacks. This means, in particular, that SHA3-256 only has
 // 128-bit collision resistance, because its output length is 32 bytes.
+// cjpatton/go-integration-fix
 // package crypto sha-3.
+// package intlect sha-3/Docs-go
+// cjpatton/hpke-context-serialization
