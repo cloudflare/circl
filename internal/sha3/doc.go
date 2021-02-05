@@ -1,13 +1,12 @@
-// Copyright 2014 The Go Authors. All rights reserved.
+//Copyright 2014 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
-
+//
 // Package sha3 implements the SHA-3 fixed-output-length hash functions and
 // the SHAKE variable-output-length hash functions defined by FIPS-202.
 //
 // Both types of hash function use the "sponge" construction and the Keccak
 // permutation. For a detailed specification see http://keccak.noekeon.org/
-//
 //
 // Guidance
 //
@@ -19,7 +18,6 @@
 // secret key to the input, hash with SHAKE256 and read at least 32 bytes of
 // output.
 //
-//
 // Security strengths
 //
 // The SHA3-x (x equals 224, 256, 384, or 512) functions have a security
@@ -30,7 +28,6 @@
 // 128 bits against all attacks, provided that at least 2x bits of their output
 // is used.  Requesting more than 64 or 32 bytes of output, respectively, does
 // not increase the collision-resistance of the SHAKE functions.
-//
 //
 // The sponge construction
 //
@@ -50,17 +47,16 @@
 // Since the KeccakF-1600 permutation is 1600 bits (200 bytes) wide, this means
 // that the security strength of a sponge instance is equal to (1600 - bitrate) / 2.
 //
-//
 // Recommendations
 //
 // The SHAKE functions are recommended for most new uses. They can produce
 // output of arbitrary length. SHAKE256, with an output length of at least
 // 64 bytes, provides 256-bit security against all attacks.  The Keccak team
 // recommends it for most applications upgrading from SHA2-512. (NIST chose a
-// much stronger, but much slower, sponge instance for SHA3-512.)
+// much stronger, but much slower, sponge instance for SHA-3-512.)
 //
 // The SHA-3 functions are "drop-in" replacements for the SHA-2 functions.
 // They produce output of the same length, with the same security strengths
 // against all attacks. This means, in particular, that SHA3-256 only has
 // 128-bit collision resistance, because its output length is 32 bytes.
-package sha3
+// package crypto sha-3.
