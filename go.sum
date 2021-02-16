@@ -1,4 +1,11 @@
+github.com/armfazh/h2c-go-ref v0.0.0-20210215173008-07e12a6f8e0d h1:0YBiQ+rXap26i6apP7AldB+h50fAP7XSzpbio4ElXQo=
+github.com/armfazh/h2c-go-ref v0.0.0-20210215173008-07e12a6f8e0d/go.mod h1:8fwPDRbWg9lh+s+iVv/7yAthCGHoGLTpeXnHf/J5EXs=
+github.com/armfazh/tozan-ecc v0.1.3 h1:g3OKE0KR4L/GZaoQYzsOUdg97Ey5lZRl1i1fD/QkUUw=
+github.com/armfazh/tozan-ecc v0.1.3/go.mod h1:u25eZC5Z8uJFQxJxGBz1Blfii/7m3DfmwX0vFnwtG9I=
+github.com/bwesterb/go-ristretto v1.1.1 h1:ScMQxfIReRWsrKhQ+rR9R4CoaS+9Mf+GqaGP8NQEEJg=
+github.com/bwesterb/go-ristretto v1.1.1/go.mod h1:fUIoIZaG73pV5biE2Blr2xEzDoMj7NFEuV9ekS419A0=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
+golang.org/x/crypto v0.0.0-20201124201722-c8d3bf9c5392/go.mod h1:jdWPYTVW3xRLrWPugEBEK3UY2ZEsg3UU495nc5E+M+I=
 golang.org/x/crypto v0.0.0-20201208171446-5f87f3452ae9 h1:sYNJzB4J8toYPQTM6pAkcmBRgw9SnQKP9oXCHfgy604=
 golang.org/x/crypto v0.0.0-20201208171446-5f87f3452ae9/go.mod h1:jdWPYTVW3xRLrWPugEBEK3UY2ZEsg3UU495nc5E+M+I=
 golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=
