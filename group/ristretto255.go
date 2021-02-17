@@ -16,6 +16,10 @@ var (
 type ristrettoGroup struct {
 }
 
+func (g ristrettoGroup) String() string {
+	return "ristretto225"
+}
+
 type ristrettoElement struct {
 	p r225.Point
 }
