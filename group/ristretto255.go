@@ -25,9 +25,7 @@ type ristrettoScalar struct {
 }
 
 func (g ristrettoGroup) NewElement() Element {
-	return &ristrettoElement{
-		p: r225.Point{},
-	}
+	return g.Identity()
 }
 
 func (g ristrettoGroup) NewScalar() Scalar {
