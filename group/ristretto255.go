@@ -6,7 +6,7 @@ import (
 
 	h2c "github.com/armfazh/h2c-go-ref"
 
-	r225 "github.com/bwesterb/go-ristretto"
+	r255 "github.com/bwesterb/go-ristretto"
 )
 
 var (
@@ -17,15 +17,15 @@ type ristrettoGroup struct {
 }
 
 func (g ristrettoGroup) String() string {
-	return "ristretto225"
+	return "ristretto255"
 }
 
 type ristrettoElement struct {
-	p r225.Point
+	p r255.Point
 }
 
 type ristrettoScalar struct {
-	s r225.Scalar
+	s r255.Scalar
 }
 
 func (g ristrettoGroup) NewElement() Element {
@@ -34,12 +34,12 @@ func (g ristrettoGroup) NewElement() Element {
 
 func (g ristrettoGroup) NewScalar() Scalar {
 	return &ristrettoScalar{
-		s: r225.Scalar{},
+		s: r255.Scalar{},
 	}
 }
 
 func (g ristrettoGroup) Identity() Element {
-	var zero r225.Point
+	var zero r255.Point
 	zero.SetZero()
 	return &ristrettoElement{
 		p: zero,
@@ -47,7 +47,7 @@ func (g ristrettoGroup) Identity() Element {
 }
 
 func (g ristrettoGroup) Generator() Element {
-	var base r225.Point
+	var base r255.Point
 	base.SetBase()
 	return &ristrettoElement{
 		p: base,
@@ -55,7 +55,7 @@ func (g ristrettoGroup) Generator() Element {
 }
 
 func (g ristrettoGroup) Order() Scalar {
-	q := r225.Scalar{
+	q := r255.Scalar{
 		0x5cf5d3ed, 0x5812631a, 0xa2f79cd6, 0x14def9de,
 		0x00000000, 0x00000000, 0x00000000, 0x10000000,
 	}
@@ -65,7 +65,7 @@ func (g ristrettoGroup) Order() Scalar {
 }
 
 func (g ristrettoGroup) RandomElement(r io.Reader) Element {
-	var x r225.Point
+	var x r255.Point
 	x.Rand()
 	return &ristrettoElement{
 		p: x,
@@ -73,7 +73,7 @@ func (g ristrettoGroup) RandomElement(r io.Reader) Element {
 }
 
 func (g ristrettoGroup) RandomScalar(r io.Reader) Scalar {
-	var x r225.Scalar
+	var x r255.Scalar
 	x.Rand()
 	return &ristrettoScalar{
 		s: x,
@@ -104,7 +104,7 @@ func (g ristrettoGroup) HashToScalar(msg, dst []byte) Scalar {
 }
 
 func (e *ristrettoElement) IsIdentity() bool {
-	var zero r225.Point
+	var zero r255.Point
 	zero.SetZero()
 	return e.p.Equals(&zero)
 }
