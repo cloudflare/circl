@@ -17,22 +17,22 @@ type ristrettoGroup struct {
 }
 
 type ristrettoElement struct {
-	p *r225.Point
+	p r225.Point
 }
 
 type ristrettoScalar struct {
-	s *r225.Scalar
+	s r225.Scalar
 }
 
 func (g ristrettoGroup) NewElement() Element {
 	return &ristrettoElement{
-		p: &r225.Point{},
+		p: r225.Point{},
 	}
 }
 
 func (g ristrettoGroup) NewScalar() Scalar {
 	return &ristrettoScalar{
-		s: &r225.Scalar{},
+		s: r225.Scalar{},
 	}
 }
 
@@ -40,7 +40,7 @@ func (g ristrettoGroup) Identity() Element {
 	var zero r225.Point
 	zero.SetZero()
 	return &ristrettoElement{
-		p: &zero,
+		p: zero,
 	}
 }
 
@@ -48,20 +48,25 @@ func (g ristrettoGroup) Generator() Element {
 	var base r225.Point
 	base.SetBase()
 	return &ristrettoElement{
-		p: &base,
+		p: base,
 	}
 }
 
 func (g ristrettoGroup) Order() Scalar {
-	panic("not implemented")
-	return nil
+	q := r225.Scalar{
+		0x5cf5d3ed, 0x5812631a, 0xa2f79cd6, 0x14def9de,
+		0x00000000, 0x00000000, 0x00000000, 0x10000000,
+	}
+	return &ristrettoScalar{
+		s: q,
+	}
 }
 
 func (g ristrettoGroup) RandomElement(r io.Reader) Element {
 	var x r225.Point
 	x.Rand()
 	return &ristrettoElement{
-		p: &x,
+		p: x,
 	}
 }
 
@@ -69,16 +74,17 @@ func (g ristrettoGroup) RandomScalar(r io.Reader) Scalar {
 	var x r225.Scalar
 	x.Rand()
 	return &ristrettoScalar{
-		s: &x,
+		s: x,
 	}
 }
 
-// Note(caw): this does NOT implement HashToElement as specified in the hash-to-curve draft
-// https://cfrg.github.io/draft-irtf-cfrg-hash-to-curve/draft-irtf-cfrg-hash-to-curve.html#section-appendix.b
 func (g ristrettoGroup) HashToElement(msg, dst []byte) Element {
 	e := g.NewElement()
 
-	expID := h2c.ExpanderDesc{h2c.XMD, uint(crypto.SHA512)}
+	expID := h2c.ExpanderDesc{
+		Type: h2c.XMD,
+		ID:   uint(crypto.SHA512),
+	}
 	exp, err := expID.Get(dst, 0)
 	if err != nil {
 		panic(err)
@@ -102,11 +108,11 @@ func (e *ristrettoElement) IsIdentity() bool {
 }
 
 func (e *ristrettoElement) IsEqual(x Element) bool {
-	return e.p.Equals(x.(*ristrettoElement).p)
+	return e.p.Equals(&x.(*ristrettoElement).p)
 }
 
 func (e *ristrettoElement) Add(x Element, y Element) Element {
-	e.p.Add(x.(*ristrettoElement).p, y.(*ristrettoElement).p)
+	e.p.Add(&x.(*ristrettoElement).p, &y.(*ristrettoElement).p)
 	return e
 }
 
@@ -115,17 +121,17 @@ func (e *ristrettoElement) Dbl(x Element) Element {
 }
 
 func (e *ristrettoElement) Neg(x Element) Element {
-	e.p.Neg(x.(*ristrettoElement).p)
+	e.p.Neg(&x.(*ristrettoElement).p)
 	return e
 }
 
 func (e *ristrettoElement) Mul(x Element, y Scalar) Element {
-	e.p.ScalarMult(x.(*ristrettoElement).p, y.(*ristrettoScalar).s)
+	e.p.ScalarMult(&x.(*ristrettoElement).p, &y.(*ristrettoScalar).s)
 	return e
 }
 
 func (e *ristrettoElement) MulGen(x Scalar) Element {
-	e.p.ScalarMultBase(x.(*ristrettoScalar).s)
+	e.p.ScalarMultBase(&x.(*ristrettoScalar).s)
 	return e
 }
 
@@ -142,31 +148,31 @@ func (e *ristrettoElement) UnmarshalBinary(data []byte) error {
 }
 
 func (s *ristrettoScalar) IsEqual(x Scalar) bool {
-	return s.s.Equals(x.(*ristrettoScalar).s)
+	return s.s.Equals(&x.(*ristrettoScalar).s)
 }
 
 func (s *ristrettoScalar) Add(x Scalar, y Scalar) Scalar {
-	s.s.Add(x.(*ristrettoScalar).s, y.(*ristrettoScalar).s)
+	s.s.Add(&x.(*ristrettoScalar).s, &y.(*ristrettoScalar).s)
 	return s
 }
 
 func (s *ristrettoScalar) Sub(x Scalar, y Scalar) Scalar {
-	s.s.Sub(x.(*ristrettoScalar).s, y.(*ristrettoScalar).s)
+	s.s.Sub(&x.(*ristrettoScalar).s, &y.(*ristrettoScalar).s)
 	return s
 }
 
 func (s *ristrettoScalar) Mul(x Scalar, y Scalar) Scalar {
-	s.s.Mul(x.(*ristrettoScalar).s, y.(*ristrettoScalar).s)
+	s.s.Mul(&x.(*ristrettoScalar).s, &y.(*ristrettoScalar).s)
 	return s
 }
 
 func (s *ristrettoScalar) Neg(x Scalar) Scalar {
-	s.s.Neg(x.(*ristrettoScalar).s)
+	s.s.Neg(&x.(*ristrettoScalar).s)
 	return s
 }
 
 func (s *ristrettoScalar) Inv(x Scalar) Scalar {
-	s.s.Inverse(x.(*ristrettoScalar).s)
+	s.s.Inverse(&x.(*ristrettoScalar).s)
 	return s
 }
 
