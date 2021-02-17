@@ -1,11 +1,10 @@
 package group
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 )
 
 // https://tools.ietf.org/html/draft-irtf-cfrg-ristretto255-decaf448-00#appendix-A.1
@@ -32,16 +31,26 @@ func TestGeneratorMultiples(t *testing.T) {
 	g := Ristretto255
 	base := g.NewElement()
 	encBase, err := hex.DecodeString(encVec[0])
-	require.Nil(t, err, "UnmarshalBinary")
+	if err != nil {
+		t.Fatal("DecodeString")
+	}
 	err = base.UnmarshalBinary(encBase)
-	require.Nil(t, err, "UnmarshalBinary")
-	require.True(t, base.IsIdentity(), "Base element is not identity")
+	if err != nil {
+		t.Fatal("UnmarshalBinary")
+	}
+	if !base.IsIdentity() {
+		t.Fatal("Base element is not identity")
+	}
 
 	for i := 1; i < len(encVec); i++ {
 		base.Add(base, g.Generator())
 		baseEnc, err := base.MarshalBinary()
-		require.Nil(t, err, "MarshalBinary")
-		require.Equal(t, hex.EncodeToString(baseEnc), encVec[i], "Multiple %d mismatch", i)
+		if err != nil {
+			t.Fatalf("MarshalBinary %d", i)
+		}
+		if hex.EncodeToString(baseEnc) != encVec[i] {
+			t.Fatalf("Multiple %d mismatch", i)
+		}
 	}
 }
 
@@ -87,9 +96,13 @@ func TestInvalidEncodings(t *testing.T) {
 
 	for i, enc := range encVec {
 		raw, err := hex.DecodeString(enc)
-		require.Nil(t, err, "DecodeString")
+		if err != nil {
+			t.Fatal("DecodeString")
+		}
 		err = Ristretto255.NewElement().UnmarshalBinary(raw)
-		require.NotNil(t, err, "Decode succeeded for vector %d: %v", i, enc)
+		if err == nil {
+			t.Fatalf("Decode succeeded for vector %d: %v", i, enc)
+		}
 	}
 }
 
@@ -114,11 +127,19 @@ func TestRistrettoElGamal(t *testing.T) {
 	b.Mul(c2, sk)
 	p2.Add(c1, b.Neg(b))
 
-	require.True(t, p.IsEqual(p2), "Encryption/decryption failed")
+	if !p.IsEqual(p2) {
+		t.Fatal("Encryption/decryption failed")
+	}
 
 	pEnc, err := p.MarshalBinary()
-	require.Nil(t, err, "MarshalBinary")
+	if err != nil {
+		t.Fatal("MarshalBinary")
+	}
 	p2Enc, err := p2.MarshalBinary()
-	require.Nil(t, err, "MarshalBinary")
-	require.Equal(t, pEnc, p2Enc, "Unequal encodings")
+	if err != nil {
+		t.Fatal("MarshalBinary")
+	}
+	if !bytes.Equal(pEnc, p2Enc) {
+		t.Fatal("Unequal encodings")
+	}
 }
