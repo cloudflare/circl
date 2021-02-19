@@ -69,6 +69,37 @@ To contribute, fork this repository and make your changes, and then make a Pull
 Request. A Pull Request requires approval of the admin team and a successful
 CI build.
 
+## How to Cite 
+
+To cite CIRCL, use one of the following formats and update with the date
+you accessed this project.
+
+APA Style
+
+```
+Faz-Hernández, A. and Kwiatkowski, K. (2019). Introducing CIRCL: 
+An Advanced Cryptographic Library. Cloudflare. Available at 
+https://github.com/cloudflare/circl. Accessed Feb 2021.
+```
+
+Bibtex Source
+
+```bibtex
+@manual{circl,
+  title        = {Introducing CIRCL: An Advanced Cryptographic Library},
+  author       = {Armando Faz-Hern\'{a}ndez and Kris Kwiatkowski},
+  organization = {Cloudflare},
+  abstract     = {{CIRCL (Cloudflare Interoperable, Reusable Cryptographic Library) is
+                   a collection of cryptographic primitives written in Go. The goal 
+                   of this library is to be used as a tool for experimental 
+                   deployment of cryptographic algorithms targeting Post-Quantum (PQ)
+                   and Elliptic Curve Cryptography (ECC).}},
+  note         = {Available at \url{https://github.com/cloudflare/circl}. Accessed Feb 2021},
+  month        = jun,
+  year         = {2019}
+}
+```
+
 ## License
 
 The project is licensed under the [BSD-3-Clause License](./LICENSE).
