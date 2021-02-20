@@ -54,9 +54,9 @@ func toListBytes(t *testing.T, s, errMsg string) [][]byte {
 
 func toScalar(t *testing.T, g group.Group, s, errMsg string) group.Scalar {
 	r := g.NewScalar()
-	rBytes := toBytes(t, s, "Failed to convert scalar encoding")
+	rBytes := toBytes(t, s, errMsg)
 	err := r.UnmarshalBinary(rBytes)
-	test.CheckNoErr(t, err, "invalid proof random scalar")
+	test.CheckNoErr(t, err, errMsg)
 	return r
 }
 
