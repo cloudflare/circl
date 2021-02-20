@@ -29,10 +29,9 @@ type vector struct {
 			C string `json:"c"`
 			S string `json:"s"`
 		} `json:"EvaluationProof"`
-		Info             string `json:"Info"`
-		Input            string `json:"Input"`
-		Output           string `json:"Output"`
-		UnblindedElement string `json:"UnblindedElement"`
+		Info   string `json:"Info"`
+		Input  string `json:"Input"`
+		Output string `json:"Output"`
 	} `json:"vectors"`
 }
 
@@ -138,15 +137,7 @@ func (v *vector) test(t *testing.T) {
 			toListBytes(t, vi.EvaluationElement, "evaluation"),
 		)
 
-		unblindedToken, err := client.unblind(eval.Elements, clientReq.blinds)
-		test.CheckNoErr(t, err, "invalid unblindedToken")
-		v.compareLists(t,
-			unblindedToken,
-			toListBytes(t, vi.UnblindedElement, "unblindedelement"),
-		)
-
-		info := toBytes(t, vi.Info, "info")
-		outputs, err := client.Finalize(clientReq, eval, info)
+		outputs, err := client.Finalize(clientReq, eval)
 		test.CheckNoErr(t, err, "invalid finalize")
 		expectedOutputs := toListBytes(t, vi.Output, "output")
 		v.compareLists(t,
@@ -155,7 +146,7 @@ func (v *vector) test(t *testing.T) {
 		)
 
 		for j := range inputs {
-			output, err := server.FullEvaluate(inputs[j], info)
+			output, err := server.FullEvaluate(inputs[j])
 			test.CheckNoErr(t, err, "invalid full evaluate")
 			got := output
 			want := expectedOutputs[j]
@@ -163,7 +154,7 @@ func (v *vector) test(t *testing.T) {
 				test.ReportError(t, got, want, v.Name, v.Mode, i, j)
 			}
 
-			test.CheckOk(server.VerifyFinalize(inputs[j], info, output), "verify finalize", t)
+			test.CheckOk(server.VerifyFinalize(inputs[j], output), "verify finalize", t)
 		}
 	}
 }

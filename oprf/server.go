@@ -74,7 +74,7 @@ func (s *Server) Evaluate(blindedElements []Blinded) (*Evaluation, error) {
 }
 
 // FullEvaluate performs a full OPRF protocol at server-side.
-func (s *Server) FullEvaluate(input, info []byte) ([]byte, error) {
+func (s *Server) FullEvaluate(input []byte) ([]byte, error) {
 	p := s.Group.HashToElement(input, s.getDST(hashToGroupDST))
 
 	ser, err := s.scalarMult(p, s.privateKey.k)
@@ -82,13 +82,13 @@ func (s *Server) FullEvaluate(input, info []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return s.finalizeHash(input, ser, info), nil
+	return s.finalizeHash(input, ser), nil
 }
 
 // VerifyFinalize performs a full OPRF protocol and returns true if the output
 // matches the expected output.
-func (s *Server) VerifyFinalize(input, info, expectedOutput []byte) bool {
-	gotOutput, err := s.FullEvaluate(input, info)
+func (s *Server) VerifyFinalize(input, expectedOutput []byte) bool {
+	gotOutput, err := s.FullEvaluate(input)
 	if err != nil {
 		return false
 	}
