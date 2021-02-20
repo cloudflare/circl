@@ -132,7 +132,7 @@ func (c *Client) verifyProof(blinds []Blinded, e *Evaluation) bool {
 	}
 	cP.Mul(c.pkS.e, cc)
 	sG.Add(sG, cP)
-	a2, err := sG.MarshalBinary()
+	a2, err := sG.MarshalBinaryCompress()
 	if err != nil {
 		return false
 	}
@@ -142,7 +142,7 @@ func (c *Client) verifyProof(blinds []Blinded, e *Evaluation) bool {
 	cZ := c.suite.Group.NewElement()
 	cZ.Mul(Z, cc)
 	sM.Add(sM, cZ)
-	a3, err := sM.MarshalBinary()
+	a3, err := sM.MarshalBinaryCompress()
 	if err != nil {
 		return false
 	}

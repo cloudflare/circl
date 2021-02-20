@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cloudflare/circl/group"
 	"github.com/cloudflare/circl/internal/test"
 )
 
@@ -26,6 +27,7 @@ type vector struct {
 		BlindedElement    string `json:"BlindedElement"`
 		EvaluationElement string `json:"EvaluationElement"`
 		EvaluationProof   struct {
+			R string `json:"r"`
 			C string `json:"c"`
 			S string `json:"s"`
 		} `json:"EvaluationProof"`
@@ -48,6 +50,14 @@ func toListBytes(t *testing.T, s, errMsg string) [][]byte {
 		out[i] = toBytes(t, strs[i], errMsg)
 	}
 	return out
+}
+
+func toScalar(t *testing.T, g group.Group, s, errMsg string) group.Scalar {
+	r := g.NewScalar()
+	rBytes := toBytes(t, s, "Failed to convert scalar encoding")
+	err := r.UnmarshalBinary(rBytes)
+	test.CheckNoErr(t, err, "invalid proof random scalar")
+	return r
 }
 
 func readFile(t *testing.T, fileName string) []vector {
@@ -101,6 +111,12 @@ func (v *vector) compareLists(t *testing.T, got, want [][]byte) {
 	}
 }
 
+func (v *vector) compareStrings(t *testing.T, got, want string) {
+	if got != want {
+		test.ReportError(t, got, want, v.Name, v.Mode)
+	}
+}
+
 func (v *vector) test(t *testing.T) {
 	server, client := v.SetUpParties(t)
 
@@ -130,12 +146,19 @@ func (v *vector) test(t *testing.T) {
 			toListBytes(t, vi.BlindedElement, "blindedElement"),
 		)
 
-		eval, err := server.Evaluate(clientReq.BlindedElements)
+		rr := toScalar(t, client.suite.Group, vi.EvaluationProof.R, "invalid proof random scalar")
+
+		eval, err := server.evaluateWithProofScalar(clientReq.BlindedElements, rr)
 		test.CheckNoErr(t, err, "invalid evaluation")
 		v.compareLists(t,
 			eval.Elements,
 			toListBytes(t, vi.EvaluationElement, "evaluation"),
 		)
+
+		if v.Mode == VerifiableMode {
+			v.compareStrings(t, hex.EncodeToString(eval.Proof.C), vi.EvaluationProof.C)
+			v.compareStrings(t, hex.EncodeToString(eval.Proof.S), vi.EvaluationProof.S)
+		}
 
 		outputs, err := client.Finalize(clientReq, eval)
 		test.CheckNoErr(t, err, "invalid finalize")
