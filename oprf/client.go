@@ -73,7 +73,7 @@ func (c *Client) blind(inputs [][]byte, blinds []Blind) (*ClientRequest, error) 
 // Finalize computes the signed token from the server Evaluation and returns
 // the output of the OPRF protocol. The function uses server's public key
 // to verify the proof in verifiable mode.
-func (c *Client) Finalize(r *ClientRequest, e *Evaluation, info []byte) ([][]byte, error) {
+func (c *Client) Finalize(r *ClientRequest, e *Evaluation) ([][]byte, error) {
 	l := len(r.blinds)
 	if len(r.BlindedElements) != l || len(e.Elements) != l {
 		return nil, errors.New("mismatch number of elements")
@@ -91,7 +91,7 @@ func (c *Client) Finalize(r *ClientRequest, e *Evaluation, info []byte) ([][]byt
 	}
 	outputs := make([][]byte, l)
 	for i := 0; i < l; i++ {
-		outputs[i] = c.finalizeHash(r.inputs[i], unblindedElements[i], info)
+		outputs[i] = c.finalizeHash(r.inputs[i], unblindedElements[i])
 	}
 	return outputs, nil
 }

@@ -113,7 +113,7 @@ func (s *suite) scalarMult(e group.Element, k group.Scalar) ([]byte, error) {
 	return t.MarshalBinaryCompress()
 }
 
-func (s *suite) finalizeHash(input, element, info []byte) []byte {
+func (s *suite) finalizeHash(input, element []byte) []byte {
 	h := s.New()
 
 	lenBuf := []byte{0, 0}
@@ -125,10 +125,6 @@ func (s *suite) finalizeHash(input, element, info []byte) []byte {
 	binary.BigEndian.PutUint16(lenBuf, uint16(len(element)))
 	mustWrite(h, lenBuf)
 	mustWrite(h, element)
-
-	binary.BigEndian.PutUint16(lenBuf, uint16(len(info)))
-	mustWrite(h, lenBuf)
-	mustWrite(h, info)
 
 	dst := s.getDST(finalizeDST)
 	binary.BigEndian.PutUint16(lenBuf, uint16(len(dst)))
