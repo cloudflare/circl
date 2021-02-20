@@ -14,7 +14,7 @@ type PublicKey struct {
 }
 
 func (k *PrivateKey) Serialize() ([]byte, error) { return k.k.MarshalBinary() }
-func (k *PublicKey) Serialize() ([]byte, error)  { return k.e.MarshalBinary() }
+func (k *PublicKey) Serialize() ([]byte, error)  { return k.e.MarshalBinaryCompress() }
 
 func (k *PrivateKey) Deserialize(id SuiteID, data []byte) error {
 	suite, err := suiteFromID(id, BaseMode)
