@@ -51,3 +51,12 @@ func GenerateKey(id SuiteID) (*PrivateKey, error) {
 	}
 	return suite.generateKey(), nil
 }
+
+// DeriveKey derives a pair of keys given a seed and in accordance with the suite.
+func DeriveKey(id SuiteID, seed []byte) (*PrivateKey, error) {
+	suite, err := suiteFromID(id, BaseMode)
+	if err != nil {
+		return nil, err
+	}
+	return suite.deriveKey(seed), nil
+}
