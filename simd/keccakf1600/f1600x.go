@@ -61,7 +61,10 @@ func IsEnabledX4() bool { return cpu.X86.HasAVX2 }
 
 // IsEnabledX2 returns true if the architecture supports a two-way SIMD
 // implementation provided in this package.
-func IsEnabledX2() bool { return cpu.ARM64.HasSHA3 }
+func IsEnabledX2() bool {
+	// After Go 1.16 the flag cpu.ARM64.HasSHA3 is no more exposed.
+	return false
+}
 
 // Initialize the state and returns the buffer on which the four permutations
 // will act: a uint64 slice of length 100.  The first permutation will act
