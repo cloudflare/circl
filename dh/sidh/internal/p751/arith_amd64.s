@@ -1735,7 +1735,7 @@ TEXT ·mulP751(SB), $96-24
     MOVQ    R13, 80+C       \
     MOVQ    R14, 88+C
 
-TEXT ·rdcP751(SB), $0-16
+TEXT ·rdcP751(SB), $8-16
 	MOVQ z+0(FP), REG_P2
 	MOVQ x+8(FP), REG_P1
 
@@ -2351,14 +2351,18 @@ redc_with_mulx_adcx_adox:
 	// This implements the Montgomery reduction algorithm described in
 	// section 5.2.3 of https://eprint.iacr.org/2017/1015.pdf.
 	// This assumes that the BMI2 and ADX instruction set extensions are available.
+	MOVQ BP, 0(SP) // push: BP is Callee-save.
 	REDC(0(REG_P2), 0(REG_P1), mul256x448bmi2adx)
+	MOVQ 0(SP), BP // pop: BP is Callee-save.
 	RET
 
 redc_with_mulx:
 	// This implements the Montgomery reduction algorithm described in
 	// section 5.2.3 of https://eprint.iacr.org/2017/1015.pdf.
 	// This assumes that the BMI2 instruction set extension is available.
+	MOVQ BP, 0(SP) // push: BP is Callee-save.
 	REDC(0(REG_P2), 0(REG_P1), mul256x448bmi2)
+	MOVQ 0(SP), BP // pop: BP is Callee-save.
 	RET
 
 TEXT ·adlP751(SB), NOSPLIT, $0-24

@@ -103,7 +103,7 @@ TEXT ·mulBmiAsm(SB),NOSPLIT,$8-24
     XORQ R14, R14
     XORQ R15, R15
 
-    MOVQ BP, 0(SP)
+    MOVQ BP, 0(SP) // push: BP is Callee-save.
     XORQ BP, BP
 
 // Uses BMI2 (MULX)
@@ -160,7 +160,7 @@ TEXT ·mulBmiAsm(SB),NOSPLIT,$8-24
     MOVQ R12, (40)(DI)
     MOVQ R13, (48)(DI)
     MOVQ R14, (56)(DI)
-    MOVQ 0(SP), BP
+    MOVQ 0(SP), BP // pop: BP is Callee-save.
 
     // NOW DI needs to be reduced if > p
     RET
