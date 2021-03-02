@@ -15,13 +15,15 @@ import (
 )
 
 type vector struct {
-	ID      uint16 `json:"suiteID"`
-	Name    string `json:"suiteName"`
-	Mode    uint8  `json:"mode"`
-	Hash    string `json:"hash"`
-	PkSm    string `json:"pkSm"`
-	SkSm    string `json:"skSm"`
-	Vectors []struct {
+	ID       uint16 `json:"suiteID"`
+	Name     string `json:"suiteName"`
+	Mode     uint8  `json:"mode"`
+	Hash     string `json:"hash"`
+	PkSm     string `json:"pkSm"`
+	SkSm     string `json:"skSm"`
+	Seed     string `json:"seed"`
+	GroupDST string `json:"groupDST"`
+	Vectors  []struct {
 		Batch             int    `json:"Batch"`
 		Blind             string `json:"Blind"`
 		BlindedElement    string `json:"BlindedElement"`
@@ -31,7 +33,6 @@ type vector struct {
 			C string `json:"c"`
 			S string `json:"s"`
 		} `json:"EvaluationProof"`
-		Info   string `json:"Info"`
 		Input  string `json:"Input"`
 		Output string `json:"Output"`
 	} `json:"vectors"`
