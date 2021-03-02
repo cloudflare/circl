@@ -9154,7 +9154,7 @@ TEXT ·decomposeAVX2(SB), NOSPLIT, $0-24
 
 // func makeHintAVX2(p *[256]uint32, p0 *[256]uint32, p1 *[256]uint32) uint32
 // Requires: AVX, AVX2, POPCNT
-TEXT ·makeHintAVX2(SB), NOSPLIT, $0-28
+TEXT ·makeHintAVX2(SB), NOSPLIT, $8-28
 	MOVQ         p+0(FP), AX
 	MOVQ         p0+8(FP), CX
 	MOVQ         p1+16(FP), DX

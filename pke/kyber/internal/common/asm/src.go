@@ -786,6 +786,7 @@ func nttAVX2() {
 func mulHatAVX2() {
 	TEXT("mulHatAVX2", NOSPLIT, "func(p, a, b *[256]int16)")
 	Pragma("noescape")
+	AllocLocal(8) // In case BP register is needed.
 
 	pPtr := Load(Param("p"), GP64())
 	aPtr := Load(Param("a"), GP64())

@@ -1167,6 +1167,7 @@ func decomposeAVX2() {
 func makeHintAVX2() {
 	TEXT("makeHintAVX2", NOSPLIT, "func(p, p0, p1 *[256]uint32) uint32")
 	Pragma("noescape")
+	AllocLocal(8) // In case BP register is needed.
 
 	pPtr := Load(Param("p"), GP64())
 	p0Ptr := Load(Param("p0"), GP64())
