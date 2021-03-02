@@ -78,10 +78,16 @@ func readFile(t *testing.T, fileName string) []vector {
 }
 
 func (v *vector) SetUpParties(t *testing.T) (s *Server, c *Client) {
-	skSm := toBytes(t, v.SkSm, "private key")
-	privateKey := new(PrivateKey)
-	err := privateKey.Deserialize(v.ID, skSm)
-	test.CheckNoErr(t, err, "invalid private key")
+	seed := toBytes(t, v.Seed, "seed for keys")
+	privateKey, err := DeriveKey(v.ID, seed)
+	test.CheckNoErr(t, err, "deriving key")
+
+	got, err := privateKey.Serialize()
+	test.CheckNoErr(t, err, "serlalizing key")
+	want := toBytes(t, v.SkSm, "private key")
+	if !bytes.Equal(got, want) {
+		test.ReportError(t, got, want, v.Name, v.Mode)
+	}
 
 	if v.Mode == BaseMode {
 		s, err = NewServer(v.ID, privateKey)

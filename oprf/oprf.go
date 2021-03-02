@@ -108,6 +108,11 @@ func (s *suite) generateKey() *PrivateKey {
 	return &PrivateKey{s.SuiteID, privateKey}
 }
 
+func (s *suite) deriveKey(seed []byte) *PrivateKey {
+	privateKey := s.Group.HashToScalar(seed, nil)
+	return &PrivateKey{s.SuiteID, privateKey}
+}
+
 func (s *suite) scalarMult(e group.Element, k group.Scalar) ([]byte, error) {
 	t := s.Group.NewElement()
 	t.Mul(e, k)
