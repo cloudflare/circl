@@ -293,7 +293,7 @@
 	MOVQ    R10, (80)(SP)   \
 	MOVQ    R11, (88)(SP)   \
 	\ // BP will be used for schoolbook multiplication below
-	MOVQ    BP, 96(SP)  \
+	MOVQ    BP, 96(SP)  \ // push: BP is Callee-save.
 	\ // (U1+U0)*(V1+V0)
 	MULS((64)(OUT), 0(SP), 32(SP), R8, R9, R10, R11, R12, R13, R14, R15, BX, BP)    \
 	\ // U0 x V0
@@ -301,7 +301,7 @@
 	\ // U1 x V1
 	MULS(0(SP), 32(I0), 32(I1), R8, R9, R10, R11, R12, R13, R14, R15, BX, BP)  \
 	\ // Recover BP
-	MOVQ    96(SP), BP  \
+	MOVQ    96(SP), BP  \ // pop: BP is Callee-save.
 	\ // Final part of schoolbook multiplication; R[8-11] = (U0+U1) x (V0+V1)
 	MOVQ    (64)(SP), R8    \
 	MOVQ    (72)(SP), R9    \

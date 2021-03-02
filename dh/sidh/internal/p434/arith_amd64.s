@@ -1079,7 +1079,7 @@ mul_with_mulx_adcx_adox:
     MOVQ   0x10(DI), R10
     MOVQ   0x18(DI), R11
 
-    MOVQ   BP, 0x70(SP)
+    MOVQ   BP, 0x70(SP) // push: BP is Callee-save.
 
     ADDQ   0x20(DI), R8
     ADCQ   0x28(DI), R9
@@ -1198,7 +1198,7 @@ mul_with_mulx_adcx_adox:
     ADCQ   $0, R13
     MOVQ   R13, 0x68(CX)    // OUT13
 
-    MOVQ   0x70(SP), BP
+    MOVQ   0x70(SP), BP // pop: BP is Callee-save.
     RET
 
 TEXT ·rdcP434(SB),$0-16
