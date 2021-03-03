@@ -62,7 +62,7 @@ func IsEnabledX4() bool { return cpu.X86.HasAVX2 }
 // IsEnabledX2 returns true if the architecture supports a two-way SIMD
 // implementation provided in this package.
 func IsEnabledX2() bool {
-	// After Go 1.16 the flag cpu.ARM64.HasSHA3 is no more exposed.
+	// After Go 1.16 the flag cpu.ARM64.HasSHA3 is no longer exposed.
 	return false
 }
 
