@@ -40,6 +40,7 @@ func newServer(id SuiteID, m Mode, skS *PrivateKey) (*Server, error) {
 	return &Server{*suite, *skS}, nil
 }
 
+// GetPublicKey returns the public key corresponding to the server.
 func (s *Server) GetPublicKey() *PublicKey { return s.privateKey.Public() }
 
 // Evaluate evaluates a set of blinded inputs from the client.
@@ -57,29 +58,36 @@ func (s *Server) evaluateWithProofScalar(blindedElements []Blinded, proofScalar 
 	}
 
 	var err error
-	eval := make([]SerializedElement, l)
-	p := s.suite.NewElement()
+	input := make([]group.Element, l)
+	eval := make([]group.Element, l)
+	out := make([]SerializedElement, l)
 
 	for i := range blindedElements {
-		err = p.UnmarshalBinary(blindedElements[i])
+		input[i] = s.suite.NewElement()
+		err = input[i].UnmarshalBinary(blindedElements[i])
 		if err != nil {
 			return nil, err
 		}
-		eval[i], err = s.scalarMult(p, s.privateKey.k)
+
+		eval[i] = s.Group.NewElement()
+		eval[i].Mul(input[i], s.privateKey.k)
+
+		e, err := eval[i].MarshalBinaryCompress()
 		if err != nil {
 			return nil, err
 		}
+		out[i] = e
 	}
 
 	var proof *Proof
 	if s.Mode == VerifiableMode {
-		proof, err = s.generateProofWithRandomScalar(blindedElements, eval, proofScalar)
+		proof, err = s.generateProofWithRandomScalar(s.privateKey.k, s.Generator(), s.privateKey.Public().e, input, eval, proofScalar)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return &Evaluation{eval, proof}, nil
+	return &Evaluation{out, proof}, nil
 }
 
 // FullEvaluate performs a full OPRF protocol at server-side.
@@ -104,26 +112,28 @@ func (s *Server) VerifyFinalize(input, expectedOutput []byte) bool {
 	return subtle.ConstantTimeCompare(gotOutput, expectedOutput) == 1
 }
 
-func (s *Server) generateProofWithRandomScalar(b []Blinded, eval []SerializedElement, rr group.Scalar) (*Proof, error) {
-	pkS := s.privateKey.Public()
-	pkSm, err := pkS.Serialize()
+func (s *Server) generateProofWithRandomScalar(k group.Scalar, A, B group.Element, Cs []group.Element, Ds []group.Element, rr group.Scalar) (*Proof, error) {
+	M, Z, err := s.computeComposites(k, B, Cs, Ds)
 	if err != nil {
 		return nil, err
 	}
 
-	a0, a1, err := s.computeComposites(pkSm, b, eval, s.privateKey.k)
+	Bm, err := B.MarshalBinaryCompress()
 	if err != nil {
 		return nil, err
 	}
 
-	M := s.Group.NewElement()
-	err = M.UnmarshalBinary(a0)
+	a0, err := M.MarshalBinaryCompress()
+	if err != nil {
+		return nil, err
+	}
+	a1, err := Z.MarshalBinaryCompress()
 	if err != nil {
 		return nil, err
 	}
 
 	a2e := s.Group.NewElement()
-	a2e.MulGen(rr)
+	a2e.Mul(A, rr)
 	a2, err := a2e.MarshalBinaryCompress()
 	if err != nil {
 		return nil, err
@@ -136,7 +146,7 @@ func (s *Server) generateProofWithRandomScalar(b []Blinded, eval []SerializedEle
 		return nil, err
 	}
 
-	cc := s.doChallenge([5][]byte{pkSm, a0, a1, a2, a3})
+	cc := s.doChallenge([5][]byte{Bm, a0, a1, a2, a3})
 	ss := s.suite.Group.NewScalar()
 	ss.Mul(cc, s.privateKey.k)
 	ss.Sub(rr, ss)

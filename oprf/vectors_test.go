@@ -149,13 +149,13 @@ func (v *vector) test(t *testing.T) {
 		clientReq, err := client.blind(inputs, blinds)
 		test.CheckNoErr(t, err, "invalid client request")
 		v.compareLists(t,
-			clientReq.BlindedElements,
+			clientReq.BlindedElements(),
 			toListBytes(t, vi.BlindedElement, "blindedElement"),
 		)
 
 		rr := toScalar(t, client.suite.Group, vi.EvaluationProof.R, "invalid proof random scalar")
 
-		eval, err := server.evaluateWithProofScalar(clientReq.BlindedElements, rr)
+		eval, err := server.evaluateWithProofScalar(clientReq.BlindedElements(), rr)
 		test.CheckNoErr(t, err, "invalid evaluation")
 		v.compareLists(t,
 			eval.Elements,

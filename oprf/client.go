@@ -3,6 +3,8 @@ package oprf
 import (
 	"crypto/rand"
 	"errors"
+
+	"github.com/cloudflare/circl/group"
 )
 
 // Client is a representation of a OPRF client during protocol execution.
@@ -13,9 +15,22 @@ type Client struct {
 
 // ClientRequest is a structure to encapsulate the output of a Request call.
 type ClientRequest struct {
-	inputs          [][]byte
-	blinds          []Blind
-	BlindedElements []Blinded
+	inputs   [][]byte
+	blinds   []Blind
+	elements []group.Element
+}
+
+// BlindedElements returns the serialized blinded elements produced for the client request.
+func (r ClientRequest) BlindedElements() [][]byte {
+	var err error
+	serializedBlinds := make([][]byte, len(r.elements))
+	for i := range r.elements {
+		serializedBlinds[i], err = r.elements[i].MarshalBinaryCompress()
+		if err != nil {
+			return nil
+		}
+	}
+	return serializedBlinds
 }
 
 // NewClient creates a client in base mode.
@@ -58,14 +73,11 @@ func (c *Client) Request(inputs [][]byte) (*ClientRequest, error) {
 }
 
 func (c *Client) blind(inputs [][]byte, blinds []Blind) (*ClientRequest, error) {
-	var err error
-	blindedElements := make([]Blinded, len(inputs))
+	blindedElements := make([]group.Element, len(inputs))
 	for i := range inputs {
 		p := c.suite.Group.HashToElement(inputs[i], c.suite.getDST(hashToGroupDST))
-		blindedElements[i], err = c.scalarMult(p, blinds[i])
-		if err != nil {
-			return nil, err
-		}
+		blindedElements[i] = c.suite.Group.NewElement()
+		blindedElements[i].Mul(p, blinds[i])
 	}
 	return &ClientRequest{inputs, blinds, blindedElements}, nil
 }
@@ -75,17 +87,23 @@ func (c *Client) blind(inputs [][]byte, blinds []Blind) (*ClientRequest, error) 
 // to verify the proof in verifiable mode.
 func (c *Client) Finalize(r *ClientRequest, e *Evaluation) ([][]byte, error) {
 	l := len(r.blinds)
-	if len(r.BlindedElements) != l || len(e.Elements) != l {
+	if len(r.elements) != l || len(e.Elements) != l {
 		return nil, errors.New("mismatch number of elements")
 	}
 
+	evals := make([]group.Element, len(e.Elements))
+	for i := range e.Elements {
+		evals[i] = c.suite.Group.NewElement()
+		evals[i].UnmarshalBinary(e.Elements[i])
+	}
+
 	if c.Mode == VerifiableMode {
-		if !c.verifyProof(r.BlindedElements, e) {
+		if !c.verifyProof(r.elements, evals, *e.Proof) {
 			return nil, errors.New("invalid proof")
 		}
 	}
 
-	unblindedElements, err := c.unblind(e.Elements, r.blinds)
+	unblindedElements, err := c.unblind(evals, r.blinds)
 	if err != nil {
 		return nil, err
 	}
@@ -96,29 +114,29 @@ func (c *Client) Finalize(r *ClientRequest, e *Evaluation) ([][]byte, error) {
 	return outputs, nil
 }
 
-func (c *Client) verifyProof(blinds []Blinded, e *Evaluation) bool {
+func (c *Client) verifyProof(blinds []group.Element, elements []group.Element, proof Proof) bool {
 	pkSm, err := c.pkS.Serialize()
 	if err != nil {
 		return false
 	}
-	a0, a1, err := c.computeComposites(pkSm, blinds, e.Elements, nil)
+
+	M, Z, err := c.computeComposites(nil, c.pkS.e, blinds, elements)
 	if err != nil {
 		return false
 	}
-	M := c.suite.Group.NewElement()
-	err = M.UnmarshalBinary(a0)
+
+	a0, err := M.MarshalBinaryCompress()
 	if err != nil {
 		return false
 	}
-	Z := c.suite.Group.NewElement()
-	err = Z.UnmarshalBinary(a1)
+	a1, err := Z.MarshalBinaryCompress()
 	if err != nil {
 		return false
 	}
 
 	sG := c.suite.Group.NewElement()
 	ss := c.suite.Group.NewScalar()
-	err = ss.UnmarshalBinary(e.Proof.S)
+	err = ss.UnmarshalBinary(proof.S)
 	if err != nil {
 		return false
 	}
@@ -126,7 +144,7 @@ func (c *Client) verifyProof(blinds []Blinded, e *Evaluation) bool {
 
 	cP := c.suite.Group.NewElement()
 	cc := c.suite.Group.NewScalar()
-	err = cc.UnmarshalBinary(e.Proof.C)
+	err = cc.UnmarshalBinary(proof.C)
 	if err != nil {
 		return false
 	}
@@ -151,17 +169,13 @@ func (c *Client) verifyProof(blinds []Blinded, e *Evaluation) bool {
 	return gotC.IsEqual(cc)
 }
 
-func (c *Client) unblind(e []SerializedElement, blinds []Blind) ([][]byte, error) {
+func (c *Client) unblind(e []group.Element, blinds []Blind) ([][]byte, error) {
+	var err error
 	unblindedElements := make([][]byte, len(e))
-	p := c.Group.NewElement()
 	invBlind := c.Group.NewScalar()
 	for i := range e {
-		err := p.UnmarshalBinary(e[i])
-		if err != nil {
-			return nil, err
-		}
 		invBlind.Inv(blinds[i])
-		unblindedElements[i], err = c.scalarMult(p, invBlind)
+		unblindedElements[i], err = c.scalarMult(e[i], invBlind)
 		if err != nil {
 			return nil, err
 		}
