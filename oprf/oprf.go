@@ -151,18 +151,22 @@ func mustWrite(h io.Writer, bytes []byte) {
 }
 
 func (s *suite) computeComposites(
-	pkSm []byte,
-	b []Blinded,
-	eval []SerializedElement,
-	skS group.Scalar,
-) ([]byte, []byte, error) {
-	lenBuf := []byte{0, 0}
+	k group.Scalar,
+	B group.Element,
+	Cs []group.Element,
+	Ds []group.Element,
+) (group.Element, group.Element, error) {
+	Bm, err := B.MarshalBinaryCompress()
+	if err != nil {
+		return nil, nil, err
+	}
 
+	lenBuf := []byte{0, 0}
 	H := s.New()
 
-	binary.BigEndian.PutUint16(lenBuf, uint16(len(pkSm)))
+	binary.BigEndian.PutUint16(lenBuf, uint16(len(Bm)))
 	mustWrite(H, lenBuf)
-	mustWrite(H, pkSm)
+	mustWrite(H, Bm)
 
 	dst := s.getDST(seedDST)
 	binary.BigEndian.PutUint16(lenBuf, uint16(len(dst)))
@@ -173,11 +177,19 @@ func (s *suite) computeComposites(
 
 	M := s.Group.Identity()
 	Z := s.Group.Identity()
-	Mi := s.Group.NewElement()
-	Zi := s.Group.NewElement()
 	h2sDST := s.getDST(hashToScalarDST)
-	for i := range b {
+	for i := range Cs {
 		h2Input := []byte{}
+
+		Ci, err := Cs[i].MarshalBinaryCompress()
+		if err != nil {
+			return nil, nil, err
+		}
+
+		Di, err := Ds[i].MarshalBinaryCompress()
+		if err != nil {
+			return nil, nil, err
+		}
 
 		binary.BigEndian.PutUint16(lenBuf, uint16(len(seed)))
 		h2Input = append(append(h2Input, lenBuf...), seed...)
@@ -185,48 +197,33 @@ func (s *suite) computeComposites(
 		binary.BigEndian.PutUint16(lenBuf, uint16(i))
 		h2Input = append(h2Input, lenBuf...)
 
-		binary.BigEndian.PutUint16(lenBuf, uint16(len(b[i])))
-		h2Input = append(append(h2Input, lenBuf...), b[i]...)
+		binary.BigEndian.PutUint16(lenBuf, uint16(len(Ci)))
+		h2Input = append(append(h2Input, lenBuf...), Ci...)
 
-		binary.BigEndian.PutUint16(lenBuf, uint16(len(eval[i])))
-		h2Input = append(append(h2Input, lenBuf...), eval[i]...)
+		binary.BigEndian.PutUint16(lenBuf, uint16(len(Di)))
+		h2Input = append(append(h2Input, lenBuf...), Di...)
 
 		dst := s.getDST(compositeDST)
 		binary.BigEndian.PutUint16(lenBuf, uint16(len(dst)))
 		h2Input = append(append(h2Input, lenBuf...), dst...)
 
 		di := s.Group.HashToScalar(h2Input, h2sDST)
-		err := Mi.UnmarshalBinary(b[i])
-		if err != nil {
-			return nil, nil, err
-		}
-		Mi.Mul(Mi, di)
+		Mi := s.Group.NewElement()
+		Mi.Mul(Cs[i], di)
 		M.Add(M, Mi)
 
-		if skS == nil {
-			err = Zi.UnmarshalBinary(eval[i])
-			if err != nil {
-				return nil, nil, err
-			}
-			Zi.Mul(Zi, di)
+		if k == nil {
+			Zi := s.Group.NewElement()
+			Zi.Mul(Ds[i], di)
 			Z.Add(Z, Zi)
 		}
 	}
 
-	if skS != nil {
-		Z.Mul(M, skS)
+	if k != nil {
+		Z.Mul(M, k)
 	}
 
-	serM, err := M.MarshalBinaryCompress()
-	if err != nil {
-		return nil, nil, err
-	}
-	serZ, err := Z.MarshalBinaryCompress()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return serM, serZ, nil
+	return M, Z, nil
 }
 
 func (s *suite) doChallenge(a [5][]byte) group.Scalar {

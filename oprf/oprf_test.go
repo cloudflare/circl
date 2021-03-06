@@ -93,7 +93,7 @@ func testAPI(t *testing.T, suite oprf.SuiteID, mode oprf.Mode) {
 		t.Fatal("invalid blinding of client: " + err.Error())
 	}
 
-	eval, err := server.Evaluate(cr.BlindedElements)
+	eval, err := server.Evaluate(cr.BlindedElements())
 	if err != nil {
 		t.Fatal("invalid evaluation of server: " + err.Error())
 	}
