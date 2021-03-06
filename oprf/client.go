@@ -91,10 +91,14 @@ func (c *Client) Finalize(r *ClientRequest, e *Evaluation) ([][]byte, error) {
 		return nil, errors.New("mismatch number of elements")
 	}
 
+	var err error
 	evals := make([]group.Element, len(e.Elements))
 	for i := range e.Elements {
 		evals[i] = c.suite.Group.NewElement()
-		evals[i].UnmarshalBinary(e.Elements[i])
+		err = evals[i].UnmarshalBinary(e.Elements[i])
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if c.Mode == VerifiableMode {
