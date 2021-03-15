@@ -15,8 +15,8 @@ import (
 
 func TestVectors(t *testing.T) {
 	// Test vectors from
-	// https://github.com/cfrg/draft-irtf-cfrg-hpke/blob/draft-irtf-cfrg-hpke-07/test-vectors.json
-	vectors := readFile(t, "testdata/vectors_v07.json")
+	// https://github.com/cfrg/draft-irtf-cfrg-hpke/blob/master/test-vectors.json
+	vectors := readFile(t, "testdata/vectors_v08_779d028.json")
 	for i, v := range vectors {
 		t.Run(fmt.Sprintf("v%v", i), v.verify)
 	}

@@ -22,7 +22,7 @@ import (
 	"github.com/cloudflare/circl/kem"
 )
 
-const versionLabel = "HPKE-07"
+const versionLabel = "HPKE-v1"
 
 // Context defines the capabilities of an HPKE context.
 type Context interface {
