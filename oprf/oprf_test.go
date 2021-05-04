@@ -2,6 +2,7 @@ package oprf_test
 
 import (
 	"bytes"
+	"crypto/rand"
 	"fmt"
 	"testing"
 
@@ -28,7 +29,7 @@ func TestOPRF(t *testing.T) {
 }
 
 func testSerialization(t *testing.T, suite oprf.SuiteID, mode oprf.Mode) {
-	privateKey, err := oprf.GenerateKey(suite)
+	privateKey, err := oprf.GenerateKey(suite, rand.Reader)
 	test.CheckNoErr(t, err, "invalid key generation")
 
 	var server *oprf.Server
