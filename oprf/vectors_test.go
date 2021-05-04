@@ -79,7 +79,7 @@ func readFile(t *testing.T, fileName string) []vector {
 
 func (v *vector) SetUpParties(t *testing.T) (s *Server, c *Client) {
 	seed := toBytes(t, v.Seed, "seed for keys")
-	privateKey, err := DeriveKey(v.ID, seed)
+	privateKey, err := DeriveKey(v.ID, v.Mode, seed)
 	test.CheckNoErr(t, err, "deriving key")
 
 	got, err := privateKey.Serialize()
@@ -190,8 +190,10 @@ func (v *vector) test(t *testing.T) {
 }
 
 func TestVectors(t *testing.T) {
-	// Test vectors from https://datatracker.ietf.org/doc/draft-irtf-cfrg-voprf
-	v := readFile(t, "testdata/allVectors_v06.json")
+	// Source of test vectors
+	// published: https://datatracker.ietf.org/doc/draft-irtf-cfrg-voprf
+	// master: https://github.com/cfrg/draft-irtf-cfrg-voprf
+	v := readFile(t, "testdata/allVectors_v06_master.json")
 
 	for i := range v {
 		id := v[i].ID

@@ -1,6 +1,8 @@
 package oprf
 
 import (
+	"io"
+
 	"github.com/cloudflare/circl/group"
 )
 
@@ -44,19 +46,24 @@ func (k *PrivateKey) Public() *PublicKey {
 }
 
 // GenerateKey generates a pair of keys in accordance with the suite.
-func GenerateKey(id SuiteID) (*PrivateKey, error) {
+func GenerateKey(id SuiteID, rnd io.Reader) (*PrivateKey, error) {
 	suite, err := suiteFromID(id, BaseMode)
 	if err != nil {
 		return nil, err
 	}
-	return suite.generateKey(), nil
+	if rnd == nil {
+		panic("rnd must be an non-nil io.Reader")
+	}
+	privateKey := suite.Group.RandomScalar(rnd)
+	return &PrivateKey{suite.SuiteID, privateKey}, nil
 }
 
-// DeriveKey derives a pair of keys given a seed and in accordance with the suite.
-func DeriveKey(id SuiteID, seed []byte) (*PrivateKey, error) {
-	suite, err := suiteFromID(id, BaseMode)
+// DeriveKey derives a pair of keys given a seed and in accordance with the suite and mode.
+func DeriveKey(id SuiteID, mode Mode, seed []byte) (*PrivateKey, error) {
+	suite, err := suiteFromID(id, mode)
 	if err != nil {
 		return nil, err
 	}
-	return suite.deriveKey(seed), nil
+	privateKey := suite.Group.HashToScalar(seed, suite.getDST(hashToScalarDST))
+	return &PrivateKey{suite.SuiteID, privateKey}, nil
 }

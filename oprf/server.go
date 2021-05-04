@@ -32,7 +32,10 @@ func newServer(id SuiteID, m Mode, skS *PrivateKey) (*Server, error) {
 		return nil, err
 	}
 	if skS == nil {
-		skS = suite.generateKey()
+		skS, err = GenerateKey(id, rand.Reader)
+		if err != nil {
+			return nil, err
+		}
 	} else if id != skS.s { // Verifies key corresponds to SuiteID.
 		return nil, errors.New("key doesn't match with suite")
 	}

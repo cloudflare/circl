@@ -16,7 +16,6 @@ package oprf
 
 import (
 	"crypto"
-	"crypto/rand"
 	"encoding/binary"
 	"errors"
 	"io"
@@ -98,19 +97,9 @@ func suiteFromID(id SuiteID, m Mode) (*suite, error) {
 func (s *suite) GetMode() Mode { return s.Mode }
 func (s *suite) getDST(name string) []byte {
 	return append(append(append([]byte{},
-		[]byte(version)...),
 		[]byte(name)...),
+		[]byte(version)...),
 		[]byte{s.Mode, 0, byte(s.SuiteID)}...)
-}
-
-func (s *suite) generateKey() *PrivateKey {
-	privateKey := s.Group.RandomScalar(rand.Reader)
-	return &PrivateKey{s.SuiteID, privateKey}
-}
-
-func (s *suite) deriveKey(seed []byte) *PrivateKey {
-	privateKey := s.Group.HashToScalar(seed, nil)
-	return &PrivateKey{s.SuiteID, privateKey}
 }
 
 func (s *suite) scalarMult(e group.Element, k group.Scalar) ([]byte, error) {
