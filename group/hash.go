@@ -5,26 +5,38 @@ import (
 	"math/big"
 )
 
-// FieldHasher allows to hash byte strings producing one or more field elements.
-type FieldHasher interface {
-	// HashToField generates a set of elements {u1,..., uN} = Hash(b).
-	HashToField(u []big.Int, b []byte)
+// HashToField generates a set of elements {u1,..., uN} = Hash(b) where each
+// u in GF(p) and L is the security parameter.
+func HashToField(u []big.Int, b []byte, e Expander, p *big.Int, L uint) {
+	count := uint(len(u))
+	bytes := e.Expand(b, count*L)
+	for i := range u {
+		j := uint(i) * L
+		u[i].Mod(u[i].SetBytes(bytes[j:j+L]), p)
+	}
+}
+
+const maxDSTLength = 255
+
+var longDSTPrefix = [17]byte{'H', '2', 'C', '-', 'O', 'V', 'E', 'R', 'S', 'I', 'Z', 'E', '-', 'D', 'S', 'T', '-'}
+
+type Expander interface {
+	// Expand generates a pseudo-random byte string of a determined length by
+	// expanding an input string.
+	Expand(in []byte, length uint) (pseudo []byte)
 }
 
 type expanderXMD struct {
 	h   crypto.Hash
-	p   *big.Int
-	L   uint
 	dst []byte
 }
 
 // NewExpanderMD returns a hash function based on a Merkle-Damgård hash function.
-func NewExpanderMD(h crypto.Hash, p *big.Int, L uint, dst []byte) FieldHasher {
-	const maxDSTLength = 255
+func NewExpanderMD(h crypto.Hash, dst []byte) Expander {
 	var dstPrime []byte
 	if l := len(dst); l > maxDSTLength {
 		H := h.New()
-		_, _ = H.Write([]byte("H2C-OVERSIZE-DST-"))
+		_, _ = H.Write(longDSTPrefix[:])
 		_, _ = H.Write(dst)
 		dstPrime = H.Sum(nil)
 	} else {
@@ -32,19 +44,10 @@ func NewExpanderMD(h crypto.Hash, p *big.Int, L uint, dst []byte) FieldHasher {
 		copy(dstPrime, dst)
 	}
 	dstPrime = append(dstPrime, byte(len(dstPrime)))
-	return expanderXMD{h, p, L, dstPrime}
+	return expanderXMD{h, dstPrime}
 }
 
-func (e expanderXMD) HashToField(u []big.Int, b []byte) {
-	count := uint(len(u))
-	bytes := e.expand(b, count*e.L)
-	for i := range u {
-		j := uint(i) * e.L
-		u[i].Mod(u[i].SetBytes(bytes[j:j+e.L]), e.p)
-	}
-}
-
-func (e expanderXMD) expand(msg []byte, n uint) []byte {
+func (e expanderXMD) Expand(in []byte, n uint) []byte {
 	H := e.h.New()
 	bLen := uint(H.Size())
 	ell := (n + (bLen - 1)) / bLen
@@ -59,7 +62,7 @@ func (e expanderXMD) expand(msg []byte, n uint) []byte {
 
 	H.Reset()
 	_, _ = H.Write(zPad)
-	_, _ = H.Write(msg)
+	_, _ = H.Write(in)
 	_, _ = H.Write(libStr)
 	_, _ = H.Write([]byte{0})
 	_, _ = H.Write(e.dst)
@@ -73,18 +76,14 @@ func (e expanderXMD) expand(msg []byte, n uint) []byte {
 	pseudo := append([]byte{}, bi...)
 	for i := uint(2); i <= ell; i++ {
 		H.Reset()
-		_, _ = H.Write(xor(bi, b0))
+		for i := range b0 {
+			bi[i] ^= b0[i]
+		}
+		_, _ = H.Write(bi)
 		_, _ = H.Write([]byte{byte(i)})
 		_, _ = H.Write(e.dst)
 		bi = H.Sum(nil)
 		pseudo = append(pseudo, bi...)
 	}
 	return pseudo[0:n]
-}
-
-func xor(x, y []byte) []byte {
-	for i := range x {
-		x[i] ^= y[i]
-	}
-	return x
 }
