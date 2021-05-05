@@ -2,9 +2,8 @@ package group
 
 import (
 	"crypto"
+	_ "crypto/sha512" // to link libraries
 	"io"
-
-	h2c "github.com/armfazh/h2c-go-ref"
 
 	r255 "github.com/bwesterb/go-ristretto"
 )
@@ -84,18 +83,9 @@ func (g ristrettoGroup) RandomScalar(r io.Reader) Scalar {
 }
 
 func (g ristrettoGroup) HashToElement(msg, dst []byte) Element {
+	xmd := NewExpanderMD(crypto.SHA512, dst)
+	data := xmd.Expand(msg, 64)
 	e := g.NewElement()
-
-	expID := h2c.ExpanderDesc{
-		Type: h2c.XMD,
-		ID:   uint(crypto.SHA512),
-	}
-	exp, err := expID.Get(dst, 0)
-	if err != nil {
-		panic(err)
-	}
-	data := exp.Expand(msg, 64)
-
 	e.(*ristrettoElement).p.Derive(data)
 	return e
 }

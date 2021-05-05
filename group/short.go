@@ -31,35 +31,6 @@ func (g wG) RandomScalar(rd io.Reader) Scalar {
 	_, _ = io.ReadFull(rd, b)
 	return g.HashToScalar(b, nil)
 }
-func (g wG) getHasher(dst []byte) wHash {
-	var Z, C2 big.Int
-	var h crypto.Hash
-	var L uint
-	switch g.c.Params().BitSize {
-	case 256:
-		Z.SetInt64(-10)
-		C2.SetString("0x78bc71a02d89ec07214623f6d0f955072c7cc05604a5a6e23ffbf67115fa5301", 0)
-		h = crypto.SHA256
-		L = 48
-	case 384:
-		Z.SetInt64(-12)
-		C2.SetString("0x19877cc1041b7555743c0ae2e3a3e61fb2aaa2e0e87ea557a563d8b598a0940d0a697a9e0b9e92cfaa314f583c9d066", 0)
-		h = crypto.SHA512
-		L = 72
-	case 521:
-		Z.SetInt64(-4)
-		C2.SetInt64(8)
-		h = crypto.SHA512
-		L = 98
-	default:
-		panic("curve not supported")
-	}
-	return wHash{
-		sswu3mod4{g, &Z, &C2},
-		NewExpanderMD(h, g.c.Params().P, L, dst),
-		NewExpanderMD(h, g.c.Params().N, L, dst),
-	}
-}
 func (g wG) cvtElt(e Element) *wElt {
 	ee, ok := e.(*wElt)
 	if !ok || g.c.Params().BitSize != ee.c.Params().BitSize {
@@ -81,6 +52,24 @@ func (g wG) Params() *Params {
 		CompressedElementLength: 1 + fieldLen,
 		ScalarLength:            fieldLen,
 	}
+}
+func (g wG) HashToElement(b, dst []byte) Element {
+	var u [2]big.Int
+	mapping, h, L := g.mapToCurveParams()
+	xmd := NewExpanderMD(h, dst)
+	HashToField(u[:], b, xmd, g.c.Params().P, L)
+	Q0 := mapping(&u[0])
+	Q1 := mapping(&u[1])
+	return Q0.Add(Q0, Q1)
+}
+func (g wG) HashToScalar(b, dst []byte) Scalar {
+	var u [1]big.Int
+	_, h, L := g.mapToCurveParams()
+	xmd := NewExpanderMD(h, dst)
+	HashToField(u[:], b, xmd, g.c.Params().N, L)
+	s := g.NewScalar().(*wScl)
+	s.fromBig(&u[0])
+	return s
 }
 
 type wElt struct {
@@ -235,37 +224,31 @@ func (s *wScl) UnmarshalBinary(b []byte) error {
 	return nil
 }
 
-type wHash struct {
-	sswu3mod4
-	elt FieldHasher
-	scl FieldHasher
+func (g wG) mapToCurveParams() (mapping func(u *big.Int) *wElt, h crypto.Hash, L uint) {
+	var Z, C2 big.Int
+	switch g.c.Params().BitSize {
+	case 256:
+		Z.SetInt64(-10)
+		C2.SetString("0x78bc71a02d89ec07214623f6d0f955072c7cc05604a5a6e23ffbf67115fa5301", 0)
+		h = crypto.SHA256
+		L = 48
+	case 384:
+		Z.SetInt64(-12)
+		C2.SetString("0x19877cc1041b7555743c0ae2e3a3e61fb2aaa2e0e87ea557a563d8b598a0940d0a697a9e0b9e92cfaa314f583c9d066", 0)
+		h = crypto.SHA512
+		L = 72
+	case 521:
+		Z.SetInt64(-4)
+		C2.SetInt64(8)
+		h = crypto.SHA512
+		L = 98
+	default:
+		panic("curve not supported")
+	}
+	return func(u *big.Int) *wElt { return g.sswu3mod4Map(u, &Z, &C2) }, h, L
 }
 
-func (g wG) HashToElement(b, dst []byte) Element {
-	var u [2]big.Int
-	h := g.getHasher(dst)
-	h.elt.HashToField(u[:], b)
-	Q0 := h.Map(&u[0])
-	Q1 := h.Map(&u[1])
-	return Q0.Add(Q0, Q1)
-}
-
-func (g wG) HashToScalar(b, dst []byte) Scalar {
-	var u [1]big.Int
-	h := g.getHasher(dst)
-	h.scl.HashToField(u[:], b)
-	s := g.NewScalar().(*wScl)
-	s.fromBig(&u[0])
-	return s
-}
-
-type sswu3mod4 struct {
-	wG
-	Z  *big.Int
-	C2 *big.Int // c2 = sqrt(-Z^3)
-}
-
-func (s sswu3mod4) Map(u *big.Int) Element {
+func (g wG) sswu3mod4Map(u *big.Int, Z, C2 *big.Int) *wElt {
 	tv1 := new(big.Int)
 	tv2 := new(big.Int)
 	tv3 := new(big.Int)
@@ -282,8 +265,8 @@ func (s sswu3mod4) Map(u *big.Int) Element {
 	y := new(big.Int)
 
 	A := big.NewInt(-3)
-	B := s.c.Params().B
-	p := s.c.Params().P
+	B := g.c.Params().B
+	p := g.c.Params().P
 	c1 := new(big.Int)
 	c1.Sub(p, big.NewInt(3)).Rsh(c1, 2) // 1.  c1 = (q - 3) / 4
 
@@ -301,7 +284,7 @@ func (s sswu3mod4) Map(u *big.Int) Element {
 	}
 
 	sqr(tv1, u)                 // 1.  tv1 = u^2
-	mul(tv3, s.Z, tv1)          // 2.  tv3 = Z * tv1
+	mul(tv3, Z, tv1)            // 2.  tv3 = Z * tv1
 	sqr(tv2, tv3)               // 3.  tv2 = tv3^2
 	add(xd, tv2, tv3)           // 4.   xd = tv2 + tv3
 	add(x1n, xd, big.NewInt(1)) // 5.  x1n = xd + 1
@@ -309,7 +292,7 @@ func (s sswu3mod4) Map(u *big.Int) Element {
 	tv4.Neg(A)                  //
 	mul(xd, tv4, xd)            // 7.   xd = -A * xd
 	e1 := xd.Sign() == 0        // 8.   e1 = xd == 0
-	mul(tv4, s.Z, A)            //
+	mul(tv4, Z, A)              //
 	cmv(xd, xd, tv4, e1)        // 9.   xd = CMOV(xd, Z * A, e1)
 	sqr(tv2, xd)                // 10. tv2 = xd^2
 	mul(gxd, tv2, xd)           // 11. gxd = tv2 * xd
@@ -325,7 +308,7 @@ func (s sswu3mod4) Map(u *big.Int) Element {
 	exp(y1, tv4, c1)            // 21.  y1 = tv4^c1
 	mul(y1, y1, tv2)            // 22.  y1 = y1 * tv2
 	mul(x2n, tv3, x1n)          // 23. x2n = tv3 * x1n
-	mul(y2, y1, s.C2)           // 24.  y2 = y1 * c2
+	mul(y2, y1, C2)             // 24.  y2 = y1 * c2
 	mul(y2, y2, tv1)            // 25.  y2 = y2 * tv1
 	mul(y2, y2, u)              // 26.  y2 = y2 * u
 	sqr(tv2, y1)                // 27. tv2 = y1^2
@@ -339,5 +322,5 @@ func (s sswu3mod4) Map(u *big.Int) Element {
 	tv1.ModInverse(xd, p)       //
 	mul(x, xn, tv1)             // 34. return (xn, xd, y, 1)
 	y.Mod(y, p)
-	return &wElt{s.wG, x, y}
+	return &wElt{g, x, y}
 }
