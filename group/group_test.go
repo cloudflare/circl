@@ -124,14 +124,21 @@ func isZero(b []byte) bool {
 }
 
 func testMarshal(t *testing.T, testTimes int, g group.Group) {
+	params := g.Params()
 	I := g.Identity()
 	got, _ := I.MarshalBinary()
 	if !isZero(got) {
 		test.ReportError(t, got, "Non-zero identity")
 	}
+	if l := uint(len(got)); !(l == 1 || l == params.ElementLength) {
+		test.ReportError(t, l, params.ElementLength)
+	}
 	got, _ = I.MarshalBinaryCompress()
 	if !isZero(got) {
 		test.ReportError(t, got, "Non-zero identity")
+	}
+	if l := uint(len(got)); !(l == 1 || l == params.CompressedElementLength) {
+		test.ReportError(t, l, params.CompressedElementLength)
 	}
 	II := g.NewElement()
 	err := II.UnmarshalBinary(got)
@@ -143,16 +150,26 @@ func testMarshal(t *testing.T, testTimes int, g group.Group) {
 	got2 := g.NewElement()
 	for i := 0; i < testTimes; i++ {
 		x := g.RandomElement(rand.Reader)
-		enc1, _ := x.MarshalBinary()
-		enc2, _ := x.MarshalBinaryCompress()
+		enc1, err1 := x.MarshalBinary()
+		enc2, err2 := x.MarshalBinaryCompress()
+		test.CheckNoErr(t, err1, "error on marshalling")
+		test.CheckNoErr(t, err2, "error on marshalling compress")
 
-		err1 := got1.UnmarshalBinary(enc1)
-		err2 := got2.UnmarshalBinary(enc2)
-		if err1 != nil || !x.IsEqual(got1) {
+		err1 = got1.UnmarshalBinary(enc1)
+		err2 = got2.UnmarshalBinary(enc2)
+		test.CheckNoErr(t, err1, "error on unmarshalling")
+		test.CheckNoErr(t, err2, "error on unmarshalling compress")
+		if !x.IsEqual(got1) {
 			test.ReportError(t, got1, x)
 		}
-		if err2 != nil || !x.IsEqual(got2) {
+		if !x.IsEqual(got2) {
 			test.ReportError(t, got2, x)
+		}
+		if l := uint(len(enc1)); l != params.ElementLength {
+			test.ReportError(t, l, params.ElementLength)
+		}
+		if l := uint(len(enc2)); l != params.CompressedElementLength {
+			test.ReportError(t, l, params.CompressedElementLength)
 		}
 	}
 }
@@ -162,6 +179,7 @@ func testScalar(t *testing.T, testTimes int, g group.Group) {
 	d := g.NewScalar()
 	e := g.NewScalar()
 	f := g.NewScalar()
+	params := g.Params()
 	for i := 0; i < testTimes; i++ {
 		a := g.RandomScalar(rand.Reader)
 		b := g.RandomScalar(rand.Reader)
@@ -177,6 +195,9 @@ func testScalar(t *testing.T, testTimes int, g group.Group) {
 		enc2, err2 := f.MarshalBinary()
 		if err1 != nil || err2 != nil || !bytes.Equal(enc1, enc2) {
 			test.ReportError(t, enc1, enc2, a, b)
+		}
+		if l := uint(len(enc1)); l != params.ScalarLength {
+			test.ReportError(t, l, params.ScalarLength)
 		}
 	}
 }

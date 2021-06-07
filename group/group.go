@@ -19,8 +19,15 @@ var (
 	P521 Group = wG{elliptic.P521()}
 )
 
+type GroupParams struct {
+	ElementLength           uint // Length in bytes of an element.
+	CompressedElementLength uint // Length in bytes of a compressed element.
+	ScalarLength            uint // Length in bytes of a scalar.
+}
+
 // Group represents a prime-order group based on elliptic curves.
 type Group interface {
+	Params() *GroupParams // Params returns parameters for the group
 	NewElement() Element
 	NewScalar() Scalar
 	Identity() Element
