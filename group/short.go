@@ -74,9 +74,9 @@ func (g wG) cvtScl(s Scalar) *wScl {
 	}
 	return ss
 }
-func (g wG) Params() *GroupParams {
+func (g wG) Params() *Params {
 	fieldLen := uint((g.c.Params().BitSize + 7) / 8)
-	return &GroupParams{
+	return &Params{
 		ElementLength:           1 + 2*fieldLen,
 		CompressedElementLength: 1 + fieldLen,
 		ScalarLength:            fieldLen,
