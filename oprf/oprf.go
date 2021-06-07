@@ -61,10 +61,11 @@ var ErrUnsupportedSuite = errors.New("non-supported suite")
 
 type Blind group.Scalar
 type SerializedElement = []byte
-type Blinded = []byte
+type SerializedScalar = []byte
+type Blinded = SerializedElement
 
 type Proof struct {
-	C, S []byte
+	C, S SerializedScalar
 }
 
 type Evaluation struct {
@@ -93,6 +94,25 @@ func suiteFromID(id SuiteID, m Mode) (*suite, error) {
 	default:
 		return nil, ErrUnsupportedSuite
 	}
+}
+
+// GetSizes returns the size in bytes of a SerializedElement, SerializedScalar,
+// and the length of the OPRF's output protocol.
+func GetSizes(id SuiteID) (
+	s struct {
+		SerializedElementLength uint // Size in bytes of a serialized element.
+		SerializedScalarLength  uint // Size in bytes of a serialized scalar.
+		OutputLength            uint // Size in bytes of OPRF's output.
+	},
+	err error,
+) {
+	if suite, err := suiteFromID(id, BaseMode); err == nil {
+		p := suite.Group.Params()
+		s.SerializedElementLength = p.CompressedElementLength
+		s.SerializedScalarLength = p.ScalarLength
+		s.OutputLength = uint(suite.Size())
+	}
+	return
 }
 
 func (s *suite) GetMode() Mode { return s.Mode }

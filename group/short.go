@@ -12,22 +12,22 @@ import (
 )
 
 type wG struct {
-	elliptic.Curve
+	c elliptic.Curve
 }
 
-func (g wG) String() string      { return g.Params().Name }
+func (g wG) String() string      { return g.c.Params().Name }
 func (g wG) NewElement() Element { return g.Identity() }
 func (g wG) NewScalar() Scalar   { return &wScl{g, nil} }
 func (g wG) Identity() Element   { return &wElt{g, new(big.Int), new(big.Int)} }
-func (g wG) Generator() Element  { return &wElt{g, g.Params().Gx, g.Params().Gy} }
-func (g wG) Order() Scalar       { s := &wScl{g, nil}; s.fromBig(g.Params().N); return s }
+func (g wG) Generator() Element  { return &wElt{g, g.c.Params().Gx, g.c.Params().Gy} }
+func (g wG) Order() Scalar       { s := &wScl{g, nil}; s.fromBig(g.c.Params().N); return s }
 func (g wG) RandomElement(rd io.Reader) Element {
-	b := make([]byte, (g.Params().BitSize+7)/8)
+	b := make([]byte, (g.c.Params().BitSize+7)/8)
 	_, _ = io.ReadFull(rd, b)
 	return g.HashToElement(b, nil)
 }
 func (g wG) RandomScalar(rd io.Reader) Scalar {
-	b := make([]byte, (g.Params().BitSize+7)/8)
+	b := make([]byte, (g.c.Params().BitSize+7)/8)
 	_, _ = io.ReadFull(rd, b)
 	return g.HashToScalar(b, nil)
 }
@@ -35,7 +35,7 @@ func (g wG) getHasher(dst []byte) wHash {
 	var Z, C2 big.Int
 	var h crypto.Hash
 	var L uint
-	switch g.Params().BitSize {
+	switch g.c.Params().BitSize {
 	case 256:
 		Z.SetInt64(-10)
 		C2.SetString("0x78bc71a02d89ec07214623f6d0f955072c7cc05604a5a6e23ffbf67115fa5301", 0)
@@ -56,23 +56,31 @@ func (g wG) getHasher(dst []byte) wHash {
 	}
 	return wHash{
 		sswu3mod4{g, &Z, &C2},
-		NewExpanderMD(h, g.Params().P, L, dst),
-		NewExpanderMD(h, g.Params().N, L, dst),
+		NewExpanderMD(h, g.c.Params().P, L, dst),
+		NewExpanderMD(h, g.c.Params().N, L, dst),
 	}
 }
 func (g wG) cvtElt(e Element) *wElt {
 	ee, ok := e.(*wElt)
-	if !ok || g.Params().BitSize != ee.Params().BitSize {
+	if !ok || g.c.Params().BitSize != ee.c.Params().BitSize {
 		panic(ErrType)
 	}
 	return ee
 }
 func (g wG) cvtScl(s Scalar) *wScl {
 	ss, ok := s.(*wScl)
-	if !ok || g.Params().BitSize != ss.Params().BitSize {
+	if !ok || g.c.Params().BitSize != ss.c.Params().BitSize {
 		panic(ErrType)
 	}
 	return ss
+}
+func (g wG) Params() *GroupParams {
+	fieldLen := uint((g.c.Params().BitSize + 7) / 8)
+	return &GroupParams{
+		ElementLength:           1 + 2*fieldLen,
+		CompressedElementLength: 1 + fieldLen,
+		ScalarLength:            fieldLen,
+	}
 }
 
 type wElt struct {
@@ -88,12 +96,12 @@ func (e *wElt) IsEqual(o Element) bool {
 }
 func (e *wElt) Add(a, b Element) Element {
 	aa, bb := e.cvtElt(a), e.cvtElt(b)
-	e.x, e.y = e.Curve.Add(aa.x, aa.y, bb.x, bb.y)
+	e.x, e.y = e.c.Add(aa.x, aa.y, bb.x, bb.y)
 	return e
 }
 func (e *wElt) Dbl(a Element) Element {
 	aa := e.cvtElt(a)
-	e.x, e.y = e.Curve.Double(aa.x, aa.y)
+	e.x, e.y = e.c.Double(aa.x, aa.y)
 	return e
 }
 func (e *wElt) Neg(a Element) Element {
@@ -104,25 +112,25 @@ func (e *wElt) Neg(a Element) Element {
 }
 func (e *wElt) Mul(a Element, s Scalar) Element {
 	aa, ss := e.cvtElt(a), e.cvtScl(s)
-	e.x, e.y = e.ScalarMult(aa.x, aa.y, ss.k)
+	e.x, e.y = e.c.ScalarMult(aa.x, aa.y, ss.k)
 	return e
 }
 func (e *wElt) MulGen(s Scalar) Element {
 	ss := e.cvtScl(s)
-	e.x, e.y = e.ScalarBaseMult(ss.k)
+	e.x, e.y = e.c.ScalarBaseMult(ss.k)
 	return e
 }
 func (e *wElt) MarshalBinary() ([]byte, error) {
 	if e.IsIdentity() {
 		return []byte{0x0}, nil
 	}
-	return elliptic.Marshal(e.wG, e.x, e.y), nil
+	return elliptic.Marshal(e.wG.c, e.x, e.y), nil
 }
 func (e *wElt) MarshalBinaryCompress() ([]byte, error) {
 	if e.IsIdentity() {
 		return []byte{0x0}, nil
 	}
-	l := (e.Params().BitSize + 7) / 8
+	l := (e.c.Params().BitSize + 7) / 8
 	data := make([]byte, 1+l)
 	bytes := e.x.Bytes()
 	copy(data[1+l-len(bytes):], bytes)
@@ -130,24 +138,24 @@ func (e *wElt) MarshalBinaryCompress() ([]byte, error) {
 	return data, nil
 }
 func (e *wElt) UnmarshalBinary(b []byte) error {
-	byteLen := (e.Params().BitSize + 7) / 8
+	byteLen := (e.c.Params().BitSize + 7) / 8
 	l := len(b)
 	switch {
 	case l == 1 && b[0] == 0x00: // point at infinity
 		e.x.SetInt64(0)
 		e.y.SetInt64(0)
 	case l == 1+byteLen && (b[0] == 0x02 || b[0] == 0x03): // compressed
-		p := e.wG.Params().P
+		p := e.wG.c.Params().P
 		x := new(big.Int).SetBytes(b[1:])
 		y := new(big.Int)
-		y.Mul(x, x)               // x^2
-		y.Mul(y, x)               // x^3
-		y.Sub(y, x)               // x^3-x
-		y.Sub(y, x)               // x^3-2x
-		y.Sub(y, x)               // x^3-3x
-		y.Add(y, e.wG.Params().B) // x^3-3x+b
-		y.Mod(y, p)               //
-		qr := y.ModSqrt(y, p)     // sqrt(x^3-3x+b)
+		y.Mul(x, x)                 // x^2
+		y.Mul(y, x)                 // x^3
+		y.Sub(y, x)                 // x^3-x
+		y.Sub(y, x)                 // x^3-2x
+		y.Sub(y, x)                 // x^3-3x
+		y.Add(y, e.wG.c.Params().B) // x^3-3x+b
+		y.Mod(y, p)                 //
+		qr := y.ModSqrt(y, p)       // sqrt(x^3-3x+b)
 		if qr == nil {
 			return ErrUnmarshal
 		}
@@ -156,7 +164,7 @@ func (e *wElt) UnmarshalBinary(b []byte) error {
 		}
 		e.x, e.y = x, y
 	case l == 1+2*byteLen && b[0] == 0x04: // uncompressed
-		x, y := elliptic.Unmarshal(e.wG, b)
+		x, y := elliptic.Unmarshal(e.wG.c, b)
 		if x == nil {
 			return ErrUnmarshal
 		}
@@ -183,45 +191,45 @@ func (s *wScl) fromBig(b *big.Int) {
 func (s *wScl) Add(a, b Scalar) Scalar {
 	aa, bb := s.cvtScl(a), s.cvtScl(b)
 	r := new(big.Int)
-	r.SetBytes(aa.k).Add(r, new(big.Int).SetBytes(bb.k)).Mod(r, s.Params().N)
+	r.SetBytes(aa.k).Add(r, new(big.Int).SetBytes(bb.k)).Mod(r, s.c.Params().N)
 	s.fromBig(r)
 	return s
 }
 func (s *wScl) Sub(a, b Scalar) Scalar {
 	aa, bb := s.cvtScl(a), s.cvtScl(b)
 	r := new(big.Int)
-	r.SetBytes(aa.k).Sub(r, new(big.Int).SetBytes(bb.k)).Mod(r, s.Params().N)
+	r.SetBytes(aa.k).Sub(r, new(big.Int).SetBytes(bb.k)).Mod(r, s.c.Params().N)
 	s.fromBig(r)
 	return s
 }
 func (s *wScl) Mul(a, b Scalar) Scalar {
 	aa, bb := s.cvtScl(a), s.cvtScl(b)
 	r := new(big.Int)
-	r.SetBytes(aa.k).Mul(r, new(big.Int).SetBytes(bb.k)).Mod(r, s.Params().N)
+	r.SetBytes(aa.k).Mul(r, new(big.Int).SetBytes(bb.k)).Mod(r, s.c.Params().N)
 	s.fromBig(r)
 	return s
 }
 func (s *wScl) Neg(a Scalar) Scalar {
 	aa := s.cvtScl(a)
 	r := new(big.Int)
-	r.SetBytes(aa.k).Neg(r).Mod(r, s.Params().N)
+	r.SetBytes(aa.k).Neg(r).Mod(r, s.c.Params().N)
 	s.fromBig(r)
 	return s
 }
 func (s *wScl) Inv(a Scalar) Scalar {
 	aa := s.cvtScl(a)
 	r := new(big.Int)
-	r.SetBytes(aa.k).ModInverse(r, s.Params().N)
+	r.SetBytes(aa.k).ModInverse(r, s.c.Params().N)
 	s.fromBig(r)
 	return s
 }
 func (s *wScl) MarshalBinary() (data []byte, err error) {
-	data = make([]byte, (s.Params().BitSize+7)/8)
+	data = make([]byte, (s.c.Params().BitSize+7)/8)
 	copy(data, s.k)
 	return data, nil
 }
 func (s *wScl) UnmarshalBinary(b []byte) error {
-	l := (s.Params().BitSize + 7) / 8
+	l := (s.c.Params().BitSize + 7) / 8
 	s.k = make([]byte, l)
 	copy(s.k[l-len(b):l], b)
 	return nil
@@ -274,8 +282,8 @@ func (s sswu3mod4) Map(u *big.Int) Element {
 	y := new(big.Int)
 
 	A := big.NewInt(-3)
-	B := s.Params().B
-	p := s.Params().P
+	B := s.c.Params().B
+	p := s.c.Params().P
 	c1 := new(big.Int)
 	c1.Sub(p, big.NewInt(3)).Rsh(c1, 2) // 1.  c1 = (q - 3) / 4
 

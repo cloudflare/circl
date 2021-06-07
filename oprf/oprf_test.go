@@ -100,7 +100,21 @@ func testAPI(t *testing.T, suite oprf.SuiteID, mode oprf.Mode) {
 	if eval == nil {
 		t.Fatal("invalid evaluation of server: no evaluation")
 	}
-
+	sizes, err := oprf.GetSizes(suite)
+	if err != nil {
+		t.Fatal("invalid calling GetSizes: " + err.Error())
+	}
+	for _, e := range eval.Elements {
+		if uint(len(e)) != sizes.SerializedElementLength {
+			t.Fatal("invalid evaluation length")
+		}
+	}
+	if mode == oprf.VerifiableMode {
+		if uint(len(eval.Proof.C)) != sizes.SerializedScalarLength ||
+			uint(len(eval.Proof.S)) != sizes.SerializedScalarLength {
+			t.Fatal("invalid proof length")
+		}
+	}
 	clientOutputs, err := client.Finalize(cr, eval)
 	if err != nil {
 		t.Fatal("invalid unblinding of client: " + err.Error())
@@ -108,6 +122,12 @@ func testAPI(t *testing.T, suite oprf.SuiteID, mode oprf.Mode) {
 
 	if clientOutputs == nil {
 		t.Fatal("invalid finalizing of client: no final byte array.")
+	}
+
+	for _, o := range clientOutputs {
+		if uint(len(o)) != sizes.OutputLength {
+			t.Fatal("invalid output length")
+		}
 	}
 
 	for i := range inputs {
