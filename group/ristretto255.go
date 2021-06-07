@@ -19,8 +19,8 @@ func (g ristrettoGroup) String() string {
 	return "ristretto255"
 }
 
-func (g ristrettoGroup) Params() *GroupParams {
-	return &GroupParams{32, 32, 32}
+func (g ristrettoGroup) Params() *Params {
+	return &Params{32, 32, 32}
 }
 
 type ristrettoElement struct {
