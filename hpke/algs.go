@@ -227,6 +227,17 @@ func (a AEAD) KeySize() uint {
 	}
 }
 
+// CipherLen returns the length of a ciphertext corresponding to a message of
+// length mLen.
+func (a AEAD) CipherLen(mLen uint) uint {
+	switch a {
+	case AEAD_AES128GCM, AEAD_AES256GCM, AEAD_ChaCha20Poly1305:
+		return mLen + 16
+	default:
+		panic(errInvalidAEAD)
+	}
+}
+
 var dhkemp256hkdfsha256, dhkemp384hkdfsha384, dhkemp521hkdfsha512 shortKEM
 var dhkemx25519hkdfsha256, dhkemx448hkdfsha512 xKEM
 
