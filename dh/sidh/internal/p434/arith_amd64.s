@@ -117,10 +117,7 @@
     ADCXQ   AX, T0               \
     ADOXQ   T2, T1               \
     ADOXQ   T4, T3               \
-    ADOXQ   AX, T0               \
-    MOVQ    T1, (ID+24)(MDST)    \  // MDST3
-    MOVQ    T3, (ID+32)(MDST)    \  // MDST4
-    MOVQ    T0, (ID+40)(MDST)       // MDST5
+    ADOXQ   T0, AX
 
 // Performs schoolbook multiplication of 2 256-bit numbers. Uses
 // MULX instruction. Result is stored in 256 bits pointed by $DST.
@@ -168,13 +165,13 @@
     ADOXQ   T6, T1               \
     MULXQ   (IM1+24)(M1),T9, T4  \
     ADCXQ   T9, T3               \
+    MOVQ    (IM0+24)(M0),DX      \
     ADCXQ   AX, T4               \
     \
     ADOXQ   T7, T2               \
     ADOXQ   T8, T3               \
     ADOXQ   AX, T4               \
     \
-    MOVQ    (IM0+24)(M0),DX      \
     MULXQ   (IM1+ 0)(M1),  T0, T5\ // A3*B[0-3]
     XORQ    AX,  AX              \
     MULXQ   (IM1+ 8)(M1),  T7, T6\
@@ -1161,8 +1158,8 @@ mul_with_mulx_adcx_adox:
     MULX256(0,SP,32,SP,0,SP,R8,R9,R10,R11,R12,R13,R14,R15,BX,BP)
     // [rcx] <- CL = AL x BL (Result c0-c3)
     MULX256(0,DI,0,SI,0,CX,R8,R9,R10,R11,R12,R13,R14,R15,BX,BP)
-    // [rcx+64] <- CH = AH x BH
-    MULX192(32,DI,32,SI,64,CX,R8,R9,R10,R11,R12,R13,R14)
+    // [rcx+64], rbx, rbp, rax <- CH = AH x BH
+    MULX192(32,DI,32,SI,64,CX,R8,BX,R10,BP,R12,R13,R14)
 
     // r8-r11 <- (AH+AL) x (BH+BL), final step
     MOVQ   0x40(SP),  R8
@@ -1170,14 +1167,14 @@ mul_with_mulx_adcx_adox:
     MOVQ   0x50(SP), R10
     MOVQ   0x58(SP), R11
 
-    MOVQ   0x20(SP), AX
-    ADDQ   AX, R8
-    MOVQ   0x28(SP), AX
-    ADCQ   AX, R9
-    MOVQ   0x30(SP), AX
-    ADCQ   AX, R10
-    MOVQ   0x38(SP), AX
-    ADCQ   AX, R11
+    MOVQ   0x20(SP), DX
+    ADDQ   DX, R8
+    MOVQ   0x28(SP), DX
+    ADCQ   DX, R9
+    MOVQ   0x30(SP), DX
+    ADCQ   DX, R10
+    MOVQ   0x38(SP), DX
+    ADCQ   DX, R11
 
     // [rsp], x3-x5 <- (AH+AL) x (BH+BL) - ALxBL
     MOVQ    0x0(SP), R12
@@ -1197,9 +1194,9 @@ mul_with_mulx_adcx_adox:
     SUBQ   0x40(CX), R12
     SBBQ   0x48(CX), R13
     SBBQ   0x50(CX), R14
-    SBBQ   0x58(CX), R15
-    SBBQ   0x60(CX), R8
-    SBBQ   0x68(CX), R9
+    SBBQ   BX, R15
+    SBBQ   BP, R8
+    SBBQ   AX, R9
     SBBQ   $0, R10
     SBBQ   $0, R11
 
@@ -1217,14 +1214,12 @@ mul_with_mulx_adcx_adox:
     MOVQ   R9, 0x48(CX)     // OUT9
     ADCQ   0x50(CX), R10
     MOVQ   R10, 0x50(CX)    // OUT10
-    ADCQ   0x58(CX), R11
+    ADCQ   BX, R11
     MOVQ   R11, 0x58(CX)    // OUT11
-    MOVQ   0x60(CX), R12
-    ADCQ   $0, R12
-    MOVQ   R12, 0x60(CX)    // OUT12
-    MOVQ   0x68(CX), R13
-    ADCQ   $0, R13
-    MOVQ   R13, 0x68(CX)    // OUT13
+    ADCQ   $0, BP
+    MOVQ   BP, 0x60(CX)    // OUT12
+    ADCQ   $0, AX
+    MOVQ   AX, 0x68(CX)    // OUT13
 
     MOVQ   0x70(SP), BP // pop: BP is Callee-save.
     RET
