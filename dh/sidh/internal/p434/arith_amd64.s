@@ -22,52 +22,52 @@
 
 // Performs schoolbook multiplication of 128-bit with 256-bit
 // number. Uses MULX, ADOX, ADCX instruction.
-#define MULX128x256(IDX, M0, M1, T0, T1, T2, T3, T4, T5, T6)    \
-    XORQ    AX, AX              \
-    MOVQ    (IDX)(M0), DX       \
-    MULXQ   M1+ 0(SB), T0, T1   \ // T0 <- C0
+//
+// Uses registers: DX,AX
+// Calculates:
+//   (I0,I1) x [M1][0,1,2,3] = (T0,T1,T2,T3,T4,T5)
+//   |-128-| x |--- 256 ---| = |------ 384 ------|
+// Assuming the first digit multiplication was already performed.
+#define MULX128x256(I1, M1, T1, T2, T3, T4, T5)    \
     MULXQ   M1+ 8(SB), T4, T2   \
+    XORQ    AX, AX              \
     MULXQ   M1+16(SB), T5, T3   \
     ADOXQ   T4, T1              \ // T1: interm1
     ADOXQ   T5, T2              \ // T2: interm2
-    \
     MULXQ   M1+24(SB), T5, T4   \
     ADOXQ   T5, T3              \ // T3: interm3
     ADOXQ   AX, T4              \ // T4: interm4
     \
     XORQ    AX, AX              \
-    MOVQ    (IDX+8)(M0), DX     \
-    MULXQ   M1+ 0(SB), T5, T6   \
-    ADCXQ   T5, T1              \ // T1 <- C1
-    ADCXQ   T6, T2              \
-    \
-    MULXQ   M1+ 8(SB), T6, T5   \
+    MOVQ    I1, DX              \
+    MULXQ   M1+ 0(SB), T5, I1   \ // T0 <- C0
+    ADCXQ   T5, T1              \
+    ADCXQ   I1, T2              \ // T1 <- C1
+    MULXQ   M1+ 8(SB), I1, T5   \
     ADCXQ   T5, T3              \
-    ADOXQ   T6, T2              \ // T2 <- C2
-    \
-    MULXQ   M1+16(SB), T6, T5   \
+    ADOXQ   I1, T2              \ // T2 <- C2
+    MULXQ   M1+16(SB), I1, T5   \
     ADCXQ   T5, T4              \
-    ADOXQ   T6, T3              \ // T3 <- C3
-    \
-    MULXQ   M1+24(SB), T6, T5   \
+    ADOXQ   I1, T3              \ // T3 <- C3
+    MULXQ   M1+24(SB), I1, T5   \
     ADCXQ   AX, T5              \
-    ADOXQ   T6, T4              \ // T4 <- C4
+    ADOXQ   I1, T4              \ // T4 <- C4
     ADOXQ   AX, T5                // T5 <- C5
 
 // Performs schoolbook multiplication of 64-bit with 256-bit
 // number. Uses MULX and ADOX instructions.
 //
 // Uses registers: DX,AX
-#define MULX64x256(IDX, M0, M1, T0, T1, T2, T3, T4, T5) \
-    XORQ    AX, AX              \
-    MOVQ    (IDX)(M0), DX       \
-    MULXQ   M1+ 0(SB), T0, T1   \ // T0 <- C0
+// Calculates:
+//   (I0) x [M1][0,1,2,3] = (T0,T1,T2,T3,T4)
+//   |64| x |--- 256 ---| = |----- 320 ----|
+// Assuming the first digit multiplication was already performed.
+#define MULX64x256(M1, T1, T2, T3, T4, T5) \
     MULXQ   M1+ 8(SB), T4, T2   \
+    XORQ    AX, AX              \
     MULXQ   M1+16(SB), T5, T3   \
-    \
     ADOXQ   T4, T1              \ // T1 <- C1
     ADOXQ   T5, T2              \ // T2 <- C2
-    \
     MULXQ   M1+24(SB), T5, T4   \
     ADOXQ   T5, T3              \ // T3 <- C3
     ADOXQ   AX, T4                // T4 <- C4
@@ -279,7 +279,77 @@
     ADDQ   AX, C4          \
     ADCQ   DX, C5
 
-#define REDC_COMMON(MUL01, MUL23, MUL45, MUL67) \
+//  Montgomery reduction
+//  Based on method described in Faz-Hernandez et al. https://eprint.iacr.org/2017/1015
+#define REDC_MULX(P1, MUL01, MUL23, MUL45, MUL67) \
+    MOVQ 0x0(DI), DX        \
+    MOVQ 0x8(DI), R14       \
+    MULXQ P1, R8, R9        \
+    MUL01                   \
+    MOVQ 0x10(DI), DX       \
+    MOVQ 0x48(DI), CX       \
+    ADDQ   0x18(DI), R8     \
+    ADCQ   0x20(DI), R9     \
+    ADCQ   0x28(DI), R10    \
+    ADCQ   0x30(DI), R11    \
+    ADCQ   0x38(DI), R12    \
+    ADCQ   0x40(DI), R13    \
+    ADCQ   $0, CX           \
+    MULXQ P1, BX, BP        \
+    MOVQ   R9,   0x0(SI)    \
+    MOVQ   R10,  0x8(SI)    \
+    MOVQ   R11, 0x10(SI)    \
+    MOVQ   R12, 0x18(SI)    \
+    MOVQ   R13, 0x20(SI)    \
+    MOVQ   0x50(DI), R9     \
+    MOVQ   0x58(DI), R10    \
+    MOVQ   0x60(DI), R11    \
+    MOVQ   0x68(DI), DI     \
+    ADCQ   $0, R9           \
+    ADCQ   $0, R10          \
+    ADCQ   $0, R11          \
+    ADCQ   $0, DI           \
+    MUL23                   \
+    MOVQ 0x0(SI), DX        \
+    ADDQ   0x08(SI), BX     \
+    ADCQ   0x10(SI), BP     \
+    ADCQ   0x18(SI), R12    \
+    ADCQ   0x20(SI), R13    \
+    ADCQ   CX, R14          \
+    MOVQ   $0, CX           \
+    ADCQ   R9, R15          \
+    ADCQ   R10, CX          \
+    MULXQ P1, R8, R9        \
+    MOVQ   BP, 0x0(SI)      \
+    MOVQ   R12, 0x8(SI)     \
+    MOVQ   R13, 0x10(SI)    \
+    ADCQ   $0, R11          \
+    ADCQ   $0, DI           \
+    MUL45                   \
+    MOVQ 0x0(SI), DX        \
+    ADDQ   0x8(SI), R8      \
+    ADCQ   0x10(SI), R9     \
+    ADCQ   R14, R10         \
+    ADCQ   R15, BP          \
+    ADCQ   CX, R12          \
+    ADCQ   R11, R13         \
+    ADCQ   $0, DI           \
+    MULXQ P1, R14, R15      \
+    MOVQ   R8,   0x0(SI)    \
+    MOVQ   R9,   0x8(SI)    \
+    MUL67                   \
+    ADDQ   R10, R14         \
+    ADCQ   BP, R15          \
+    ADCQ   R12, R8          \
+    ADCQ   R13, R9          \
+    ADCQ   DI, R11          \
+    MOVQ   R14, 0x10(SI)    \
+    MOVQ   R15, 0x18(SI)    \
+    MOVQ   R8, 0x20(SI)     \
+    MOVQ   R9, 0x28(SI)     \
+    MOVQ   R11, 0x30(SI)
+
+#define REDC_MULQ(MUL01, MUL23, MUL45, MUL67) \
     MUL01                   \
     XORQ   CX, CX           \
     ADDQ   0x18(DI), R8     \
@@ -1233,7 +1303,7 @@ TEXT ·rdcP434(SB),$0-16
 #define MUL23 MUL128x256(16,DI,·P434p1+(8*P434_P1_ZEROS),R8,R9,R10,R11,R12,R13,R14,CX)
 #define MUL45 MUL128x256(32,DI,·P434p1+(8*P434_P1_ZEROS),R8,R9,R10,R11,R12,R13,R14,CX)
 #define MUL67  MUL64x256(48,DI,·P434p1+(8*P434_P1_ZEROS),R8,R9,R10,R11,R12,R13)
-    REDC_COMMON(MUL01, MUL23, MUL45, MUL67)
+    REDC_MULQ(MUL01, MUL23, MUL45, MUL67)
 #undef MUL01
 #undef MUL23
 #undef MUL45
@@ -1243,11 +1313,11 @@ TEXT ·rdcP434(SB),$0-16
 // 434-bit montgomery reduction Uses MULX/ADOX/ADCX instructions
 // available on Broadwell micro-architectures and newer.
 redc_bdw:
-#define MULX01 MULX128x256( 0,DI,·P434p1+(8*P434_P1_ZEROS),R8,R9,R10,R11,R12,R13,CX)
-#define MULX23 MULX128x256(16,DI,·P434p1+(8*P434_P1_ZEROS),R8,R9,R10,R11,R12,R13,CX)
-#define MULX45 MULX128x256(32,DI,·P434p1+(8*P434_P1_ZEROS),R8,R9,R10,R11,R12,R13,CX)
-#define MULX67  MULX64x256(48,DI,·P434p1+(8*P434_P1_ZEROS),R8,R9,R10,R11,R12,R13)
-    REDC_COMMON(MULX01, MULX23, MULX45, MULX67)
+#define MULX01 MULX128x256(R14,·P434p1+(8*P434_P1_ZEROS),R9 ,R10,R11,R12,R13)
+#define MULX23 MULX128x256(R8 ,·P434p1+(8*P434_P1_ZEROS),BP ,R12,R13,R14,R15)
+#define MULX45 MULX128x256(BX ,·P434p1+(8*P434_P1_ZEROS),R9 ,R10,BP ,R12,R13)
+#define MULX67 MULX64x256 (    ·P434p1+(8*P434_P1_ZEROS),R15,R8 ,R9 ,R11,CX )
+    REDC_MULX(·P434p1+(8*P434_P1_ZEROS)+0(SB), MULX01, MULX23, MULX45, MULX67)
 #undef MULX01
 #undef MULX23
 #undef MULX45
