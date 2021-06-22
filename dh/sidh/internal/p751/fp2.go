@@ -79,10 +79,10 @@ func mul(dest, lhs, rhs *common.Fp2) {
 	// (b - a)*(c - d) = (b*c + a*d) - a*c - b*d
 	//
 	// so (a*d + b*c) = (b-a)*(c-d) + a*c + b*d.
-	mulP751(&ac, &lhs.A, &rhs.A)       // = a*c*R*R
-	mulP751(&bd, &lhs.B, &rhs.B)       // = b*d*R*R
 	subP751(&bMinA, &lhs.B, &lhs.A)    // = (b-a)*R
 	subP751(&cMinD, &rhs.A, &rhs.B)    // = (c-d)*R
+	mulP751(&ac, &lhs.A, &rhs.A)       // = a*c*R*R
+	mulP751(&bd, &lhs.B, &rhs.B)       // = b*d*R*R
 	mulP751(&adPlusBc, &bMinA, &cMinD) // = (b-a)*(c-d)*R*R
 	adlP751(&adPlusBc, &adPlusBc, &ac) // = ((b-a)*(c-d) + a*c)*R*R
 	adlP751(&adPlusBc, &adPlusBc, &bd) // = ((b-a)*(c-d) + a*c + b*d)*R*R
