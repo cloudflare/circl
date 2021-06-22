@@ -119,7 +119,7 @@ func (sk *PrivateKey) DecryptTo(pt, ct []byte) {
 //
 // seed has to be of length SeedSize, pt of PlaintextSize and ct of
 // CiphertextSize.
-func (pk *PublicKey) EncryptTo(ct, seed, pt []byte) {
+func (pk *PublicKey) EncryptTo(ct, pt, seed []byte) {
 	var rh, e1, u Vec
 	var e2, v, m common.Poly
 

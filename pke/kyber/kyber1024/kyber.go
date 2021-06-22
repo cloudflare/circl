@@ -69,8 +69,8 @@ func NewKeyFromSeed(seed []byte) (*PublicKey, *PrivateKey) {
 // EncryptTo encrypts message pt for the public key and writes the ciphertext
 // to ct using randomness from seed.
 //
-// This function panics if the lengths of pt, seed and ct are not
-// PlaintextSize, EncryptionSeedSize and CiphertextSize respectively.
+// This function panics if the lengths of pt, seed, and ct are not
+// PlaintextSize, EncryptionSeedSize, and CiphertextSize respectively.
 func (pk *PublicKey) EncryptTo(ct []byte, pt []byte, seed []byte) {
 	if len(pt) != PlaintextSize {
 		panic("pt must be of length PlaintextSize")

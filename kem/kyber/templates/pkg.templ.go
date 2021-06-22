@@ -139,7 +139,7 @@ func (pk *PublicKey) EncapsulateTo(ct, ss []byte, seed []byte) {
 	g.Sum(kr[:0])
 
 	// c = Kyber.CPAPKE.Enc(pk, m, r)
-	pk.pk.EncryptTo(ct, kr[32:], m[:])
+	pk.pk.EncryptTo(ct, m[:], kr[32:])
 
 	// Compute H(c) and put in second slot of kr, which will be (K', H(c)).
 	h.Reset()
@@ -179,7 +179,7 @@ func (sk *PrivateKey) DecapsulateTo(ss, ct []byte) {
 
 	// c' = Kyber.CPAPKE.Enc(pk, m', r')
 	var ct2 [CiphertextSize]byte
-	sk.pk.EncryptTo(ct2[:], kr2[32:], m2[:])
+	sk.pk.EncryptTo(ct2[:], m2[:], kr2[32:])
 
 	// Compute H(c) and put in second slot of kr2, which will be (K'', H(c)).
 	h := sha3.New256()
