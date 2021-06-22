@@ -291,9 +291,8 @@ func (phi *isogeny3) GenerateCurve(p *ProjectivePoint) CurveCoefficientsEquiv {
 //
 // The output xQ = x(Q) is then a point on the curve E_(A':C'); the curve
 // parameters are returned by the GenerateCurve function used to construct phi.
-func (phi *isogeny3) EvaluatePoint(p *ProjectivePoint) ProjectivePoint {
+func (phi *isogeny3) EvaluatePoint(p *ProjectivePoint) {
 	var t0, t1, t2 Fp2
-	var q ProjectivePoint
 	var K1, K2 = &phi.K1, &phi.K2
 	var px, pz = &p.X, &p.Z
 
@@ -305,9 +304,8 @@ func (phi *isogeny3) EvaluatePoint(p *ProjectivePoint) ProjectivePoint {
 	sub(&t0, &t1, &t0) // t0 = t1 - t0
 	sqr(&t2, &t2)      // t2 = t2 ^ 2
 	sqr(&t0, &t0)      // t0 = t0 ^ 2
-	mul(&q.X, px, &t2) // XQ'= XQ * t2
-	mul(&q.Z, pz, &t0) // ZQ'= ZQ * t0
-	return q
+	mul(px, px, &t2)   // XQ'= XQ * t2
+	mul(pz, pz, &t0)   // ZQ'= ZQ * t0
 }
 
 // Given a four-torsion point p = x(PB) on the curve E_(A:C), construct the
@@ -338,10 +336,9 @@ func (phi *isogeny4) GenerateCurve(p *ProjectivePoint) CurveCoefficientsEquiv {
 //
 // Input: Isogeny returned by GenerateCurve and point q=(Qx,Qz) from E0_A/C
 // Output: Corresponding point q from E1_A'/C', where E1 is 4-isogenous to E0
-func (phi *isogeny4) EvaluatePoint(p *ProjectivePoint) ProjectivePoint {
+func (phi *isogeny4) EvaluatePoint(p *ProjectivePoint) {
 	var t0, t1 Fp2
-	var q = *p
-	var xq, zq = &q.X, &q.Z
+	var xq, zq = &p.X, &p.Z
 	var K1, K2, K3 = &phi.K1, &phi.K2, &phi.K3
 
 	add(&t0, xq, zq)
@@ -358,5 +355,4 @@ func (phi *isogeny4) EvaluatePoint(p *ProjectivePoint) ProjectivePoint {
 	sub(&t0, zq, &t0)
 	mul(xq, xq, &t1)
 	mul(zq, zq, &t0)
-	return q
 }
