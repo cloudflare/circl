@@ -36,11 +36,11 @@ func traverseTreePublicKeyA(curve *ProjectiveCurveParameters, xR, phiP, phiQ, ph
 		cparam = phi.GenerateCurve(xR)
 
 		for k := 0; k < len(points); k++ {
-			points[k] = phi.EvaluatePoint(&points[k])
+			phi.EvaluatePoint(&points[k])
 		}
-		*phiP = phi.EvaluatePoint(phiP)
-		*phiQ = phi.EvaluatePoint(phiQ)
-		*phiR = phi.EvaluatePoint(phiR)
+		phi.EvaluatePoint(phiP)
+		phi.EvaluatePoint(phiQ)
+		phi.EvaluatePoint(phiR)
 
 		// pop xR from points
 		*xR, points = points[len(points)-1], points[:len(points)-1]
@@ -73,7 +73,7 @@ func traverseTreeSharedKeyA(curve *ProjectiveCurveParameters, xR *ProjectivePoin
 		cparam = phi.GenerateCurve(xR)
 
 		for k := 0; k < len(points); k++ {
-			points[k] = phi.EvaluatePoint(&points[k])
+			phi.EvaluatePoint(&points[k])
 		}
 
 		// pop xR from points
@@ -107,12 +107,12 @@ func traverseTreePublicKeyB(curve *ProjectiveCurveParameters, xR, phiP, phiQ, ph
 
 		cparam = phi.GenerateCurve(xR)
 		for k := 0; k < len(points); k++ {
-			points[k] = phi.EvaluatePoint(&points[k])
+			phi.EvaluatePoint(&points[k])
 		}
 
-		*phiP = phi.EvaluatePoint(phiP)
-		*phiQ = phi.EvaluatePoint(phiQ)
-		*phiR = phi.EvaluatePoint(phiR)
+		phi.EvaluatePoint(phiP)
+		phi.EvaluatePoint(phiQ)
+		phi.EvaluatePoint(phiR)
 
 		// pop xR from points
 		*xR, points = points[len(points)-1], points[:len(points)-1]
@@ -145,7 +145,7 @@ func traverseTreeSharedKeyB(curve *ProjectiveCurveParameters, xR *ProjectivePoin
 
 		cparam = phi.GenerateCurve(xR)
 		for k := 0; k < len(points); k++ {
-			points[k] = phi.EvaluatePoint(&points[k])
+			phi.EvaluatePoint(&points[k])
 		}
 
 		// pop xR from points
@@ -178,9 +178,12 @@ func PublicKeyGenA(pub3Pt *[3]Fp2, prvBytes []byte) {
 
 	// Secret isogeny
 	phi.GenerateCurve(&xR)
-	xPA = phi.EvaluatePoint(&xPB)
-	xQA = phi.EvaluatePoint(&xQB)
-	xRA = phi.EvaluatePoint(&xRB)
+	xPA = xPB
+	xQA = xQB
+	xRA = xRB
+	phi.EvaluatePoint(&xPA)
+	phi.EvaluatePoint(&xQA)
+	phi.EvaluatePoint(&xRA)
 	Fp2Batch3Inv(&xPA.Z, &xQA.Z, &xRA.Z, &invZP, &invZQ, &invZR)
 
 	mul(&pub3Pt[0], &xPA.X, &invZP)
@@ -211,9 +214,12 @@ func PublicKeyGenB(pub3Pt *[3]Fp2, prvBytes []byte) {
 	traverseTreePublicKeyB(&params.InitCurve, &xR, &xPA, &xQA, &xRA)
 
 	phi.GenerateCurve(&xR)
-	xPB = phi.EvaluatePoint(&xPA)
-	xQB = phi.EvaluatePoint(&xQA)
-	xRB = phi.EvaluatePoint(&xRA)
+	xPB = xPA
+	xQB = xQA
+	xRB = xRA
+	phi.EvaluatePoint(&xPB)
+	phi.EvaluatePoint(&xQB)
+	phi.EvaluatePoint(&xRB)
 	Fp2Batch3Inv(&xPB.Z, &xQB.Z, &xRB.Z, &invZP, &invZQ, &invZR)
 
 	mul(&pub3Pt[0], &xPB.X, &invZP)
