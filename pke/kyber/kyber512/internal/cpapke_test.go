@@ -25,7 +25,7 @@ func TestEncryptThenDecrypt(t *testing.T) {
 			_, _ = rand.Read(msg[:])
 			_, _ = rand.Read(coin[:])
 
-			pk.EncryptTo(ct[:], coin[:], msg[:])
+			pk.EncryptTo(ct[:], msg[:], coin[:])
 			sk.DecryptTo(msg2[:], ct[:])
 
 			if msg != msg2 {
