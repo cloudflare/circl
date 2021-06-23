@@ -45,7 +45,8 @@ func (k *PrivateKey) Public() *PublicKey {
 	return &PublicKey{k.s, publicKey}
 }
 
-// GenerateKey generates a pair of keys in accordance with the suite.
+// GenerateKey generates a pair of keys in accordance with the suite. Panics if
+// rnd is nil.
 func GenerateKey(id SuiteID, rnd io.Reader) (*PrivateKey, error) {
 	suite, err := suiteFromID(id, BaseMode)
 	if err != nil {

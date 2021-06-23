@@ -102,7 +102,7 @@ func (c *Client) Finalize(r *ClientRequest, e *Evaluation) ([][]byte, error) {
 	}
 
 	if c.Mode == VerifiableMode {
-		if !c.verifyProof(r.elements, evals, *e.Proof) {
+		if !c.verifyProof(r.elements, evals, e.Proof) {
 			return nil, errors.New("invalid proof")
 		}
 	}
@@ -118,7 +118,7 @@ func (c *Client) Finalize(r *ClientRequest, e *Evaluation) ([][]byte, error) {
 	return outputs, nil
 }
 
-func (c *Client) verifyProof(blinds []group.Element, elements []group.Element, proof Proof) bool {
+func (c *Client) verifyProof(blinds []group.Element, elements []group.Element, proof *Proof) bool {
 	pkSm, err := c.pkS.Serialize()
 	if err != nil {
 		return false
