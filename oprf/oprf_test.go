@@ -77,6 +77,7 @@ func testAPI(t *testing.T, suite oprf.SuiteID, mode oprf.Mode) {
 	} else if mode == oprf.VerifiableMode {
 		server, err = oprf.NewVerifiableServer(suite, nil)
 	}
+	test.CheckOk(server.GetMode() == mode, "bad server mode", t)
 	test.CheckNoErr(t, err, "invalid setup of server")
 
 	var client *oprf.Client
@@ -86,6 +87,7 @@ func testAPI(t *testing.T, suite oprf.SuiteID, mode oprf.Mode) {
 		pkS := server.GetPublicKey()
 		client, err = oprf.NewVerifiableClient(suite, pkS)
 	}
+	test.CheckOk(client.GetMode() == mode, "bad client mode", t)
 	test.CheckNoErr(t, err, "invalid setup of client")
 
 	inputs := [][]byte{{0x00}, {0xFF}}
@@ -145,4 +147,100 @@ func testAPI(t *testing.T, suite oprf.SuiteID, mode oprf.Mode) {
 			t.Fatalf("Client and server OPRF output mismatch, got client output %x, expected server output %x", serverOutput, clientOutputs[i])
 		}
 	}
+}
+
+func TestErrors(t *testing.T) {
+	id := oprf.OPRFP256
+	strErrNil := "must be nil"
+	strErrK := "must fail key"
+	strErrC := "must fail client"
+	strErrS := "must fail server"
+
+	t.Run("badID", func(t *testing.T) {
+		var badID oprf.SuiteID
+
+		k, err := oprf.GenerateKey(badID, rand.Reader)
+		test.CheckIsErr(t, err, strErrK)
+		test.CheckOk(k == nil, strErrNil, t)
+
+		k, err = oprf.DeriveKey(badID, oprf.BaseMode, nil)
+		test.CheckIsErr(t, err, strErrK)
+		test.CheckOk(k == nil, strErrNil, t)
+
+		err = new(oprf.PrivateKey).Deserialize(badID, nil)
+		test.CheckIsErr(t, err, strErrK)
+
+		err = new(oprf.PublicKey).Deserialize(badID, nil)
+		test.CheckIsErr(t, err, strErrK)
+
+		c, err := oprf.NewClient(badID)
+		test.CheckIsErr(t, err, strErrC)
+		test.CheckOk(c == nil, strErrNil, t)
+
+		s, err := oprf.NewServer(badID, nil)
+		test.CheckIsErr(t, err, strErrS)
+		test.CheckOk(s == nil, strErrNil, t)
+
+		vc, err := oprf.NewVerifiableClient(badID, nil)
+		test.CheckIsErr(t, err, strErrC)
+		test.CheckOk(vc == nil, strErrNil, t)
+	})
+
+	t.Run("nilPubKey", func(t *testing.T) {
+		vc, err := oprf.NewVerifiableClient(id, nil)
+		test.CheckIsErr(t, err, strErrC)
+		test.CheckOk(vc == nil, strErrNil, t)
+	})
+
+	t.Run("mismatchKeys", func(t *testing.T) {
+		otherID := id + 1
+		otherKey, _ := oprf.GenerateKey(otherID, rand.Reader)
+		vs, err := oprf.NewServer(id, otherKey)
+		test.CheckIsErr(t, err, strErrS)
+		test.CheckOk(vs == nil, strErrNil, t)
+
+		vc, err := oprf.NewVerifiableClient(id, otherKey.Public())
+		test.CheckIsErr(t, err, strErrC)
+		test.CheckOk(vc == nil, strErrNil, t)
+	})
+
+	t.Run("nilCalls", func(t *testing.T) {
+		c, _ := oprf.NewClient(id)
+		cl, err := c.Request(nil)
+		test.CheckIsErr(t, err, strErrC)
+		test.CheckOk(cl == nil, strErrNil, t)
+
+		var emptyEval oprf.Evaluation
+		cl, _ = c.Request([][]byte{[]byte("in0"), []byte("in1")})
+		out, err := c.Finalize(cl, &emptyEval)
+		test.CheckIsErr(t, err, strErrC)
+		test.CheckOk(out == nil, strErrNil, t)
+
+		s, _ := oprf.NewServer(id, nil)
+		ev, err := s.Evaluate(nil)
+		test.CheckIsErr(t, err, strErrS)
+		test.CheckOk(ev == nil, strErrNil, t)
+	})
+
+	t.Run("invalidProof", func(t *testing.T) {
+		key, _ := oprf.GenerateKey(id, rand.Reader)
+		s, _ := oprf.NewVerifiableServer(id, key)
+		c, _ := oprf.NewVerifiableClient(id, key.Public())
+		cl, _ := c.Request([][]byte{[]byte("in0"), []byte("in1")})
+		badEV, _ := s.Evaluate(cl.BlindedElements())
+		badEV.Proof.C = nil
+		badEV.Proof.S = nil
+		out, err := c.Finalize(cl, badEV)
+		test.CheckIsErr(t, err, strErrC)
+		test.CheckOk(out == nil, strErrNil, t)
+	})
+
+	t.Run("badKeyGen", func(t *testing.T) {
+		err := test.CheckPanic(func() { _, _ = oprf.GenerateKey(id, nil) })
+		test.CheckNoErr(t, err, strErrNil)
+
+		k, err := oprf.DeriveKey(id, oprf.Mode(2), nil)
+		test.CheckIsErr(t, err, strErrK)
+		test.CheckOk(k == nil, strErrNil, t)
+	})
 }
