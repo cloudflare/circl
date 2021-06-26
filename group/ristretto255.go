@@ -9,6 +9,7 @@ import (
 )
 
 var (
+	// Ristretto255 is a quotient group generated from edwards25519 curve.
 	Ristretto255 Group = ristrettoGroup{}
 )
 
@@ -81,7 +82,9 @@ func (g ristrettoGroup) RandomScalar(r io.Reader) Scalar {
 		s: x,
 	}
 }
-
+func (g ristrettoGroup) HashToElementNonUniform(b, dst []byte) Element {
+	return g.HashToElement(b, dst)
+}
 func (g ristrettoGroup) HashToElement(msg, dst []byte) Element {
 	xmd := NewExpanderMD(crypto.SHA512, dst)
 	data := xmd.Expand(msg, 64)
