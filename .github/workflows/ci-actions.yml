@@ -19,7 +19,7 @@ jobs:
       - name: Linting
         uses: golangci/golangci-lint-action@v2
         with:
-          version: v1.29
+          version: v1.41
           args: --config=./.etc/golangci.yml ./...
       - name: Setup Go-${{ matrix.GOVER }}
         uses: actions/setup-go@v2
