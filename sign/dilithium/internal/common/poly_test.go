@@ -1,9 +1,6 @@
 package common
 
-import (
-	"math/rand"
-	"testing"
-)
+import "testing"
 
 func TestExceeds(t *testing.T) {
 	for i := 0; i < N; i++ {
@@ -116,9 +113,8 @@ func TestMulHatAgainstGeneric(t *testing.T) {
 func TestReduceLe2QAgainstGeneric(t *testing.T) {
 	for k := 0; k < 1000; k++ {
 		var a Poly
-		for j := 0; j < N; j++ {
-			a[j] = rand.Uint32()
-		}
+		r := randSliceUint32(N)
+		copy(a[:], r)
 		p1 := a
 		p2 := a
 		p1.reduceLe2QGeneric()
@@ -132,9 +128,8 @@ func TestReduceLe2QAgainstGeneric(t *testing.T) {
 func TestNormalizeAgainstGeneric(t *testing.T) {
 	for k := 0; k < 1000; k++ {
 		var a Poly
-		for j := 0; j < N; j++ {
-			a[j] = rand.Uint32()
-		}
+		r := randSliceUint32(N)
+		copy(a[:], r)
 		p1 := a
 		p2 := a
 		p1.normalizeGeneric()

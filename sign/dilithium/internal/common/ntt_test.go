@@ -1,13 +1,12 @@
 package common
 
-import (
-	"math/rand"
-	"testing"
-)
+import "testing"
 
 func (p *Poly) RandLe2Q() {
+	r := randSliceUint32(N)
+	max := 2 * uint32(Q)
 	for i := uint(0); i < N; i++ {
-		p[i] = uint32(rand.Intn(int(2 * Q)))
+		p[i] = r[i] % max
 	}
 }
 
