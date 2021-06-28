@@ -1,9 +1,13 @@
+---
 linters:
   disable-all: true
   enable:
-#   - lll    
-#   - gocritic    
-#   - gocognit    
+    # - lll
+    # - gocritic
+    # - gocognit
+    # - interfacer  (deprecated since v1.38.0)
+    # - scopelint   (deprecated since v1.39.0)
+    # - golint      (deprecated since v1.41.0)
     - bodyclose
     - deadcode
     - depguard
@@ -14,15 +18,12 @@ linters:
     - gocyclo
     - gofmt
     - goimports
-    - golint
     - gosec
     - gosimple
     - govet
     - ineffassign
-    - interfacer
     - misspell
     - nakedret
-    - scopelint
     - staticcheck
     - structcheck
     - stylecheck
