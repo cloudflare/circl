@@ -244,3 +244,68 @@ func TestErrors(t *testing.T) {
 		test.CheckOk(k == nil, strErrNil, t)
 	})
 }
+
+func BenchmarkOPRF(b *testing.B) {
+	suite := oprf.OPRFP256
+	serverBasic, err := oprf.NewServer(suite, nil)
+	test.CheckNoErr(b, err, "failed server creation")
+	clientBasic, err := oprf.NewClient(suite)
+	test.CheckNoErr(b, err, "failed client creation")
+
+	benchOprf(b, serverBasic, clientBasic)
+}
+
+func BenchmarkVOPRF(b *testing.B) {
+	suite := oprf.OPRFP256
+	serverVerif, err := oprf.NewVerifiableServer(suite, nil)
+	test.CheckNoErr(b, err, "failed server creation")
+	pkS := serverVerif.GetPublicKey()
+	clientVerif, err := oprf.NewVerifiableClient(suite, pkS)
+	test.CheckNoErr(b, err, "failed client creation")
+
+	benchOprf(b, serverVerif, clientVerif)
+}
+
+func benchOprf(b *testing.B, server *oprf.Server, client *oprf.Client) {
+	inputs := [][]byte{{0x00}, {0xFF}}
+	cr, err := client.Request(inputs)
+	test.CheckNoErr(b, err, "failed client request")
+	eval, err := server.Evaluate(cr.BlindedElements())
+	test.CheckNoErr(b, err, "failed server evaluate")
+	clientOutputs, err := client.Finalize(cr, eval)
+	test.CheckNoErr(b, err, "failed client finalize")
+
+	b.Run("Client/Request", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, _ = client.Request(inputs)
+		}
+	})
+
+	b.Run("Server/Evaluate", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, _ = server.Evaluate(cr.BlindedElements())
+		}
+	})
+
+	b.Run("Client/Finalize", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, _ = client.Finalize(cr, eval)
+		}
+	})
+
+	b.Run("Server/VerifyFinalize", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			for j := range inputs {
+				server.VerifyFinalize(inputs[j], clientOutputs[j])
+			}
+		}
+	})
+
+	b.Run("Server/FullEvaluate", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			for j := range inputs {
+				_, _ = server.FullEvaluate(inputs[j])
+			}
+		}
+	})
+}
