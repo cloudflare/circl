@@ -68,18 +68,36 @@ func (c *Client) Request(inputs [][]byte) (*ClientRequest, error) {
 	for i := range inputs {
 		blinds[i] = c.suite.Group.RandomScalar(rand.Reader)
 	}
-
 	return c.blind(inputs, blinds)
 }
 
 func (c *Client) blind(inputs [][]byte, blinds []Blind) (*ClientRequest, error) {
 	blindedElements := make([]group.Element, len(inputs))
-	for i := range inputs {
-		p := c.suite.Group.HashToElement(inputs[i], c.suite.getDST(hashToGroupDST))
-		blindedElements[i] = c.suite.Group.NewElement()
-		blindedElements[i].Mul(p, blinds[i])
+	if c.Mode == BaseMode {
+		c.blindMultiplicative(blindedElements, inputs, blinds)
+	} else if c.Mode == VerifiableMode {
+		c.blindAdditive(blindedElements, inputs, blinds)
+	} else {
+		return nil, ErrUnsupportedSuite
 	}
 	return &ClientRequest{inputs, blinds, blindedElements}, nil
+}
+
+func (c *Client) blindAdditive(blindedElt []group.Element, inputs [][]byte, blinds []Blind) {
+	for i := range inputs {
+		p := c.suite.Group.HashToElement(inputs[i], c.suite.getDST(hashToGroupDST))
+		blindedElt[i] = c.suite.Group.NewElement()
+		blindedElt[i].MulGen(blinds[i])
+		blindedElt[i].Add(blindedElt[i], p)
+	}
+}
+
+func (c *Client) blindMultiplicative(blindedElt []group.Element, inputs [][]byte, blinds []Blind) {
+	for i := range inputs {
+		p := c.suite.Group.HashToElement(inputs[i], c.suite.getDST(hashToGroupDST))
+		blindedElt[i] = c.suite.Group.NewElement()
+		blindedElt[i].Mul(p, blinds[i])
+	}
 }
 
 // Finalize computes the signed token from the server Evaluation and returns
@@ -173,16 +191,46 @@ func (c *Client) verifyProof(blinds []group.Element, elements []group.Element, p
 	return gotC.IsEqual(cc)
 }
 
-func (c *Client) unblind(e []group.Element, blinds []Blind) ([][]byte, error) {
+func (c *Client) unblind(blindedElt []group.Element, blind []Blind) ([]UnBlinded, error) {
+	if c.Mode == BaseMode {
+		return c.unblindMultiplicative(blindedElt, blind)
+	} else if c.Mode == VerifiableMode {
+		return c.unblindAdditive(blindedElt, blind)
+	} else {
+		panic(ErrUnsupportedSuite)
+	}
+}
+
+func (c *Client) unblindMultiplicative(blindedElt []group.Element, blind []Blind) ([]UnBlinded, error) {
 	var err error
-	unblindedElements := make([][]byte, len(e))
+	unblindedElt := make([]UnBlinded, len(blindedElt))
 	invBlind := c.Group.NewScalar()
-	for i := range e {
-		invBlind.Inv(blinds[i])
-		unblindedElements[i], err = c.scalarMult(e[i], invBlind)
+	U := c.Group.NewElement()
+
+	for i := range blindedElt {
+		invBlind.Inv(blind[i])
+		U.Mul(blindedElt[i], invBlind)
+		unblindedElt[i], err = U.MarshalBinaryCompress()
 		if err != nil {
 			return nil, err
 		}
 	}
-	return unblindedElements, nil
+	return unblindedElt, err
+}
+
+func (c *Client) unblindAdditive(blindedElt []group.Element, blind []Blind) ([]UnBlinded, error) {
+	var err error
+	unblindedElt := make([]UnBlinded, len(blindedElt))
+	U := c.Group.NewElement()
+
+	for i := range blindedElt {
+		U.Mul(c.pkS.e, blind[i])
+		U.Neg(U)
+		U.Add(U, blindedElt[i])
+		unblindedElt[i], err = U.MarshalBinaryCompress()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return unblindedElt, err
 }

@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	version         = "VOPRF06-"
+	version         = "VOPRF07-"
 	seedDST         = "Seed-"
 	challengeDST    = "Challenge-"
 	finalizeDST     = "Finalize-"
@@ -62,6 +62,7 @@ type Blind group.Scalar
 type SerializedElement = []byte
 type SerializedScalar = []byte
 type Blinded = SerializedElement
+type UnBlinded = SerializedElement
 
 type Proof struct {
 	C, S SerializedScalar
@@ -115,17 +116,12 @@ func GetSizes(id SuiteID) (
 }
 
 func (s *suite) GetMode() Mode { return s.Mode }
+
 func (s *suite) getDST(name string) []byte {
 	return append(append(append([]byte{},
 		[]byte(name)...),
 		[]byte(version)...),
 		[]byte{s.Mode, 0, byte(s.SuiteID)}...)
-}
-
-func (s *suite) scalarMult(e group.Element, k group.Scalar) ([]byte, error) {
-	t := s.Group.NewElement()
-	t.Mul(e, k)
-	return t.MarshalBinaryCompress()
 }
 
 func (s *suite) finalizeHash(input, element []byte) []byte {
