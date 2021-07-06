@@ -36,29 +36,29 @@ func TestBarrettReduceFull(t *testing.T) {
 	}
 }
 
-func randSliceUint32(N uint) []uint32 {
-	bytes := make([]uint8, 4*N)
+func randSliceUint32WithMax(length uint, max uint32) []uint32 {
+	bytes := make([]uint8, 4*length)
 	n, err := rand.Read(bytes)
 	if err != nil {
 		panic(err)
 	} else if n < len(bytes) {
 		panic("short read from RNG")
 	}
-	x := make([]uint32, N)
+	x := make([]uint32, length)
 	for i := range x {
-		x[i] = binary.LittleEndian.Uint32(bytes[4*i:])
+		x[i] = binary.LittleEndian.Uint32(bytes[4*i:]) % max
 	}
 	return x
 }
 
 func TestMontReduce(t *testing.T) {
 	N := 1000
-	r := randSliceUint32(uint(N))
 	max := uint32(Q) * (1 << 16)
 	mid := int32(Q) * (1 << 15)
+	r := randSliceUint32WithMax(uint(N), max)
 
 	for i := 0; i < N; i++ {
-		x := int32(r[i]%max) - mid
+		x := int32(r[i]) - mid
 		y := montReduce(x)
 		if modQ32(x) != modQ32(int32(y)*(1<<16)) {
 			t.Fatalf("%d", x)
