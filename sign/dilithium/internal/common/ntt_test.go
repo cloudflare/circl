@@ -3,11 +3,9 @@ package common
 import "testing"
 
 func (p *Poly) RandLe2Q() {
-	r := randSliceUint32(N)
 	max := 2 * uint32(Q)
-	for i := uint(0); i < N; i++ {
-		p[i] = r[i] % max
-	}
+	r := randSliceUint32WithMax(N, max)
+	copy(p[:], r)
 }
 
 func TestNTTAgainstGeneric(t *testing.T) {

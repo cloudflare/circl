@@ -4,22 +4,24 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"flag"
+	"math"
 	"testing"
 )
 
 var runVeryLongTest = flag.Bool("very-long", false, "runs very long tests")
 
-func randSliceUint32(N uint) []uint32 {
-	bytes := make([]uint8, 4*N)
-	n, err := rand.Read(bytes)
-	if err != nil {
+func randSliceUint32(length uint) []uint32 { return randSliceUint32WithMax(length, math.MaxUint32) }
+
+func randSliceUint32WithMax(length uint, max uint32) []uint32 {
+	bytes := make([]uint8, 4*length)
+	if n, err := rand.Read(bytes); err != nil {
 		panic(err)
 	} else if n < len(bytes) {
 		panic("short read from RNG")
 	}
-	x := make([]uint32, N)
+	x := make([]uint32, length)
 	for i := range x {
-		x[i] = binary.LittleEndian.Uint32(bytes[4*i:])
+		x[i] = binary.LittleEndian.Uint32(bytes[4*i:]) % max
 	}
 	return x
 }
