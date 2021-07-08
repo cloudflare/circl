@@ -1,22 +1,28 @@
 package bls12381
 
 import (
+	"crypto/rand"
+	"fmt"
 	"testing"
 
 	"github.com/cloudflare/circl/ecc/bls12381/ff"
 )
 
-func BenchmarkPair(b *testing.B) {
+func BenchmarkMiller(b *testing.B) {
+	g1 := G1Generator()
+	g2 := G2Generator()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = miller(g1, g2)
+	}
+}
+
+func BenchmarkFinalExpo(b *testing.B) {
 	g1 := G1Generator()
 	g2 := G2Generator()
 	f := miller(g1, g2)
 	g := ff.EasyExponentiation(f)
 
-	b.Run("Miller", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			_ = miller(g1, g2)
-		}
-	})
 	b.Run("EasyExp", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			ff.EasyExponentiation(f)
@@ -32,4 +38,43 @@ func BenchmarkPair(b *testing.B) {
 			_ = finalExp(f)
 		}
 	})
+}
+
+func BenchmarkPair(b *testing.B) {
+	g1 := G1Generator()
+	g2 := G2Generator()
+
+	const N = 3
+	listG1 := [N]*G1{}
+	listG2 := [N]*G2{}
+	listExp := [N]*Scalar{}
+	for i := 0; i < N; i++ {
+		listG1[i] = new(G1)
+		listG1[i].Set(g1)
+		listG2[i] = new(G2)
+		listG2[i].Set(g2)
+		listExp[i] = &Scalar{}
+		mustRead(b, listExp[i][:])
+	}
+
+	b.Run("Pair1", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			Pair(g1, g2)
+		}
+	})
+	b.Run(fmt.Sprintf("Pair%v", N), func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			ProdPair(listG1[:], listG2[:], listExp[:])
+		}
+	})
+}
+
+func mustRead(t testing.TB, b []byte) {
+	n, err := rand.Read(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != len(b) {
+		t.Fatal("incomplete read")
+	}
 }

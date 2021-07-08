@@ -49,3 +49,13 @@ func (z *Fp12) Inv(x *Fp12) {
 	z[1].Mul(&x[1], &den)
 	z[1].Neg()
 }
+func (z *Fp12) Exp(x *Fp12, n []byte) {
+	z.SetOne()
+	for i := 8*len(n) - 1; i >= 0; i-- {
+		z.Sqr(z)
+		bit := 0x1 & (n[i/8] >> uint(i%8))
+		if bit != 0 {
+			z.Mul(z, x)
+		}
+	}
+}

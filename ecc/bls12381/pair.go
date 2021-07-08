@@ -94,3 +94,22 @@ func hardExponentiation(f *ff.Cyclo6) *Gt {
 	z[1].Set(&c[1])
 	return &z
 }
+
+// ProdPair calculates the product of pairings, i.e., \Prod_i pair(Pi,Qi)^ni.
+func ProdPair(P []*G1, Q []*G2, n []*Scalar) *Gt {
+	if len(P) != len(Q) || len(P) != len(n) {
+		panic("mismatch length of inputs")
+	}
+
+	ei := new(ff.Fp12)
+	out := new(ff.Fp12)
+	out.SetOne()
+
+	for i := range P {
+		mi := miller(P[i], Q[i])
+		ei.Exp(mi, n[i][:])
+		out.Mul(out, ei)
+	}
+
+	return finalExp(out)
+}
