@@ -1,17 +1,13 @@
 package ff
 
 import (
+	"crypto/rand"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/test"
 )
 
-func randomFp12() *Fp12 {
-	return &Fp12{
-		*randomFp6(),
-		*randomFp6(),
-	}
-}
+func randomFp12() *Fp12 { return &Fp12{*randomFp6(), *randomFp6()} }
 
 func TestFp12(t *testing.T) {
 	const testTimes = 1 << 10
@@ -70,6 +66,9 @@ func BenchmarkFp12(b *testing.B) {
 	x := randomFp12()
 	y := randomFp12()
 	z := randomFp12()
+	var n [32]byte
+	mustRead(b, n[:])
+
 	b.Run("Add", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			z.Add(x, y)
@@ -90,4 +89,19 @@ func BenchmarkFp12(b *testing.B) {
 			z.Inv(x)
 		}
 	})
+	b.Run("Exp", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			z.Exp(x, n[:])
+		}
+	})
+}
+
+func mustRead(t testing.TB, b []byte) {
+	n, err := rand.Read(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != len(b) {
+		t.Fatal("incomplete read")
+	}
 }

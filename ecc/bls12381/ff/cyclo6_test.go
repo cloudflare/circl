@@ -4,6 +4,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/cloudflare/circl/internal/conv"
 	"github.com/cloudflare/circl/internal/test"
 )
 
@@ -17,18 +18,6 @@ func phi6primeSq() *big.Int {
 	p.Mul(p, p2)                               // p^4 - p^2
 	p.Add(p, one)                              // p^4 - p^2 + 1
 	return p
-}
-
-func pow(x *Cyclo6, exp *big.Int) *Cyclo6 {
-	t := &Cyclo6{}
-	t.SetIdentity()
-	for i := exp.BitLen() - 1; i >= 0; i-- {
-		t.Sqr(t)
-		if exp.Bit(i) == 1 {
-			t.Mul(t, x)
-		}
-	}
-	return t
 }
 
 func TestCyclo6(t *testing.T) {
@@ -46,9 +35,15 @@ func TestCyclo6(t *testing.T) {
 	})
 	t.Run("order", func(t *testing.T) {
 		cyclo6Order := phi6primeSq()
+		l := (cyclo6Order.BitLen() + 7) >> 3
+		cyclo6OrderBytes := make([]byte, l)
+		conv.BigInt2BytesLe(cyclo6OrderBytes, cyclo6Order)
+
+		var z12 Fp12
 		for i := 0; i < 16; i++ {
 			x := randomCyclo6()
-			z := pow(x, cyclo6Order)
+			z12.Exp((*Fp12)(x), cyclo6OrderBytes)
+			z := Cyclo6(z12)
 
 			// x^phi6primeSq = 1
 			got := z.IsIdentity()
