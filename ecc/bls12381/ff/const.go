@@ -5,9 +5,9 @@ import "math/big"
 var (
 	blsPrime *big.Int
 
-	frob6V1  = Fp2{}
-	frob6V2  = Fp2{}
-	frob12W1 = Fp6{}
+	frob6V1  Fp2
+	frob6V2  Fp2
+	frob12W1 Fp6
 )
 
 func init() {

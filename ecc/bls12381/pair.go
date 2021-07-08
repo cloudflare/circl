@@ -63,16 +63,16 @@ func (l *line) eval(P *G1) *ff.Fp12 {
 
 func finalExp(f *ff.Fp12) *Gt { return hardExponentiation(ff.EasyExponentiation(f)) }
 
-// HardExponentiation raises f^(Cy_12(p)/r) and returns a r-root of unity.
-func hardExponentiation(f *ff.Cyclo12) *Gt {
-	var t0, t1, _f, f3 ff.Cyclo12
-	var c, a0, a1, a2, a3 ff.Cyclo12
+// HardExponentiation raises f^(Cy_6(p)/r) and returns a r-root of unity.
+func hardExponentiation(f *ff.Cyclo6) *Gt {
+	var t0, t1, _f, f3 ff.Cyclo6
+	var c, a0, a1, a2, a3 ff.Cyclo6
 	_f.Inv(f)        // _f = f^-1
 	f3.Sqr(f)        // f3 = f^2
 	f3.Mul(&f3, f)   // f3 = f^3
-	t0.Pow(f)        // t0 = f^x
+	t0.PowToX(f)     // t0 = f^x
 	t0.Mul(&t0, &_f) // t0 = f^(x-1)
-	t1.Pow(&t0)      // t1 = f^(x-1)*x
+	t1.PowToX(&t0)   // t1 = f^(x-1)*x
 	t0.Inv(&t0)      // t0 = f^-(x-1)
 	a3.Mul(&t1, &t0) // a3 = f^(x-1)*(x-1)
 	a2.Frob(&a3)     // a2 = a3*p
@@ -82,11 +82,11 @@ func hardExponentiation(f *ff.Cyclo12) *Gt {
 	a0.Frob(&a1)     // a0 = a3*p^3-a3*p
 	a0.Mul(&a0, &f3) // a0 = a3*p^3-a3*p+3
 
-	c.Pow(&a3)     // c = f^(a3*x)
+	c.PowToX(&a3)  // c = f^(a3*x)
 	c.Mul(&c, &a2) // c = f^(a3*x+a2)
-	c.Pow(&c)      // c = f^(a3*x+a2)*x = f^(a3*x^2+a2*x)
+	c.PowToX(&c)   // c = f^(a3*x+a2)*x = f^(a3*x^2+a2*x)
 	c.Mul(&c, &a1) // c = f^(a3*x^2+a2*x+a1)
-	c.Pow(&c)      // c = f^(a3*x^2+a2*x+a1)*x = f^(a3*x^3+a2*x^2+a1*x)
+	c.PowToX(&c)   // c = f^(a3*x^2+a2*x+a1)*x = f^(a3*x^3+a2*x^2+a1*x)
 	c.Mul(&c, &a0) // c = f^(a3*x^3+a2*x^2+a1*x+a0)
 
 	var z Gt
