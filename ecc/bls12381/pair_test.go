@@ -1,7 +1,6 @@
 package bls12381
 
 import (
-	"crypto/rand"
 	"fmt"
 	"testing"
 
@@ -54,7 +53,7 @@ func BenchmarkPair(b *testing.B) {
 		listG2[i] = new(G2)
 		listG2[i].Set(g2)
 		listExp[i] = &Scalar{}
-		mustRead(b, listExp[i][:])
+		listExp[i].Random()
 	}
 
 	b.Run("Pair1", func(b *testing.B) {
@@ -67,14 +66,4 @@ func BenchmarkPair(b *testing.B) {
 			ProdPair(listG1[:], listG2[:], listExp[:])
 		}
 	})
-}
-
-func mustRead(t testing.TB, b []byte) {
-	n, err := rand.Read(b)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if n != len(b) {
-		t.Fatal("incomplete read")
-	}
 }

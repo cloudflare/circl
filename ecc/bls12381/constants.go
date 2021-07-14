@@ -17,12 +17,7 @@ var (
 	g2Param3B  = ff.Fp2{}
 	g2GenX     = ff.Fp2{}
 	g2GenY     = ff.Fp2{}
-	primeOrder = Scalar{
-		0x01, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff,
-		0xfe, 0x5b, 0xfe, 0xff, 0x02, 0xa4, 0xbd, 0x53,
-		0x05, 0xd8, 0xa1, 0x09, 0x08, 0xd8, 0x39, 0x33,
-		0x48, 0x7d, 0x9d, 0x29, 0x53, 0xa7, 0xed, 0x73,
-	}
+	primeOrder Scalar
 )
 
 func init() {
@@ -39,4 +34,6 @@ func init() {
 	g2GenX[1].SetString("0x13e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7e")
 	g2GenY[0].SetString("0x0ce5d527727d6e118cc9cdc6da2e351aadfd9baa8cbdd3a76d429a695160d12c923ac9cc3baca289e193548608b82801")
 	g2GenY[1].SetString("0x0606c4a02ea734cc32acd2b02bc28b99cb3e287e85a763af267492ab572e99ab3f370d275cec1da1aaa9075ff05f79be")
+
+	primeOrder.SetString("0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001")
 }

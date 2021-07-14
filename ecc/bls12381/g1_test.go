@@ -1,7 +1,6 @@
 package bls12381
 
 import (
-	"crypto/rand"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/test"
@@ -10,7 +9,7 @@ import (
 func randomG1(t testing.TB) *G1 {
 	var P G1
 	var k Scalar
-	_, _ = rand.Read(k[:])
+	k.Random()
 	P.ScalarMult(&k, G1Generator())
 	if !P.IsOnCurve() {
 		t.Helper()
@@ -44,13 +43,13 @@ func TestG1ScalarMult(t *testing.T) {
 	var Q G1
 	for i := 0; i < testTimes; i++ {
 		P := randomG1(t)
-		_, _ = rand.Read(k[:])
+		k.Random()
 		Q.ScalarMult(&k, P)
 		Q.Normalize()
 		got := Q.IsOnG1()
 		want := true
 		if got != want {
-			test.ReportError(t, got, want, P)
+			test.ReportError(t, got, want, P, k)
 		}
 	}
 }
@@ -65,7 +64,7 @@ func BenchmarkG1(b *testing.B) {
 	})
 	b.Run("Mul", func(b *testing.B) {
 		var k Scalar
-		_, _ = rand.Read(k[:])
+		k.Random()
 		for i := 0; i < b.N; i++ {
 			P.ScalarMult(&k, P)
 		}

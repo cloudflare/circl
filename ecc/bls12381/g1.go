@@ -115,9 +115,10 @@ func (g *G1) Add(P, Q *G1) {
 func (g *G1) ScalarMult(k *Scalar, P *G1) {
 	var Q G1
 	Q.SetIdentity()
+	kk := k.Bytes()
 	for i := 8*ScalarSize - 1; i >= 0; i-- {
 		Q.Double()
-		bit := 0x1 & (k[i/8] >> uint(i%8))
+		bit := 0x1 & (kk[i/8] >> uint(i%8))
 		if bit != 0 {
 			Q.Add(&Q, P)
 		}
