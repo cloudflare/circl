@@ -1,6 +1,7 @@
 package bls12381
 
 import (
+	"crypto/rand"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/test"
@@ -50,6 +51,23 @@ func TestG1ScalarMult(t *testing.T) {
 		want := true
 		if got != want {
 			test.ReportError(t, got, want, P, k)
+		}
+	}
+}
+
+func TestG1Hash(t *testing.T) {
+	const testTimes = 1 << 6
+	var P G1
+	var msg, dst [4]byte
+	for i := 0; i < testTimes; i++ {
+		_, _ = rand.Read(msg[:])
+		_, _ = rand.Read(dst[:])
+		P.Hash(msg[:], dst[:])
+		got := P.IsOnCurve()
+		want := true
+
+		if got != want {
+			test.ReportError(t, got, want, msg, dst)
 		}
 	}
 }
