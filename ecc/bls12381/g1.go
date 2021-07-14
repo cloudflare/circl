@@ -1,7 +1,9 @@
 package bls12381
 
 import (
+	"crypto/sha256"
 	"fmt"
+	"math/big"
 
 	"github.com/cloudflare/circl/ecc/bls12381/ff"
 )
@@ -162,6 +164,37 @@ func (g *G1) Normalize() {
 		g.y.Mul(&g.y, &invZ)
 		g.z.Mul(&g.z, &invZ)
 	}
+}
+
+// Hash produces an element of G1 from the hash of a message and an optional
+// domain separation tag.
+func (g *G1) Hash(msg, dst []byte) {
+	h := sha256.New()
+	for cnt := 0; cnt < 16; cnt++ {
+		h.Reset()
+		_, _ = h.Write([]byte{byte(cnt)})
+		_, _ = h.Write(msg)
+		_, _ = h.Write(dst)
+		sum := h.Sum(nil)
+		xi := new(big.Int).SetBytes(sum)
+
+		var x, gx, y, four ff.Fp
+		four.SetUint64(4)
+		x.SetString(xi.Text(10))
+		gx.Mul(&x, &x)
+		gx.Mul(&gx, &x)
+		gx.Add(&gx, &four)
+		if y.Sqrt(&gx) {
+			g.x.Set(&x)
+			g.y.Set(&y)
+			g.z.SetOne()
+			if !g.IsOnCurve() {
+				panic("bad point")
+			}
+			return
+		}
+	}
+	panic("point not found")
 }
 
 // G1Generator returns the generator point of G1.
