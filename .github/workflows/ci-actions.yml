@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-18.04
     strategy:
       matrix:
-        GOVER: ['1.16', '1.15', '1.14', '1.13', '1.12']
+        GOVER: ['1.16', '1.15']
     steps:
       - name: Checkout
         uses: actions/checkout@v2
