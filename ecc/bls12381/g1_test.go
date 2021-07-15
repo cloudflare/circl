@@ -88,3 +88,19 @@ func BenchmarkG1(b *testing.B) {
 		}
 	})
 }
+
+func TestG1Serial(t *testing.T) {
+	testTimes := 1 << 6
+	for i := 0; i < testTimes; i++ {
+		P := randomG1(t)
+		var Q G1
+		b := P.Bytes()
+		err := Q.SetBytes(b)
+		if err != nil {
+			t.Fatal("failure to deserialize")
+		}
+		if !Q.IsEqual(P) {
+			t.Fatal("deserialization wrong point")
+		}
+	}
+}

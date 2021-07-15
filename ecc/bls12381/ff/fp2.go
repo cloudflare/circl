@@ -4,8 +4,16 @@ import "fmt"
 
 type Fp2 [2]Fp
 
-func (z Fp2) String() string       { return fmt.Sprintf("0: %v\n   1: %v", z[0], z[1]) }
+func (z *Fp2) Bytes() []byte {
+	b := make([]byte, 96)
+	z[0].i.FillBytes(b[0:48])
+	z[1].i.FillBytes(b[48:96])
+	return b
+}
+
+func (z *Fp2) String() string      { return fmt.Sprintf("0: %v\n   1: %v", z[0], z[1]) }
 func (z *Fp2) Set(x *Fp2)          { z[0].Set(&x[0]); z[1].Set(&x[1]) }
+func (z *Fp2) SetBytes(b []byte)   { z[0].SetBytes(b[0:48]); z[1].SetBytes(b[48:96]) }
 func (z *Fp2) SetZero()            { z[0].SetZero(); z[1].SetZero() }
 func (z *Fp2) SetOne()             { z[0].SetOne(); z[1].SetZero() }
 func (z *Fp2) IsZero() bool        { return z[0].IsZero() && z[1].IsZero() }

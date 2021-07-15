@@ -64,6 +64,17 @@ func TestFp2(t *testing.T) {
 			}
 		}
 	})
+	t.Run("serdes", func(t *testing.T) {
+		var b Fp2
+		for i := 0; i < testTimes; i++ {
+			a := randomFp2()
+			s := a.Bytes()
+			b.SetBytes(s)
+			if !b.IsEqual(a) {
+				test.ReportError(t, a, b)
+			}
+		}
+	})
 }
 
 func BenchmarkFp2(b *testing.B) {

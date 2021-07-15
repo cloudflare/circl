@@ -4,11 +4,26 @@ import "fmt"
 
 type Fp6 [3]Fp2
 
+func (z *Fp6) Bytes() []byte {
+	b := make([]byte, 3*96)
+	b0 := z[0].Bytes()
+	b1 := z[1].Bytes()
+	b2 := z[2].Bytes()
+	copy(b, b0)
+	copy(b[96:], b1)
+	copy(b[2*96:], b2)
+	return b
+}
 func (z Fp6) String() string { return fmt.Sprintf("\n0: %v\n1: %v\n2: %v", z[0], z[1], z[2]) }
 func (z *Fp6) Set(x *Fp6)    { z[0].Set(&x[0]); z[1].Set(&x[1]); z[2].Set(&x[2]) }
-func (z *Fp6) SetZero()      { z[0].SetZero(); z[1].SetZero(); z[2].SetZero() }
-func (z *Fp6) SetOne()       { z[0].SetOne(); z[1].SetZero(); z[2].SetZero() }
-func (z *Fp6) IsZero() bool  { return z[0].IsZero() && z[1].IsZero() && z[2].IsZero() }
+func (z *Fp6) SetBytes(b []byte) {
+	z[0].SetBytes(b[0:96])
+	z[1].SetBytes(b[96:192])
+	z[2].SetBytes(b[192:])
+}
+func (z *Fp6) SetZero()     { z[0].SetZero(); z[1].SetZero(); z[2].SetZero() }
+func (z *Fp6) SetOne()      { z[0].SetOne(); z[1].SetZero(); z[2].SetZero() }
+func (z *Fp6) IsZero() bool { return z[0].IsZero() && z[1].IsZero() && z[2].IsZero() }
 func (z *Fp6) IsEqual(x *Fp6) bool {
 	return z[0].IsEqual(&x[0]) && z[1].IsEqual(&x[1]) && z[2].IsEqual(&x[2])
 }

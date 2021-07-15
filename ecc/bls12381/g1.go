@@ -13,6 +13,31 @@ type G1 struct{ x, y, z ff.Fp }
 
 func (g G1) String() string { return fmt.Sprintf("x: %v\ny: %v\nz: %v", g.x, g.y, g.z) }
 
+// Bytes is a representation of g
+func (g *G1) Bytes() []byte {
+	g.Normalize()
+	b := make([]byte, 2*48)
+	bx := g.x.Bytes()
+	by := g.y.Bytes()
+	copy(b, bx)
+	copy(b[48:], by)
+	return b
+}
+
+// SetBytes sets g to the value in bytes, and returns a non-nil error if not in G1
+func (g *G1) SetBytes(b []byte) error {
+	if len(b) != 96 {
+		return fmt.Errorf("incorrect length")
+	}
+	g.x.SetBytes(b[0:48])
+	g.y.SetBytes(b[48:])
+	g.z.SetOne()
+	if !g.IsOnG1() {
+		return fmt.Errorf("point not in G1")
+	}
+	return nil
+}
+
 // Set is (TMP).
 func (g *G1) Set(P *G1) {
 	g.x.Set(&P.x)
