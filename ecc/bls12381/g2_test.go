@@ -54,6 +54,22 @@ func TestG2ScalarMult(t *testing.T) {
 	}
 }
 
+func TestG2Serial(t *testing.T) {
+	testTimes := 1 << 6
+	for i := 0; i < testTimes; i++ {
+		P := randomG2(t)
+		var Q G2
+		b := P.Bytes()
+		err := Q.SetBytes(b)
+		if err != nil {
+			t.Fatal("failure to deserialize")
+		}
+		if !Q.IsEqual(P) {
+			t.Fatal("deserialization wrong point")
+		}
+	}
+}
+
 func BenchmarkG2(b *testing.B) {
 	P := randomG2(b)
 	Q := randomG2(b)

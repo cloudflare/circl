@@ -9,10 +9,35 @@ import (
 // G2 is a point in the twist of the BLS12 curve over Fp2.
 type G2 struct{ x, y, z ff.Fp2 }
 
+// Bytes serializes a G2 point
+func (g *G2) Bytes() []byte {
+	b := make([]byte, 2*2*48)
+	g.Normalize()
+	b1 := g.x.Bytes()
+	b2 := g.y.Bytes()
+	copy(b[:2*48], b1)
+	copy(b[2*48:], b2)
+	return b
+}
+
 func (g G2) String() string { return fmt.Sprintf("x: %v\ny: %v\nz: %v", g.x, g.y, g.z) }
 
 // Set is (TMP).
 func (g *G2) Set(P *G2) { g.x.Set(&P.x); g.y.Set(&P.y); g.z.Set(&P.z) }
+
+// SetBytes deserializes g, and returns an error if not in the group
+func (g *G2) SetBytes(b []byte) error {
+	if len(b) != 2*2*48 {
+		return fmt.Errorf("incorrect length")
+	}
+	g.x.SetBytes(b[:2*48])
+	g.y.SetBytes(b[2*48:])
+	g.z.SetOne()
+	if !g.IsOnG2() {
+		return fmt.Errorf("result not in group")
+	}
+	return nil
+}
 
 // Neg inverts g.
 func (g *G2) Neg() { g.y.Neg() }

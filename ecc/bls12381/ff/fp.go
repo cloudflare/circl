@@ -4,10 +4,12 @@ import "math/big"
 
 type Fp struct{ i big.Int }
 
+func (z Fp) Bytes() []byte            { b := make([]byte, 48); return z.i.FillBytes(b) }
 func (z Fp) String() string           { return "0x" + z.i.Text(16) }
 func (z *Fp) Set(x *Fp)               { z.i.Set(&x.i) }
 func (z *Fp) SetString(s string) bool { _, ok := z.i.SetString(s, 0); return ok }
 func (z *Fp) SetUint64(n uint64)      { z.i.SetUint64(n) }
+func (z *Fp) SetBytes(b []byte)       { z.i.SetBytes(b) }
 func (z *Fp) SetInt64(n int64)        { z.i.SetInt64(n) }
 func (z *Fp) SetZero()                { z.SetUint64(0) }
 func (z *Fp) SetOne()                 { z.SetUint64(1) }
