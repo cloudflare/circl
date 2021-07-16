@@ -3,7 +3,7 @@ package bls12381
 import "github.com/cloudflare/circl/ecc/bls12381/ff"
 
 // Pair calculates the ate-pairing of P and Q.
-func Pair(P *G1, Q *G2) *Gt { return finalExp(miller(P, Q)) }
+func Pair(P *G1, Q *G2) *Gt { P.Normalize(); return finalExp(miller(P, Q)) }
 
 func miller(P *G1, Q *G2) *ff.Fp12 {
 	f := &ff.Fp12{}
@@ -106,6 +106,7 @@ func ProdPair(P []*G1, Q []*G2, n []*Scalar) *Gt {
 	out.SetOne()
 
 	for i := range P {
+		P[i].Normalize()
 		mi := miller(P[i], Q[i])
 		ei.Exp(mi, n[i].Bytes())
 		out.Mul(out, ei)

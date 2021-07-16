@@ -38,6 +38,31 @@ func TestProdPair(t *testing.T) {
 	}
 }
 
+func TestPairBilinear(t *testing.T) {
+	testTimes := 1 << 5
+	for i := 0; i < testTimes; i++ {
+		g1 := G1Generator()
+		g2 := G2Generator()
+		a := &Scalar{}
+		b := &Scalar{}
+		a.Random()
+		b.Random()
+		ab := &Scalar{}
+		ab.Mul(a, b)
+		p := &G1{}
+		q := &G2{}
+		p.ScalarMult(a, g1)
+		q.ScalarMult(b, g2)
+		lhs := Pair(p, q)
+		tmp := Pair(g1, g2)
+		rhs := &Gt{}
+		rhs.Exp(tmp, ab)
+		if !lhs.IsEqual(rhs) {
+			test.ReportError(t, lhs, rhs)
+		}
+	}
+}
+
 func BenchmarkMiller(b *testing.B) {
 	g1 := G1Generator()
 	g2 := G2Generator()
