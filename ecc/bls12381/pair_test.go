@@ -63,6 +63,25 @@ func TestPairBilinear(t *testing.T) {
 	}
 }
 
+func TestPairIdentity(t *testing.T) {
+	g1id := &G1{}
+	g2id := &G2{}
+	g1 := G1Generator()
+	g2 := G2Generator()
+	g1id.SetIdentity()
+	g2id.SetIdentity()
+	one := &Gt{}
+	one.SetOne()
+	ans := Pair(g1id, g2)
+	if !ans.IsEqual(one) {
+		test.ReportError(t, ans, one)
+	}
+	ans = Pair(g1, g2id)
+	if !ans.IsEqual(one) {
+		test.ReportError(t, ans, one)
+	}
+}
+
 func BenchmarkMiller(b *testing.B) {
 	g1 := G1Generator()
 	g2 := G2Generator()
