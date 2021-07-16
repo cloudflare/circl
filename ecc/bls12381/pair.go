@@ -43,6 +43,8 @@ func (l *line) eval(P *G1) *ff.Fp12 {
 
 	// First perform the products: l[0]*xP and l[1]*yP \in Fp2.
 	var xP, yP ff.Fp2
+	var one ff.Fp12
+	one.SetOne()
 	xP[0].Set(&P.x)
 	yP[0].Set(&P.y)
 	l[0].Mul(&l[0], &xP)
@@ -58,6 +60,9 @@ func (l *line) eval(P *G1) *ff.Fp12 {
 	g[0][0].Set(&l[2])
 	g[0][1].Set(&l[0])
 	g[1][1].Set(&l[1])
+	if g.IsZero() {
+		return &one
+	}
 	return &g
 }
 
