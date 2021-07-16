@@ -2,9 +2,12 @@ package ff
 
 import "math/big"
 
+// FpSize is the length in bytes of a Fp element.
+const FpSize = 48
+
 type Fp struct{ i big.Int }
 
-func (z Fp) Bytes() []byte            { b := make([]byte, 48); return z.i.FillBytes(b) }
+func (z Fp) Bytes() []byte            { b := make([]byte, FpSize); return z.i.FillBytes(b) }
 func (z Fp) String() string           { return "0x" + z.i.Text(16) }
 func (z *Fp) Set(x *Fp)               { z.i.Set(&x.i) }
 func (z *Fp) SetString(s string) bool { _, ok := z.i.SetString(s, 0); return ok }

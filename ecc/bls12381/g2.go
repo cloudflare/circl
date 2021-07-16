@@ -6,21 +6,16 @@ import (
 	"github.com/cloudflare/circl/ecc/bls12381/ff"
 )
 
+// G2Size is the length in bytes of an element in G2.
+const G2Size = 2 * ff.Fp2Size
+
 // G2 is a point in the twist of the BLS12 curve over Fp2.
 type G2 struct{ x, y, z ff.Fp2 }
 
-// Bytes serializes a G2 point
-func (g *G2) Bytes() []byte {
-	b := make([]byte, 2*2*48)
-	g.Normalize()
-	b1 := g.x.Bytes()
-	b2 := g.y.Bytes()
-	copy(b[:2*48], b1)
-	copy(b[2*48:], b2)
-	return b
-}
-
 func (g G2) String() string { return fmt.Sprintf("x: %v\ny: %v\nz: %v", g.x, g.y, g.z) }
+
+// Bytes serializes a G2 element.
+func (g *G2) Bytes() []byte { g.Normalize(); return append(g.x.Bytes(), g.y.Bytes()...) }
 
 // Set is (TMP).
 func (g *G2) Set(P *G2) { g.x.Set(&P.x); g.y.Set(&P.y); g.z.Set(&P.z) }

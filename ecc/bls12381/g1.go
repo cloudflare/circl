@@ -8,29 +8,24 @@ import (
 	"github.com/cloudflare/circl/ecc/bls12381/ff"
 )
 
+// G1Size is the length in bytes of an element in G1.
+const G1Size = 2 * ff.FpSize
+
 // G1 is a point in the BLS12 curve over Fp.
 type G1 struct{ x, y, z ff.Fp }
 
 func (g G1) String() string { return fmt.Sprintf("x: %v\ny: %v\nz: %v", g.x, g.y, g.z) }
 
-// Bytes is a representation of g
-func (g *G1) Bytes() []byte {
-	g.Normalize()
-	b := make([]byte, 2*48)
-	bx := g.x.Bytes()
-	by := g.y.Bytes()
-	copy(b, bx)
-	copy(b[48:], by)
-	return b
-}
+// Bytes serializes a G1 element.
+func (g *G1) Bytes() []byte { g.Normalize(); return append(g.x.Bytes(), g.y.Bytes()...) }
 
 // SetBytes sets g to the value in bytes, and returns a non-nil error if not in G1
 func (g *G1) SetBytes(b []byte) error {
-	if len(b) != 96 {
+	if len(b) != G1Size {
 		return fmt.Errorf("incorrect length")
 	}
-	g.x.SetBytes(b[0:48])
-	g.y.SetBytes(b[48:])
+	g.x.SetBytes(b[:ff.FpSize])
+	g.y.SetBytes(b[ff.FpSize:])
 	g.z.SetOne()
 	if !g.IsOnG1() {
 		return fmt.Errorf("point not in G1")

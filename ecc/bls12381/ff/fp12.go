@@ -2,21 +2,16 @@ package ff
 
 import "fmt"
 
+// Fp12Size is the length in bytes of a Fp12 element.
+const Fp12Size = 2 * Fp6Size
+
 // Fp12 represents an element of the field Fp12 = Fp6[w]/(w^2-v)., where v in Fp6.
 type Fp12 [2]Fp6
 
-func (z Fp12) Bytes() []byte {
-	b := make([]byte, 12*48)
-	b0 := z[0].Bytes()
-	b1 := z[1].Bytes()
-	copy(b, b0)
-	copy(b[6*48:], b1)
-	return b
-}
-
 func (z Fp12) String() string        { return fmt.Sprintf("\n0: %v\n1: %v", z[0], z[1]) }
 func (z *Fp12) Set(x *Fp12)          { z[0].Set(&x[0]); z[1].Set(&x[1]) }
-func (z *Fp12) SetBytes(b []byte)    { z[0].SetBytes(b[0 : 6*48]); z[1].SetBytes(b[6*48:]) }
+func (z *Fp12) SetBytes(b []byte)    { z[0].SetBytes(b[:Fp6Size]); z[1].SetBytes(b[Fp6Size : 2*Fp6Size]) }
+func (z *Fp12) Bytes() []byte        { return append(z[0].Bytes(), z[1].Bytes()...) }
 func (z *Fp12) SetZero()             { z[0].SetZero(); z[1].SetZero() }
 func (z *Fp12) SetOne()              { z[0].SetOne(); z[1].SetZero() }
 func (z *Fp12) IsZero() bool         { return z[0].IsZero() && z[1].IsZero() }
