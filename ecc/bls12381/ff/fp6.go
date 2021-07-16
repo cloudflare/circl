@@ -2,24 +2,18 @@ package ff
 
 import "fmt"
 
+// Fp6Size is the length in bytes of a Fp6 element.
+const Fp6Size = 3 * Fp2Size
+
 type Fp6 [3]Fp2
 
-func (z *Fp6) Bytes() []byte {
-	b := make([]byte, 3*96)
-	b0 := z[0].Bytes()
-	b1 := z[1].Bytes()
-	b2 := z[2].Bytes()
-	copy(b, b0)
-	copy(b[96:], b1)
-	copy(b[2*96:], b2)
-	return b
-}
 func (z Fp6) String() string { return fmt.Sprintf("\n0: %v\n1: %v\n2: %v", z[0], z[1], z[2]) }
 func (z *Fp6) Set(x *Fp6)    { z[0].Set(&x[0]); z[1].Set(&x[1]); z[2].Set(&x[2]) }
+func (z *Fp6) Bytes() []byte { return append(append(z[0].Bytes(), z[1].Bytes()...), z[2].Bytes()...) }
 func (z *Fp6) SetBytes(b []byte) {
-	z[0].SetBytes(b[0:96])
-	z[1].SetBytes(b[96:192])
-	z[2].SetBytes(b[192:])
+	z[0].SetBytes(b[0*Fp2Size : 1*Fp2Size])
+	z[1].SetBytes(b[1*Fp2Size : 2*Fp2Size])
+	z[2].SetBytes(b[2*Fp2Size : 3*Fp2Size])
 }
 func (z *Fp6) SetZero()     { z[0].SetZero(); z[1].SetZero(); z[2].SetZero() }
 func (z *Fp6) SetOne()      { z[0].SetOne(); z[1].SetZero(); z[2].SetZero() }

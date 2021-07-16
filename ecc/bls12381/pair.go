@@ -1,3 +1,8 @@
+// Package bls12381 provides bilinear pairings using the BLS12-381 curve.
+//
+// A pairing system consists of three groups G1 and G2 (adiitive notation) and
+// Gt (multiplicative notation) of the same order.
+// Scalars can be used interchangebly between groups.
 package bls12381
 
 import "github.com/cloudflare/circl/ecc/bls12381/ff"
