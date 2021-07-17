@@ -1,7 +1,6 @@
 package bls12381
 
 import (
-	"crypto/rand"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/test"
@@ -9,12 +8,8 @@ import (
 
 func randomG2(t testing.TB) *G2 {
 	var P G2
-	var k Scalar
-	err := k.Random(rand.Reader)
-	if err != nil {
-		t.Fatalf("error: %v", err)
-	}
-	P.ScalarMult(&k, G2Generator())
+	k := randomScalar(t)
+	P.ScalarMult(k, G2Generator())
 	if !P.IsOnCurve() {
 		t.Helper()
 		t.Fatal("not on curve")
@@ -43,15 +38,11 @@ func TestG2Add(t *testing.T) {
 
 func TestG2ScalarMult(t *testing.T) {
 	const testTimes = 1 << 6
-	var k Scalar
 	var Q G2
 	for i := 0; i < testTimes; i++ {
 		P := randomG2(t)
-		err := k.Random(rand.Reader)
-		if err != nil {
-			t.Fatalf("error: %v", err)
-		}
-		Q.ScalarMult(&k, P)
+		k := randomScalar(t)
+		Q.ScalarMult(k, P)
 		Q.Normalize()
 		got := Q.IsOnG2()
 		want := true
@@ -80,19 +71,16 @@ func TestG2Serial(t *testing.T) {
 func BenchmarkG2(b *testing.B) {
 	P := randomG2(b)
 	Q := randomG2(b)
+	k := randomScalar(b)
+
 	b.Run("Add", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			P.Add(P, Q)
 		}
 	})
 	b.Run("Mul", func(b *testing.B) {
-		var k Scalar
-		err := k.Random(rand.Reader)
-		if err != nil {
-			b.Fatalf("error: %v", err)
-		}
 		for i := 0; i < b.N; i++ {
-			P.ScalarMult(&k, P)
+			P.ScalarMult(k, P)
 		}
 	})
 }

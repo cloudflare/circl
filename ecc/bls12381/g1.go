@@ -24,8 +24,14 @@ func (g *G1) SetBytes(b []byte) error {
 	if len(b) != G1Size {
 		return fmt.Errorf("incorrect length")
 	}
-	g.x.SetBytes(b[:ff.FpSize])
-	g.y.SetBytes(b[ff.FpSize:])
+	err := g.x.SetBytes(b[:ff.FpSize])
+	if err != nil {
+		return err
+	}
+	err = g.y.SetBytes(b[ff.FpSize:])
+	if err != nil {
+		return err
+	}
 	g.z.SetOne()
 	if !g.IsOnG1() {
 		return fmt.Errorf("point not in G1")
@@ -44,7 +50,7 @@ func (g *G1) Set(P *G1) {
 func (g *G1) Neg() { g.y.Neg() }
 
 // SetIdentity assigns g to the identity element.
-func (g *G1) SetIdentity() { g.x.SetZero(); g.y.SetOne(); g.z.SetZero() }
+func (g *G1) SetIdentity() { g.x = ff.Fp{}; g.y.SetOne(); g.z = ff.Fp{} }
 
 // IsOnG1 returns true if the point is in the group G1.
 func (g *G1) IsOnG1() bool { return g.IsOnCurve() && g.IsRTorsion() }
@@ -53,7 +59,7 @@ func (g *G1) IsOnG1() bool { return g.IsOnCurve() && g.IsRTorsion() }
 func (g *G1) IsIdentity() bool { return g.z.IsZero() }
 
 // IsRTorsion returns true if point is r-torsion.
-func (g *G1) IsRTorsion() bool { var P G1; P.ScalarMult(&primeOrder, g); return P.IsIdentity() }
+func (g *G1) IsRTorsion() bool { var P G1; P.scalarMult(ff.ScalarOrder(), g); return P.IsIdentity() }
 
 // Double updates g = 2g.
 func (g *G1) Double() {
@@ -134,13 +140,14 @@ func (g *G1) Add(P, Q *G1) {
 }
 
 // ScalarMult calculates g = kP.
-func (g *G1) ScalarMult(k *Scalar, P *G1) {
+func (g *G1) ScalarMult(k *Scalar, P *G1) { g.scalarMult(k.Bytes(), P) }
+
+func (g *G1) scalarMult(k []byte, P *G1) {
 	var Q G1
 	Q.SetIdentity()
-	kk := k.Bytes()
 	for i := 8*ScalarSize - 1; i >= 0; i-- {
 		Q.Double()
-		bit := 0x1 & (kk[i/8] >> uint(i%8))
+		bit := 0x1 & (k[i/8] >> uint(i%8))
 		if bit != 0 {
 			Q.Add(&Q, P)
 		}
@@ -200,7 +207,10 @@ func (g *G1) Hash(msg, dst []byte) {
 
 		var x, gx, y, four ff.Fp
 		four.SetUint64(4)
-		x.SetString(xi.Text(10))
+		err := x.SetString(xi.Text(10))
+		if err != nil {
+			panic("bad string")
+		}
 		gx.Mul(&x, &x)
 		gx.Mul(&gx, &x)
 		gx.Add(&gx, &four)

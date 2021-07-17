@@ -2,23 +2,24 @@ package ff
 
 import "fmt"
 
-// Fp6Size is the length in bytes of a Fp6 element.
+// Fp6Size is the length in bytes of an Fp6 element.
 const Fp6Size = 3 * Fp2Size
 
 type Fp6 [3]Fp2
 
 func (z Fp6) String() string { return fmt.Sprintf("\n0: %v\n1: %v\n2: %v", z[0], z[1], z[2]) }
 func (z *Fp6) Set(x *Fp6)    { z[0].Set(&x[0]); z[1].Set(&x[1]); z[2].Set(&x[2]) }
-func (z *Fp6) Bytes() []byte { return append(append(z[0].Bytes(), z[1].Bytes()...), z[2].Bytes()...) }
-func (z *Fp6) SetBytes(b []byte) {
-	z[0].SetBytes(b[0*Fp2Size : 1*Fp2Size])
-	z[1].SetBytes(b[1*Fp2Size : 2*Fp2Size])
-	z[2].SetBytes(b[2*Fp2Size : 3*Fp2Size])
+func (z Fp6) Bytes() []byte  { return append(append(z[0].Bytes(), z[1].Bytes()...), z[2].Bytes()...) }
+func (z *Fp6) SetBytes(b []byte) error {
+	return errSum(
+		z[0].SetBytes(b[0*Fp2Size:1*Fp2Size]),
+		z[1].SetBytes(b[1*Fp2Size:2*Fp2Size]),
+		z[2].SetBytes(b[2*Fp2Size:3*Fp2Size]),
+	)
 }
-func (z *Fp6) SetZero()     { z[0].SetZero(); z[1].SetZero(); z[2].SetZero() }
-func (z *Fp6) SetOne()      { z[0].SetOne(); z[1].SetZero(); z[2].SetZero() }
-func (z *Fp6) IsZero() bool { return z[0].IsZero() && z[1].IsZero() && z[2].IsZero() }
-func (z *Fp6) IsEqual(x *Fp6) bool {
+func (z *Fp6) SetOne()     { z[0].SetOne(); z[1] = Fp2{}; z[2] = Fp2{} }
+func (z Fp6) IsZero() bool { return z.IsEqual(&Fp6{}) }
+func (z Fp6) IsEqual(x *Fp6) bool {
 	return z[0].IsEqual(&x[0]) && z[1].IsEqual(&x[1]) && z[2].IsEqual(&x[2])
 }
 func (z *Fp6) Neg()          { z[0].Neg(); z[1].Neg(); z[2].Neg() }
@@ -32,6 +33,7 @@ func (z *Fp6) MulBeta() {
 	z[1].Set(&z[0])
 	z[0].Set(&t)
 }
+
 func (z *Fp6) Mul(x, y *Fp6) {
 	// https://ia.cr/2006/224 (Sec3.1)
 	//  z = x*y mod (v^3-B)
@@ -77,6 +79,7 @@ func (z *Fp6) Mul(x, y *Fp6) {
 	z[0].MulBeta()      // B(c5-c1)
 	z[0].Sub(&z[0], c2) // z0 = B(c5-c1)-Bc2+c0 = B(c5-c1-c2)+c0
 }
+
 func (z *Fp6) Sqr(x *Fp6) {
 	//  z = x^2 mod (v^3-B)
 	// z0 = B(2x1*x2) + x0^2
@@ -106,6 +109,7 @@ func (z *Fp6) Sqr(x *Fp6) {
 	c2.MulBeta()        // B(c2)
 	z[1].Add(c2, c3)    // z1 = B(c2)+2c3
 }
+
 func (z *Fp6) Inv(x *Fp6) {
 	aL, aM, aH := &x[0], &x[1], &x[2]
 	c0, c1, c2 := &Fp2{}, &Fp2{}, &Fp2{}
@@ -133,10 +137,27 @@ func (z *Fp6) Inv(x *Fp6) {
 	z[1].Mul(c1, t0) // z1 = c1/den
 	z[2].Mul(c2, t0) // z2 = c2/den
 }
+
 func (z *Fp6) Frob(x *Fp6) {
 	z[0].Frob(&x[0])
 	z[1].Frob(&x[1])
 	z[2].Frob(&x[2])
-	z[1].Mul(&z[1], &frob6V1)
-	z[2].Mul(&z[2], &frob6V2)
+	z[1].Mul(&z[1], &Fp2{Fp{}, frob6V1})
+	z[2].Mul(&z[2], &Fp2{frob6V2, Fp{}})
 }
+
+var (
+	// frob6V1 is toMont(v) = 2**384 * v mod fpPrime, where
+	// v = 0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaac
+	frob6V1 = Fp{fpMont{
+		0xcd03c9e48671f071, 0x5dab22461fcda5d2, 0x587042afd3851b95,
+		0x8eb60ebe01bacb9e, 0x03f97d6e83d050d2, 0x18f0206554638741,
+	}}
+
+	// frob6V2 is toMont(v) = 2**384 * v mod fpPrime, where
+	// v = 0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaad
+	frob6V2 = Fp{fpMont{
+		0x890dc9e4867545c3, 0x2af322533285a5d5, 0x50880866309b7e2c,
+		0xa20d1b8c7e881024, 0x14e4f04fe2db9068, 0x14e56d3f1564853a,
+	}}
+)

@@ -7,13 +7,13 @@ import (
 	"github.com/cloudflare/circl/internal/test"
 )
 
-func randomFp12() *Fp12 { return &Fp12{*randomFp6(), *randomFp6()} }
+func randomFp12(t testing.TB) *Fp12 { return &Fp12{*randomFp6(t), *randomFp6(t)} }
 
 func TestFp12(t *testing.T) {
 	const testTimes = 1 << 10
 	t.Run("no_alias", func(t *testing.T) {
 		var want, got Fp12
-		x := randomFp12()
+		x := randomFp12(t)
 		got.Set(x)
 		got.Sqr(&got)
 		want.Set(x)
@@ -25,8 +25,8 @@ func TestFp12(t *testing.T) {
 	t.Run("mul_inv", func(t *testing.T) {
 		var z Fp12
 		for i := 0; i < testTimes; i++ {
-			x := randomFp12()
-			y := randomFp12()
+			x := randomFp12(t)
+			y := randomFp12(t)
 
 			// x*y*x^1 - y = 0
 			z.Inv(x)
@@ -43,8 +43,8 @@ func TestFp12(t *testing.T) {
 	t.Run("mul_sqr", func(t *testing.T) {
 		var l0, l1, r0, r1 Fp12
 		for i := 0; i < testTimes; i++ {
-			x := randomFp12()
-			y := randomFp12()
+			x := randomFp12(t)
+			y := randomFp12(t)
 
 			// (x+y)(x-y) = (x^2-y^2)
 			l0.Add(x, y)
@@ -63,9 +63,10 @@ func TestFp12(t *testing.T) {
 	t.Run("serdes", func(t *testing.T) {
 		var b Fp12
 		for i := 0; i < testTimes; i++ {
-			a := randomFp12()
+			a := randomFp12(t)
 			s := a.Bytes()
-			b.SetBytes(s)
+			err := b.SetBytes(s)
+			test.CheckNoErr(t, err, "setbytes failed")
 			if !b.IsEqual(a) {
 				test.ReportError(t, a, b)
 			}
@@ -74,9 +75,9 @@ func TestFp12(t *testing.T) {
 }
 
 func BenchmarkFp12(b *testing.B) {
-	x := randomFp12()
-	y := randomFp12()
-	z := randomFp12()
+	x := randomFp12(b)
+	y := randomFp12(b)
+	z := randomFp12(b)
 	var n [32]byte
 	mustRead(b, n[:])
 

@@ -1,6 +1,7 @@
 package conv
 
 import (
+	"encoding/binary"
 	"fmt"
 	"math/big"
 	"strings"
@@ -62,6 +63,15 @@ func Uint64Le2BigInt(x []uint64) *big.Int {
 		bi.SetUint64(x[i])
 		b.Lsh(b, 64)
 		b.Add(b, &bi)
+	}
+	return b
+}
+
+// Uint64Le2BytesLe converts a little-endian slice x to a little-endian slice of bytes.
+func Uint64Le2BytesLe(x []uint64) []byte {
+	b := make([]byte, 8*len(x))
+	for i := range x {
+		binary.LittleEndian.PutUint64(b[i*8:], x[i])
 	}
 	return b
 }

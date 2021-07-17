@@ -2,6 +2,12 @@ package bls12381
 
 import "github.com/cloudflare/circl/ecc/bls12381/ff"
 
+// Scalar represents positive integers such that 0 <= x < Order, where
+//  Order = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
+type Scalar = ff.Scalar
+
+const ScalarSize = ff.ScalarSize
+
 var (
 	g1ParamB  = ff.Fp{ /*4*/ }  // 4
 	g1Param3B = ff.Fp{ /*12*/ } // 3*G1ParamB
@@ -13,27 +19,24 @@ var (
 		// 0xcaa232946c5e7e1, 0xd03cc744a2888ae4, 0xdb18cb2c04b3ed,
 		// 0xfcf5e095d5d00af6, 0xa09e30ed741d8ae4, 0x8b3f481e3aaa0f1,
 	}
-	g2ParamB   = ff.Fp2{}
-	g2Param3B  = ff.Fp2{}
-	g2GenX     = ff.Fp2{}
-	g2GenY     = ff.Fp2{}
-	primeOrder Scalar
+	g2ParamB  = ff.Fp2{}
+	g2Param3B = ff.Fp2{}
+	g2GenX    = ff.Fp2{}
+	g2GenY    = ff.Fp2{}
 )
 
 func init() {
 	g1ParamB.SetUint64(4)
 	g1Param3B.SetUint64(12)
-	g1GenX.SetString("0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb")
-	g1GenY.SetString("0x08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1")
+	_ = g1GenX.SetString("0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb")
+	_ = g1GenY.SetString("0x08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1")
 
 	g2ParamB[0].SetUint64(4)
 	g2ParamB[1].SetUint64(4)
 	g2Param3B[0].SetUint64(12)
 	g2Param3B[1].SetUint64(12)
-	g2GenX[0].SetString("0x024aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb8")
-	g2GenX[1].SetString("0x13e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7e")
-	g2GenY[0].SetString("0x0ce5d527727d6e118cc9cdc6da2e351aadfd9baa8cbdd3a76d429a695160d12c923ac9cc3baca289e193548608b82801")
-	g2GenY[1].SetString("0x0606c4a02ea734cc32acd2b02bc28b99cb3e287e85a763af267492ab572e99ab3f370d275cec1da1aaa9075ff05f79be")
-
-	primeOrder.SetString("0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001")
+	_ = g2GenX[0].SetString("0x024aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb8")
+	_ = g2GenX[1].SetString("0x13e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7e")
+	_ = g2GenY[0].SetString("0x0ce5d527727d6e118cc9cdc6da2e351aadfd9baa8cbdd3a76d429a695160d12c923ac9cc3baca289e193548608b82801")
+	_ = g2GenY[1].SetString("0x0606c4a02ea734cc32acd2b02bc28b99cb3e287e85a763af267492ab572e99ab3f370d275cec1da1aaa9075ff05f79be")
 }
