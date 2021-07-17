@@ -7,14 +7,17 @@ import (
 	"github.com/cloudflare/circl/internal/test"
 )
 
+func randomScalar(t testing.TB) *Scalar {
+	s := &Scalar{}
+	err := s.Random(rand.Reader)
+	test.CheckNoErr(t, err, "random scalar")
+	return s
+}
+
 func randomG1(t testing.TB) *G1 {
 	var P G1
-	var k Scalar
-	err := k.Random(rand.Reader)
-	if err != nil {
-		t.Fatalf("error: %v", err)
-	}
-	P.ScalarMult(&k, G1Generator())
+	k := randomScalar(t)
+	P.ScalarMult(k, G1Generator())
 	if !P.IsOnCurve() {
 		t.Helper()
 		t.Fatal("not on curve")
@@ -43,15 +46,11 @@ func TestG1Add(t *testing.T) {
 
 func TestG1ScalarMult(t *testing.T) {
 	const testTimes = 1 << 6
-	var k Scalar
 	var Q G1
 	for i := 0; i < testTimes; i++ {
 		P := randomG1(t)
-		err := k.Random(rand.Reader)
-		if err != nil {
-			t.Fatalf("error: %v", err)
-		}
-		Q.ScalarMult(&k, P)
+		k := randomScalar(t)
+		Q.ScalarMult(k, P)
 		Q.Normalize()
 		got := Q.IsOnG1()
 		want := true
@@ -81,19 +80,16 @@ func TestG1Hash(t *testing.T) {
 func BenchmarkG1(b *testing.B) {
 	P := randomG1(b)
 	Q := randomG1(b)
+	k := randomScalar(b)
+
 	b.Run("Add", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			P.Add(P, Q)
 		}
 	})
 	b.Run("Mul", func(b *testing.B) {
-		var k Scalar
-		err := k.Random(rand.Reader)
-		if err != nil {
-			b.Fatalf("error: %v", err)
-		}
 		for i := 0; i < b.N; i++ {
-			P.ScalarMult(&k, P)
+			P.ScalarMult(k, P)
 		}
 	})
 }

@@ -7,18 +7,21 @@ import (
 	"github.com/cloudflare/circl/internal/test"
 )
 
-func randomFp() *Fp {
-	var x Fp
-	n, _ := rand.Int(rand.Reader, blsPrime)
-	x.i.Set(n)
-	return &x
+func randomFp(t testing.TB) *Fp {
+	t.Helper()
+	f := new(Fp)
+	err := f.Random(rand.Reader)
+	if err != nil {
+		t.Error(err)
+	}
+	return f
 }
 
 func TestFp(t *testing.T) {
 	const testTimes = 1 << 10
 	t.Run("no_alias", func(t *testing.T) {
 		var want, got Fp
-		x := randomFp()
+		x := randomFp(t)
 		got.Set(x)
 		got.Sqr(&got)
 		want.Set(x)
@@ -30,8 +33,8 @@ func TestFp(t *testing.T) {
 	t.Run("mul_inv", func(t *testing.T) {
 		var z Fp
 		for i := 0; i < testTimes; i++ {
-			x := randomFp()
-			y := randomFp()
+			x := randomFp(t)
+			y := randomFp(t)
 
 			// x*y*x^1 - y = 0
 			z.Inv(x)
@@ -48,8 +51,8 @@ func TestFp(t *testing.T) {
 	t.Run("mul_sqr", func(t *testing.T) {
 		var l0, l1, r0, r1 Fp
 		for i := 0; i < testTimes; i++ {
-			x := randomFp()
-			y := randomFp()
+			x := randomFp(t)
+			y := randomFp(t)
 
 			// (x+y)(x-y) = (x^2-y^2)
 			l0.Add(x, y)
@@ -68,9 +71,10 @@ func TestFp(t *testing.T) {
 	t.Run("serdes", func(t *testing.T) {
 		var b Fp
 		for i := 0; i < testTimes; i++ {
-			a := randomFp()
+			a := randomFp(t)
 			s := a.Bytes()
-			b.SetBytes(s)
+			err := b.SetBytes(s)
+			test.CheckNoErr(t, err, "setbytes failed")
 			if !b.IsEqual(a) {
 				test.ReportError(t, a, b)
 			}
@@ -79,9 +83,9 @@ func TestFp(t *testing.T) {
 }
 
 func BenchmarkFp(b *testing.B) {
-	x := randomFp()
-	y := randomFp()
-	z := randomFp()
+	x := randomFp(b)
+	y := randomFp(b)
+	z := randomFp(b)
 	b.Run("Add", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			z.Add(x, y)

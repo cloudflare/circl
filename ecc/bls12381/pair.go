@@ -99,10 +99,7 @@ func hardExponentiation(f *ff.Cyclo6) *Gt {
 	c.PowToX(&c)   // c = f^(a3*x^2+a2*x+a1)*x = f^(a3*x^3+a2*x^2+a1*x)
 	c.Mul(&c, &a0) // c = f^(a3*x^3+a2*x^2+a1*x+a0)
 
-	var z Gt
-	z[0].Set(&c[0])
-	z[1].Set(&c[1])
-	return &z
+	return (*Gt)(&c)
 }
 
 // ProdPair calculates the product of pairings, i.e., \Prod_i pair(Pi,Qi)^ni.

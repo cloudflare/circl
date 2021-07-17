@@ -1,7 +1,6 @@
 package bls12381
 
 import (
-	"crypto/rand"
 	"fmt"
 	"testing"
 
@@ -19,15 +18,11 @@ func TestProdPair(t *testing.T) {
 	var ePQn, got Gt
 
 	for i := 0; i < testTimes; i++ {
-		got.SetOne()
+		got.SetIdentity()
 		for j := 0; j < N; j++ {
 			listG1[j] = randomG1(t)
 			listG2[j] = randomG2(t)
-			listSc[j] = &Scalar{}
-			err := listSc[j].Random(rand.Reader)
-			if err != nil {
-				t.Fatalf("error: %v", err)
-			}
+			listSc[j] = randomScalar(t)
 
 			ePQ := Pair(listG1[j], listG2[j])
 			ePQn.Exp(ePQ, listSc[j])
@@ -47,16 +42,9 @@ func TestPairBilinear(t *testing.T) {
 	for i := 0; i < testTimes; i++ {
 		g1 := G1Generator()
 		g2 := G2Generator()
-		a := &Scalar{}
-		b := &Scalar{}
-		err := a.Random(rand.Reader)
-		if err != nil {
-			t.Fatalf("error: %v", err)
-		}
-		err = b.Random(rand.Reader)
-		if err != nil {
-			t.Fatalf("error: %v", err)
-		}
+		a := randomScalar(t)
+		b := randomScalar(t)
+
 		ab := &Scalar{}
 		ab.Mul(a, b)
 		p := &G1{}
@@ -81,7 +69,7 @@ func TestPairIdentity(t *testing.T) {
 	g1id.SetIdentity()
 	g2id.SetIdentity()
 	one := &Gt{}
-	one.SetOne()
+	one.SetIdentity()
 	ans := Pair(g1id, g2)
 	if !ans.IsEqual(one) {
 		test.ReportError(t, ans, one)
@@ -137,11 +125,7 @@ func BenchmarkPair(b *testing.B) {
 		listG1[i].Set(g1)
 		listG2[i] = new(G2)
 		listG2[i].Set(g2)
-		listExp[i] = &Scalar{}
-		err := listExp[i].Random(rand.Reader)
-		if err != nil {
-			b.Fatalf("error: %v", err)
-		}
+		listExp[i] = randomScalar(b)
 	}
 
 	b.Run("Pair", func(b *testing.B) {

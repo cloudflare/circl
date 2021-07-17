@@ -6,18 +6,13 @@ import (
 	"github.com/cloudflare/circl/internal/test"
 )
 
-func randomFp2() *Fp2 {
-	return &Fp2{
-		*randomFp(),
-		*randomFp(),
-	}
-}
+func randomFp2(t testing.TB) *Fp2 { return &Fp2{*randomFp(t), *randomFp(t)} }
 
 func TestFp2(t *testing.T) {
 	const testTimes = 1 << 10
 	t.Run("no_alias", func(t *testing.T) {
 		var want, got Fp2
-		x := randomFp2()
+		x := randomFp2(t)
 		got.Set(x)
 		got.Sqr(&got)
 		want.Set(x)
@@ -29,8 +24,8 @@ func TestFp2(t *testing.T) {
 	t.Run("mul_inv", func(t *testing.T) {
 		var z Fp2
 		for i := 0; i < testTimes; i++ {
-			x := randomFp2()
-			y := randomFp2()
+			x := randomFp2(t)
+			y := randomFp2(t)
 
 			// x*y*x^1 - y = 0
 			z.Inv(x)
@@ -40,15 +35,15 @@ func TestFp2(t *testing.T) {
 			got := z.IsZero()
 			want := true
 			if got != want {
-				test.ReportError(t, got, want, x, y)
+				test.ReportError(t, got, want, x, y, z)
 			}
 		}
 	})
 	t.Run("mul_sqr", func(t *testing.T) {
 		var l0, l1, r0, r1 Fp2
 		for i := 0; i < testTimes; i++ {
-			x := randomFp2()
-			y := randomFp2()
+			x := randomFp2(t)
+			y := randomFp2(t)
 
 			// (x+y)(x-y) = (x^2-y^2)
 			l0.Add(x, y)
@@ -67,9 +62,10 @@ func TestFp2(t *testing.T) {
 	t.Run("serdes", func(t *testing.T) {
 		var b Fp2
 		for i := 0; i < testTimes; i++ {
-			a := randomFp2()
+			a := randomFp2(t)
 			s := a.Bytes()
-			b.SetBytes(s)
+			err := b.SetBytes(s)
+			test.CheckNoErr(t, err, "setbytes failed")
 			if !b.IsEqual(a) {
 				test.ReportError(t, a, b)
 			}
@@ -78,9 +74,9 @@ func TestFp2(t *testing.T) {
 }
 
 func BenchmarkFp2(b *testing.B) {
-	x := randomFp2()
-	y := randomFp2()
-	z := randomFp2()
+	x := randomFp2(b)
+	y := randomFp2(b)
+	z := randomFp2(b)
 	b.Run("Add", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			z.Add(x, y)
