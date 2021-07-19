@@ -2,6 +2,7 @@ package bls12381
 
 import (
 	"crypto/rand"
+	"fmt"
 	"math/big"
 )
 
@@ -44,4 +45,19 @@ func (z *Scalar) Bytes() []byte {
 		out[i] = b[l-1-i]
 	}
 	return out
+}
+
+//SetBytes reconstructs a scalar from a little-endian slice. It
+//returns an error if the input is malformed.
+func (z *Scalar) SetBytes(b []byte) error {
+	if len(b) != ScalarSize {
+		return fmt.Errorf("input length incorrect")
+	}
+	tmp := [ScalarSize]byte{}
+	l := len(b)
+	for i := range b {
+		tmp[i] = b[l-1-i]
+	}
+	z.i.SetBytes(tmp[:])
+	return nil
 }
