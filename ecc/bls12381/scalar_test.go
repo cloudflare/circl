@@ -1,6 +1,7 @@
 package bls12381
 
 import (
+	"crypto/rand"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/test"
@@ -11,9 +12,12 @@ func TestScalar(t *testing.T) {
 	t.Run("set_bytes", func(t *testing.T) {
 		for i := 0; i < testTimes; i++ {
 			var x, y Scalar
-			x.Random()
+			err := x.Random(rand.Reader)
+			if err != nil {
+				t.Fatalf("error: %v", err)
+			}
 			bytes := x.Bytes()
-			err := y.SetBytes(bytes)
+			err = y.SetBytes(bytes)
 			if err != nil {
 				test.ReportError(t, x, y, x)
 			}
@@ -26,7 +30,10 @@ func TestScalar(t *testing.T) {
 	t.Run("no_alias", func(t *testing.T) {
 		var want, got Scalar
 		var x Scalar
-		x.Random()
+		err := x.Random(rand.Reader)
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
 		got.Set(&x)
 		got.Sqr(&got)
 		want.Set(&x)
@@ -38,8 +45,14 @@ func TestScalar(t *testing.T) {
 	t.Run("mul_inv", func(t *testing.T) {
 		var x, y, z Scalar
 		for i := 0; i < testTimes; i++ {
-			x.Random()
-			y.Random()
+			err := x.Random(rand.Reader)
+			if err != nil {
+				t.Fatalf("error: %v", err)
+			}
+			err = y.Random(rand.Reader)
+			if err != nil {
+				t.Fatalf("error: %v", err)
+			}
 
 			// x*y*x^1 - y = 0
 			z.Inv(&x)
@@ -56,8 +69,14 @@ func TestScalar(t *testing.T) {
 	t.Run("mul_sqr", func(t *testing.T) {
 		var x, y, l0, l1, r0, r1 Scalar
 		for i := 0; i < testTimes; i++ {
-			x.Random()
-			y.Random()
+			err := x.Random(rand.Reader)
+			if err != nil {
+				t.Fatalf("error: %v", err)
+			}
+			err = y.Random(rand.Reader)
+			if err != nil {
+				t.Fatalf("error: %v", err)
+			}
 
 			// (x+y)(x-y) = (x^2-y^2)
 			l0.Add(&x, &y)
@@ -77,9 +96,18 @@ func TestScalar(t *testing.T) {
 
 func BenchmarkScalar(b *testing.B) {
 	var x, y, z Scalar
-	x.Random()
-	y.Random()
-	z.Random()
+	err := x.Random(rand.Reader)
+	if err != nil {
+		b.Fatalf("error: %v", err)
+	}
+	err = y.Random(rand.Reader)
+	if err != nil {
+		b.Fatalf("error: %v", err)
+	}
+	err = z.Random(rand.Reader)
+	if err != nil {
+		b.Fatalf("error: %v", err)
+	}
 	b.Run("Add", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			z.Add(&x, &y)

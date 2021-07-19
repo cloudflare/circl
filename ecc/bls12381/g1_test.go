@@ -10,7 +10,10 @@ import (
 func randomG1(t testing.TB) *G1 {
 	var P G1
 	var k Scalar
-	k.Random()
+	err := k.Random(rand.Reader)
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
 	P.ScalarMult(&k, G1Generator())
 	if !P.IsOnCurve() {
 		t.Helper()
@@ -44,7 +47,10 @@ func TestG1ScalarMult(t *testing.T) {
 	var Q G1
 	for i := 0; i < testTimes; i++ {
 		P := randomG1(t)
-		k.Random()
+		err := k.Random(rand.Reader)
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
 		Q.ScalarMult(&k, P)
 		Q.Normalize()
 		got := Q.IsOnG1()
@@ -82,7 +88,10 @@ func BenchmarkG1(b *testing.B) {
 	})
 	b.Run("Mul", func(b *testing.B) {
 		var k Scalar
-		k.Random()
+		err := k.Random(rand.Reader)
+		if err != nil {
+			b.Fatalf("error: %v", err)
+		}
 		for i := 0; i < b.N; i++ {
 			P.ScalarMult(&k, P)
 		}

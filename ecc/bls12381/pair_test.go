@@ -1,6 +1,7 @@
 package bls12381
 
 import (
+	"crypto/rand"
 	"fmt"
 	"testing"
 
@@ -23,7 +24,10 @@ func TestProdPair(t *testing.T) {
 			listG1[j] = randomG1(t)
 			listG2[j] = randomG2(t)
 			listSc[j] = &Scalar{}
-			listSc[j].Random()
+			err := listSc[j].Random(rand.Reader)
+			if err != nil {
+				t.Fatalf("error: %v", err)
+			}
 
 			ePQ := Pair(listG1[j], listG2[j])
 			ePQn.Exp(ePQ, listSc[j])
@@ -45,8 +49,14 @@ func TestPairBilinear(t *testing.T) {
 		g2 := G2Generator()
 		a := &Scalar{}
 		b := &Scalar{}
-		a.Random()
-		b.Random()
+		err := a.Random(rand.Reader)
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
+		err = b.Random(rand.Reader)
+		if err != nil {
+			t.Fatalf("error: %v", err)
+		}
 		ab := &Scalar{}
 		ab.Mul(a, b)
 		p := &G1{}
@@ -128,7 +138,10 @@ func BenchmarkPair(b *testing.B) {
 		listG2[i] = new(G2)
 		listG2[i].Set(g2)
 		listExp[i] = &Scalar{}
-		listExp[i].Random()
+		err := listExp[i].Random(rand.Reader)
+		if err != nil {
+			b.Fatalf("error: %v", err)
+		}
 	}
 
 	b.Run("Pair", func(b *testing.B) {
