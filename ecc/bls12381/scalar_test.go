@@ -8,6 +8,21 @@ import (
 
 func TestScalar(t *testing.T) {
 	const testTimes = 1 << 10
+	t.Run("set_bytes", func(t *testing.T) {
+		for i := 0; i < testTimes; i++ {
+			var x, y Scalar
+			x.Random()
+			bytes := x.Bytes()
+			err := y.SetBytes(bytes)
+			if err != nil {
+				test.ReportError(t, x, y, x)
+			}
+			if !x.IsEqual(&y) {
+				test.ReportError(t, x, y, x)
+			}
+		}
+	})
+
 	t.Run("no_alias", func(t *testing.T) {
 		var want, got Scalar
 		var x Scalar
