@@ -4,6 +4,8 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+
+	"io"
 )
 
 // ScalarSize is the length in bytes of a Scalar.
@@ -27,12 +29,13 @@ func (z *Scalar) Sub(x, y *Scalar)       { z.i.Sub(&x.i, &y.i).Mod(&z.i, &primeO
 func (z *Scalar) Mul(x, y *Scalar)       { z.i.Mul(&x.i, &y.i).Mod(&z.i, &primeOrder.i) }
 func (z *Scalar) Sqr(x *Scalar)          { z.i.Mul(&x.i, &x.i).Mod(&z.i, &primeOrder.i) }
 func (z *Scalar) Inv(x *Scalar)          { z.i.ModInverse(&x.i, &primeOrder.i) }
-func (z *Scalar) Random() {
-	r, err := rand.Int(rand.Reader, &primeOrder.i)
+func (z *Scalar) Random(r io.Reader) error {
+	t, err := rand.Int(r, &primeOrder.i)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	z.i.Set(r)
+	z.i.Set(t)
+	return nil
 }
 
 // Bytes returns a positive scalar in a slice of bytes in little-endian order.
