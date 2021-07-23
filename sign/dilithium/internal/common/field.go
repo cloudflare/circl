@@ -17,10 +17,10 @@ func modQ(x uint32) uint32 {
 }
 
 // For x R ≤ q 2³², find y ≤ 2q with y = x mod q.
-func montReduceLe2Q(x uint64) uint32 {
+func montReduceLe2Q(x int64) int32 {
 	// Qinv = 4236238847 = -(q⁻¹) mod 2³²
-	m := (x * Qinv) & 0xffffffff
-	return uint32((x + m*uint64(Q)) >> 32)
+	m := (int32(x) * Qinv)
+	return (x - (int64(m*Q))>>32)
 }
 
 // Returns x mod q for 0 ≤ x < 2q.

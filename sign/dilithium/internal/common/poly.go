@@ -4,7 +4,7 @@ package common
 // the equation Xᴺ = -1, where q=2²³ - 2¹³ + 1 and N=256.
 //
 // Coefficients aren't always reduced.  See Normalize().
-type Poly [N]uint32
+type Poly [N]int32
 
 // Reduces each of the coefficients to <2q.
 func (p *Poly) reduceLe2QGeneric() {

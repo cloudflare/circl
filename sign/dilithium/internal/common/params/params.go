@@ -8,8 +8,8 @@ const (
 	N        = 256
 	Q        = 8380417 // 2²³ - 2¹³ + 1
 	QBits    = 23
-	Qinv     = 4236238847 // = -(q^-1) mod 2³²
-	ROver256 = 41978      // = (256)⁻¹ R², where R = q mod 2³²
+	Qinv     = 58728449 // = (q^-1) mod 2³²
+	ROver256 = 41978    // = (256)⁻¹ R², where R = q mod 2³²
 	D        = 14
 	Gamma1   = (Q - 1) / 16
 	Gamma2   = Gamma1 / 2 // = Alpha/2
