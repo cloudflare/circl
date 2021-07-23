@@ -12,6 +12,8 @@ import (
 	"path"
 	"strings"
 	"text/template"
+
+	"github.com/cloudflare/circl/sign/dilithium/internal/common/params"
 )
 
 type Mode struct {
@@ -26,6 +28,9 @@ type Mode struct {
 	DoubleEtaBits  int
 	Beta           int
 	Omega          int
+	Tau            int
+	Gamma1         int
+	Gamma2         int
 }
 
 func (m Mode) Pkg() string {
@@ -42,106 +47,98 @@ func (m Mode) Mode() string {
 var (
 	Modes = []Mode{
 		{
-			Name:           "Dilithium1",
-			UseAES:         false,
-			PublicKeySize:  896,
-			PrivateKeySize: 2096,
-			SignatureSize:  1387,
-			K:              3,
-			L:              2,
-			Eta:            7,
-			DoubleEtaBits:  4,
-			Beta:           375,
-			Omega:          64,
-		},
-		{
-			Name:           "Dilithium1-AES",
-			UseAES:         true,
-			PublicKeySize:  896,
-			PrivateKeySize: 2096,
-			SignatureSize:  1387,
-			K:              3,
-			L:              2,
-			Eta:            7,
-			DoubleEtaBits:  4,
-			Beta:           375,
-			Omega:          64,
-		},
-		{
 			Name:           "Dilithium2",
 			UseAES:         false,
-			PublicKeySize:  1184,
-			PrivateKeySize: 2800,
-			SignatureSize:  2044,
+			PublicKeySize:  1312,
+			PrivateKeySize: 2544,
+			SignatureSize:  2420,
 			K:              4,
-			L:              3,
-			Eta:            6,
-			DoubleEtaBits:  4,
-			Beta:           325,
+			L:              4,
+			Eta:            2,
+			DoubleEtaBits:  3,
+			Beta:           78,
 			Omega:          80,
+			Tau:            39,
+			Gamma1:         1 << 17,
+			Gamma2:         (params.Q - 1) / 88,
 		},
 		{
 			Name:           "Dilithium2-AES",
 			UseAES:         true,
-			PublicKeySize:  1184,
-			PrivateKeySize: 2800,
-			SignatureSize:  2044,
+			PublicKeySize:  1312,
+			PrivateKeySize: 2544,
+			SignatureSize:  2420,
 			K:              4,
-			L:              3,
-			Eta:            6,
-			DoubleEtaBits:  4,
-			Beta:           325,
+			L:              4,
+			Eta:            2,
+			DoubleEtaBits:  3,
+			Beta:           78,
 			Omega:          80,
+			Tau:            39,
+			Gamma1:         1 << 17,
+			Gamma2:         (params.Q - 1) / 88,
 		},
 		{
 			Name:           "Dilithium3",
 			UseAES:         false,
-			PublicKeySize:  1472,
-			PrivateKeySize: 3504,
-			SignatureSize:  2701,
-			K:              5,
-			L:              4,
-			Eta:            5,
+			PublicKeySize:  1952,
+			PrivateKeySize: 4016,
+			SignatureSize:  3293,
+			K:              6,
+			L:              5,
+			Eta:            4,
 			DoubleEtaBits:  4,
-			Beta:           275,
-			Omega:          96,
+			Beta:           196,
+			Omega:          55,
+			Tau:            49,
+			Gamma1:         1 << 19,
+			Gamma2:         (params.Q - 1) / 32,
 		},
 		{
 			Name:           "Dilithium3-AES",
 			UseAES:         true,
-			PublicKeySize:  1472,
-			PrivateKeySize: 3504,
-			SignatureSize:  2701,
-			K:              5,
-			L:              4,
-			Eta:            5,
+			PublicKeySize:  1952,
+			PrivateKeySize: 4016,
+			SignatureSize:  3293,
+			K:              6,
+			L:              5,
+			Eta:            4,
 			DoubleEtaBits:  4,
-			Beta:           275,
-			Omega:          96,
+			Beta:           196,
+			Omega:          55,
+			Tau:            49,
+			Gamma1:         1 << 19,
+			Gamma2:         (params.Q - 1) / 32,
 		}, {
-			Name:           "Dilithium4",
+			Name:           "Dilithium5",
 			UseAES:         false,
-			PublicKeySize:  1760,
-			PrivateKeySize: 3856,
-			SignatureSize:  3366,
-			K:              6,
-			L:              5,
-			Eta:            3,
+			PublicKeySize:  2592,
+			PrivateKeySize: 4880,
+			SignatureSize:  4595,
+			K:              8,
+			L:              7,
+			Eta:            2,
 			DoubleEtaBits:  3,
-			Beta:           175,
-			Omega:          120,
+			Beta:           120,
+			Omega:          75,
+			Tau:            60,
+			Gamma1:         1 << 19,
+			Gamma2:         (params.Q - 1) / 32,
 		}, {
-			Name:           "Dilithium4-AES",
+			Name:           "Dilithium5-AES",
 			UseAES:         true,
-			PublicKeySize:  1760,
-			PrivateKeySize: 3856,
-			SignatureSize:  3366,
-			K:              6,
-			L:              5,
-			Eta:            3,
+			PublicKeySize:  2592,
+			PrivateKeySize: 4880,
+			SignatureSize:  4595,
+			K:              8,
+			L:              7,
+			Eta:            2,
 			DoubleEtaBits:  3,
-			Beta:           175,
-			Omega:          120,
+			Beta:           120,
+			Omega:          75,
+			Tau:            60,
+			Gamma1:         1 << 19,
+			Gamma2:         (params.Q - 1) / 32,
 		},
 	}
 	TemplateWarning = "// Code generated from"
@@ -274,7 +271,7 @@ func generateSourceFiles() {
 			}
 			_, ok := files[name]
 			if !ok {
-				fmt.Printf("Removing superfluous file: %s", fn)
+				fmt.Printf("Removing superfluous file: %s\n", fn)
 				err = os.Remove(fn)
 				if err != nil {
 					panic(err)

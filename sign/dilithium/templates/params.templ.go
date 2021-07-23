@@ -18,4 +18,7 @@ const (
 	DoubleEtaBits  = {{ .DoubleEtaBits }}
 	Beta           = {{ .Beta }}
 	Omega          = {{ .Omega }}
+	Tau            = {{ .Tau }}
+	Gamma1         = {{ .Gamma1 }}
+	Gamma2         = {{ .Gamma2 }}
 )

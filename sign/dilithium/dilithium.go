@@ -1,9 +1,9 @@
 //go:generate go run gen.go
 
-// dilithium implements the CRYSTALS-Dilithium signature schemes
-// as submitted to round2 of the NIST PQC competition and described in
+// Package dilithium implements the CRYSTALS-Dilithium signature schemes
+// as submitted to round3 of the NIST PQC competition and described in
 //
-// https://pq-crystals.org/dilithium/data/dilithium-specification-round2.pdf
+// https://pq-crystals.org/dilithium/data/dilithium-specification-round3.pdf
 //
 // Each of the eight different modes of Dilithium is implemented by a
 // subpackage.  For instance, Dilithium III (the recommended mode)

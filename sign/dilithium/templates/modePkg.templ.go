@@ -5,9 +5,9 @@
 // Code generated from modePkg.templ.go. DO NOT EDIT.
 
 // {{ .Pkg }} implements the CRYSTALS-Dilithium signature scheme {{ .Name }}
-// as submitted to round2 of the NIST PQC competition and described in
+// as submitted to round3 of the NIST PQC competition and described in
 //
-// https://pq-crystals.org/dilithium/data/dilithium-specification-round2.pdf
+// https://pq-crystals.org/dilithium/data/dilithium-specification-round3.pdf
 package {{ .Pkg }}
 
 import (
