@@ -21,7 +21,7 @@ func TestURoot(t *testing.T) {
 		got.Sqr(&got)
 		want.Set(x)
 		want.Mul(&want, &want)
-		if !got.IsEqual(&want) {
+		if got.IsEqual(&want) == 0 {
 			test.ReportError(t, got, want, x)
 		}
 	})
@@ -35,7 +35,7 @@ func TestURoot(t *testing.T) {
 
 			// x^order = 1
 			got := z.IsIdentity()
-			want := true
+			want := 1
 			if got != want {
 				test.ReportError(t, got, want, x, z)
 			}
@@ -53,7 +53,7 @@ func TestURoot(t *testing.T) {
 			z.Mul(&z, x)
 			got := z
 			want := y
-			if !got.IsEqual(want) {
+			if got.IsEqual(want) == 0 {
 				test.ReportError(t, got, want, x, y)
 			}
 		}
@@ -66,7 +66,7 @@ func TestURoot(t *testing.T) {
 			// x*x = x^2
 			got.Mul(x, x)
 			want.Sqr(x)
-			if !got.IsEqual(&want) {
+			if got.IsEqual(&want) == 0 {
 				test.ReportError(t, got, want, x)
 			}
 		}

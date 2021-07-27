@@ -26,6 +26,9 @@ func setString(out []uint64, in string, order []byte) error {
 	if !ok {
 		return errors.New("invalid string")
 	}
+	if inBig.Cmp(conv.BytesLe2BigInt(order)) >= 0 {
+		return errors.New("value out of [0,order)")
+	}
 	inBytes := make([]byte, len(order))
 	conv.BigInt2BytesLe(inBytes, inBig)
 	return setBytes(out, inBytes, order)

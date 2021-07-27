@@ -30,7 +30,7 @@ func TestFp6(t *testing.T) {
 		got.Sqr(&got)
 		want.Set(x)
 		want.Mul(&want, &want)
-		if !got.IsEqual(&want) {
+		if got.IsEqual(&want) == 0 {
 			test.ReportError(t, got, want, x)
 		}
 	})
@@ -46,7 +46,7 @@ func TestFp6(t *testing.T) {
 			z.Mul(&z, x)
 			z.Sub(&z, y)
 			got := z.IsZero()
-			want := true
+			want := 1
 			if got != want {
 				test.ReportError(t, got, want, x, y)
 			}
@@ -67,7 +67,7 @@ func TestFp6(t *testing.T) {
 			r0.Sub(&r0, &r1)
 			got := &l0
 			want := &r0
-			if !got.IsEqual(want) {
+			if got.IsEqual(want) == 0 {
 				test.ReportError(t, got, want, x, y)
 			}
 		}
@@ -82,7 +82,7 @@ func TestFp6(t *testing.T) {
 			got.Frob(x)
 			expVarTime(&want, x, p)
 
-			if !got.IsEqual(&want) {
+			if got.IsEqual(&want) == 0 {
 				test.ReportError(t, got, want, x)
 			}
 		}

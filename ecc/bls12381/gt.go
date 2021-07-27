@@ -13,7 +13,7 @@ func (z *Gt) Set(x *Gt)                   { z.i.Set(&x.i) }
 func (z *Gt) SetBytes(b []byte) error     { return z.i.SetBytes(b) }
 func (z Gt) Bytes() []byte                { return z.i.Bytes() }
 func (z *Gt) SetIdentity()                { z.i.SetIdentity() }
-func (z Gt) IsEqual(x *Gt) bool           { return z.i.IsEqual(&x.i) }
+func (z Gt) IsEqual(x *Gt) bool           { return z.i.IsEqual(&x.i) == 1 }
 func (z Gt) IsIdentity() bool             { i := &Gt{}; i.SetIdentity(); return z.IsEqual(i) }
 func (z *Gt) Mul(x, y *Gt)                { z.i.Mul(&x.i, &y.i) }
 func (z *Gt) Sqr(x *Gt)                   { z.i.Sqr(&x.i) }
