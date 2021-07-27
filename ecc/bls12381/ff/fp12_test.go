@@ -9,7 +9,7 @@ import (
 func randomFp12(t testing.TB) *Fp12 { return &Fp12{*randomFp6(t), *randomFp6(t)} }
 
 func TestFp12(t *testing.T) {
-	const testTimes = 1 << 10
+	const testTimes = 1 << 9
 	t.Run("no_alias", func(t *testing.T) {
 		var want, got Fp12
 		x := randomFp12(t)
@@ -68,6 +68,21 @@ func TestFp12(t *testing.T) {
 			test.CheckNoErr(t, err, "setbytes failed")
 			if !b.IsEqual(a) {
 				test.ReportError(t, a, b)
+			}
+		}
+	})
+	t.Run("frobenius", func(t *testing.T) {
+		var got, want Fp12
+		p := FpOrder()
+		for i := 0; i < testTimes; i++ {
+			x := randomFp12(t)
+
+			// Frob(x) == x^p
+			got.Frob(x)
+			want.ExpVarTime(x, p)
+
+			if !got.IsEqual(&want) {
+				test.ReportError(t, got, want, x)
 			}
 		}
 	})

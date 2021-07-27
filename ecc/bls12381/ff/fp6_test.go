@@ -8,6 +8,19 @@ import (
 
 func randomFp6(t testing.TB) *Fp6 { return &Fp6{*randomFp2(t), *randomFp2(t), *randomFp2(t)} }
 
+func expVarTime(z, x *Fp6, n []byte) {
+	zz := new(Fp6)
+	zz.SetOne()
+	for i := 8*len(n) - 1; i >= 0; i-- {
+		zz.Sqr(zz)
+		bit := 0x1 & (n[i/8] >> uint(i%8))
+		if bit != 0 {
+			zz.Mul(zz, x)
+		}
+	}
+	z.Set(zz)
+}
+
 func TestFp6(t *testing.T) {
 	const testTimes = 1 << 10
 	t.Run("no_alias", func(t *testing.T) {
@@ -56,6 +69,21 @@ func TestFp6(t *testing.T) {
 			want := &r0
 			if !got.IsEqual(want) {
 				test.ReportError(t, got, want, x, y)
+			}
+		}
+	})
+	t.Run("frobenius", func(t *testing.T) {
+		var got, want Fp6
+		p := FpOrder()
+		for i := 0; i < testTimes; i++ {
+			x := randomFp6(t)
+
+			// Frob(x) == x^p
+			got.Frob(x)
+			expVarTime(&want, x, p)
+
+			if !got.IsEqual(&want) {
+				test.ReportError(t, got, want, x)
 			}
 		}
 	})
