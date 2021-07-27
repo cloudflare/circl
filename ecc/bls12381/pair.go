@@ -74,7 +74,7 @@ func (l *line) eval(P *G1) *ff.Fp12 {
 func finalExp(g *Gt, f *ff.Fp12) {
 	c := &ff.Cyclo6{}
 	ff.EasyExponentiation(c, f)
-	ff.HardExponentiation(g, c)
+	ff.HardExponentiation(&g.i, c)
 }
 
 // ProdPair calculates the product of pairings, i.e., \Prod_i pair(Pi,Qi)^ni.
