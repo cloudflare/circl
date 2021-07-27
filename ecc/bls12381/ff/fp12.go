@@ -58,7 +58,7 @@ func (z *Fp12) Inv(x *Fp12) {
 	z[1].Neg()
 }
 
-func (z *Fp12) Exp(x *Fp12, n []byte) {
+func (z *Fp12) ExpVarTime(x *Fp12, n []byte) {
 	zz := new(Fp12)
 	zz.SetOne()
 	for i := 8*len(n) - 1; i >= 0; i-- {

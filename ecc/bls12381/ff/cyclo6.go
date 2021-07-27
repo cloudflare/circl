@@ -7,14 +7,14 @@ type Cyclo6 Fp12
 
 func (z Cyclo6) String() string { return (Fp12)(z).String() }
 
-func (z *Cyclo6) Set(x *Cyclo6)           { (*Fp12)(z).Set((*Fp12)(x)) }
-func (z Cyclo6) IsEqual(x *Cyclo6) bool   { return (Fp12)(z).IsEqual((*Fp12)(x)) }
-func (z Cyclo6) IsIdentity() bool         { i := &Fp12{}; i.SetOne(); return z.IsEqual((*Cyclo6)(i)) }
-func (z *Cyclo6) Frob(x *Cyclo6)          { (*Fp12)(z).Frob((*Fp12)(x)) }
-func (z *Cyclo6) Mul(x, y *Cyclo6)        { (*Fp12)(z).Mul((*Fp12)(x), (*Fp12)(y)) }
-func (z *Cyclo6) Sqr(x *Cyclo6)           { (*Fp12)(z).Sqr((*Fp12)(x)) }
-func (z *Cyclo6) Inv(x *Cyclo6)           { z.Set(x); z[1].Neg() }
-func (z *Cyclo6) Exp(x *Cyclo6, n []byte) { (*Fp12)(z).Exp((*Fp12)(x), n) }
+func (z *Cyclo6) Set(x *Cyclo6)                  { (*Fp12)(z).Set((*Fp12)(x)) }
+func (z Cyclo6) IsEqual(x *Cyclo6) bool          { return (Fp12)(z).IsEqual((*Fp12)(x)) }
+func (z Cyclo6) IsIdentity() bool                { i := &Fp12{}; i.SetOne(); return z.IsEqual((*Cyclo6)(i)) }
+func (z *Cyclo6) Frob(x *Cyclo6)                 { (*Fp12)(z).Frob((*Fp12)(x)) }
+func (z *Cyclo6) Mul(x, y *Cyclo6)               { (*Fp12)(z).Mul((*Fp12)(x), (*Fp12)(y)) }
+func (z *Cyclo6) Sqr(x *Cyclo6)                  { (*Fp12)(z).Sqr((*Fp12)(x)) }
+func (z *Cyclo6) Inv(x *Cyclo6)                  { z.Set(x); z[1].Neg() }
+func (z *Cyclo6) expVarTime(x *Cyclo6, n []byte) { (*Fp12)(z).ExpVarTime((*Fp12)(x), n) }
 
 // PowToX computes z = x^paramX, where paramX is the parameter of the BLS curve.
 func (z *Cyclo6) PowToX(x *Cyclo6) {
