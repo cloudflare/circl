@@ -25,7 +25,7 @@ func TestProdPair(t *testing.T) {
 			listSc[j] = randomScalar(t)
 
 			ePQ := Pair(listG1[j], listG2[j])
-			ePQn.Exp(ePQ, listSc[j])
+			ePQn.ExpVarTime(ePQ, listSc[j])
 			got.Mul(&got, &ePQn)
 		}
 
@@ -54,7 +54,7 @@ func TestPairBilinear(t *testing.T) {
 		lhs := Pair(p, q)
 		tmp := Pair(g1, g2)
 		rhs := &Gt{}
-		rhs.Exp(tmp, ab)
+		rhs.ExpVarTime(tmp, ab)
 		if !lhs.IsEqual(rhs) {
 			test.ReportError(t, lhs, rhs)
 		}

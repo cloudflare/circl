@@ -32,7 +32,7 @@ func (z *Scalar) Add(x, y *Scalar)         { fiatScMontAdd(&z.i, &x.i, &y.i) }
 func (z *Scalar) Sub(x, y *Scalar)         { fiatScMontSub(&z.i, &x.i, &y.i) }
 func (z *Scalar) Mul(x, y *Scalar)         { fiatScMontMul(&z.i, &x.i, &y.i) }
 func (z *Scalar) Sqr(x *Scalar)            { fiatScMontSquare(&z.i, &x.i) }
-func (z *Scalar) Inv(x *Scalar)            { z.exp(x, scOrderMinus2[:]) }
+func (z *Scalar) Inv(x *Scalar)            { z.expVarTime(x, scOrderMinus2[:]) }
 func (z *Scalar) toMont(in *scRaw)         { fiatScMontMul(&z.i, in, &scRSquare) }
 func (z Scalar) fromMont() (out scRaw)     { fiatScMontMul(&out, &z.i, &scMont{1}); return }
 
@@ -41,7 +41,7 @@ func (z Scalar) fromMont() (out scRaw)     { fiatScMontMul(&out, &z.i, &scMont{1
 func ScalarOrder() []byte { o := scOrder; return o[:] }
 
 // exp calculates z=x^n, where n is in little-endian order.
-func (z *Scalar) exp(x *Scalar, n []byte) {
+func (z *Scalar) expVarTime(x *Scalar, n []byte) {
 	zz := new(Scalar)
 	zz.SetOne()
 	for i := 8*len(n) - 1; i >= 0; i-- {

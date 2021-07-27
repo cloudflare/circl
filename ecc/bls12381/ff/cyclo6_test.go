@@ -46,7 +46,7 @@ func TestCyclo6(t *testing.T) {
 		var z Cyclo6
 		for i := 0; i < 16; i++ {
 			x := randomCyclo6(t)
-			z.Exp(x, cyclo6OrderBytes)
+			z.expVarTime(x, cyclo6OrderBytes)
 
 			// x^phi6primeSq = 1
 			got := z.IsIdentity()

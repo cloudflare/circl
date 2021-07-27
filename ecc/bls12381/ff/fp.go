@@ -32,7 +32,7 @@ func (z *Fp) Add(x, y *Fp)             { fiatFpMontAdd(&z.i, &x.i, &y.i) }
 func (z *Fp) Sub(x, y *Fp)             { fiatFpMontSub(&z.i, &x.i, &y.i) }
 func (z *Fp) Mul(x, y *Fp)             { fiatFpMontMul(&z.i, &x.i, &y.i) }
 func (z *Fp) Sqr(x *Fp)                { fiatFpMontSquare(&z.i, &x.i) }
-func (z *Fp) Inv(x *Fp)                { z.exp(x, fpOrderMinus2[:]) }
+func (z *Fp) Inv(x *Fp)                { z.expVarTime(x, fpOrderMinus2[:]) }
 func (z *Fp) toMont(in *fpRaw)         { fiatFpMontMul(&z.i, in, &fpRSquare) }
 func (z Fp) fromMont() (out fpRaw)     { fiatFpMontMul(&out, &z.i, &fpMont{1}); return }
 
@@ -41,7 +41,7 @@ func (z Fp) fromMont() (out fpRaw)     { fiatFpMontMul(&out, &z.i, &fpMont{1}); 
 func FpOrder() []byte { o := fpOrder; return o[:] }
 
 // exp calculates z=x^n, where n is in little-endian order.
-func (z *Fp) exp(x *Fp, n []byte) {
+func (z *Fp) expVarTime(x *Fp, n []byte) {
 	zz := new(Fp)
 	zz.SetOne()
 	for i := 8*len(n) - 1; i >= 0; i-- {
@@ -56,7 +56,7 @@ func (z *Fp) exp(x *Fp, n []byte) {
 
 func (z *Fp) Sqrt(x *Fp) (isQR bool) {
 	var t, t2 Fp
-	t.exp(x, fpOrderPlus1Div4[:])
+	t.expVarTime(x, fpOrderPlus1Div4[:])
 	t2.Sqr(&t)
 	if t2.IsEqual(x) {
 		z.Set(&t)

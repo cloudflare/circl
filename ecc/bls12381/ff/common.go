@@ -13,9 +13,9 @@ import (
 )
 
 func errFirst(e ...error) error {
-	for i := range e {
-		if e != nil {
-			return e[i]
+	for _, err := range e {
+		if err != nil {
+			return err
 		}
 	}
 	return nil
