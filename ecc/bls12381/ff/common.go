@@ -12,7 +12,7 @@ import (
 	"github.com/cloudflare/circl/internal/conv"
 )
 
-func errSum(e ...error) error {
+func errFirst(e ...error) error {
 	for i := range e {
 		if e != nil {
 			return e[i]

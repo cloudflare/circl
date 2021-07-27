@@ -93,21 +93,25 @@ func BenchmarkFinalExpo(b *testing.B) {
 	g1 := G1Generator()
 	g2 := G2Generator()
 	f := miller(g1, g2)
-	g := ff.EasyExponentiation(f)
+	c := &ff.Cyclo6{}
+	u := &ff.URoot{}
+	g := &Gt{}
+
+	ff.EasyExponentiation(c, f)
 
 	b.Run("EasyExp", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			ff.EasyExponentiation(f)
+			ff.EasyExponentiation(c, f)
 		}
 	})
 	b.Run("HardExp", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			hardExponentiation(g)
+			ff.HardExponentiation(u, c)
 		}
 	})
 	b.Run("FinalExp", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_ = finalExp(f)
+			finalExp(g, f)
 		}
 	})
 }
