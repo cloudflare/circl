@@ -31,8 +31,8 @@ func (z *Cyclo6) PowToX(x *Cyclo6) {
 	z.Inv(t)
 }
 
-// EasyExponentiation calculates g = f^(p^6-1)(p^2+1), where g is an element of
-// the 6-th cyclotomic group.
+// EasyExponentiation calculates g = f^(p^6-1)(p^2+1), where g becomes an
+// element of the 6-th cyclotomic group.
 func EasyExponentiation(g *Cyclo6, f *Fp12) {
 	var t0, t1, p Fp12
 	p.Frob(f)        // p = f^(p)
