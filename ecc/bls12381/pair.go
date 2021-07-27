@@ -8,7 +8,7 @@ package bls12381
 import "github.com/cloudflare/circl/ecc/bls12381/ff"
 
 // Pair calculates the ate-pairing of P and Q.
-func Pair(P *G1, Q *G2) *Gt { P.Normalize(); return finalExp(miller(P, Q)) }
+func Pair(P *G1, Q *G2) *Gt { g := &Gt{}; P.Normalize(); finalExp(g, miller(P, Q)); return g }
 
 func miller(P *G1, Q *G2) *ff.Fp12 {
 	f := &ff.Fp12{}
@@ -71,35 +71,10 @@ func (l *line) eval(P *G1) *ff.Fp12 {
 	return &g
 }
 
-func finalExp(f *ff.Fp12) *Gt { return hardExponentiation(ff.EasyExponentiation(f)) }
-
-// HardExponentiation raises f^(Cy_6(p)/r) and returns a r-root of unity.
-func hardExponentiation(f *ff.Cyclo6) *Gt {
-	var t0, t1, _f, f3 ff.Cyclo6
-	var c, a0, a1, a2, a3 ff.Cyclo6
-	_f.Inv(f)        // _f = f^-1
-	f3.Sqr(f)        // f3 = f^2
-	f3.Mul(&f3, f)   // f3 = f^3
-	t0.PowToX(f)     // t0 = f^x
-	t0.Mul(&t0, &_f) // t0 = f^(x-1)
-	t1.PowToX(&t0)   // t1 = f^(x-1)*x
-	t0.Inv(&t0)      // t0 = f^-(x-1)
-	a3.Mul(&t1, &t0) // a3 = f^(x-1)*(x-1)
-	a2.Frob(&a3)     // a2 = a3*p
-	a1.Frob(&a2)     // a1 = a2*p = a3*p^2
-	t0.Inv(&a3)      // t0 = -a3
-	a1.Mul(&a1, &t0) // a1 = a3*p^2-a3
-	a0.Frob(&a1)     // a0 = a3*p^3-a3*p
-	a0.Mul(&a0, &f3) // a0 = a3*p^3-a3*p+3
-
-	c.PowToX(&a3)  // c = f^(a3*x)
-	c.Mul(&c, &a2) // c = f^(a3*x+a2)
-	c.PowToX(&c)   // c = f^(a3*x+a2)*x = f^(a3*x^2+a2*x)
-	c.Mul(&c, &a1) // c = f^(a3*x^2+a2*x+a1)
-	c.PowToX(&c)   // c = f^(a3*x^2+a2*x+a1)*x = f^(a3*x^3+a2*x^2+a1*x)
-	c.Mul(&c, &a0) // c = f^(a3*x^3+a2*x^2+a1*x+a0)
-
-	return (*Gt)(&c)
+func finalExp(g *Gt, f *ff.Fp12) {
+	c := &ff.Cyclo6{}
+	ff.EasyExponentiation(c, f)
+	ff.HardExponentiation(g, c)
 }
 
 // ProdPair calculates the product of pairings, i.e., \Prod_i pair(Pi,Qi)^ni.
@@ -119,5 +94,7 @@ func ProdPair(P []*G1, Q []*G2, n []*Scalar) *Gt {
 		out.Mul(out, ei)
 	}
 
-	return finalExp(out)
+	g := &Gt{}
+	finalExp(g, out)
+	return g
 }

@@ -8,7 +8,11 @@ import (
 	"github.com/cloudflare/circl/internal/test"
 )
 
-func randomCyclo6(t testing.TB) *Cyclo6 { return EasyExponentiation(randomFp12(t)) }
+func randomCyclo6(t testing.TB) *Cyclo6 {
+	c := &Cyclo6{}
+	EasyExponentiation(c, randomFp12(t))
+	return c
+}
 
 // phi6primeSq evaluates the 6-th cyclotomic polynomial, \phi_6(x) = x^2-x+1, at p^2.
 func phi6primeSq() *big.Int {
@@ -77,6 +81,22 @@ func TestCyclo6(t *testing.T) {
 			// x*x = x^2
 			got.Mul(x, x)
 			want.Sqr(x)
+			if !got.IsEqual(&want) {
+				test.ReportError(t, got, want, x)
+			}
+		}
+	})
+
+	t.Run("invFp12_vs_invCyclo6", func(t *testing.T) {
+		var want, got Fp12
+		var y Cyclo6
+		for i := 0; i < testTimes; i++ {
+			x := randomCyclo6(t)
+
+			y.Inv(x)
+			got = (Fp12)(y)
+			want.Inv((*Fp12)(x))
+
 			if !got.IsEqual(&want) {
 				test.ReportError(t, got, want, x)
 			}

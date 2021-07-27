@@ -11,7 +11,7 @@ func (z Fp6) String() string { return fmt.Sprintf("\n0: %v\n1: %v\n2: %v", z[0],
 func (z *Fp6) Set(x *Fp6)    { z[0].Set(&x[0]); z[1].Set(&x[1]); z[2].Set(&x[2]) }
 func (z Fp6) Bytes() []byte  { return append(append(z[0].Bytes(), z[1].Bytes()...), z[2].Bytes()...) }
 func (z *Fp6) SetBytes(b []byte) error {
-	return errSum(
+	return errFirst(
 		z[0].SetBytes(b[0*Fp2Size:1*Fp2Size]),
 		z[1].SetBytes(b[1*Fp2Size:2*Fp2Size]),
 		z[2].SetBytes(b[2*Fp2Size:3*Fp2Size]),

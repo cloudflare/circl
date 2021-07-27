@@ -11,7 +11,7 @@ type Fp12 [2]Fp6
 func (z Fp12) String() string { return fmt.Sprintf("0: %v\n1: %v", z[0], z[1]) }
 func (z *Fp12) Set(x *Fp12)   { z[0].Set(&x[0]); z[1].Set(&x[1]) }
 func (z *Fp12) SetBytes(b []byte) error {
-	return errSum(z[0].SetBytes(b[:Fp6Size]), z[1].SetBytes(b[Fp6Size:2*Fp6Size]))
+	return errFirst(z[0].SetBytes(b[:Fp6Size]), z[1].SetBytes(b[Fp6Size:2*Fp6Size]))
 }
 func (z Fp12) Bytes() []byte        { return append(z[0].Bytes(), z[1].Bytes()...) }
 func (z *Fp12) SetOne()             { z[0].SetOne(); z[1] = Fp6{} }
