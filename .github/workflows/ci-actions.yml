@@ -71,3 +71,20 @@ jobs:
         uses: codecov/codecov-action@v2
         with:
           file: ./coverage.txt
+  osCompat:
+    runs-on: ${{ matrix.os }}
+    name: Running on ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-10.15, windows-2019]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '1.16'
+      - name: Building
+        run: go build -v ./...
+      - name: Testing
+        run: go test -v -count=1 ./...
