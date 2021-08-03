@@ -25,8 +25,8 @@ func (z *Scalar) SetUint64(n uint64)       { z.toMont(&scRaw{n}) }
 func (z *Scalar) SetInt64(n int64)         { z.SetUint64(uint64(-n)); z.Neg() }
 func (z *Scalar) SetOne()                  { z.SetUint64(1) }
 func (z *Scalar) Random(r io.Reader) error { return randomInt(z.i[:], r, scOrder[:]) }
-func (z Scalar) IsZero() bool              { return z.IsEqual(&Scalar{}) }
-func (z Scalar) IsEqual(x *Scalar) bool    { return ctUint64Eq(z.i[:], x.i[:]) == 1 }
+func (z Scalar) IsZero() int               { return z.IsEqual(&Scalar{}) }
+func (z Scalar) IsEqual(x *Scalar) int     { return ctUint64Eq(z.i[:], x.i[:]) }
 func (z *Scalar) Neg()                     { fiatScMontSub(&z.i, &scMont{}, &z.i) }
 func (z *Scalar) Add(x, y *Scalar)         { fiatScMontAdd(&z.i, &x.i, &y.i) }
 func (z *Scalar) Sub(x, y *Scalar)         { fiatScMontSub(&z.i, &x.i, &y.i) }
@@ -59,7 +59,7 @@ func (z *Scalar) expVarTime(x *Scalar, n []byte) {
 // to ScalarOrder-1.
 func (z *Scalar) SetBytes(data []byte) error {
 	in64 := &scRaw{}
-	err := setBytes(in64[:], data[:ScalarSize], scOrder[:])
+	err := setBytes(in64[:], data, scOrder[:])
 	if err == nil {
 		z.toMont(in64)
 	}

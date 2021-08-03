@@ -9,6 +9,7 @@ type Fp6 [3]Fp2
 
 func (z Fp6) String() string { return fmt.Sprintf("\n0: %v\n1: %v\n2: %v", z[0], z[1], z[2]) }
 func (z *Fp6) Set(x *Fp6)    { z[0].Set(&x[0]); z[1].Set(&x[1]); z[2].Set(&x[2]) }
+func (z *Fp6) SetOne()       { z[0].SetOne(); z[1] = Fp2{}; z[2] = Fp2{} }
 func (z Fp6) Bytes() []byte  { return append(append(z[0].Bytes(), z[1].Bytes()...), z[2].Bytes()...) }
 func (z *Fp6) SetBytes(b []byte) error {
 	return errFirst(
@@ -17,10 +18,9 @@ func (z *Fp6) SetBytes(b []byte) error {
 		z[2].SetBytes(b[2*Fp2Size:3*Fp2Size]),
 	)
 }
-func (z *Fp6) SetOne()     { z[0].SetOne(); z[1] = Fp2{}; z[2] = Fp2{} }
-func (z Fp6) IsZero() bool { return z.IsEqual(&Fp6{}) }
-func (z Fp6) IsEqual(x *Fp6) bool {
-	return z[0].IsEqual(&x[0]) && z[1].IsEqual(&x[1]) && z[2].IsEqual(&x[2])
+func (z Fp6) IsZero() int { return z.IsEqual(&Fp6{}) }
+func (z Fp6) IsEqual(x *Fp6) int {
+	return z[0].IsEqual(&x[0]) & z[1].IsEqual(&x[1]) & z[2].IsEqual(&x[2])
 }
 func (z *Fp6) Neg()          { z[0].Neg(); z[1].Neg(); z[2].Neg() }
 func (z *Fp6) Add(x, y *Fp6) { z[0].Add(&x[0], &y[0]); z[1].Add(&x[1], &y[1]); z[2].Add(&x[2], &y[2]) }

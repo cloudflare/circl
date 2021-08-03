@@ -9,7 +9,7 @@ import (
 func randomFp12(t testing.TB) *Fp12 { return &Fp12{*randomFp6(t), *randomFp6(t)} }
 
 func TestFp12(t *testing.T) {
-	const testTimes = 1 << 9
+	const testTimes = 1 << 8
 	t.Run("no_alias", func(t *testing.T) {
 		var want, got Fp12
 		x := randomFp12(t)
@@ -17,7 +17,7 @@ func TestFp12(t *testing.T) {
 		got.Sqr(&got)
 		want.Set(x)
 		want.Mul(&want, &want)
-		if !got.IsEqual(&want) {
+		if got.IsEqual(&want) == 0 {
 			test.ReportError(t, got, want, x)
 		}
 	})
@@ -33,7 +33,7 @@ func TestFp12(t *testing.T) {
 			z.Mul(&z, x)
 			z.Sub(&z, y)
 			got := z.IsZero()
-			want := true
+			want := 1
 			if got != want {
 				test.ReportError(t, got, want, x, y)
 			}
@@ -54,7 +54,7 @@ func TestFp12(t *testing.T) {
 			r0.Sub(&r0, &r1)
 			got := &l0
 			want := &r0
-			if !got.IsEqual(want) {
+			if got.IsEqual(want) == 0 {
 				test.ReportError(t, got, want, x, y)
 			}
 		}
@@ -66,7 +66,7 @@ func TestFp12(t *testing.T) {
 			s := a.Bytes()
 			err := b.SetBytes(s)
 			test.CheckNoErr(t, err, "setbytes failed")
-			if !b.IsEqual(a) {
+			if b.IsEqual(a) == 0 {
 				test.ReportError(t, a, b)
 			}
 		}
@@ -81,7 +81,7 @@ func TestFp12(t *testing.T) {
 			got.Frob(x)
 			want.ExpVarTime(x, p)
 
-			if !got.IsEqual(&want) {
+			if got.IsEqual(&want) == 0 {
 				test.ReportError(t, got, want, x)
 			}
 		}

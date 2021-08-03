@@ -51,7 +51,7 @@ func TestG1ScalarMult(t *testing.T) {
 		P := randomG1(t)
 		k := randomScalar(t)
 		Q.ScalarMult(k, P)
-		Q.Normalize()
+		Q.toAffine()
 		got := Q.IsOnG1()
 		want := true
 		if got != want {
@@ -61,19 +61,30 @@ func TestG1ScalarMult(t *testing.T) {
 }
 
 func TestG1Hash(t *testing.T) {
-	const testTimes = 1 << 6
-	var P G1
-	var msg, dst [4]byte
-	for i := 0; i < testTimes; i++ {
-		_, _ = rand.Read(msg[:])
-		_, _ = rand.Read(dst[:])
-		P.Hash(msg[:], dst[:])
-		got := P.IsOnCurve()
-		want := true
+	const testTimes = 1 << 8
 
-		if got != want {
-			test.ReportError(t, got, want, msg, dst)
-		}
+	for _, e := range [...]struct {
+		Name string
+		Enc  func(p *G1, input, dst []byte)
+	}{
+		{"Encode", func(p *G1, input, dst []byte) { p.Encode(input, dst) }},
+		{"Hash", func(p *G1, input, dst []byte) { p.Hash(input, dst) }},
+	} {
+		var msg, dst [4]byte
+		var p G1
+		t.Run(e.Name, func(t *testing.T) {
+			for i := 0; i < testTimes; i++ {
+				_, _ = rand.Read(msg[:])
+				_, _ = rand.Read(dst[:])
+				e.Enc(&p, msg[:], dst[:])
+
+				got := p.isRTorsion()
+				want := true
+				if got != want {
+					test.ReportError(t, got, want, e.Name, msg, dst)
+				}
+			}
+		})
 	}
 }
 
@@ -81,6 +92,9 @@ func BenchmarkG1(b *testing.B) {
 	P := randomG1(b)
 	Q := randomG1(b)
 	k := randomScalar(b)
+	var msg, dst [4]byte
+	_, _ = rand.Read(msg[:])
+	_, _ = rand.Read(dst[:])
 
 	b.Run("Add", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
@@ -90,6 +104,11 @@ func BenchmarkG1(b *testing.B) {
 	b.Run("Mul", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			P.ScalarMult(k, P)
+		}
+	})
+	b.Run("Hash", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			P.Hash(msg[:], dst[:])
 		}
 	})
 }

@@ -34,7 +34,7 @@ func TestCyclo6(t *testing.T) {
 		got.Sqr(&got)
 		want.Set(x)
 		want.Mul(&want, &want)
-		if !got.IsEqual(&want) {
+		if got.IsEqual(&want) == 0 {
 			test.ReportError(t, got, want, x)
 		}
 	})
@@ -50,7 +50,7 @@ func TestCyclo6(t *testing.T) {
 
 			// x^phi6primeSq = 1
 			got := z.IsIdentity()
-			want := true
+			want := 1
 			if got != want {
 				test.ReportError(t, got, want, x, z)
 			}
@@ -68,7 +68,7 @@ func TestCyclo6(t *testing.T) {
 			z.Mul(&z, x)
 			got := z
 			want := y
-			if !got.IsEqual(want) {
+			if got.IsEqual(want) == 0 {
 				test.ReportError(t, got, want, x, y)
 			}
 		}
@@ -81,7 +81,7 @@ func TestCyclo6(t *testing.T) {
 			// x*x = x^2
 			got.Mul(x, x)
 			want.Sqr(x)
-			if !got.IsEqual(&want) {
+			if got.IsEqual(&want) == 0 {
 				test.ReportError(t, got, want, x)
 			}
 		}
@@ -97,7 +97,7 @@ func TestCyclo6(t *testing.T) {
 			got = (Fp12)(y)
 			want.Inv((*Fp12)(x))
 
-			if !got.IsEqual(&want) {
+			if got.IsEqual(&want) == 0 {
 				test.ReportError(t, got, want, x)
 			}
 		}

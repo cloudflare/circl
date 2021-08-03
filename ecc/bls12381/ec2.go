@@ -12,7 +12,7 @@ func doubleAndLine(P *G2, l *line) {
 	X, Y, Z := &P.x, &P.y, &P.z
 	X3, Y3, Z3 := &R.x, &R.y, &R.z
 	isDoubLine := l != nil
-	_3B := &g2Param3B
+	_3B := &g2Params._3b
 	var A, B, C, D, E, F, G, T ff.Fp2
 	B.Sqr(Y)       // 1. B = Y1^2
 	C.Sqr(Z)       // 2. C = Z1^2
@@ -62,7 +62,7 @@ func addAndLine(PQ, P, Q *G2, l *line) {
 	X1, Y1, Z1 := &P.x, &P.y, &P.z
 	X2, Y2, Z2 := &Q.x, &Q.y, &Q.z
 	X3, Y3, Z3 := &R.x, &R.y, &R.z
-	_3B := &g2Param3B
+	_3B := &g2Params._3b
 	isAddLine := l != nil
 	var X1X2, Y1Y2, Z1Z2, _3bZ1Z2 ff.Fp2
 	var A, B, C, D, E, F, G ff.Fp2

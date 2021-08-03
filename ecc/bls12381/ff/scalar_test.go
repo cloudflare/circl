@@ -29,7 +29,7 @@ func TestScalar(t *testing.T) {
 			if err != nil {
 				test.ReportError(t, x, y, x)
 			}
-			if !x.IsEqual(&y) {
+			if x.IsEqual(&y) == 0 {
 				test.ReportError(t, x, y, x)
 			}
 		}
@@ -42,7 +42,7 @@ func TestScalar(t *testing.T) {
 		got.Sqr(&got)
 		want.Set(x)
 		want.Mul(&want, &want)
-		if !got.IsEqual(&want) {
+		if got.IsEqual(&want) == 0 {
 			test.ReportError(t, got, want, x)
 		}
 	})
@@ -57,7 +57,7 @@ func TestScalar(t *testing.T) {
 			z.Mul(&z, x)
 			z.Sub(&z, y)
 			got := z.IsZero()
-			want := true
+			want := 1
 			if got != want {
 				test.ReportError(t, got, want, x, y)
 			}
@@ -78,7 +78,7 @@ func TestScalar(t *testing.T) {
 			r0.Sub(&r0, &r1)
 			got := &l0
 			want := &r0
-			if !got.IsEqual(want) {
+			if got.IsEqual(want) == 0 {
 				test.ReportError(t, got, want, x, y)
 			}
 		}

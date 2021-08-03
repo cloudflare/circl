@@ -22,14 +22,14 @@ func (g *G2) Set(P *G2) { g.x.Set(&P.x); g.y.Set(&P.y); g.z.Set(&P.z) }
 
 // SetBytes deserializes g, and returns an error if not in the group
 func (g *G2) SetBytes(b []byte) error {
-	if len(b) != 2*2*48 {
+	if len(b) < G2Size {
 		return fmt.Errorf("incorrect length")
 	}
-	err := g.x.SetBytes(b[:2*48])
+	err := g.x.SetBytes(b[:ff.Fp2Size])
 	if err != nil {
 		return err
 	}
-	err = g.y.SetBytes(b[2*48:])
+	err = g.y.SetBytes(b[ff.Fp2Size:])
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func (g *G2) SetIdentity() { g.x = ff.Fp2{}; g.y.SetOne(); g.z = ff.Fp2{} }
 func (g *G2) IsOnG2() bool { return g.IsOnCurve() && g.IsRTorsion() }
 
 // IsIdentity return true if the point is the identity of G2.
-func (g *G2) IsIdentity() bool { return g.z.IsZero() }
+func (g *G2) IsIdentity() bool { return g.z.IsZero() == 1 }
 
 // IsRTorsion returns true if point is r-torsion.
 func (g *G2) IsRTorsion() bool { var P G2; P.scalarMult(ff.ScalarOrder(), g); return P.IsIdentity() }
@@ -86,27 +86,27 @@ func (g *G2) IsEqual(p *G2) bool {
 	ly.Mul(&g.y, &p.z) // ly = y1*z2
 	ry.Mul(&p.y, &g.z) // ry = y2*z1
 	ly.Sub(&ly, &ry)   // ly = ly-ry
-	return lx.IsZero() && ly.IsZero()
+	return lx.IsZero() == 1 && ly.IsZero() == 1
 }
 
 // IsOnCurve returns true if g is a valid point on the curve.
 func (g *G2) IsOnCurve() bool {
 	var x3, z3, y2 ff.Fp2
-	y2.Sqr(&g.y)           // y2 = y^2
-	y2.Mul(&y2, &g.z)      // y2 = y^2*z
-	x3.Sqr(&g.x)           // x3 = x^2
-	x3.Mul(&x3, &g.x)      // x3 = x^3
-	z3.Sqr(&g.z)           // z3 = z^2
-	z3.Mul(&z3, &g.z)      // z3 = z^3
-	z3.Mul(&z3, &g2ParamB) // z3 = (4+4i)*z^3
-	x3.Add(&x3, &z3)       // x3 = x^3 + (4+4i)*z^3
-	y2.Sub(&y2, &x3)       // y2 = y^2*z - (x^3 + (4+4i)*z^3)
-	return y2.IsZero()
+	y2.Sqr(&g.y)             // y2 = y^2
+	y2.Mul(&y2, &g.z)        // y2 = y^2*z
+	x3.Sqr(&g.x)             // x3 = x^2
+	x3.Mul(&x3, &g.x)        // x3 = x^3
+	z3.Sqr(&g.z)             // z3 = z^2
+	z3.Mul(&z3, &g.z)        // z3 = z^3
+	z3.Mul(&z3, &g2Params.b) // z3 = (4+4i)*z^3
+	x3.Add(&x3, &z3)         // x3 = x^3 + (4+4i)*z^3
+	y2.Sub(&y2, &x3)         // y2 = y^2*z - (x^3 + (4+4i)*z^3)
+	return y2.IsZero() == 1
 }
 
 // Normalize updates g with its affine representation.
 func (g *G2) Normalize() {
-	if !g.z.IsZero() {
+	if g.z.IsZero() != 1 {
 		var invZ ff.Fp2
 		invZ.Inv(&g.z)
 		g.x.Mul(&g.x, &invZ)
@@ -118,8 +118,8 @@ func (g *G2) Normalize() {
 // G2Generator returns the generator point of G2.
 func G2Generator() *G2 {
 	var G G2
-	G.x.Set(&g2GenX)
-	G.y.Set(&g2GenY)
+	G.x.Set(&g2Params.genX)
+	G.y.Set(&g2Params.genY)
 	G.z.SetOne()
 	return &G
 }

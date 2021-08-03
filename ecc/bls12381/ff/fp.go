@@ -25,23 +25,36 @@ func (z *Fp) SetUint64(n uint64)       { z.toMont(&fpRaw{n}) }
 func (z *Fp) SetInt64(n int64)         { z.SetUint64(uint64(-n)); z.Neg() }
 func (z *Fp) SetOne()                  { z.SetUint64(1) }
 func (z *Fp) Random(r io.Reader) error { return randomInt(z.i[:], r, fpOrder[:]) }
-func (z Fp) IsZero() bool              { return z.IsEqual(&Fp{}) }
-func (z Fp) IsEqual(x *Fp) bool        { return ctUint64Eq(z.i[:], x.i[:]) == 1 }
-func (z *Fp) Neg()                     { fiatFpMontSub(&z.i, &fpMont{}, &z.i) }
-func (z *Fp) Add(x, y *Fp)             { fiatFpMontAdd(&z.i, &x.i, &y.i) }
-func (z *Fp) Sub(x, y *Fp)             { fiatFpMontSub(&z.i, &x.i, &y.i) }
-func (z *Fp) Mul(x, y *Fp)             { fiatFpMontMul(&z.i, &x.i, &y.i) }
-func (z *Fp) Sqr(x *Fp)                { fiatFpMontSquare(&z.i, &x.i) }
-func (z *Fp) Inv(x *Fp)                { z.expVarTime(x, fpOrderMinus2[:]) }
-func (z *Fp) toMont(in *fpRaw)         { fiatFpMontMul(&z.i, in, &fpRSquare) }
-func (z Fp) fromMont() (out fpRaw)     { fiatFpMontMul(&out, &z.i, &fpMont{1}); return }
+
+// IsZero returns 1 if z == 0 and 0 otherwise.
+func (z Fp) IsZero() int { return z.IsEqual(&Fp{}) }
+
+// IsEqual returns 1 if z == x and 0 otherwise.
+func (z Fp) IsEqual(x *Fp) int     { return ctUint64Eq(z.i[:], x.i[:]) }
+func (z *Fp) Neg()                 { fiatFpMontSub(&z.i, &fpMont{}, &z.i) }
+func (z *Fp) Add(x, y *Fp)         { fiatFpMontAdd(&z.i, &x.i, &y.i) }
+func (z *Fp) Sub(x, y *Fp)         { fiatFpMontSub(&z.i, &x.i, &y.i) }
+func (z *Fp) Mul(x, y *Fp)         { fiatFpMontMul(&z.i, &x.i, &y.i) }
+func (z *Fp) Sqr(x *Fp)            { fiatFpMontSquare(&z.i, &x.i) }
+func (z *Fp) Inv(x *Fp)            { z.ExpVarTime(x, fpOrderMinus2[:]) }
+func (z *Fp) toMont(in *fpRaw)     { fiatFpMontMul(&z.i, in, &fpRSquare) }
+func (z Fp) fromMont() (out fpRaw) { fiatFpMontMul(&out, &z.i, &fpMont{1}); return }
+func (z Fp) Sgn0() int             { zz := z.fromMont(); return int(zz[0] & 1) }
+
+// CMov sets z=x if b == 1 and z=y if b == 0. Its behavior is undefined if b takes any other value.
+func (z *Fp) CMov(x, y *Fp, b int) {
+	mask := 0 - uint64(b&0x1)
+	for i := range z.i {
+		z.i[i] = (x.i[i] &^ mask) | (y.i[i] & mask)
+	}
+}
 
 // FpOrder is the order of the base field for towering.
 //  FpOrder = 0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab.
 func FpOrder() []byte { o := fpOrder; return o[:] }
 
-// exp calculates z=x^n, where n is in little-endian order.
-func (z *Fp) expVarTime(x *Fp, n []byte) {
+// ExpVarTime calculates z=x^n, where n is in little-endian order.
+func (z *Fp) ExpVarTime(x *Fp, n []byte) {
 	zz := new(Fp)
 	zz.SetOne()
 	for i := 8*len(n) - 1; i >= 0; i-- {
@@ -52,17 +65,6 @@ func (z *Fp) expVarTime(x *Fp, n []byte) {
 		}
 	}
 	z.Set(zz)
-}
-
-func (z *Fp) Sqrt(x *Fp) (isQR bool) {
-	var t, t2 Fp
-	t.expVarTime(x, fpOrderPlus1Div4[:])
-	t2.Sqr(&t)
-	if t2.IsEqual(x) {
-		z.Set(&t)
-		return true
-	}
-	return false
 }
 
 // SetBytes reconstructs a Fp from a slice that must have at least
@@ -111,14 +113,5 @@ var (
 		0xf4df1f341c341746, 0x0a76e6a609d104f1,
 		0x8de5476c4c95b6d5, 0x67eb88a9939d83c0,
 		0x9a793e85b519952d, 0x11988fe592cae3aa,
-	}
-	// fpOrderPlus1Div4 is (fpOrder + 1)/4 used for square-root.
-	fpOrderPlus1Div4 = [FpSize]byte{
-		0xab, 0xea, 0xff, 0xff, 0xff, 0xbf, 0x7f, 0xee,
-		0xff, 0xff, 0x54, 0xac, 0xff, 0xff, 0xaa, 0x07,
-		0x89, 0x3d, 0xac, 0x3d, 0xa8, 0x34, 0xcc, 0xd9,
-		0xaf, 0x44, 0xe1, 0x3c, 0xe1, 0xd2, 0x1d, 0xd9,
-		0x35, 0xeb, 0xd2, 0x90, 0xed, 0xe9, 0xc6, 0x92,
-		0xa6, 0xf9, 0x5f, 0x8e, 0x7a, 0x44, 0x80, 0x06,
 	}
 )

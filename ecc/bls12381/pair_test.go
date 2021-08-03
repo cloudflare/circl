@@ -83,25 +83,27 @@ func TestPairIdentity(t *testing.T) {
 func BenchmarkMiller(b *testing.B) {
 	g1 := G1Generator()
 	g2 := G2Generator()
+	mi := new(ff.Fp12)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = miller(g1, g2)
+		miller(mi, g1, g2)
 	}
 }
 
 func BenchmarkFinalExpo(b *testing.B) {
 	g1 := G1Generator()
 	g2 := G2Generator()
-	f := miller(g1, g2)
+	mi := new(ff.Fp12)
+	miller(mi, g1, g2)
 	c := &ff.Cyclo6{}
 	u := &ff.URoot{}
 	g := &Gt{}
 
-	ff.EasyExponentiation(c, f)
+	ff.EasyExponentiation(c, mi)
 
 	b.Run("EasyExp", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			ff.EasyExponentiation(c, f)
+			ff.EasyExponentiation(c, mi)
 		}
 	})
 	b.Run("HardExp", func(b *testing.B) {
@@ -111,7 +113,7 @@ func BenchmarkFinalExpo(b *testing.B) {
 	})
 	b.Run("FinalExp", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			finalExp(g, f)
+			finalExp(g, mi)
 		}
 	})
 }

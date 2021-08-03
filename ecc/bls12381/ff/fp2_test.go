@@ -17,7 +17,7 @@ func TestFp2(t *testing.T) {
 		got.Sqr(&got)
 		want.Set(x)
 		want.Mul(&want, &want)
-		if !got.IsEqual(&want) {
+		if got.IsEqual(&want) == 0 {
 			test.ReportError(t, got, want, x)
 		}
 	})
@@ -33,7 +33,7 @@ func TestFp2(t *testing.T) {
 			z.Mul(&z, x)
 			z.Sub(&z, y)
 			got := z.IsZero()
-			want := true
+			want := 1
 			if got != want {
 				test.ReportError(t, got, want, x, y, z)
 			}
@@ -54,7 +54,7 @@ func TestFp2(t *testing.T) {
 			r0.Sub(&r0, &r1)
 			got := &l0
 			want := &r0
-			if !got.IsEqual(want) {
+			if got.IsEqual(want) == 0 {
 				test.ReportError(t, got, want, x, y)
 			}
 		}
@@ -66,7 +66,7 @@ func TestFp2(t *testing.T) {
 			s := a.Bytes()
 			err := b.SetBytes(s)
 			test.CheckNoErr(t, err, "setbytes failed")
-			if !b.IsEqual(a) {
+			if b.IsEqual(a) == 0 {
 				test.ReportError(t, a, b)
 			}
 		}
