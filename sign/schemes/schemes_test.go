@@ -118,3 +118,46 @@ func Example() {
 	// Ed25519-Dilithium3
 	// Ed448-Dilithium4
 }
+
+func BenchmarkGenerateKeyPair(b *testing.B) {
+	allSchemes := schemes.All()
+	for _, scheme := range allSchemes {
+		scheme := scheme
+		b.Run(scheme.Name(), func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				_, _, _ = scheme.GenerateKey()
+			}
+		})
+	}
+}
+
+func BenchmarkSign(b *testing.B) {
+	allSchemes := schemes.All()
+	opts := &sign.SignatureOpts{}
+	for _, scheme := range allSchemes {
+		msg := []byte(fmt.Sprintf("Signing with %s", scheme.Name()))
+		scheme := scheme
+		_, sk, _ := scheme.GenerateKey()
+		b.Run(scheme.Name(), func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				_ = scheme.Sign(sk, msg, opts)
+			}
+		})
+	}
+}
+
+func BenchmarkVerify(b *testing.B) {
+	allSchemes := schemes.All()
+	opts := &sign.SignatureOpts{}
+	for _, scheme := range allSchemes {
+		msg := []byte(fmt.Sprintf("Signing with %s", scheme.Name()))
+		scheme := scheme
+		pk, sk, _ := scheme.GenerateKey()
+		sig := scheme.Sign(sk, msg, opts)
+		b.Run(scheme.Name(), func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				_ = scheme.Verify(pk, msg, sig, opts)
+			}
+		})
+	}
+}
