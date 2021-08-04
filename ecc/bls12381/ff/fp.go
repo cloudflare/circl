@@ -22,7 +22,6 @@ func (z Fp) String() string            { x := z.fromMont(); return conv.Uint64Le
 func (z Fp) Bytes() []byte             { x := z.fromMont(); return conv.Uint64Le2BytesLe(x[:]) }
 func (z *Fp) Set(x *Fp)                { z.i = x.i }
 func (z *Fp) SetUint64(n uint64)       { z.toMont(&fpRaw{n}) }
-func (z *Fp) SetInt64(n int64)         { z.SetUint64(uint64(-n)); z.Neg() }
 func (z *Fp) SetOne()                  { z.SetUint64(1) }
 func (z *Fp) Random(r io.Reader) error { return randomInt(z.i[:], r, fpOrder[:]) }
 
