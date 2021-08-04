@@ -22,7 +22,6 @@ func (z Scalar) String() string            { x := z.fromMont(); return conv.Uint
 func (z Scalar) Bytes() []byte             { x := z.fromMont(); return conv.Uint64Le2BytesLe(x[:]) }
 func (z *Scalar) Set(x *Scalar)            { z.i = x.i }
 func (z *Scalar) SetUint64(n uint64)       { z.toMont(&scRaw{n}) }
-func (z *Scalar) SetInt64(n int64)         { z.SetUint64(uint64(-n)); z.Neg() }
 func (z *Scalar) SetOne()                  { z.SetUint64(1) }
 func (z *Scalar) Random(r io.Reader) error { return randomInt(z.i[:], r, scOrder[:]) }
 func (z Scalar) IsZero() int               { return z.IsEqual(&Scalar{}) }
