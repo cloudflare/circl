@@ -196,7 +196,7 @@ func (g *G1) toAffine() {
 		invZ.Inv(&g.z)
 		g.x.Mul(&g.x, &invZ)
 		g.y.Mul(&g.y, &invZ)
-		g.z.Mul(&g.z, &invZ)
+		g.z.SetOne()
 	}
 }
 
@@ -267,4 +267,29 @@ func G1Generator() *G1 {
 	G.y.Set(&g1Params.genY)
 	G.z.SetOne()
 	return &G
+}
+
+// affinize converts an entire slice to affine at once
+func affinize(points []*G1) {
+	if len(points) == 0 {
+		return
+	}
+	ws := make([]ff.Fp, len(points)+1)
+	ws[0].SetOne()
+	for i := 0; i < len(points); i++ {
+		ws[i+1].Mul(&ws[i], &points[i].z)
+	}
+
+	w := &ff.Fp{}
+	w.Inv(&ws[len(points)])
+
+	for i := len(points) - 1; i >= 0; i-- {
+		zinv := &ff.Fp{}
+		zinv.Mul(w, &ws[i])
+		w.Mul(w, &points[i].z)
+
+		points[i].x.Mul(&points[i].x, zinv)
+		points[i].y.Mul(&points[i].y, zinv)
+		points[i].z.SetOne()
+	}
 }
