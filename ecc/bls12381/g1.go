@@ -283,8 +283,8 @@ func affinize(points []*G1) {
 	w := &ff.Fp{}
 	w.Inv(&ws[len(points)])
 
+	zinv := &ff.Fp{}
 	for i := len(points) - 1; i >= 0; i-- {
-		zinv := &ff.Fp{}
 		zinv.Mul(w, &ws[i])
 		w.Mul(w, &points[i].z)
 
