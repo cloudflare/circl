@@ -128,3 +128,33 @@ func TestG1Serial(t *testing.T) {
 		}
 	}
 }
+
+func TestG1Affinize(t *testing.T) {
+	N := 20
+	testTimes := 1 << 6
+	for i := 0; i < testTimes; i++ {
+		g1 := make([]*G1, N)
+		g2 := make([]*G1, N)
+		for j := 0; j < N; j++ {
+			g1[j] = randomG1(t)
+			g2[j] = &G1{}
+			g2[j].Set(g1[j])
+			if g1[j] == nil {
+				t.Fatal("wtf?")
+			}
+			if g2[j] == nil {
+				t.Fatal("huh")
+			}
+		}
+		affinize(g2)
+		for j := 0; j < N; j++ {
+			g1[j].toAffine()
+			if !g1[j].IsEqual(g2[j]) {
+				t.Fatal("failure to preserve points")
+			}
+			if g2[j].z.IsEqual(&g1[j].z) != 1 {
+				t.Fatal("failure to make affine")
+			}
+		}
+	}
+}
