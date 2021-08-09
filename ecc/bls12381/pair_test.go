@@ -2,6 +2,7 @@ package bls12381
 
 import (
 	"fmt"
+	"math/rand" //nolint
 	"testing"
 
 	"github.com/cloudflare/circl/ecc/bls12381/ff"
@@ -30,6 +31,47 @@ func TestProdPair(t *testing.T) {
 		}
 
 		want := ProdPair(listG1[:], listG2[:], listSc[:])
+
+		if !got.IsEqual(want) {
+			test.ReportError(t, got, want)
+		}
+	}
+}
+
+func TestProdPairFrac(t *testing.T) {
+	const testTimes = 1 << 5
+	const N = 5
+
+	listG1 := [N]*G1{}
+	listG2 := [N]*G2{}
+	listSc := [N]*Scalar{}
+	listSigns := [N]int{}
+	var ePQn, got Gt
+
+	for i := 0; i < testTimes; i++ {
+		got.SetIdentity()
+		for j := 0; j < N; j++ {
+			listG1[j] = randomG1(t)
+			listG2[j] = randomG2(t)
+			listSc[j] = &Scalar{}
+			coin := rand.Int31n(2) //nolint
+			switch coin {
+			case 0:
+				listSc[j].SetOne()
+				listSc[j].Neg()
+				listSigns[j] = -1
+
+			case 1:
+				listSc[j].SetOne()
+				listSigns[j] = 1
+			}
+
+			ePQ := Pair(listG1[j], listG2[j])
+			ePQn.ExpVarTime(ePQ, listSc[j])
+			got.Mul(&got, &ePQn)
+		}
+
+		want := ProdPairFrac(listG1[:], listG2[:], listSigns[:])
 
 		if !got.IsEqual(want) {
 			test.ReportError(t, got, want)

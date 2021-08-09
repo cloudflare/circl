@@ -105,3 +105,29 @@ func ProdPair(P []*G1, Q []*G2, n []*Scalar) *Gt {
 	finalExp(e, out)
 	return e
 }
+
+// ProdPairFrac computes the product e(P, Q)^sign where sign is 1 or -1
+func ProdPairFrac(P []*G1, Q []*G2, signs []int) *Gt {
+	if len(P) != len(Q) || len(P) != len(signs) {
+		panic("mismatch length of inputs")
+	}
+
+	g := new(G1)
+	mi := new(ff.Fp12)
+	out := new(ff.Fp12)
+	out.SetOne()
+
+	affinize(P)
+	for i := range P {
+		g.Set(P[i])
+		if signs[i] == -1 {
+			g.Neg()
+		}
+		miller(mi, g, Q[i])
+		out.Mul(mi, out)
+	}
+
+	e := &Gt{}
+	finalExp(e, out)
+	return e
+}
