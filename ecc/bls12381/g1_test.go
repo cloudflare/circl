@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"testing"
 
+	"github.com/cloudflare/circl/ecc/bls12381/ff"
 	"github.com/cloudflare/circl/internal/test"
 )
 
@@ -15,14 +16,24 @@ func randomScalar(t testing.TB) *Scalar {
 }
 
 func randomG1(t testing.TB) *G1 {
-	var P G1
-	k := randomScalar(t)
-	P.ScalarMult(k, G1Generator())
-	if !P.IsOnCurve() {
+	P := &G1{}
+	u := &ff.Fp{}
+	r := &isogG1Point{}
+
+	err := u.Random(rand.Reader)
+	test.CheckNoErr(t, err, "random fp")
+
+	r.sswu(u)
+	P.evalIsogG1(r)
+	P.clearCofactor()
+	got := P.IsOnG1()
+	want := true
+
+	if got != want {
 		t.Helper()
-		t.Fatal("not on curve")
+		test.ReportError(t, got, want, "point not in G1", u)
 	}
-	return &P
+	return P
 }
 
 func TestG1Add(t *testing.T) {
