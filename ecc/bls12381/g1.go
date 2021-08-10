@@ -58,13 +58,38 @@ func (g *G1) SetIdentity() { g.x = ff.Fp{}; g.y.SetOne(); g.z = ff.Fp{} }
 func (g *G1) isValidProjective() bool { return (g.x.IsZero() & g.y.IsZero() & g.z.IsZero()) != 1 }
 
 // IsOnG1 returns true if the point is in the group G1.
-func (g *G1) IsOnG1() bool { return g.isValidProjective() && g.IsOnCurve() && g.isRTorsion() }
+func (g *G1) IsOnG1() bool { return g.isValidProjective() && g.isOnCurve() && g.isRTorsion() }
 
 // IsIdentity return true if the point is the identity of G1.
 func (g *G1) IsIdentity() bool { return g.isValidProjective() && (g.z.IsZero() == 1) }
 
-// IsRTorsion returns true if point is r-torsion.
-func (g *G1) isRTorsion() bool { var P G1; P.scalarMult(ff.ScalarOrder(), g); return P.IsIdentity() }
+// isRTorsion returns true if point is in the r-torsion subgroup.
+func (g *G1) isRTorsion() bool {
+	// Bowe, "Faster Subgroup Checks for BLS12-381" (https://eprint.iacr.org/2019/814)
+	Q, _2sP, ssP := &G1{}, *g, *g
+
+	_2sP.x.Mul(&g.x, &g1Check.beta0) // s(P)
+	_2sP.Double()                    // 2*s(P)
+	ssP.x.Mul(&g.x, &g1Check.beta1)  // s(s(P))
+	Q.Add(g, &ssP)                   // P + s(s(P))
+	Q.Neg()                          // -P - s(s(P))
+	Q.Add(Q, &_2sP)                  // 2*s(P) - P - s(s(P))
+	Q.scalarMult(g1Check.coef[:], Q) // coef * [2*s(P) - P - s(s(P))]
+	ssP.Neg()                        // -s(s(P))
+	Q.Add(Q, &ssP)                   // coef * [2*s(P) - P - s(s(P))] - s(s(P))
+
+	return Q.IsIdentity()
+}
+
+// clearCofactor maps g to a point in the r-torsion subgroup.
+//
+// This method multiplies g times (1-z) rather than (z-1)^2/3, where z is the
+// BLS12 parameter. This is enough to remove points of order
+//  h \in {3, 11, 10177, 859267, 52437899},
+// and because there are no points of order h^2. See Section 5 of Wahby-Boneh
+// "Fast and simple constant-time hashing to the BLS12-381 elliptic curve" at
+// https://eprint.iacr.org/2019/403
+func (g *G1) clearCofactor() { g.scalarMult(g1Params.cofactorSmall[:], g) }
 
 // Double updates g = 2g.
 func (g *G1) Double() {
@@ -152,7 +177,7 @@ func (g *G1) ScalarMult(k *Scalar, P *G1) { g.scalarMult(k.Bytes(), P) }
 func (g *G1) scalarMult(k []byte, P *G1) {
 	var Q G1
 	Q.SetIdentity()
-	for i := 8*ScalarSize - 1; i >= 0; i-- {
+	for i := 8*len(k) - 1; i >= 0; i-- {
 		Q.Double()
 		bit := 0x1 & (k[i/8] >> uint(i%8))
 		if bit != 0 {
@@ -174,8 +199,8 @@ func (g *G1) IsEqual(p *G1) bool {
 	return g.isValidProjective() && p.isValidProjective() && lx.IsZero() == 1 && ly.IsZero() == 1
 }
 
-// IsOnCurve returns true if g is a valid point on the curve.
-func (g *G1) IsOnCurve() bool {
+// isOnCurve returns true if g is a valid point on the curve.
+func (g *G1) isOnCurve() bool {
 	var x3, z3, y2 ff.Fp
 	y2.Sqr(&g.y)             // y2 = y^2
 	y2.Mul(&y2, &g.z)        // y2 = y^2*z
@@ -186,7 +211,7 @@ func (g *G1) IsOnCurve() bool {
 	z3.Mul(&z3, &g1Params.b) // z3 = 4*z^3
 	x3.Add(&x3, &z3)         // x3 = x^3 + 4*z^3
 	y2.Sub(&y2, &x3)         // y2 = y^2*z - (x^3 + 4*z^3)
-	return g.isValidProjective() && (y2.IsZero() == 1)
+	return y2.IsZero() == 1
 }
 
 // toAffine updates g with its affine representation.
@@ -219,9 +244,8 @@ func (g *G1) Encode(input, dst []byte) {
 	}
 	var q isogG1Point
 	q.sswu(&u)
-	var p G1
-	p.evalIsogG1(&q)
-	g.ScalarMult(&g1Isog11.cofactor, &p)
+	g.evalIsogG1(&q)
+	g.clearCofactor()
 }
 
 // Hash produces an element of G1 from the hash of an input byte string and
@@ -253,11 +277,11 @@ func (g *G1) Hash(input, dst []byte) {
 	var q0, q1 isogG1Point
 	q0.sswu(&u0)
 	q1.sswu(&u1)
-	var p, p0, p1 G1
+	var p0, p1 G1
 	p0.evalIsogG1(&q0)
 	p1.evalIsogG1(&q1)
-	p.Add(&p0, &p1)
-	g.ScalarMult(&g1Isog11.cofactor, &p)
+	g.Add(&p0, &p1)
+	g.clearCofactor()
 }
 
 // G1Generator returns the generator point of G1.

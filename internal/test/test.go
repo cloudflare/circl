@@ -8,7 +8,7 @@ import (
 )
 
 // ReportError reports an error if got is different from want.
-func ReportError(t *testing.T, got, want interface{}, inputs ...interface{}) {
+func ReportError(t testing.TB, got, want interface{}, inputs ...interface{}) {
 	b := &strings.Builder{}
 	fmt.Fprint(b, "\n")
 	for i, in := range inputs {

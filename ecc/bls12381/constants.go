@@ -9,16 +9,23 @@ type Scalar = ff.Scalar
 const ScalarSize = ff.ScalarSize
 
 var (
-	g1Params struct{ b, _3b, genX, genY ff.Fp }
+	g1Params struct {
+		b, _3b, genX, genY ff.Fp
+		cofactorSmall      [8]byte // (1-z), where z is the BLS12 parameter.
+	}
 	g2Params struct{ b, _3b, genX, genY ff.Fp2 }
 	g1Isog11 struct {
 		a, b, c2 ff.Fp
 		c1       [ff.FpSize]byte
-		cofactor Scalar
 		xNum     [12]ff.Fp
 		xDen     [11]ff.Fp
 		yNum     [16]ff.Fp
 		yDen     [16]ff.Fp
+	}
+	g1Check struct {
+		coef  [16]byte // coef  = (z^2-1)/3, where z is the BLS12 parameter.
+		beta0 ff.Fp    // beta0 = F(2)^(2*(p-1)/3) where F = GF(p).
+		beta1 ff.Fp    // beta1 = F(2)^(1*(p-1)/3) where F = GF(p).
 	}
 )
 
@@ -33,6 +40,7 @@ func init() {
 	g1Params._3b.SetUint64(12)
 	err(g1Params.genX.SetString("0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb"))
 	err(g1Params.genY.SetString("0x08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1"))
+	g1Params.cofactorSmall = [8]byte{0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0xd2}
 
 	g2Params.b[0].SetUint64(4)
 	g2Params.b[1].SetUint64(4)
@@ -51,8 +59,6 @@ func init() {
 		0x35, 0xeb, 0xd2, 0x90, 0xed, 0xe9, 0xc6, 0x92,
 		0xa6, 0xf9, 0x5f, 0x8e, 0x7a, 0x44, 0x80, 0x06,
 	}
-
-	err(g1Isog11.cofactor.SetString("0xd201000000010001"))
 	err(g1Isog11.a.SetString("0x144698a3b8e9433d693a02c96d4982b0ea985383ee66a8d8e8981aefd881ac98936f8da0e0f97f5cf428082d584c1d"))
 	err(g1Isog11.b.SetString("0x12e2908d11688030018b12e8753eee3b2016c1f0f24f4070a0b9c14fcef35ef55a23215a316ceaa5d1cc48e98e172be0"))
 	err(g1Isog11.c2.SetString("0x3d689d1e0e762cef9f2bec6130316806b4c80eda6fc10ce77ae83eab1ea8b8b8a407c9c6db195e06f2dbeabc2baeff5"))
@@ -115,4 +121,8 @@ func init() {
 	err(g1Isog11.yDen[13].SetString("0x02660400eb2e4f3b628bdd0d53cd76f2bf565b94e72927c1cb748df27942480e420517bd8714cc80d1fadc1326ed06f7"))
 	err(g1Isog11.yDen[14].SetString("0x0e0fa1d816ddc03e6b24255e0d7819c171c40f65e273b853324efcd6356caa205ca2f570f13497804415473a1d634b8f"))
 	g1Isog11.yDen[15].SetOne()
+
+	err(g1Check.beta0.SetString("0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaac"))
+	err(g1Check.beta1.SetString("0x5f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffe"))
+	g1Check.coef = [16]byte{0x55, 0x55, 0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x56, 0xe1, 0x55, 0x55, 0x00, 0x8c, 0x6c, 0x39}
 }
