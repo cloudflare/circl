@@ -84,3 +84,9 @@ func BenchmarkG2(b *testing.B) {
 		}
 	})
 }
+
+func TestGTorsion(t *testing.T) {
+	if !G2Generator().IsRTorsion() {
+		t.Fatalf("Generator is not torsion")
+	}
+}

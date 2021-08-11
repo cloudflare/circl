@@ -53,7 +53,7 @@ func (g *G2) IsOnG2() bool { return g.IsOnCurve() && g.IsRTorsion() }
 // IsIdentity return true if the point is the identity of G2.
 func (g *G2) IsIdentity() bool { return g.z.IsZero() == 1 }
 
-// cmove sets g to P if b == 1
+// cmov sets g to P if b == 1
 func (g *G2) cmov(P *G2, b int) {
 	(&g.x).CMov(&g.x, &P.x, b)
 	(&g.y).CMov(&g.y, &P.y, b)
@@ -61,7 +61,27 @@ func (g *G2) cmov(P *G2, b int) {
 }
 
 // IsRTorsion returns true if point is r-torsion.
-func (g *G2) IsRTorsion() bool { var P G2; P.scalarMult(ff.ScalarOrder(), g); return P.IsIdentity() }
+func (g *G2) IsRTorsion() bool {
+	// See https://eprint.iacr.org/2019/814.pdf for details
+	var Q G2
+	Q.Set(g)
+
+	Q.psi()
+	Q.scalarMult(g2PsiCoeff.minusZ[:], &Q) //Q=-[z]\psi(g)
+	Q.Add(&Q, g)                           // Q=-[z]\psi(g)+g
+	Q.psi()
+	Q.psi() // Q=-[z]\psi^3(g)+\psi^2(g)
+
+	return Q.IsEqual(g) // Equivalent to verification equation in paper
+}
+
+func (g *G2) psi() {
+	g.x.Frob(&g.x)
+	g.y.Frob(&g.y)
+	g.z.Frob(&g.z)
+	g.x.Mul(&g2PsiCoeff.alpha, &g.x)
+	g.y.Mul(&g2PsiCoeff.beta, &g.y)
+}
 
 // Double updates g = 2g.
 func (g *G2) Double() { doubleAndLine(g, nil) }
