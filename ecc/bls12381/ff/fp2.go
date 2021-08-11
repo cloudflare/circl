@@ -53,3 +53,8 @@ func (z *Fp2) Inv(x *Fp2) {
 	z[1].Mul(&x[1], &den)
 	z[1].Neg()
 }
+
+func (z *Fp2) CMov(x, y *Fp2, b int) {
+	z[0].CMov(&x[0], &y[0], b)
+	z[1].CMov(&x[1], &y[1], b)
+}

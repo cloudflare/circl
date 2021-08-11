@@ -2,6 +2,7 @@ package bls12381
 
 import (
 	"crypto"
+	"crypto/subtle"
 	"fmt"
 	"math/big"
 
@@ -63,20 +64,27 @@ func (g *G1) IsOnG1() bool { return g.isValidProjective() && g.isOnCurve() && g.
 // IsIdentity return true if the point is the identity of G1.
 func (g *G1) IsIdentity() bool { return g.isValidProjective() && (g.z.IsZero() == 1) }
 
+// cmov sets g to P if b == 1
+func (g *G1) cmov(P *G1, b int) {
+	(&g.x).CMov(&g.x, &P.x, b)
+	(&g.y).CMov(&g.y, &P.y, b)
+	(&g.z).CMov(&g.z, &P.z, b)
+}
+
 // isRTorsion returns true if point is in the r-torsion subgroup.
 func (g *G1) isRTorsion() bool {
 	// Bowe, "Faster Subgroup Checks for BLS12-381" (https://eprint.iacr.org/2019/814)
 	Q, _2sP, ssP := &G1{}, *g, *g
 
-	_2sP.x.Mul(&g.x, &g1Check.beta0) // s(P)
-	_2sP.Double()                    // 2*s(P)
-	ssP.x.Mul(&g.x, &g1Check.beta1)  // s(s(P))
-	Q.Add(g, &ssP)                   // P + s(s(P))
-	Q.Neg()                          // -P - s(s(P))
-	Q.Add(Q, &_2sP)                  // 2*s(P) - P - s(s(P))
-	Q.scalarMult(g1Check.coef[:], Q) // coef * [2*s(P) - P - s(s(P))]
-	ssP.Neg()                        // -s(s(P))
-	Q.Add(Q, &ssP)                   // coef * [2*s(P) - P - s(s(P))] - s(s(P))
+	_2sP.x.Mul(&g.x, &g1Check.beta0)      // s(P)
+	_2sP.Double()                         // 2*s(P)
+	ssP.x.Mul(&g.x, &g1Check.beta1)       // s(s(P))
+	Q.Add(g, &ssP)                        // P + s(s(P))
+	Q.Neg()                               // -P - s(s(P))
+	Q.Add(Q, &_2sP)                       // 2*s(P) - P - s(s(P))
+	Q.scalarMultShort(g1Check.coef[:], Q) // coef * [2*s(P) - P - s(s(P))]
+	ssP.Neg()                             // -s(s(P))
+	Q.Add(Q, &ssP)                        // coef * [2*s(P) - P - s(s(P))] - s(s(P))
 
 	return Q.IsIdentity()
 }
@@ -89,7 +97,7 @@ func (g *G1) isRTorsion() bool {
 // and because there are no points of order h^2. See Section 5 of Wahby-Boneh
 // "Fast and simple constant-time hashing to the BLS12-381 elliptic curve" at
 // https://eprint.iacr.org/2019/403
-func (g *G1) clearCofactor() { g.scalarMult(g1Params.cofactorSmall[:], g) }
+func (g *G1) clearCofactor() { g.scalarMultShort(g1Params.cofactorSmall[:], g) }
 
 // Double updates g = 2g.
 func (g *G1) Double() {
@@ -177,7 +185,35 @@ func (g *G1) ScalarMult(k *Scalar, P *G1) { g.scalarMult(k.Bytes(), P) }
 func (g *G1) scalarMult(k []byte, P *G1) {
 	var Q G1
 	Q.SetIdentity()
-	for i := 8*len(k) - 1; i >= 0; i-- {
+	T := &G1{}
+	var mults [16]G1
+	mults[0].SetIdentity()
+	mults[1].Set(P)
+	for i := 1; i < 8; i++ {
+		mults[2*i].Set(&mults[i])
+		mults[2*i].Double()
+		mults[2*i+1].Add(&mults[2*i], P)
+	}
+	for i := 8*len(k) - 4; i >= 0; i -= 4 {
+		Q.Double()
+		Q.Double()
+		Q.Double()
+		Q.Double()
+		idx := 0xf & (k[i/8] >> uint(i%8))
+		for j := 0; j < 16; j++ {
+			T.cmov(&mults[j], subtle.ConstantTimeByteEq(idx, uint8(j)))
+		}
+		Q.Add(&Q, T)
+	}
+	g.Set(&Q)
+}
+
+// scalarMultShort multiplies by short, constant scalars. Runtime depends on the scalar.
+func (g *G1) scalarMultShort(k []byte, P *G1) {
+	// Since the scalar is short and low Hamming weight not much helps.
+	var Q G1
+	Q.SetIdentity()
+	for i := 8*len(k) - 1; i >= 0; i -= 1 {
 		Q.Double()
 		bit := 0x1 & (k[i/8] >> uint(i%8))
 		if bit != 0 {
