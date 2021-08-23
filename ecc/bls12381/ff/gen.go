@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 // Code Generation using fiat-crypto

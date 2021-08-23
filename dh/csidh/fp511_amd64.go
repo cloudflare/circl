@@ -1,3 +1,4 @@
+//go:build amd64 && !noasm
 // +build amd64,!noasm
 
 package csidh
