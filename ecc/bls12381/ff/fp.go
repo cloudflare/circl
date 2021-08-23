@@ -40,7 +40,7 @@ func (z *Fp) toMont(in *fpRaw)     { fiatFpMontMul(&z.i, in, &fpRSquare) }
 func (z Fp) fromMont() (out fpRaw) { fiatFpMontMul(&out, &z.i, &fpMont{1}); return }
 func (z Fp) Sgn0() int             { zz := z.fromMont(); return int(zz[0] & 1) }
 
-// CMov sets z=x if b == 1 and z=y if b == 0. Its behavior is undefined if b takes any other value.
+// CMov sets z=x if b == 0 and z=y if b == 1. Its behavior is undefined if b takes any other value.
 func (z *Fp) CMov(x, y *Fp, b int) {
 	mask := 0 - uint64(b&0x1)
 	for i := range z.i {
