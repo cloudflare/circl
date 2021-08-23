@@ -1,6 +1,7 @@
 package bls12381
 
 import (
+	"crypto/subtle"
 	"fmt"
 
 	"github.com/cloudflare/circl/ecc/bls12381/ff"
@@ -52,6 +53,13 @@ func (g *G2) IsOnG2() bool { return g.IsOnCurve() && g.IsRTorsion() }
 // IsIdentity return true if the point is the identity of G2.
 func (g *G2) IsIdentity() bool { return g.z.IsZero() == 1 }
 
+// cmove sets g to P if b == 1
+func (g *G2) cmov(P *G2, b int) {
+	(&g.x).CMov(&g.x, &P.x, b)
+	(&g.y).CMov(&g.y, &P.y, b)
+	(&g.z).CMov(&g.z, &P.z, b)
+}
+
 // IsRTorsion returns true if point is r-torsion.
 func (g *G2) IsRTorsion() bool { var P G2; P.scalarMult(ff.ScalarOrder(), g); return P.IsIdentity() }
 
@@ -67,12 +75,25 @@ func (g *G2) ScalarMult(k *Scalar, P *G2) { g.scalarMult(k.Bytes(), P) }
 func (g *G2) scalarMult(k []byte, P *G2) {
 	var Q G2
 	Q.SetIdentity()
-	for i := 8*ScalarSize - 1; i >= 0; i-- {
+	T := &G2{}
+	var mults [16]G2
+	mults[0].SetIdentity()
+	mults[1].Set(P)
+	for i := 1; i < 8; i++ {
+		mults[2*i].Set(&mults[i])
+		mults[2*i].Double()
+		mults[2*i+1].Add(&mults[2*i], P)
+	}
+	for i := 8*len(k) - 4; i >= 0; i -= 4 {
 		Q.Double()
-		bit := 0x1 & (k[i/8] >> uint(i%8))
-		if bit != 0 {
-			Q.Add(&Q, P)
+		Q.Double()
+		Q.Double()
+		Q.Double()
+		idx := 0xf & (k[i/8] >> uint(i%8))
+		for j := 0; j < 16; j++ {
+			T.cmov(&mults[j], subtle.ConstantTimeByteEq(idx, uint8(j)))
 		}
+		Q.Add(&Q, T)
 	}
 	g.Set(&Q)
 }
