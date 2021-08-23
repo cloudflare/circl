@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 // Autogenerates wrappers from templates to prevent too much duplicated code
@@ -5,8 +6,8 @@
 package main
 
 import (
-	"fmt"
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"strings"
 	"text/template"
@@ -27,7 +28,6 @@ func (m Instance) Name() string {
 func (m Instance) Field() string {
 	return fmt.Sprintf("Fp%d", m.Bits)
 }
-
 
 var (
 	Instances = []Instance{

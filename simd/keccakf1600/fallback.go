@@ -1,3 +1,4 @@
+//go:build (!amd64 && !arm64) || (arm64 && !go1.16)
 // +build !amd64,!arm64 arm64,!go1.16
 
 package keccakf1600

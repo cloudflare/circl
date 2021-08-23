@@ -1,3 +1,4 @@
+//go:build ignore
 // +build ignore
 
 // Autogenerates wrappers from templates to prevent too much duplicated code
