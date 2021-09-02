@@ -16,12 +16,12 @@ type G2 struct{ x, y, z ff.Fp2 }
 func (g G2) String() string { return fmt.Sprintf("x: %v\ny: %v\nz: %v", g.x, g.y, g.z) }
 
 // Bytes serializes a G2 element.
-func (g *G2) Bytes() []byte { g.Normalize(); return append(g.x.Bytes(), g.y.Bytes()...) }
+func (g *G2) Bytes() []byte { g.toAffine(); return append(g.x.Bytes(), g.y.Bytes()...) }
 
 // Set is (TMP).
 func (g *G2) Set(P *G2) { g.x.Set(&P.x); g.y.Set(&P.y); g.z.Set(&P.z) }
 
-// SetBytes deserializes g, and returns an error if not in the group
+// SetBytes sets g to the value in bytes, and returns a non-nil error if not in G2.
 func (g *G2) SetBytes(b []byte) error {
 	if len(b) < G2Size {
 		return fmt.Errorf("incorrect length")
@@ -36,7 +36,7 @@ func (g *G2) SetBytes(b []byte) error {
 	}
 	g.z.SetOne()
 	if !g.IsOnG2() {
-		return fmt.Errorf("result not in group")
+		return fmt.Errorf("point not in G2")
 	}
 	return nil
 }
@@ -47,11 +47,14 @@ func (g *G2) Neg() { g.y.Neg() }
 // SetIdentity assigns g to the identity element.
 func (g *G2) SetIdentity() { g.x = ff.Fp2{}; g.y.SetOne(); g.z = ff.Fp2{} }
 
+// isValidProjective returns true if the point is not a projective point.
+func (g *G2) isValidProjective() bool { return (g.x.IsZero() & g.y.IsZero() & g.z.IsZero()) != 1 }
+
 // IsOnG2 returns true if the point is in the group G2.
-func (g *G2) IsOnG2() bool { return g.IsOnCurve() && g.IsRTorsion() }
+func (g *G2) IsOnG2() bool { return g.isValidProjective() && g.isOnCurve() && g.isRTorsion() }
 
 // IsIdentity return true if the point is the identity of G2.
-func (g *G2) IsIdentity() bool { return g.z.IsZero() == 1 }
+func (g *G2) IsIdentity() bool { return g.isValidProjective() && (g.z.IsZero() == 1) }
 
 // cmov sets g to P if b == 1
 func (g *G2) cmov(P *G2, b int) {
@@ -60,17 +63,17 @@ func (g *G2) cmov(P *G2, b int) {
 	(&g.z).CMov(&g.z, &P.z, b)
 }
 
-// IsRTorsion returns true if point is r-torsion.
-func (g *G2) IsRTorsion() bool {
-	// See https://eprint.iacr.org/2019/814.pdf for details
+// isRTorsion returns true if point is in the r-torsion subgroup.
+func (g *G2) isRTorsion() bool {
+	// Bowe, "Faster Subgroup Checks for BLS12-381" (https://eprint.iacr.org/2019/814)
 	var Q G2
 	Q.Set(g)
 
-	Q.psi()
-	Q.scalarMult(g2PsiCoeff.minusZ[:], &Q) //Q=-[z]\psi(g)
-	Q.Add(&Q, g)                           // Q=-[z]\psi(g)+g
-	Q.psi()
-	Q.psi() // Q=-[z]\psi^3(g)+\psi^2(g)
+	Q.psi()                                // Q = \psi(g)
+	Q.scalarMult(g2PsiCoeff.minusZ[:], &Q) // Q = -[z]\psi(g)
+	Q.Add(&Q, g)                           // Q = -[z]\psi(g)+g
+	Q.psi()                                // Q = -[z]\psi^2(g)+\psi(g)
+	Q.psi()                                // Q = -[z]\psi^3(g)+\psi^2(g)
 
 	return Q.IsEqual(g) // Equivalent to verification equation in paper
 }
@@ -92,6 +95,7 @@ func (g *G2) Add(P, Q *G2) { addAndLine(g, P, Q, nil) }
 // ScalarMult calculates g = kP.
 func (g *G2) ScalarMult(k *Scalar, P *G2) { g.scalarMult(k.Bytes(), P) }
 
+// scalarMult calculates g = kP, where k is the scalar in big-endian order.
 func (g *G2) scalarMult(k []byte, P *G2) {
 	var Q G2
 	Q.SetIdentity()
@@ -104,12 +108,13 @@ func (g *G2) scalarMult(k []byte, P *G2) {
 		mults[2*i].Double()
 		mults[2*i+1].Add(&mults[2*i], P)
 	}
-	for i := 8*len(k) - 4; i >= 0; i -= 4 {
+	N := 8 * len(k)
+	for i := 0; i < N; i += 4 {
 		Q.Double()
 		Q.Double()
 		Q.Double()
 		Q.Double()
-		idx := 0xf & (k[i/8] >> uint(i%8))
+		idx := 0xf & (k[i/8] >> uint(4-i%8))
 		for j := 0; j < 16; j++ {
 			T.cmov(&mults[j], subtle.ConstantTimeByteEq(idx, uint8(j)))
 		}
@@ -130,8 +135,8 @@ func (g *G2) IsEqual(p *G2) bool {
 	return lx.IsZero() == 1 && ly.IsZero() == 1
 }
 
-// IsOnCurve returns true if g is a valid point on the curve.
-func (g *G2) IsOnCurve() bool {
+// isOnCurve returns true if g is a valid point on the curve.
+func (g *G2) isOnCurve() bool {
 	var x3, z3, y2 ff.Fp2
 	y2.Sqr(&g.y)             // y2 = y^2
 	y2.Mul(&y2, &g.z)        // y2 = y^2*z
@@ -145,14 +150,14 @@ func (g *G2) IsOnCurve() bool {
 	return y2.IsZero() == 1
 }
 
-// Normalize updates g with its affine representation.
-func (g *G2) Normalize() {
+// toAffine updates g with its affine representation.
+func (g *G2) toAffine() {
 	if g.z.IsZero() != 1 {
 		var invZ ff.Fp2
 		invZ.Inv(&g.z)
 		g.x.Mul(&g.x, &invZ)
 		g.y.Mul(&g.y, &invZ)
-		g.z.Mul(&g.z, &invZ)
+		g.z.SetOne()
 	}
 }
 

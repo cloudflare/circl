@@ -1,10 +1,8 @@
-// Package ff provides finite fields of characteristic P381.
 package ff
 
 import (
 	"crypto/rand"
 	"crypto/subtle"
-	"encoding/binary"
 	"errors"
 	"io"
 	"math/big"
@@ -13,52 +11,46 @@ import (
 )
 
 func errFirst(e ...error) error {
-	for _, err := range e {
-		if err != nil {
-			return err
+	n := len(e)
+	for i := 0; i < n; i++ {
+		if e[i] != nil {
+			return e[i]
 		}
 	}
 	return nil
 }
 
-func setString(out []uint64, in string, order []byte) error {
+func setString(in string, order []byte) ([]uint64, error) {
 	inBig, ok := new(big.Int).SetString(in, 0)
 	if !ok {
-		return errors.New("invalid string")
+		return nil, errors.New("invalid string")
 	}
-	if inBig.Cmp(conv.BytesLe2BigInt(order)) >= 0 {
-		return errors.New("value out of [0,order)")
+	if inBig.Sign() < 0 || inBig.Cmp(new(big.Int).SetBytes(order)) >= 0 {
+		return nil, errors.New("value out of range [0,order)")
 	}
-	inBytes := make([]byte, len(order))
-	conv.BigInt2BytesLe(inBytes, inBig)
-	return setBytes(out, inBytes, order)
+	inBytes := inBig.FillBytes(make([]byte, len(order)))
+	return setBytes(inBytes, order)
 }
 
-func setBytes(out []uint64, in []byte, order []byte) error {
-	if len(in) != len(order) {
-		return errors.New("input length incorrect")
-	}
+func setBytes(in []byte, order []byte) ([]uint64, error) {
 	if !isLessThan(in, order) {
-		return errors.New("value out of [0,order)")
+		return nil, errors.New("value out of range [0,order)")
 	}
-
-	for i := range out {
-		out[i] = binary.LittleEndian.Uint64(in[i*8:])
-	}
-	return nil
+	return conv.BytesBe2Uint64Le(in), nil
 }
 
 // isLessThan returns true if 0 <= x < y, and assumes that slices have the same length.
 func isLessThan(x, y []byte) bool {
-	i := len(x) - 1
-	for i > 0 && x[i] == y[i] {
-		i--
+	n := len(x)
+	i := 0
+	for i < n-1 && x[i] == y[i] {
+		i++
 	}
 	return x[i] < y[i]
 }
 
 func randomInt(out []uint64, rnd io.Reader, order []byte) error {
-	r, err := rand.Int(rnd, conv.BytesLe2BigInt(order))
+	r, err := rand.Int(rnd, new(big.Int).SetBytes(order))
 	if err == nil {
 		conv.BigInt2Uint64Le(out, r)
 	}

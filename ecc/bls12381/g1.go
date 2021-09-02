@@ -8,7 +8,6 @@ import (
 
 	"github.com/cloudflare/circl/ecc/bls12381/ff"
 	"github.com/cloudflare/circl/group"
-	"github.com/cloudflare/circl/internal/conv"
 )
 
 // G1Size is the length in bytes of an element in G1.
@@ -22,7 +21,10 @@ func (g G1) String() string { return fmt.Sprintf("x: %v\ny: %v\nz: %v", g.x, g.y
 // Bytes serializes a G1 element.
 func (g *G1) Bytes() []byte { g.toAffine(); return append(g.x.Bytes(), g.y.Bytes()...) }
 
-// SetBytes sets g to the value in bytes, and returns a non-nil error if not in G1
+// Set is (TMP).
+func (g *G1) Set(P *G1) { g.x.Set(&P.x); g.y.Set(&P.y); g.z.Set(&P.z) }
+
+// SetBytes sets g to the value in bytes, and returns a non-nil error if not in G1.
 func (g *G1) SetBytes(b []byte) error {
 	if len(b) < G1Size {
 		return fmt.Errorf("incorrect length")
@@ -40,13 +42,6 @@ func (g *G1) SetBytes(b []byte) error {
 		return fmt.Errorf("point not in G1")
 	}
 	return nil
-}
-
-// Set is (TMP).
-func (g *G1) Set(P *G1) {
-	g.x.Set(&P.x)
-	g.y.Set(&P.y)
-	g.z.Set(&P.z)
 }
 
 // Neg inverts g.
@@ -182,6 +177,7 @@ func (g *G1) Add(P, Q *G1) {
 // ScalarMult calculates g = kP.
 func (g *G1) ScalarMult(k *Scalar, P *G1) { g.scalarMult(k.Bytes(), P) }
 
+// scalarMult calculates g = kP, where k is the scalar in big-endian order.
 func (g *G1) scalarMult(k []byte, P *G1) {
 	var Q G1
 	Q.SetIdentity()
@@ -194,12 +190,13 @@ func (g *G1) scalarMult(k []byte, P *G1) {
 		mults[2*i].Double()
 		mults[2*i+1].Add(&mults[2*i], P)
 	}
-	for i := 8*len(k) - 4; i >= 0; i -= 4 {
+	N := 8 * len(k)
+	for i := 0; i < N; i += 4 {
 		Q.Double()
 		Q.Double()
 		Q.Double()
 		Q.Double()
-		idx := 0xf & (k[i/8] >> uint(i%8))
+		idx := 0xf & (k[i/8] >> uint(4-i%8))
 		for j := 0; j < 16; j++ {
 			T.cmov(&mults[j], subtle.ConstantTimeByteEq(idx, uint8(j)))
 		}
@@ -208,14 +205,16 @@ func (g *G1) scalarMult(k []byte, P *G1) {
 	g.Set(&Q)
 }
 
-// scalarMultShort multiplies by short, constant scalars. Runtime depends on the scalar.
+// scalarMultShort multiplies by a short, constant scalar k, where k is the
+// scalar in big-endian order. Runtime depends on the scalar.
 func (g *G1) scalarMultShort(k []byte, P *G1) {
 	// Since the scalar is short and low Hamming weight not much helps.
 	var Q G1
 	Q.SetIdentity()
-	for i := 8*len(k) - 1; i >= 0; i -= 1 {
+	N := 8 * len(k)
+	for i := 0; i < N; i++ {
 		Q.Double()
-		bit := 0x1 & (k[i/8] >> uint(i%8))
+		bit := 0x1 & (k[i/8] >> uint(7-i%8))
 		if bit != 0 {
 			Q.Add(&Q, P)
 		}
@@ -268,13 +267,10 @@ func (g *G1) Encode(input, dst []byte) {
 	const L = 64
 	pseudo := group.NewExpanderMD(crypto.SHA256, dst).Expand(input, L)
 
-	bu := new(big.Int)
-	bu.SetBytes(pseudo)
-	bu.Mod(bu, conv.BytesLe2BigInt(ff.FpOrder()))
-	var u8 [ff.FpSize]byte
-	conv.BigInt2BytesLe(u8[:], bu)
+	bu := new(big.Int).SetBytes(pseudo)
+	bu.Mod(bu, new(big.Int).SetBytes(ff.FpOrder()))
 	var u ff.Fp
-	err := u.SetBytes(u8[:])
+	err := u.SetBytes(bu.FillBytes(make([]byte, ff.FpSize)))
 	if err != nil {
 		panic(err)
 	}
@@ -290,22 +286,19 @@ func (g *G1) Encode(input, dst []byte) {
 func (g *G1) Hash(input, dst []byte) {
 	const L = 64
 	pseudo := group.NewExpanderMD(crypto.SHA256, dst).Expand(input, 2*L)
-	bu := new(big.Int)
-	var u8 [ff.FpSize]byte
-	var u0, u1 ff.Fp
 
-	bu.SetBytes(pseudo[0*L : 1*L])
-	bu.Mod(bu, conv.BytesLe2BigInt(ff.FpOrder()))
-	conv.BigInt2BytesLe(u8[:], bu)
-	err := u0.SetBytes(u8[:])
+	var u0, u1 ff.Fp
+	fpOrder := new(big.Int).SetBytes(ff.FpOrder())
+	bu := new(big.Int).SetBytes(pseudo[0*L : 1*L])
+	bu.Mod(bu, fpOrder)
+	err := u0.SetBytes(bu.FillBytes(make([]byte, ff.FpSize)))
 	if err != nil {
 		panic(err)
 	}
 
 	bu.SetBytes(pseudo[1*L : 2*L])
-	bu.Mod(bu, conv.BytesLe2BigInt(ff.FpOrder()))
-	conv.BigInt2BytesLe(u8[:], bu)
-	err = u1.SetBytes(u8[:])
+	bu.Mod(bu, fpOrder)
+	err = u1.SetBytes(bu.FillBytes(make([]byte, ff.FpSize)))
 	if err != nil {
 		panic(err)
 	}
