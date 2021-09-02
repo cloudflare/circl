@@ -54,9 +54,9 @@ func TestPsi(t *testing.T) {
 	Q := &G2{}
 	P := randomG2(t)
 	Q.Set(P)
-	P.Normalize()
+	P.toAffine()
 	Q.psi()
-	Q.Normalize()
+	Q.toAffine()
 	w := &ff.Fp12{}
 	w[1].SetOne()
 	wsq := &ff.Fp12{}

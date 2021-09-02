@@ -10,9 +10,9 @@ type Fp2 [2]Fp
 func (z Fp2) String() string { return fmt.Sprintf("0: %v\n 1: %v", z[0], z[1]) }
 func (z *Fp2) Set(x *Fp2)    { z[0].Set(&x[0]); z[1].Set(&x[1]) }
 func (z *Fp2) SetBytes(b []byte) error {
-	return errFirst(z[0].SetBytes(b[:FpSize]), z[1].SetBytes(b[FpSize:2*FpSize]))
+	return errFirst(z[1].SetBytes(b[:FpSize]), z[0].SetBytes(b[FpSize:2*FpSize]))
 }
-func (z Fp2) Bytes() []byte      { return append(z[0].Bytes(), z[1].Bytes()...) }
+func (z Fp2) Bytes() []byte      { return append(z[1].Bytes(), z[0].Bytes()...) }
 func (z *Fp2) SetOne()           { z[0].SetOne(); z[1] = Fp{} }
 func (z Fp2) IsZero() int        { return z.IsEqual(&Fp2{}) }
 func (z Fp2) IsEqual(x *Fp2) int { return z[0].IsEqual(&x[0]) & z[1].IsEqual(&x[1]) }

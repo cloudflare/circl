@@ -30,7 +30,6 @@ func randomG1(t testing.TB) *G1 {
 	want := true
 
 	if got != want {
-		t.Helper()
 		test.ReportError(t, got, want, "point not in G1", u)
 	}
 	return P
@@ -161,5 +160,11 @@ func TestG1Affinize(t *testing.T) {
 				t.Fatal("failure to make affine")
 			}
 		}
+	}
+}
+
+func TestG1Torsion(t *testing.T) {
+	if !G1Generator().isRTorsion() {
+		t.Fatalf("G1 generator is not r-torsion")
 	}
 }

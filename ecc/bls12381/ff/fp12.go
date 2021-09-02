@@ -58,12 +58,14 @@ func (z *Fp12) Inv(x *Fp12) {
 	z[1].Neg()
 }
 
+// ExpVarTime calculates z=x^n, where n is the exponent in big-endian order.
 func (z *Fp12) ExpVarTime(x *Fp12, n []byte) {
 	zz := new(Fp12)
 	zz.SetOne()
-	for i := 8*len(n) - 1; i >= 0; i-- {
+	N := 8 * len(n)
+	for i := 0; i < N; i++ {
 		zz.Sqr(zz)
-		bit := 0x1 & (n[i/8] >> uint(i%8))
+		bit := 0x1 & (n[i/8] >> uint(7-i%8))
 		if bit != 0 {
 			zz.Mul(zz, x)
 		}

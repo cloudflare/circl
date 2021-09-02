@@ -6,35 +6,38 @@ import (
 	"github.com/cloudflare/circl/ecc/bls12381/ff"
 )
 
-// Scalar represents positive integers such that 0 <= x < Order, where
-//  Order = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
+// Scalar represents positive integers in the range 0 <= x < Order.
 type Scalar = ff.Scalar
 
 const ScalarSize = ff.ScalarSize
 
+// Order returns the order of the pairing groups, returned as a big-endian slice.
+//  Order = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
+func Order() []byte { return ff.ScalarOrder() }
+
 var (
 	g1Params struct {
 		b, _3b, genX, genY ff.Fp
-		cofactorSmall      [8]byte // (1-z), where z is the BLS12 parameter.
+		cofactorSmall      [8]byte // (1-z), where z is the BLS12 parameter (big-endian).
 	}
 	g2Params struct{ b, _3b, genX, genY ff.Fp2 }
 	g1Isog11 struct {
 		a, b, c2 ff.Fp
-		c1       [ff.FpSize]byte
+		c1       [ff.FpSize]byte // integer c1 = (p - 3) / 4 (big-endian)
 		xNum     [12]ff.Fp
 		xDen     [11]ff.Fp
 		yNum     [16]ff.Fp
 		yDen     [16]ff.Fp
 	}
 	g1Check struct {
-		coef  [16]byte // coef  = (z^2-1)/3, where z is the BLS12 parameter.
+		coef  [16]byte // coef  = (z^2-1)/3, where z is the BLS12 parameter (big-endian).
 		beta0 ff.Fp    // beta0 = F(2)^(2*(p-1)/3) where F = GF(p).
 		beta1 ff.Fp    // beta1 = F(2)^(1*(p-1)/3) where F = GF(p).
 	}
 	g2PsiCoeff struct {
-		minusZ [16]byte // -z, the BLS12 parameter
-		alpha  ff.Fp2   // alpha = w^2/Frob(w^2)
-		beta   ff.Fp2   // beta = w^3/Frob(w^3)
+		minusZ [8]byte // (-z), where z is the BLS12 parameter (big-endian).
+		alpha  ff.Fp2  // alpha = w^2/Frob(w^2)
+		beta   ff.Fp2  // beta = w^3/Frob(w^3)
 	}
 )
 
@@ -61,7 +64,7 @@ func init() {
 	g1Params._3b.SetUint64(12)
 	err(g1Params.genX.SetString("0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb"))
 	err(g1Params.genY.SetString("0x08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1"))
-	g1Params.cofactorSmall = [8]byte{0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0xd2}
+	g1Params.cofactorSmall = [8]byte{0xd2, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01} // (big-endian)
 
 	g2Params.b[0].SetUint64(4)
 	g2Params.b[1].SetUint64(4)
@@ -72,13 +75,13 @@ func init() {
 	err(g2Params.genY[0].SetString("0x0ce5d527727d6e118cc9cdc6da2e351aadfd9baa8cbdd3a76d429a695160d12c923ac9cc3baca289e193548608b82801"))
 	err(g2Params.genY[1].SetString("0x0606c4a02ea734cc32acd2b02bc28b99cb3e287e85a763af267492ab572e99ab3f370d275cec1da1aaa9075ff05f79be"))
 
-	g1Isog11.c1 = [ff.FpSize]byte{
-		0xaa, 0xea, 0xff, 0xff, 0xff, 0xbf, 0x7f, 0xee,
-		0xff, 0xff, 0x54, 0xac, 0xff, 0xff, 0xaa, 0x07,
-		0x89, 0x3d, 0xac, 0x3d, 0xa8, 0x34, 0xcc, 0xd9,
-		0xaf, 0x44, 0xe1, 0x3c, 0xe1, 0xd2, 0x1d, 0xd9,
-		0x35, 0xeb, 0xd2, 0x90, 0xed, 0xe9, 0xc6, 0x92,
-		0xa6, 0xf9, 0x5f, 0x8e, 0x7a, 0x44, 0x80, 0x06,
+	g1Isog11.c1 = [ff.FpSize]byte{ // (big-endian)
+		0x06, 0x80, 0x44, 0x7a, 0x8e, 0x5f, 0xf9, 0xa6,
+		0x92, 0xc6, 0xe9, 0xed, 0x90, 0xd2, 0xeb, 0x35,
+		0xd9, 0x1d, 0xd2, 0xe1, 0x3c, 0xe1, 0x44, 0xaf,
+		0xd9, 0xcc, 0x34, 0xa8, 0x3d, 0xac, 0x3d, 0x89,
+		0x07, 0xaa, 0xff, 0xff, 0xac, 0x54, 0xff, 0xff,
+		0xee, 0x7f, 0xbf, 0xff, 0xff, 0xff, 0xea, 0xaa,
 	}
 	err(g1Isog11.a.SetString("0x144698a3b8e9433d693a02c96d4982b0ea985383ee66a8d8e8981aefd881ac98936f8da0e0f97f5cf428082d584c1d"))
 	err(g1Isog11.b.SetString("0x12e2908d11688030018b12e8753eee3b2016c1f0f24f4070a0b9c14fcef35ef55a23215a316ceaa5d1cc48e98e172be0"))
@@ -146,17 +149,17 @@ func init() {
 	err(g1Check.beta0.SetString("0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaac"))
 	err(g1Check.beta1.SetString("0x5f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffe"))
 
-	g1Check.coef = [16]byte{0x55, 0x55, 0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x56, 0xe1, 0x55, 0x55, 0x00, 0x8c, 0x6c, 0x39}
+	g1Check.coef = [16]byte{0x39, 0x6c, 0x8c, 0x00, 0x55, 0x55, 0xe1, 0x56, 0x00, 0x00, 0x00, 0x00, 0x55, 0x55, 0x55, 0x55} // (big-endian)
 
 	initPsi()
 }
 
 func initPsi() {
-	g2PsiCoeff.minusZ = [16]byte{0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0xd2}
+	g2PsiCoeff.minusZ = [8]byte{0xd2, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00} // (big-endian)
 	w := &ff.Fp12{}
 	w[1].SetOne()
 	wsq := &ff.Fp12{}
-	wsq.Mul(w, w)
+	wsq.Sqr(w)
 	alpha, errval := ratioKummer(wsq)
 	err(errval)
 	g2PsiCoeff.alpha.Set(alpha)

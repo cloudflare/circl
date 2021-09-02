@@ -10,7 +10,7 @@ func randomG2(t testing.TB) *G2 {
 	var P G2
 	k := randomScalar(t)
 	P.ScalarMult(k, G2Generator())
-	if !P.IsOnCurve() {
+	if !P.isOnCurve() {
 		t.Helper()
 		t.Fatal("not on curve")
 	}
@@ -43,7 +43,7 @@ func TestG2ScalarMult(t *testing.T) {
 		P := randomG2(t)
 		k := randomScalar(t)
 		Q.ScalarMult(k, P)
-		Q.Normalize()
+		Q.toAffine()
 		got := Q.IsOnG2()
 		want := true
 		if got != want {
@@ -60,7 +60,7 @@ func TestG2Serial(t *testing.T) {
 		b := P.Bytes()
 		err := Q.SetBytes(b)
 		if err != nil {
-			t.Fatal("failure to deserialize")
+			t.Fatalf("failure to deserialize: %v", err)
 		}
 		if !Q.IsEqual(P) {
 			t.Fatal("deserialization wrong point")
@@ -85,8 +85,8 @@ func BenchmarkG2(b *testing.B) {
 	})
 }
 
-func TestGTorsion(t *testing.T) {
-	if !G2Generator().IsRTorsion() {
-		t.Fatalf("Generator is not torsion")
+func TestG2Torsion(t *testing.T) {
+	if !G2Generator().isRTorsion() {
+		t.Fatalf("G2 generator is not r-torsion")
 	}
 }

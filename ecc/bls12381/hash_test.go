@@ -34,19 +34,14 @@ func (p point) toBytes() []byte {
 	if err != nil {
 		panic(err)
 	}
-	lx := len(x)
-	for i := range x {
-		out[i] = x[lx-1-i]
-	}
+	copy(out[1*ff.FpSize-len(x):1*ff.FpSize], x)
 
 	y, err := hex.DecodeString(p.Y[2:])
 	if err != nil {
 		panic(err)
 	}
-	ly := len(y)
-	for i := range y {
-		out[ff.FpSize+i] = y[ly-1-i]
-	}
+	copy(out[2*ff.FpSize-len(y):2*ff.FpSize], y)
+
 	return out
 }
 
@@ -67,7 +62,7 @@ func (v *vectorHash) test(t *testing.T) {
 		err := want.SetBytes(vi.P.toBytes())
 		test.CheckNoErr(t, err, "bad deserialization")
 
-		if !got.IsEqual(want) {
+		if !got.IsEqual(want) || !got.IsOnG1() {
 			test.ReportError(t, got, want, v.SuiteID, i)
 		}
 	}

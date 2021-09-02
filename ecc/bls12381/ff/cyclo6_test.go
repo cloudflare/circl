@@ -4,7 +4,6 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/cloudflare/circl/internal/conv"
 	"github.com/cloudflare/circl/internal/test"
 )
 
@@ -17,11 +16,11 @@ func randomCyclo6(t testing.TB) *Cyclo6 {
 // phi6primeSq evaluates the 6-th cyclotomic polynomial, \phi_6(x) = x^2-x+1, at p^2.
 func phi6primeSq() *big.Int {
 	one := big.NewInt(1)
-	p := conv.BytesLe2BigInt(fpOrder[:]) // p
-	p2 := new(big.Int).Mul(p, p)         // p^2
-	p4 := new(big.Int).Sub(p2, one)      // p^2 - 1
-	p4.Mul(p4, p2)                       // p^4 - p^2
-	p4.Add(p4, one)                      // p^4 - p^2 + 1
+	p := new(big.Int).SetBytes(fpOrder[:]) // p
+	p2 := new(big.Int).Mul(p, p)           // p^2
+	p4 := new(big.Int).Sub(p2, one)        // p^2 - 1
+	p4.Mul(p4, p2)                         // p^4 - p^2
+	p4.Add(p4, one)                        // p^4 - p^2 + 1
 	return p4
 }
 
@@ -39,14 +38,11 @@ func TestCyclo6(t *testing.T) {
 		}
 	})
 	t.Run("order", func(t *testing.T) {
-		cyclo6Order := phi6primeSq()
-		cyclo6OrderBytes := make([]byte, (cyclo6Order.BitLen()+7)/8)
-		conv.BigInt2BytesLe(cyclo6OrderBytes, cyclo6Order)
-
+		cyclo6Order := phi6primeSq().Bytes()
 		var z Cyclo6
 		for i := 0; i < 16; i++ {
 			x := randomCyclo6(t)
-			z.expVarTime(x, cyclo6OrderBytes)
+			z.expVarTime(x, cyclo6Order)
 
 			// x^phi6primeSq = 1
 			got := z.IsIdentity()
