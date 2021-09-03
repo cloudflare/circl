@@ -26,6 +26,16 @@ func (z *Fp) SetUint64(n uint64)       { z.toMont(&fpRaw{n}) }
 func (z *Fp) SetOne()                  { z.SetUint64(1) }
 func (z *Fp) Random(r io.Reader) error { return randomInt(z.i[:], r, fpOrder[:]) }
 
+// IsNegative returns 0 if the least absolute residue for z is in [0,(p-1)/2],
+// and 1 otherwise. Equivalently, this function returns 1 if z is
+// lexicographically larger than -z.
+func (z Fp) IsNegative() (b int) {
+	if !isLessThan(z.Bytes(), fpOrderPlus1Div2[:]) {
+		b = 1
+	}
+	return
+}
+
 // IsZero returns 1 if z == 0 and 0 otherwise.
 func (z Fp) IsZero() int { return z.IsEqual(&Fp{}) }
 
@@ -40,6 +50,16 @@ func (z *Fp) Inv(x *Fp)            { z.ExpVarTime(x, fpOrderMinus2[:]) }
 func (z *Fp) toMont(in *fpRaw)     { fiatFpMontMul(&z.i, in, &fpRSquare) }
 func (z Fp) fromMont() (out fpRaw) { fiatFpMontMul(&out, &z.i, &fpMont{1}); return }
 func (z Fp) Sgn0() int             { zz := z.fromMont(); return int(zz[0] & 1) }
+
+// Sqrt returns 1 and sets z=sqrt(x) only if x is a quadratic-residue; otherwise, returns 0 and z is unmodified.
+func (z *Fp) Sqrt(x *Fp) int {
+	var y, y2 Fp
+	y.ExpVarTime(x, fpOrderPlus1Div4[:])
+	y2.Sqr(&y)
+	isQR := y2.IsEqual(x)
+	z.CMov(z, &y, isQR)
+	return isQR
+}
 
 // CMov sets z=x if b == 0 and z=y if b == 1. Its behavior is undefined if b takes any other value.
 func (z *Fp) CMov(x, y *Fp, b int) {
@@ -113,6 +133,24 @@ var (
 		0x67, 0x30, 0xd2, 0xa0, 0xf6, 0xb0, 0xf6, 0x24,
 		0x1e, 0xab, 0xff, 0xfe, 0xb1, 0x53, 0xff, 0xff,
 		0xb9, 0xfe, 0xff, 0xff, 0xff, 0xff, 0xaa, 0xa9,
+	}
+	// fpOrderPlus1Div2 is the half of (fpOrder plus one) used for lexicographically order (big-endian).
+	fpOrderPlus1Div2 = [FpSize]byte{
+		0x0d, 0x00, 0x88, 0xf5, 0x1c, 0xbf, 0xf3, 0x4d,
+		0x25, 0x8d, 0xd3, 0xdb, 0x21, 0xa5, 0xd6, 0x6b,
+		0xb2, 0x3b, 0xa5, 0xc2, 0x79, 0xc2, 0x89, 0x5f,
+		0xb3, 0x98, 0x69, 0x50, 0x7b, 0x58, 0x7b, 0x12,
+		0x0f, 0x55, 0xff, 0xff, 0x58, 0xa9, 0xff, 0xff,
+		0xdc, 0xff, 0x7f, 0xff, 0xff, 0xff, 0xd5, 0x56,
+	}
+	// fpOrderPlus1Div4 is (fpOrder plus one) divided by four used for square-roots (big-endian).
+	fpOrderPlus1Div4 = [FpSize]byte{
+		0x06, 0x80, 0x44, 0x7a, 0x8e, 0x5f, 0xf9, 0xa6,
+		0x92, 0xc6, 0xe9, 0xed, 0x90, 0xd2, 0xeb, 0x35,
+		0xd9, 0x1d, 0xd2, 0xe1, 0x3c, 0xe1, 0x44, 0xaf,
+		0xd9, 0xcc, 0x34, 0xa8, 0x3d, 0xac, 0x3d, 0x89,
+		0x07, 0xaa, 0xff, 0xff, 0xac, 0x54, 0xff, 0xff,
+		0xee, 0x7f, 0xbf, 0xff, 0xff, 0xff, 0xea, 0xab,
 	}
 	// fpRSquare is R^2 mod fpOrder, where R=2^384 (little-endian).
 	fpRSquare = fpMont{

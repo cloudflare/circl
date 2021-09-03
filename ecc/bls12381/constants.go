@@ -47,6 +47,10 @@ func err(e error) {
 	}
 }
 
+func headerEncoding(isCompressed, isInfinity, isBigYCoord byte) byte {
+	return (isBigYCoord&0x1)<<5 | (isInfinity&0x1)<<6 | (isCompressed&0x1)<<7
+}
+
 // ratioKummer returns t/Frob(t) if it falls in Fp2, and error otherwise.
 func ratioKummer(t *ff.Fp12) (*ff.Fp2, error) {
 	var r ff.Fp12

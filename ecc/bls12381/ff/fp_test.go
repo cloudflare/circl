@@ -2,6 +2,7 @@ package ff
 
 import (
 	"crypto/rand"
+	"fmt"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/test"
@@ -65,6 +66,44 @@ func TestFp(t *testing.T) {
 			want := &r0
 			if got.IsEqual(want) == 0 {
 				test.ReportError(t, got, want, x, y)
+			}
+		}
+	})
+	t.Run("sqrt", func(t *testing.T) {
+		var r, notRoot, got Fp
+		// Check when x has square-root.
+		for i := 0; i < testTimes; i++ {
+			x := randomFp(t)
+			x.Sqr(x)
+
+			// let x is QR and r = sqrt(x); check (+r)^2 = (-r)^2 = x.
+			isQR := r.Sqrt(x)
+			test.CheckOk(isQR == 1, fmt.Sprintf("should be a QR: %v", x), t)
+			rNeg := r
+			rNeg.Neg()
+
+			want := x
+			for _, root := range []*Fp{&r, &rNeg} {
+				got.Sqr(root)
+				if got.IsEqual(want) == 0 {
+					test.ReportError(t, got, want, x, root)
+				}
+			}
+		}
+		// Check when x has not square-root.
+		for i := 0; i < testTimes; i++ {
+			want := randomFp(t)
+			x := randomFp(t)
+			x.Sqr(x)
+			x.Add(x, x) // x = 2*(x^2), since 2 is not QR in Fp.
+
+			// let x is not QR and r = sqrt(x); check that r was not modified.
+			got := want
+			isQR := got.Sqrt(x)
+			test.CheckOk(isQR == 0, fmt.Sprintf("shouldn't be a QR: %v", x), t)
+
+			if got.IsEqual(want) != 1 {
+				test.ReportError(t, got, want, x, notRoot)
 			}
 		}
 	})

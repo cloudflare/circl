@@ -1,6 +1,7 @@
 package ff
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/test"
@@ -9,7 +10,7 @@ import (
 func randomFp2(t testing.TB) *Fp2 { return &Fp2{*randomFp(t), *randomFp(t)} }
 
 func TestFp2(t *testing.T) {
-	const testTimes = 1 << 10
+	const testTimes = 1 << 9
 	t.Run("no_alias", func(t *testing.T) {
 		var want, got Fp2
 		x := randomFp2(t)
@@ -56,6 +57,47 @@ func TestFp2(t *testing.T) {
 			want := &r0
 			if got.IsEqual(want) == 0 {
 				test.ReportError(t, got, want, x, y)
+			}
+		}
+	})
+	t.Run("sqrt", func(t *testing.T) {
+		var r, notRoot, got Fp2
+		// Check when x has square-root.
+		for i := 0; i < testTimes; i++ {
+			x := randomFp2(t)
+			x.Sqr(x)
+
+			// let x is QR and r = sqrt(x); check (+r)^2 = (-r)^2 = x.
+			isQR := r.Sqrt(x)
+			test.CheckOk(isQR == 1, fmt.Sprintf("should be a QR: %v", x), t)
+			rNeg := r
+			rNeg.Neg()
+
+			want := x
+			for _, root := range []*Fp2{&r, &rNeg} {
+				got.Sqr(root)
+				if got.IsEqual(want) == 0 {
+					test.ReportError(t, got, want, x, root)
+				}
+			}
+		}
+		// Check when x has not square-root.
+		var uPlus1 Fp2
+		uPlus1[0].SetUint64(1)
+		uPlus1[1].SetUint64(1)
+		for i := 0; i < testTimes; i++ {
+			want := randomFp2(t)
+			x := randomFp2(t)
+			x.Sqr(x)
+			x.Mul(x, &uPlus1) // x = (u+1)*(x^2), since u+1 is not QR in Fp2.
+
+			// let x is not QR and r = sqrt(x); check that r was not modified.
+			got := want
+			isQR := got.Sqrt(x)
+			test.CheckOk(isQR == 0, fmt.Sprintf("shouldn't be a QR: %v", x), t)
+
+			if got.IsEqual(want) != 1 {
+				test.ReportError(t, got, want, x, notRoot)
 			}
 		}
 	})

@@ -7,38 +7,110 @@ import (
 	"github.com/cloudflare/circl/ecc/bls12381/ff"
 )
 
-// G2Size is the length in bytes of an element in G2.
+// G2Size is the length in bytes of an element in G2 in uncompressed form..
 const G2Size = 2 * ff.Fp2Size
+
+// G2SizeCompressed is the length in bytes of an element in G2 in compressed form.
+const G2SizeCompressed = ff.Fp2Size
 
 // G2 is a point in the twist of the BLS12 curve over Fp2.
 type G2 struct{ x, y, z ff.Fp2 }
 
 func (g G2) String() string { return fmt.Sprintf("x: %v\ny: %v\nz: %v", g.x, g.y, g.z) }
 
-// Bytes serializes a G2 element.
-func (g *G2) Bytes() []byte { g.toAffine(); return append(g.x.Bytes(), g.y.Bytes()...) }
+// Bytes serializes a G2 element in uncompressed form.
+func (g G2) Bytes() []byte { return g.encodeBytes(false) }
+
+// Bytes serializes a G2 element in compressed form.
+func (g G2) BytesCompressed() []byte { return g.encodeBytes(true) }
 
 // Set is (TMP).
 func (g *G2) Set(P *G2) { g.x.Set(&P.x); g.y.Set(&P.y); g.z.Set(&P.z) }
 
 // SetBytes sets g to the value in bytes, and returns a non-nil error if not in G2.
 func (g *G2) SetBytes(b []byte) error {
-	if len(b) < G2Size {
-		return fmt.Errorf("incorrect length")
+	if len(b) < G2SizeCompressed {
+		return fmt.Errorf("incorrect encoding: short size")
 	}
-	err := g.x.SetBytes(b[:ff.Fp2Size])
-	if err != nil {
+
+	isCompressed := int((b[0] >> 7) & 0x1)
+	isInfinity := int((b[0] >> 6) & 0x1)
+	isBigYCoord := int((b[0] >> 5) & 0x1)
+
+	if isInfinity == 1 {
+		l := G2Size
+		if isCompressed == 1 {
+			l = G2SizeCompressed
+		}
+		zeros := make([]byte, l-1)
+		if (b[0]&0x1F) != 0 || subtle.ConstantTimeCompare(b[1:], zeros) != 1 {
+			return fmt.Errorf("incorrect encoding: not all-zeros")
+		}
+		g.SetIdentity()
+		return nil
+	}
+
+	x := (&[ff.Fp2Size]byte{})[:]
+	copy(x, b)
+	x[0] &= 0x1F
+	if err := g.x.SetBytes(x); err != nil {
 		return err
 	}
-	err = g.y.SetBytes(b[ff.Fp2Size:])
-	if err != nil {
-		return err
+
+	if isCompressed == 1 {
+		x3b := &ff.Fp2{}
+		x3b.Sqr(&g.x)
+		x3b.Mul(x3b, &g.x)
+		x3b.Add(x3b, &g2Params.b)
+		if g.y.Sqrt(x3b) == 0 {
+			return fmt.Errorf("incorrect encoding: not QR")
+		}
+		if g.y.IsNegative() != isBigYCoord {
+			g.y.Neg()
+		}
+	} else {
+		if len(b) < G2Size {
+			return fmt.Errorf("incorrect encoding: short size")
+		}
+		if err := g.y.SetBytes(b[ff.Fp2Size:G2Size]); err != nil {
+			return err
+		}
 	}
+
 	g.z.SetOne()
 	if !g.IsOnG2() {
-		return fmt.Errorf("point not in G2")
+		return fmt.Errorf("incorrect encoding: not in G2")
 	}
 	return nil
+}
+
+func (g G2) encodeBytes(compressed bool) []byte {
+	g.toAffine()
+	var isCompressed, isInfinity, isBigYCoord byte
+	if compressed {
+		isCompressed = 1
+	}
+	if g.z.IsZero() == 1 {
+		isInfinity = 1
+	}
+	if isCompressed == 1 && isInfinity == 0 {
+		isBigYCoord = byte(g.y.IsNegative())
+	}
+
+	bytes := g.x.Bytes()
+	if isCompressed == 0 {
+		bytes = append(bytes, g.y.Bytes()...)
+	}
+	if isInfinity == 1 {
+		l := len(bytes)
+		for i := 0; i < l; i++ {
+			bytes[i] = 0
+		}
+	}
+
+	bytes[0] = bytes[0]&0x1F | headerEncoding(isCompressed, isInfinity, isBigYCoord)
+
+	return bytes
 }
 
 // Neg inverts g.
