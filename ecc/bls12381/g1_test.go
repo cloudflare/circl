@@ -2,6 +2,7 @@ package bls12381
 
 import (
 	"crypto/rand"
+	"fmt"
 	"testing"
 
 	"github.com/cloudflare/circl/ecc/bls12381/ff"
@@ -124,19 +125,86 @@ func BenchmarkG1(b *testing.B) {
 }
 
 func TestG1Serial(t *testing.T) {
-	testTimes := 1 << 6
-	for i := 0; i < testTimes; i++ {
-		P := randomG1(t)
-		var Q G1
-		b := P.Bytes()
-		err := Q.SetBytes(b)
-		if err != nil {
-			t.Fatal("failure to deserialize")
+	mustErr := "must be an error"
+	t.Run("valid", func(t *testing.T) {
+		testTimes := 1 << 6
+		var got, want G1
+		want.SetIdentity()
+		for i := 0; i < testTimes; i++ {
+			for _, b := range [][]byte{want.Bytes(), want.BytesCompressed()} {
+				err := got.SetBytes(b)
+				test.CheckNoErr(t, err, fmt.Sprintf("failure to deserialize: (P:%v b:%x)", want, b))
+
+				if !got.IsEqual(&want) {
+					test.ReportError(t, got, want, b)
+				}
+			}
+			want = *randomG1(t)
 		}
-		if !Q.IsEqual(P) {
-			t.Fatal("deserialization wrong point")
+	})
+	t.Run("badLength", func(t *testing.T) {
+		q := new(G1)
+		p := randomG1(t)
+		b := p.Bytes()
+		test.CheckIsErr(t, q.SetBytes(b[:0]), mustErr)
+		test.CheckIsErr(t, q.SetBytes(b[:1]), mustErr)
+		test.CheckIsErr(t, q.SetBytes(b[:G1Size-1]), mustErr)
+		test.CheckIsErr(t, q.SetBytes(b[:G1SizeCompressed]), mustErr)
+		test.CheckNoErr(t, q.SetBytes(b), "must be ok")
+		test.CheckNoErr(t, q.SetBytes(append(b, 0)), "must be ok")
+		b = p.BytesCompressed()
+		test.CheckIsErr(t, q.SetBytes(b[:0]), mustErr)
+		test.CheckIsErr(t, q.SetBytes(b[:1]), mustErr)
+		test.CheckIsErr(t, q.SetBytes(b[:G1SizeCompressed-1]), mustErr)
+		test.CheckNoErr(t, q.SetBytes(b), "must be ok")
+		test.CheckNoErr(t, q.SetBytes(append(b, 0)), "must be ok")
+	})
+	t.Run("badInfinity", func(t *testing.T) {
+		var badInf, p G1
+		badInf.SetIdentity()
+		b := badInf.Bytes()
+		b[0] |= 0x1F
+		err := p.SetBytes(b)
+		test.CheckIsErr(t, err, mustErr)
+		b[0] &= 0xE0
+		b[1] = 0xFF
+		err = p.SetBytes(b)
+		test.CheckIsErr(t, err, mustErr)
+	})
+	t.Run("badCoords", func(t *testing.T) {
+		bad := (&[ff.FpSize]byte{})[:]
+		for i := range bad {
+			bad[i] = 0xFF
 		}
-	}
+		var e ff.Fp
+		_ = e.Random(rand.Reader)
+		good := e.Bytes()
+
+		// bad x, good y
+		b := append(bad, good...)
+		b[0] = b[0]&0x1F | headerEncoding(0, 0, 0)
+		test.CheckIsErr(t, new(G1).SetBytes(b), mustErr)
+
+		// good x, bad y
+		b = append(good, bad...)
+		b[0] = b[0]&0x1F | headerEncoding(0, 0, 0)
+		test.CheckIsErr(t, new(G1).SetBytes(b), mustErr)
+	})
+	t.Run("noQR", func(t *testing.T) {
+		var x ff.Fp
+		x.SetUint64(1) // Let x=1, so x^3+4 = 5, which is not QR.
+		b := x.Bytes()
+		b[0] = b[0]&0x1F | headerEncoding(1, 0, 0)
+		test.CheckIsErr(t, new(G1).SetBytes(b), mustErr)
+	})
+	t.Run("notInG1", func(t *testing.T) {
+		// p=(0,1) is not on curve.
+		var x, y ff.Fp
+		y.SetUint64(1)
+		b := append(x.Bytes(), y.Bytes()...)
+		b[0] = b[0]&0x1F | headerEncoding(0, 0, 0)
+		test.CheckIsErr(t, new(G1).SetBytes(b), mustErr)
+	})
 }
 
 func TestG1Affinize(t *testing.T) {
@@ -166,5 +234,40 @@ func TestG1Affinize(t *testing.T) {
 func TestG1Torsion(t *testing.T) {
 	if !G1Generator().isRTorsion() {
 		t.Fatalf("G1 generator is not r-torsion")
+	}
+}
+
+func TestG1Bytes(t *testing.T) {
+	got := new(G1)
+	id := new(G1)
+	id.SetIdentity()
+	g := G1Generator()
+	minusG := G1Generator()
+	minusG.Neg()
+
+	type testCase struct {
+		header  byte
+		length  int
+		point   *G1
+		toBytes func(G1) []byte
+	}
+
+	for i, v := range []testCase{
+		{headerEncoding(0, 0, 0), G1Size, randomG1(t), (G1).Bytes},
+		{headerEncoding(0, 0, 0), G1Size, g, (G1).Bytes},
+		{headerEncoding(1, 0, 0), G1SizeCompressed, g, (G1).BytesCompressed},
+		{headerEncoding(1, 0, 1), G1SizeCompressed, minusG, (G1).BytesCompressed},
+		{headerEncoding(0, 1, 0), G1Size, id, (G1).Bytes},
+		{headerEncoding(1, 1, 0), G1SizeCompressed, id, (G1).BytesCompressed},
+	} {
+		b := v.toBytes(*v.point)
+		test.CheckOk(len(b) == v.length, fmt.Sprintf("bad encoding size (case:%v point:%v b:%x)", i, v.point, b), t)
+		test.CheckOk(b[0]&0xE0 == v.header, fmt.Sprintf("bad encoding header (case:%v point:%v b:%x)", i, v.point, b), t)
+
+		err := got.SetBytes(b)
+		want := v.point
+		if err != nil || !got.IsEqual(want) {
+			test.ReportError(t, got, want, i, b)
+		}
 	}
 }
