@@ -1,7 +1,6 @@
 package ff
 
 import (
-	"errors"
 	"io"
 
 	"github.com/cloudflare/circl/internal/conv"
@@ -25,7 +24,7 @@ func (z *Scalar) Set(x *Scalar)            { z.i = x.i }
 func (z *Scalar) SetUint64(n uint64)       { z.toMont(&scRaw{n}) }
 func (z *Scalar) SetOne()                  { z.SetUint64(1) }
 func (z *Scalar) Random(r io.Reader) error { return randomInt(z.i[:], r, scOrder[:]) }
-func (z Scalar) IsZero() int               { return z.IsEqual(&Scalar{}) }
+func (z Scalar) IsZero() int               { return ctUint64Eq(z.i[:], (&scMont{})[:]) }
 func (z Scalar) IsEqual(x *Scalar) int     { return ctUint64Eq(z.i[:], x.i[:]) }
 func (z *Scalar) Neg()                     { fiatScMontSub(&z.i, &scMont{}, &z.i) }
 func (z *Scalar) Add(x, y *Scalar)         { fiatScMontAdd(&z.i, &x.i, &y.i) }
@@ -61,7 +60,7 @@ func (z *Scalar) expVarTime(x *Scalar, n []byte) {
 // to ScalarOrder-1.
 func (z *Scalar) SetBytes(data []byte) error {
 	if len(data) < ScalarSize {
-		return errors.New("input length incorrect")
+		return errInputLength
 	}
 	in64, err := setBytes(data[:ScalarSize], scOrder[:])
 	if err == nil {
@@ -82,6 +81,8 @@ func (z *Scalar) SetString(s string) error {
 	}
 	return err
 }
+
+func fiatScMontCmovznzU64(z *uint64, b, x, y uint64) { cselectU64(z, b, x, y) }
 
 var (
 	// scOrder is the order of the Scalar field (big-endian).

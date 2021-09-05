@@ -1,7 +1,6 @@
 package ff
 
 import (
-	"errors"
 	"io"
 
 	"github.com/cloudflare/circl/internal/conv"
@@ -29,15 +28,10 @@ func (z *Fp) Random(r io.Reader) error { return randomInt(z.i[:], r, fpOrder[:])
 // IsNegative returns 0 if the least absolute residue for z is in [0,(p-1)/2],
 // and 1 otherwise. Equivalently, this function returns 1 if z is
 // lexicographically larger than -z.
-func (z Fp) IsNegative() (b int) {
-	if !isLessThan(z.Bytes(), fpOrderPlus1Div2[:]) {
-		b = 1
-	}
-	return
-}
+func (z Fp) IsNegative() int { return 1 - isLessThan(z.Bytes(), fpOrderPlus1Div2[:]) }
 
 // IsZero returns 1 if z == 0 and 0 otherwise.
-func (z Fp) IsZero() int { return z.IsEqual(&Fp{}) }
+func (z Fp) IsZero() int { return ctUint64Eq(z.i[:], (&fpMont{})[:]) }
 
 // IsEqual returns 1 if z == x and 0 otherwise.
 func (z Fp) IsEqual(x *Fp) int     { return ctUint64Eq(z.i[:], x.i[:]) }
@@ -49,7 +43,7 @@ func (z *Fp) Sqr(x *Fp)            { fiatFpMontSquare(&z.i, &x.i) }
 func (z *Fp) Inv(x *Fp)            { z.ExpVarTime(x, fpOrderMinus2[:]) }
 func (z *Fp) toMont(in *fpRaw)     { fiatFpMontMul(&z.i, in, &fpRSquare) }
 func (z Fp) fromMont() (out fpRaw) { fiatFpMontMul(&out, &z.i, &fpMont{1}); return }
-func (z Fp) Sgn0() int             { zz := z.fromMont(); return int(zz[0] & 1) }
+func (z Fp) Sgn0() int             { return int(z.fromMont()[0]) & 1 }
 
 // Sqrt returns 1 and sets z=sqrt(x) only if x is a quadratic-residue; otherwise, returns 0 and z is unmodified.
 func (z *Fp) Sqrt(x *Fp) int {
@@ -63,8 +57,8 @@ func (z *Fp) Sqrt(x *Fp) int {
 
 // CMov sets z=x if b == 0 and z=y if b == 1. Its behavior is undefined if b takes any other value.
 func (z *Fp) CMov(x, y *Fp, b int) {
-	mask := 0 - uint64(b&0x1)
-	for i := range z.i {
+	mask := -uint64(b & 0x1)
+	for i := 0; i < FpSize/8; i++ {
 		z.i[i] = (x.i[i] &^ mask) | (y.i[i] & mask)
 	}
 }
@@ -93,7 +87,7 @@ func (z *Fp) ExpVarTime(x *Fp, n []byte) {
 // to FpOrder-1.
 func (z *Fp) SetBytes(data []byte) error {
 	if len(data) < FpSize {
-		return errors.New("input length incorrect")
+		return errInputLength
 	}
 	in64, err := setBytes(data[:FpSize], fpOrder[:])
 	if err == nil {
@@ -114,6 +108,8 @@ func (z *Fp) SetString(s string) error {
 	}
 	return err
 }
+
+func fiatFpMontCmovznzU64(z *uint64, b, x, y uint64) { cselectU64(z, b, x, y) }
 
 var (
 	// fpOrder is the order of the Fp field (big-endian).
