@@ -23,9 +23,9 @@ func TestFp(t *testing.T) {
 	t.Run("no_alias", func(t *testing.T) {
 		var want, got Fp
 		x := randomFp(t)
-		got.Set(x)
+		got = *x
 		got.Sqr(&got)
-		want.Set(x)
+		want = *x
 		want.Mul(&want, &want)
 		if got.IsEqual(&want) == 0 {
 			test.ReportError(t, got, want, x)

@@ -53,7 +53,7 @@ func TestPsi(t *testing.T) {
 	yp12 := &ff.Fp12{}
 	Q := &G2{}
 	P := randomG2(t)
-	Q.Set(P)
+	*Q = *P
 	P.toAffine()
 	Q.psi()
 	Q.toAffine()
@@ -78,8 +78,8 @@ func TestPsi(t *testing.T) {
 		t.Fail()
 	}
 
-	xp12[0][0].Set(&P.x)
-	yp12[0][0].Set(&P.y)
+	xp12[0][0] = P.x
+	yp12[0][0] = P.y
 	// E' is yp^2=xp^3+4(u+1)
 	t.Log("testing input")
 	checkEprime(t, xp12, yp12)
@@ -106,9 +106,9 @@ func TestPsi(t *testing.T) {
 	// Now we should have y^2=x^3+4(u+1)
 	checkEprime(t, x12, y12)
 	qx12 := &ff.Fp12{}
-	qx12[0][0].Set(&Q.x)
+	qx12[0][0] = Q.x
 	qy12 := &ff.Fp12{}
-	qy12[0][0].Set(&Q.y)
+	qy12[0][0] = Q.y
 	if x12.IsEqual(qx12) != 1 {
 		t.Log("failure in evaluation of x")
 		t.Fail()

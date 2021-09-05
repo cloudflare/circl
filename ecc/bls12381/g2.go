@@ -24,9 +24,6 @@ func (g G2) Bytes() []byte { return g.encodeBytes(false) }
 // Bytes serializes a G2 element in compressed form.
 func (g G2) BytesCompressed() []byte { return g.encodeBytes(true) }
 
-// Set is (TMP).
-func (g *G2) Set(P *G2) { g.x.Set(&P.x); g.y.Set(&P.y); g.z.Set(&P.z) }
-
 // SetBytes sets g to the value in bytes, and returns a non-nil error if not in G2.
 func (g *G2) SetBytes(b []byte) error {
 	if len(b) < G2SizeCompressed {
@@ -138,9 +135,7 @@ func (g *G2) cmov(P *G2, b int) {
 // isRTorsion returns true if point is in the r-torsion subgroup.
 func (g *G2) isRTorsion() bool {
 	// Bowe, "Faster Subgroup Checks for BLS12-381" (https://eprint.iacr.org/2019/814)
-	var Q G2
-	Q.Set(g)
-
+	Q := *g
 	Q.psi()                                // Q = \psi(g)
 	Q.scalarMult(g2PsiCoeff.minusZ[:], &Q) // Q = -[z]\psi(g)
 	Q.Add(&Q, g)                           // Q = -[z]\psi(g)+g
@@ -174,9 +169,9 @@ func (g *G2) scalarMult(k []byte, P *G2) {
 	T := &G2{}
 	var mults [16]G2
 	mults[0].SetIdentity()
-	mults[1].Set(P)
+	mults[1] = *P
 	for i := 1; i < 8; i++ {
-		mults[2*i].Set(&mults[i])
+		mults[2*i] = mults[i]
 		mults[2*i].Double()
 		mults[2*i+1].Add(&mults[2*i], P)
 	}
@@ -192,7 +187,7 @@ func (g *G2) scalarMult(k []byte, P *G2) {
 		}
 		Q.Add(&Q, T)
 	}
-	g.Set(&Q)
+	*g = Q
 }
 
 // IsEqual returns true if g and p are equivalent.
@@ -236,8 +231,8 @@ func (g *G2) toAffine() {
 // G2Generator returns the generator point of G2.
 func G2Generator() *G2 {
 	var G G2
-	G.x.Set(&g2Params.genX)
-	G.y.Set(&g2Params.genY)
+	G.x = g2Params.genX
+	G.y = g2Params.genY
 	G.z.SetOne()
 	return &G
 }

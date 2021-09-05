@@ -16,7 +16,7 @@ func miller(f *ff.Fp12, P *G1, Q *G2) {
 	g := &ff.Fp12{}
 	f.SetOne()
 	T := &G2{}
-	T.Set(Q)
+	*T = *Q
 	l := &line{}
 	const lenX = 64
 	for i := lenX - 2; i >= 0; i-- {
@@ -51,10 +51,8 @@ func evalLine(f *ff.Fp12, l *line, P *G1) {
 
 	// First perform the products: l[0]*xP and l[1]*yP \in Fp2.
 	var xP, yP ff.Fp2
-	var one ff.Fp12
-	one.SetOne()
-	xP[0].Set(&P.x)
-	yP[0].Set(&P.y)
+	xP[0] = P.x
+	yP[0] = P.y
 	l[0].Mul(&l[0], &xP)
 	l[1].Mul(&l[1], &yP)
 
@@ -64,9 +62,9 @@ func evalLine(f *ff.Fp12, l *line, P *G1) {
 	//   (a0+a2*v+a4*v^2) + (a1+a3*v+a5*v^2)w \in Fp12 = Fp6[w]/(w^2-v).
 	//
 	// Apply such transformation to construct f \in Fp12 = Fp6[w]/(w^2-v).
-	f[0][0].Set(&l[2])
-	f[0][1].Set(&l[0])
-	f[1][1].Set(&l[1])
+	f[0][0] = l[2]
+	f[0][1] = l[0]
+	f[1][1] = l[1]
 	if f.IsZero() == 1 {
 		f.SetOne()
 	}
@@ -107,18 +105,17 @@ func ProdPairFrac(P []*G1, Q []*G2, signs []int) *Gt {
 		panic("mismatch length of inputs")
 	}
 
-	g := new(G1)
 	mi := new(ff.Fp12)
 	out := new(ff.Fp12)
 	out.SetOne()
 
 	affinize(P)
 	for i := range P {
-		g.Set(P[i])
+		g := *P[i]
 		if signs[i] == -1 {
 			g.Neg()
 		}
-		miller(mi, g, Q[i])
+		miller(mi, &g, Q[i])
 		out.Mul(mi, out)
 	}
 
