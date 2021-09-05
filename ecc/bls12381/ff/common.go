@@ -1,3 +1,4 @@
+// Package ff provides finite fields of characteristic P381.
 package ff
 
 import (
@@ -10,43 +11,47 @@ import (
 	"github.com/cloudflare/circl/internal/conv"
 )
 
-func errFirst(e ...error) error {
-	n := len(e)
-	for i := 0; i < n; i++ {
+var (
+	errInputLength = errors.New("incorrect input length")
+	errInputRange  = errors.New("value out of range [0,order)")
+	errInputString = errors.New("invalid string")
+)
+
+func errFirst(e ...error) (err error) {
+	for i := 0; i < len(e); i++ {
 		if e[i] != nil {
 			return e[i]
 		}
 	}
-	return nil
+	return
 }
 
 func setString(in string, order []byte) ([]uint64, error) {
 	inBig, ok := new(big.Int).SetString(in, 0)
 	if !ok {
-		return nil, errors.New("invalid string")
+		return nil, errInputString
 	}
 	if inBig.Sign() < 0 || inBig.Cmp(new(big.Int).SetBytes(order)) >= 0 {
-		return nil, errors.New("value out of range [0,order)")
+		return nil, errInputRange
 	}
 	inBytes := inBig.FillBytes(make([]byte, len(order)))
 	return setBytes(inBytes, order)
 }
 
 func setBytes(in []byte, order []byte) ([]uint64, error) {
-	if !isLessThan(in, order) {
-		return nil, errors.New("value out of range [0,order)")
+	if isLessThan(in, order) == 0 {
+		return nil, errInputRange
 	}
 	return conv.BytesBe2Uint64Le(in), nil
 }
 
-// isLessThan returns true if 0 <= x < y, and assumes that slices have the same length.
-func isLessThan(x, y []byte) bool {
-	n := len(x)
+// isLessThan returns 1 if 0 <= x < y, otherwise 0. Assumes that slices have the same length.
+func isLessThan(x, y []byte) int {
 	i := 0
-	for i < n-1 && x[i] == y[i] {
+	for i < len(x)-1 && x[i] == y[i] {
 		i++
 	}
-	return x[i] < y[i]
+	return 1 - subtle.ConstantTimeLessOrEq(int(y[i]), int(x[i]))
 }
 
 func randomInt(out []uint64, rnd io.Reader, order []byte) error {
@@ -58,18 +63,15 @@ func randomInt(out []uint64, rnd io.Reader, order []byte) error {
 }
 
 // ctUint64Eq returns 1 if the two slices have equal contents and 0 otherwise.
-func ctUint64Eq(x, y []uint64) int {
-	if len(x) != len(y) {
-		return 0
+func ctUint64Eq(x, y []uint64) (b int) {
+	if len(x) == len(y) {
+		var v uint64
+		for i := 0; i < len(x); i++ {
+			v |= x[i] ^ y[i]
+		}
+		return subtle.ConstantTimeEq(int32(v>>32), 0) & subtle.ConstantTimeEq(int32(v), 0)
 	}
-	l := len(x)
-	var v uint64
-	for i := 0; i < l; i++ {
-		v |= x[i] ^ y[i]
-	}
-
-	v8 := byte(v) | byte(v>>8) | byte(v>>16) | byte(v>>24) |
-		byte(v>>32) | byte(v>>40) | byte(v>>48) | byte(v>>56)
-
-	return subtle.ConstantTimeByteEq(v8, 0)
+	return
 }
+
+func cselectU64(z *uint64, b, x, y uint64) { *z = (x &^ (-b)) | (y & (-b)) }

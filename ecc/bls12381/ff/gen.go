@@ -39,7 +39,10 @@ var (
 		"--public-function-case", "lowerCamelCase",
 		"--public-type-case", "lowerCamelCase",
 		"--doc-newline-before-package-declaration",
-		"--cmovznz-by-mul",
+		"--no-primitives",
+		"--widen-carry",
+		"--no-field-element-typedefs",
+		"--relax-primitive-carry-to-bitwidth", "64",
 		"{{.Prefix}}", "64", "{{.Prime}}",
 		"add", "sub", "mul", "square",
 	}
