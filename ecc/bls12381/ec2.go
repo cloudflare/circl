@@ -29,7 +29,7 @@ func doubleAndLine(P *G2, l *line) {
 		E.Sub(&E, &B)       //     E  = (X1+Y1)^2-A-B = 2X*Y
 		l[0].Add(&A, &A)    // 5a. l0 = 2A
 		l[0].Add(&l[0], &A) //     l0 = 3A = 3X1^2
-		l[1].Set(&F)        // 5b. l1 = F
+		l[1] = F            // 5b. l1 = F
 		l[1].Neg()          //     l1 = -F = -2Y1Z1
 		l[2].Sub(&D, &B)    // 5c. l2 = D-B = 3b*Z1^2-Y1^2
 	} else {
@@ -49,7 +49,7 @@ func doubleAndLine(P *G2, l *line) {
 	Z3.Mul(&B, &F) // 11. Z3 = B*F
 	Z3.Add(Z3, Z3) //     Z3 = 2B*F
 	Z3.Add(Z3, Z3) //     Z3 = 4B*F
-	P.Set(&R)
+	*P = R
 }
 
 func addAndLine(PQ, P, Q *G2, l *line) {
@@ -129,5 +129,5 @@ func addAndLine(PQ, P, Q *G2, l *line) {
 	Z3.Mul(&E, &B) // Z3 = E*B
 	Z3.Add(Z3, t0) //    = E*B + A*D
 
-	PQ.Set(&R)
+	*PQ = R
 }

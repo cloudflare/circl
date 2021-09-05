@@ -29,9 +29,9 @@ func TestCyclo6(t *testing.T) {
 	t.Run("no_alias", func(t *testing.T) {
 		var want, got Cyclo6
 		x := randomCyclo6(t)
-		got.Set(x)
+		got = *x
 		got.Sqr(&got)
-		want.Set(x)
+		want = *x
 		want.Mul(&want, &want)
 		if got.IsEqual(&want) == 0 {
 			test.ReportError(t, got, want, x)

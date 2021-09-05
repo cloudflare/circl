@@ -41,8 +41,8 @@ func TestG1Add(t *testing.T) {
 	var Q, R G1
 	for i := 0; i < testTimes; i++ {
 		P := randomG1(t)
-		Q.Set(P)
-		R.Set(P)
+		Q = *P
+		R = *P
 		R.Add(&R, &R)
 		R.Neg()
 		Q.Double()
@@ -216,7 +216,7 @@ func TestG1Affinize(t *testing.T) {
 		for j := 0; j < N; j++ {
 			g1[j] = randomG1(t)
 			g2[j] = &G1{}
-			g2[j].Set(g1[j])
+			*g2[j] = *g1[j]
 		}
 		affinize(g2)
 		for j := 0; j < N; j++ {

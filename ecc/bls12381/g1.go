@@ -27,9 +27,6 @@ func (g G1) Bytes() []byte { return g.encodeBytes(false) }
 // Bytes serializes a G1 element in compressed form.
 func (g G1) BytesCompressed() []byte { return g.encodeBytes(true) }
 
-// Set is (TMP).
-func (g *G1) Set(P *G1) { g.x.Set(&P.x); g.y.Set(&P.y); g.z.Set(&P.z) }
-
 // SetBytes sets g to the value in bytes, and returns a non-nil error if not in G1.
 func (g *G1) SetBytes(b []byte) error {
 	if len(b) < G1SizeCompressed {
@@ -196,7 +193,7 @@ func (g *G1) Double() {
 	t1.Mul(X, Y)    // 16. t1 =  X * Y
 	X3.Mul(t0, t1)  // 17. X3 = t0 * t1
 	X3.Add(X3, X3)  // 18. X3 = X3 + X3
-	g.Set(&R)
+	*g = R
 }
 
 // Add updates g=P+Q.
@@ -244,7 +241,7 @@ func (g *G1) Add(P, Q *G1) {
 	t0.Mul(t0, t3)  // 31. t0 = t0 * t3
 	Z3.Mul(Z3, t4)  // 32. Z3 = Z3 * t4
 	Z3.Add(Z3, t0)  // 33. Z3 = Z3 + t0
-	g.Set(&R)
+	*g = R
 }
 
 // ScalarMult calculates g = kP.
@@ -257,9 +254,9 @@ func (g *G1) scalarMult(k []byte, P *G1) {
 	T := &G1{}
 	var mults [16]G1
 	mults[0].SetIdentity()
-	mults[1].Set(P)
+	mults[1] = *P
 	for i := 1; i < 8; i++ {
-		mults[2*i].Set(&mults[i])
+		mults[2*i] = mults[i]
 		mults[2*i].Double()
 		mults[2*i+1].Add(&mults[2*i], P)
 	}
@@ -275,7 +272,7 @@ func (g *G1) scalarMult(k []byte, P *G1) {
 		}
 		Q.Add(&Q, T)
 	}
-	g.Set(&Q)
+	*g = Q
 }
 
 // scalarMultShort multiplies by a short, constant scalar k, where k is the
@@ -292,7 +289,7 @@ func (g *G1) scalarMultShort(k []byte, P *G1) {
 			Q.Add(&Q, P)
 		}
 	}
-	g.Set(&Q)
+	*g = Q
 }
 
 // IsEqual returns true if g and p are equivalent.
@@ -389,8 +386,8 @@ func (g *G1) Hash(input, dst []byte) {
 // G1Generator returns the generator point of G1.
 func G1Generator() *G1 {
 	var G G1
-	G.x.Set(&g1Params.genX)
-	G.y.Set(&g1Params.genY)
+	G.x = g1Params.genX
+	G.y = g1Params.genY
 	G.z.SetOne()
 	return &G
 }

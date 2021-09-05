@@ -76,12 +76,12 @@ func (p *isogG1Point) sswu(u *ff.Fp) {
 	xn.CMov(x2n, x1n, e2)     // 30.  xn = CMOV(x2n, x1n, e2)
 	y.CMov(y2, y1, e2)        // 31.   y = CMOV(y2, y1, e2)
 	e3 := u.Sgn0() ^ y.Sgn0() // 32.  e3 = sgn0(u) == sgn0(y)
-	tv1.Set(y)                // 33. tv1 = y
+	*tv1 = *y                 // 33. tv1 = y
 	tv1.Neg()                 //     tv1 = -y
 	y.CMov(tv1, y, ^e3)       //       y = CMOV(tv1, y, e3)
-	p.x.Set(xn)               // 34. return
+	p.x = *xn                 // 34. return
 	p.y.Mul(y, xd)            //       (x,y) = (xn/xd, y/1)
-	p.z.Set(xd)               //       (X,Y,Z) = (xn, y*xd, xd)
+	p.z = *xd                 //       (X,Y,Z) = (xn, y*xd, xd)
 }
 
 // evalIsogG1 calculates g = g1Isog11(p), where g1Isog11 is an isogeny of

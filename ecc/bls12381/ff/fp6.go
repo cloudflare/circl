@@ -8,7 +8,6 @@ const Fp6Size = 3 * Fp2Size
 type Fp6 [3]Fp2
 
 func (z Fp6) String() string { return fmt.Sprintf("\n0: %v\n1: %v\n2: %v", z[0], z[1], z[2]) }
-func (z *Fp6) Set(x *Fp6)    { z[0].Set(&x[0]); z[1].Set(&x[1]); z[2].Set(&x[2]) }
 func (z *Fp6) SetOne()       { z[0].SetOne(); z[1] = Fp2{}; z[2] = Fp2{} }
 func (z Fp6) Bytes() []byte  { return append(append(z[0].Bytes(), z[1].Bytes()...), z[2].Bytes()...) }
 func (z *Fp6) SetBytes(b []byte) error {
@@ -26,12 +25,11 @@ func (z *Fp6) Neg()          { z[0].Neg(); z[1].Neg(); z[2].Neg() }
 func (z *Fp6) Add(x, y *Fp6) { z[0].Add(&x[0], &y[0]); z[1].Add(&x[1], &y[1]); z[2].Add(&x[2], &y[2]) }
 func (z *Fp6) Sub(x, y *Fp6) { z[0].Sub(&x[0], &y[0]); z[1].Sub(&x[1], &y[1]); z[2].Sub(&x[2], &y[2]) }
 func (z *Fp6) MulBeta() {
-	var t Fp2
-	t.Set(&z[2])
+	t := z[2]
 	t.MulBeta()
-	z[2].Set(&z[1])
-	z[1].Set(&z[0])
-	z[0].Set(&t)
+	z[2] = z[1]
+	z[1] = z[0]
+	z[0] = t
 }
 
 func (z *Fp6) Mul(x, y *Fp6) {

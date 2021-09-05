@@ -51,16 +51,16 @@ func headerEncoding(isCompressed, isInfinity, isBigYCoord byte) byte {
 	return (isBigYCoord&0x1)<<5 | (isInfinity&0x1)<<6 | (isCompressed&0x1)<<7
 }
 
-// ratioKummer returns t/Frob(t) if it falls in Fp2, and error otherwise.
-func ratioKummer(t *ff.Fp12) (*ff.Fp2, error) {
+// ratioKummer sets z = t/Frob(t) if it falls in Fp2, panics otherwise.
+func ratioKummer(z *ff.Fp2, t *ff.Fp12) {
 	var r ff.Fp12
 	r.Frob(t)
 	r.Inv(&r)
 	r.Mul(t, &r)
 	if r[1].IsZero() != 1 || r[0][1].IsZero() != 1 || r[0][2].IsZero() != 1 {
-		return nil, fmt.Errorf("failure of result %v to be in Fp2", r)
+		panic(fmt.Errorf("failure of result %v to be in Fp2", r))
 	}
-	return &r[0][0], nil
+	*z = r[0][0]
 }
 
 func init() {
@@ -164,12 +164,8 @@ func initPsi() {
 	w[1].SetOne()
 	wsq := &ff.Fp12{}
 	wsq.Sqr(w)
-	alpha, errval := ratioKummer(wsq)
-	err(errval)
-	g2PsiCoeff.alpha.Set(alpha)
+	ratioKummer(&g2PsiCoeff.alpha, wsq)
 	wcube := &ff.Fp12{}
 	wcube.Mul(wsq, w)
-	beta, errval := ratioKummer(wcube)
-	err(errval)
-	g2PsiCoeff.beta.Set(beta)
+	ratioKummer(&g2PsiCoeff.beta, wcube)
 }

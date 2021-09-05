@@ -170,9 +170,9 @@ func BenchmarkPair(b *testing.B) {
 	listExp := [N]*Scalar{}
 	for i := 0; i < N; i++ {
 		listG1[i] = new(G1)
-		listG1[i].Set(g1)
+		*listG1[i] = *g1
 		listG2[i] = new(G2)
-		listG2[i].Set(g2)
+		*listG2[i] = *g2
 		listExp[i] = randomScalar(b)
 	}
 

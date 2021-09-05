@@ -20,7 +20,7 @@ func expVarTime(z, x *Fp6, n []byte) {
 			zz.Mul(zz, x)
 		}
 	}
-	z.Set(zz)
+	*z = *zz
 }
 
 func TestFp6(t *testing.T) {
@@ -28,9 +28,9 @@ func TestFp6(t *testing.T) {
 	t.Run("no_alias", func(t *testing.T) {
 		var want, got Fp6
 		x := randomFp6(t)
-		got.Set(x)
+		got = *x
 		got.Sqr(&got)
-		want.Set(x)
+		want = *x
 		want.Mul(&want, &want)
 		if got.IsEqual(&want) == 0 {
 			test.ReportError(t, got, want, x)

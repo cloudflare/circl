@@ -8,7 +8,6 @@ const URootSize = Fp12Size
 type URoot Cyclo6
 
 func (z URoot) String() string                 { return (Cyclo6)(z).String() }
-func (z *URoot) Set(x *URoot)                  { (*Cyclo6)(z).Set((*Cyclo6)(x)) }
 func (z *URoot) SetBytes(b []byte) error       { return (*Fp12)(z).SetBytes(b) }
 func (z URoot) Bytes() []byte                  { return (Fp12)(z).Bytes() }
 func (z *URoot) SetIdentity()                  { (*Fp12)(z).SetOne() }

@@ -25,8 +25,8 @@ func TestG2Add(t *testing.T) {
 	var Q, R G2
 	for i := 0; i < testTimes; i++ {
 		P := randomG2(t)
-		Q.Set(P)
-		R.Set(P)
+		Q = *P
+		R = *P
 		R.Add(&R, &R)
 		R.Neg()
 		Q.Double()

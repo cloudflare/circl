@@ -8,7 +8,6 @@ const Fp2Size = 2 * FpSize
 type Fp2 [2]Fp
 
 func (z Fp2) String() string { return fmt.Sprintf("0: %v\n1: %v", z[0], z[1]) }
-func (z *Fp2) Set(x *Fp2)    { z[0].Set(&x[0]); z[1].Set(&x[1]) }
 func (z *Fp2) SetBytes(b []byte) error {
 	return errFirst(z[1].SetBytes(b[:FpSize]), z[0].SetBytes(b[FpSize:2*FpSize]))
 }
@@ -19,8 +18,8 @@ func (z *Fp2) SetOne()      { z[0].SetOne(); z[1] = Fp{} }
 func (z Fp2) IsNegative() int    { return z[1].IsNegative() | (z[1].IsZero() & z[0].IsNegative()) }
 func (z Fp2) IsZero() int        { return z.IsEqual(&Fp2{}) }
 func (z Fp2) IsEqual(x *Fp2) int { return z[0].IsEqual(&x[0]) & z[1].IsEqual(&x[1]) }
-func (z *Fp2) MulBeta()          { var t Fp; t.Set(&z[0]); z[0].Sub(&z[0], &z[1]); z[1].Add(&t, &z[1]) }
-func (z *Fp2) Frob(x *Fp2)       { z.Set(x); z.Cjg() }
+func (z *Fp2) MulBeta()          { t := z[0]; z[0].Sub(&z[0], &z[1]); z[1].Add(&t, &z[1]) }
+func (z *Fp2) Frob(x *Fp2)       { *z = *x; z.Cjg() }
 func (z *Fp2) Cjg()              { z[1].Neg() }
 func (z *Fp2) Neg()              { z[0].Neg(); z[1].Neg() }
 func (z *Fp2) Add(x, y *Fp2)     { z[0].Add(&x[0], &y[0]); z[1].Add(&x[1], &y[1]) }
@@ -74,7 +73,7 @@ func (z *Fp2) expVarTime(x *Fp2, n []byte) {
 			zz.Mul(zz, x)
 		}
 	}
-	z.Set(zz)
+	*z = *zz
 }
 
 // Sqrt returns 1 and sets z=sqrt(x) only if x is a quadratic-residue; otherwise, returns 0 and z is unmodified.

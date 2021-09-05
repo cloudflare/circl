@@ -20,7 +20,6 @@ type Fp struct{ i fpMont }
 
 func (z Fp) String() string            { x := z.fromMont(); return conv.Uint64Le2Hex(x[:]) }
 func (z Fp) Bytes() []byte             { x := z.fromMont(); return conv.Uint64Le2BytesBe(x[:]) }
-func (z *Fp) Set(x *Fp)                { z.i = x.i }
 func (z *Fp) SetUint64(n uint64)       { z.toMont(&fpRaw{n}) }
 func (z *Fp) SetOne()                  { z.SetUint64(1) }
 func (z *Fp) Random(r io.Reader) error { return randomInt(z.i[:], r, fpOrder[:]) }
@@ -79,7 +78,7 @@ func (z *Fp) ExpVarTime(x *Fp, n []byte) {
 			zz.Mul(zz, x)
 		}
 	}
-	z.Set(zz)
+	*z = *zz
 }
 
 // SetBytes reconstructs a Fp from a slice that must have at least
