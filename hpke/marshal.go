@@ -51,7 +51,7 @@ func unmarshalContext(raw []byte) (*encdecContext, error) {
 	}
 
 	if !c.suite.isValid() {
-		return nil, errInvalidHPKESuite
+		return nil, ErrInvalidHPKESuite
 	}
 
 	Nh := c.suite.kdfID.ExtractSize()
