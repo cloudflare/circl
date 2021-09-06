@@ -64,7 +64,7 @@ func (k KEM) Scheme() kem.AuthScheme {
 	case KEM_X448_HKDF_SHA512:
 		return dhkemx448hkdfsha512
 	default:
-		panic(errInvalidKEM)
+		panic(ErrInvalidKEM)
 	}
 }
 
@@ -77,7 +77,7 @@ func (k KEM) validatePublicKey(pk kem.PublicKey) bool {
 		pub, ok := pk.(*xKEMPubKey)
 		return ok && k == pub.scheme.id && pub.Validate()
 	default:
-		panic(errInvalidKEM)
+		panic(ErrInvalidKEM)
 	}
 }
 
@@ -90,7 +90,7 @@ func (k KEM) validatePrivateKey(sk kem.PrivateKey) bool {
 		priv, ok := sk.(*xKEMPrivKey)
 		return ok && k == priv.scheme.id && priv.Validate()
 	default:
-		panic(errInvalidKEM)
+		panic(ErrInvalidKEM)
 	}
 }
 
@@ -128,7 +128,7 @@ func (k KDF) ExtractSize() int {
 	case KDF_HKDF_SHA512:
 		return crypto.SHA512.Size()
 	default:
-		panic(errInvalidKDF)
+		panic(ErrInvalidKDF)
 	}
 }
 
@@ -169,7 +169,7 @@ func (k KDF) hash() func() hash.Hash {
 	case KDF_HKDF_SHA512:
 		return crypto.SHA512.New
 	default:
-		panic(errInvalidKDF)
+		panic(ErrInvalidKDF)
 	}
 }
 
@@ -198,7 +198,7 @@ func (a AEAD) New(key []byte) (cipher.AEAD, error) {
 	case AEAD_ChaCha20Poly1305:
 		return chacha20poly1305.New(key)
 	default:
-		panic(errInvalidAEAD)
+		panic(ErrInvalidAEAD)
 	}
 }
 
@@ -223,7 +223,7 @@ func (a AEAD) KeySize() uint {
 	case AEAD_ChaCha20Poly1305:
 		return chacha20poly1305.KeySize
 	default:
-		panic(errInvalidAEAD)
+		panic(ErrInvalidAEAD)
 	}
 }
 
@@ -234,7 +234,7 @@ func (a AEAD) CipherLen(mLen uint) uint {
 	case AEAD_AES128GCM, AEAD_AES256GCM, AEAD_ChaCha20Poly1305:
 		return mLen + 16
 	default:
-		panic(errInvalidAEAD)
+		panic(ErrInvalidAEAD)
 	}
 }
 

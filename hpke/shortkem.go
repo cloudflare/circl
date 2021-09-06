@@ -32,7 +32,7 @@ func (s shortKEM) calcDH(dh []byte, sk kem.PrivateKey, pk kem.PublicKey) error {
 	l := len(dh)
 	x, _ := s.ScalarMult(PK.x, PK.y, SK.priv) // only x-coordinate is used.
 	if x.Sign() == 0 {
-		return errInvalidKEMSharedSecret
+		return ErrInvalidKEMSharedSecret
 	}
 	b := x.Bytes()
 	copy(dh[l-len(b):l], b)
@@ -86,7 +86,7 @@ func (s shortKEM) UnmarshalBinaryPrivateKey(data []byte) (
 	kem.PrivateKey, error) {
 	l := s.PrivateKeySize()
 	if len(data) < l {
-		return nil, errInvalidKEMPrivateKey
+		return nil, ErrInvalidKEMPrivateKey
 	}
 	sk := &shortKEMPrivKey{s, make([]byte, l), nil}
 	copy(sk.priv[l-len(data):l], data[:l])
@@ -95,7 +95,7 @@ func (s shortKEM) UnmarshalBinaryPrivateKey(data []byte) (
 func (s shortKEM) UnmarshalBinaryPublicKey(data []byte) (kem.PublicKey, error) {
 	x, y := elliptic.Unmarshal(s, data)
 	if x == nil {
-		return nil, errInvalidKEMPublicKey
+		return nil, ErrInvalidKEMPublicKey
 	}
 	return &shortKEMPubKey{s, x, y}, nil
 }

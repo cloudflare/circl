@@ -35,7 +35,7 @@ func (x xKEM) calcDH(dh []byte, sk kem.PrivateKey, pk kem.PublicKey) error {
 		copy(sKey[:], SK.priv)
 		copy(pKey[:], PK.pub)
 		if !x25519.Shared(&ss, &sKey, &pKey) {
-			return errInvalidKEMSharedSecret
+			return ErrInvalidKEMSharedSecret
 		}
 		copy(dh, ss[:])
 	case x448.Size:
@@ -43,7 +43,7 @@ func (x xKEM) calcDH(dh []byte, sk kem.PrivateKey, pk kem.PublicKey) error {
 		copy(sKey[:], SK.priv)
 		copy(pKey[:], PK.pub)
 		if !x448.Shared(&ss, &sKey, &pKey) {
-			return errInvalidKEMSharedSecret
+			return ErrInvalidKEMSharedSecret
 		}
 		copy(dh, ss[:])
 	}
@@ -82,7 +82,7 @@ func (x xKEM) GenerateKeyPair() (kem.PublicKey, kem.PrivateKey, error) {
 func (x xKEM) UnmarshalBinaryPrivateKey(data []byte) (kem.PrivateKey, error) {
 	l := x.PrivateKeySize()
 	if len(data) < l {
-		return nil, errInvalidKEMPrivateKey
+		return nil, ErrInvalidKEMPrivateKey
 	}
 	sk := &xKEMPrivKey{x, make([]byte, l), nil}
 	copy(sk.priv, data[:l])
@@ -91,7 +91,7 @@ func (x xKEM) UnmarshalBinaryPrivateKey(data []byte) (kem.PrivateKey, error) {
 func (x xKEM) UnmarshalBinaryPublicKey(data []byte) (kem.PublicKey, error) {
 	l := x.PublicKeySize()
 	if len(data) < l {
-		return nil, errInvalidKEMPublicKey
+		return nil, ErrInvalidKEMPublicKey
 	}
 	pk := &xKEMPubKey{x, make([]byte, l)}
 	copy(pk.pub, data[:l])
