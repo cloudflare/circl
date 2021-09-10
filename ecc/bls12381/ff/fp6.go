@@ -9,15 +9,7 @@ type Fp6 [3]Fp2
 
 func (z Fp6) String() string { return fmt.Sprintf("\n0: %v\n1: %v\n2: %v", z[0], z[1], z[2]) }
 func (z *Fp6) SetOne()       { z[0].SetOne(); z[1] = Fp2{}; z[2] = Fp2{} }
-func (z Fp6) Bytes() []byte  { return append(append(z[0].Bytes(), z[1].Bytes()...), z[2].Bytes()...) }
-func (z *Fp6) SetBytes(b []byte) error {
-	return errFirst(
-		z[0].SetBytes(b[0*Fp2Size:1*Fp2Size]),
-		z[1].SetBytes(b[1*Fp2Size:2*Fp2Size]),
-		z[2].SetBytes(b[2*Fp2Size:3*Fp2Size]),
-	)
-}
-func (z Fp6) IsZero() int { return z.IsEqual(&Fp6{}) }
+func (z Fp6) IsZero() int    { return z.IsEqual(&Fp6{}) }
 func (z Fp6) IsEqual(x *Fp6) int {
 	return z[0].IsEqual(&x[0]) & z[1].IsEqual(&x[1]) & z[2].IsEqual(&x[2])
 }
@@ -142,6 +134,29 @@ func (z *Fp6) Frob(x *Fp6) {
 	z[2].Frob(&x[2])
 	z[1].Mul(&z[1], &Fp2{Fp{}, frob6V1})
 	z[2].Mul(&z[2], &Fp2{frob6V2, Fp{}})
+}
+
+func (z Fp6) MarshalBinary() (b []byte, e error) {
+	var b0, b1, b2 []byte
+	if b2, e = z[2].MarshalBinary(); e == nil {
+		if b1, e = z[1].MarshalBinary(); e == nil {
+			if b0, e = z[0].MarshalBinary(); e == nil {
+				return append(append(b2, b1...), b0...), e
+			}
+		}
+	}
+	return
+}
+
+func (z *Fp6) UnmarshalBinary(b []byte) error {
+	if len(b) < Fp6Size {
+		return errInputLength
+	}
+	return errFirst(
+		z[2].UnmarshalBinary(b[0*Fp2Size:1*Fp2Size]),
+		z[1].UnmarshalBinary(b[1*Fp2Size:2*Fp2Size]),
+		z[0].UnmarshalBinary(b[2*Fp2Size:3*Fp2Size]),
+	)
 }
 
 var (

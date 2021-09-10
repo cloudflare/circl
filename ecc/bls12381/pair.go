@@ -84,7 +84,8 @@ func ProdPair(P []*G1, Q []*G2, n []*Scalar) *Gt {
 	affinize(P)
 	for i := range P {
 		miller(mi, P[i], Q[i])
-		ei.ExpVarTime(mi, n[i].Bytes())
+		nb, _ := n[i].MarshalBinary()
+		ei.ExpVarTime(mi, nb)
 		out.Mul(out, ei)
 	}
 

@@ -30,7 +30,7 @@ func (g G1) BytesCompressed() []byte { return g.encodeBytes(true) }
 // SetBytes sets g to the value in bytes, and returns a non-nil error if not in G1.
 func (g *G1) SetBytes(b []byte) error {
 	if len(b) < G1SizeCompressed {
-		return fmt.Errorf("incorrect encoding: short size")
+		return errInputLength
 	}
 
 	isCompressed := int((b[0] >> 7) & 0x1)
@@ -44,7 +44,7 @@ func (g *G1) SetBytes(b []byte) error {
 		}
 		zeros := make([]byte, l-1)
 		if (b[0]&0x1F) != 0 || subtle.ConstantTimeCompare(b[1:], zeros) != 1 {
-			return fmt.Errorf("incorrect encoding: not all-zeros")
+			return errEncoding
 		}
 		g.SetIdentity()
 		return nil
@@ -53,7 +53,7 @@ func (g *G1) SetBytes(b []byte) error {
 	x := (&[ff.FpSize]byte{})[:]
 	copy(x, b)
 	x[0] &= 0x1F
-	if err := g.x.SetBytes(x); err != nil {
+	if err := g.x.UnmarshalBinary(x); err != nil {
 		return err
 	}
 
@@ -63,23 +63,23 @@ func (g *G1) SetBytes(b []byte) error {
 		x3b.Mul(x3b, &g.x)
 		x3b.Add(x3b, &g1Params.b)
 		if g.y.Sqrt(x3b) == 0 {
-			return fmt.Errorf("incorrect encoding: not QR")
+			return errEncoding
 		}
 		if g.y.IsNegative() != isBigYCoord {
 			g.y.Neg()
 		}
 	} else {
 		if len(b) < G1Size {
-			return fmt.Errorf("incorrect encoding: short size")
+			return errInputLength
 		}
-		if err := g.y.SetBytes(b[ff.FpSize:G1Size]); err != nil {
+		if err := g.y.UnmarshalBinary(b[ff.FpSize:G1Size]); err != nil {
 			return err
 		}
 	}
 
 	g.z.SetOne()
 	if !g.IsOnG1() {
-		return fmt.Errorf("incorrect encoding: not in G1")
+		return errEncoding
 	}
 	return nil
 }
@@ -98,9 +98,10 @@ func (g G1) encodeBytes(compressed bool) []byte {
 		isBigYCoord = byte(g.y.IsNegative())
 	}
 
-	bytes := g.x.Bytes()
+	bytes, _ := g.x.MarshalBinary()
 	if isCompressed == 0 {
-		bytes = append(bytes, g.y.Bytes()...)
+		yBytes, _ := g.y.MarshalBinary()
+		bytes = append(bytes, yBytes...)
 	}
 	if isInfinity == 1 {
 		l := len(bytes)
@@ -245,7 +246,7 @@ func (g *G1) Add(P, Q *G1) {
 }
 
 // ScalarMult calculates g = kP.
-func (g *G1) ScalarMult(k *Scalar, P *G1) { g.scalarMult(k.Bytes(), P) }
+func (g *G1) ScalarMult(k *Scalar, P *G1) { b, _ := k.MarshalBinary(); g.scalarMult(b, P) }
 
 // scalarMult calculates g = kP, where k is the scalar in big-endian order.
 func (g *G1) scalarMult(k []byte, P *G1) {
@@ -340,7 +341,7 @@ func (g *G1) Encode(input, dst []byte) {
 	bu := new(big.Int).SetBytes(pseudo)
 	bu.Mod(bu, new(big.Int).SetBytes(ff.FpOrder()))
 	var u ff.Fp
-	err := u.SetBytes(bu.FillBytes(make([]byte, ff.FpSize)))
+	err := u.UnmarshalBinary(bu.FillBytes(make([]byte, ff.FpSize)))
 	if err != nil {
 		panic(err)
 	}
@@ -361,14 +362,14 @@ func (g *G1) Hash(input, dst []byte) {
 	fpOrder := new(big.Int).SetBytes(ff.FpOrder())
 	bu := new(big.Int).SetBytes(pseudo[0*L : 1*L])
 	bu.Mod(bu, fpOrder)
-	err := u0.SetBytes(bu.FillBytes(make([]byte, ff.FpSize)))
+	err := u0.UnmarshalBinary(bu.FillBytes(make([]byte, ff.FpSize)))
 	if err != nil {
 		panic(err)
 	}
 
 	bu.SetBytes(pseudo[1*L : 2*L])
 	bu.Mod(bu, fpOrder)
-	err = u1.SetBytes(bu.FillBytes(make([]byte, ff.FpSize)))
+	err = u1.UnmarshalBinary(bu.FillBytes(make([]byte, ff.FpSize)))
 	if err != nil {
 		panic(err)
 	}

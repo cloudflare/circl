@@ -19,7 +19,6 @@ type fpRaw = [FpSize / 8]uint64
 type Fp struct{ i fpMont }
 
 func (z Fp) String() string            { x := z.fromMont(); return conv.Uint64Le2Hex(x[:]) }
-func (z Fp) Bytes() []byte             { x := z.fromMont(); return conv.Uint64Le2BytesBe(x[:]) }
 func (z *Fp) SetUint64(n uint64)       { z.toMont(&fpRaw{n}) }
 func (z *Fp) SetOne()                  { z.SetUint64(1) }
 func (z *Fp) Random(r io.Reader) error { return randomInt(z.i[:], r, fpOrder[:]) }
@@ -27,7 +26,10 @@ func (z *Fp) Random(r io.Reader) error { return randomInt(z.i[:], r, fpOrder[:])
 // IsNegative returns 0 if the least absolute residue for z is in [0,(p-1)/2],
 // and 1 otherwise. Equivalently, this function returns 1 if z is
 // lexicographically larger than -z.
-func (z Fp) IsNegative() int { return 1 - isLessThan(z.Bytes(), fpOrderPlus1Div2[:]) }
+func (z Fp) IsNegative() int {
+	b, _ := z.MarshalBinary()
+	return 1 - isLessThan(b, fpOrderPlus1Div2[:])
+}
 
 // IsZero returns 1 if z == 0 and 0 otherwise.
 func (z Fp) IsZero() int { return ctUint64Eq(z.i[:], (&fpMont{})[:]) }
@@ -81,14 +83,21 @@ func (z *Fp) ExpVarTime(x *Fp, n []byte) {
 	*z = *zz
 }
 
-// SetBytes reconstructs a Fp from a slice that must have at least
+// MarshalBinary returns a slice of FpSize bytes that contains the minimal
+// residue of z such that 0 <= z < FpOrder (in big-endian order).
+func (z *Fp) MarshalBinary() ([]byte, error) {
+	x := z.fromMont()
+	return conv.Uint64Le2BytesBe(x[:]), nil
+}
+
+// UnmarshalBinary reconstructs a Fp from a slice that must have at least
 // FpSize bytes and contain a number (in big-endian order) from 0
 // to FpOrder-1.
-func (z *Fp) SetBytes(data []byte) error {
-	if len(data) < FpSize {
+func (z *Fp) UnmarshalBinary(b []byte) error {
+	if len(b) < FpSize {
 		return errInputLength
 	}
-	in64, err := setBytes(data[:FpSize], fpOrder[:])
+	in64, err := setBytesBounded(b[:FpSize], fpOrder[:])
 	if err == nil {
 		s := &fpRaw{}
 		copy(s[:], in64[:FpSize/8])
