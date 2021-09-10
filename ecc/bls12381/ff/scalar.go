@@ -19,7 +19,6 @@ type scRaw = [ScalarSize / 8]uint64
 type Scalar struct{ i scMont }
 
 func (z Scalar) String() string            { x := z.fromMont(); return conv.Uint64Le2Hex(x[:]) }
-func (z Scalar) Bytes() []byte             { x := z.fromMont(); return conv.Uint64Le2BytesBe(x[:]) }
 func (z *Scalar) Set(x *Scalar)            { z.i = x.i }
 func (z *Scalar) SetUint64(n uint64)       { z.toMont(&scRaw{n}) }
 func (z *Scalar) SetOne()                  { z.SetUint64(1) }
@@ -55,14 +54,30 @@ func (z *Scalar) expVarTime(x *Scalar, n []byte) {
 	z.Set(zz)
 }
 
-// SetBytes reconstructs a Scalar from a slice that must have at least
+// SetBytes assigns to z the number modulo ScalarOrder stored in the slice
+// (in big-endian order).
+func (z *Scalar) SetBytes(data []byte) {
+	in64 := setBytesUnbounded(data, scOrder[:])
+	s := &scRaw{}
+	copy(s[:], in64[:ScalarSize/8])
+	z.toMont(s)
+}
+
+// MarshalBinary returns a slice of ScalarSize bytes that contains the minimal
+// residue of z such that 0 <= z < ScalarOrder (in big-endian order).
+func (z *Scalar) MarshalBinary() ([]byte, error) {
+	x := z.fromMont()
+	return conv.Uint64Le2BytesBe(x[:]), nil
+}
+
+// UnmarshalBinary reconstructs a Scalar from a slice that must have at least
 // ScalarSize bytes and contain a number (in big-endian order) from 0
 // to ScalarOrder-1.
-func (z *Scalar) SetBytes(data []byte) error {
+func (z *Scalar) UnmarshalBinary(data []byte) error {
 	if len(data) < ScalarSize {
 		return errInputLength
 	}
-	in64, err := setBytes(data[:ScalarSize], scOrder[:])
+	in64, err := setBytesBounded(data[:ScalarSize], scOrder[:])
 	if err == nil {
 		s := &scRaw{}
 		copy(s[:], in64[:ScalarSize/8])

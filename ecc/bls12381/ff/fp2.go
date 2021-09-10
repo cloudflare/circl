@@ -8,11 +8,7 @@ const Fp2Size = 2 * FpSize
 type Fp2 [2]Fp
 
 func (z Fp2) String() string { return fmt.Sprintf("0: %v\n1: %v", z[0], z[1]) }
-func (z *Fp2) SetBytes(b []byte) error {
-	return errFirst(z[1].SetBytes(b[:FpSize]), z[0].SetBytes(b[FpSize:2*FpSize]))
-}
-func (z Fp2) Bytes() []byte { return append(z[1].Bytes(), z[0].Bytes()...) }
-func (z *Fp2) SetOne()      { z[0].SetOne(); z[1] = Fp{} }
+func (z *Fp2) SetOne()       { z[0].SetOne(); z[1] = Fp{} }
 
 // IsNegative returns 1 if z is lexicographically larger than -z; otherwise returns 0.
 func (z Fp2) IsNegative() int    { return z[1].IsNegative() | (z[1].IsZero() & z[0].IsNegative()) }
@@ -54,6 +50,26 @@ func (z *Fp2) Inv(x *Fp2) {
 	z[0].Mul(&x[0], &den)
 	z[1].Mul(&x[1], &den)
 	z[1].Neg()
+}
+
+func (z *Fp2) UnmarshalBinary(b []byte) error {
+	if len(b) < Fp2Size {
+		return errInputLength
+	}
+	return errFirst(
+		z[1].UnmarshalBinary(b[:FpSize]),
+		z[0].UnmarshalBinary(b[FpSize:2*FpSize]),
+	)
+}
+
+func (z Fp2) MarshalBinary() (b []byte, e error) {
+	var b0, b1 []byte
+	if b1, e = z[1].MarshalBinary(); e == nil {
+		if b0, e = z[0].MarshalBinary(); e == nil {
+			return append(b1, b0...), e
+		}
+	}
+	return
 }
 
 func (z *Fp2) CMov(x, y *Fp2, b int) {

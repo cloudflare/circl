@@ -1,6 +1,7 @@
 package bls12381
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/cloudflare/circl/ecc/bls12381/ff"
@@ -41,11 +42,10 @@ var (
 	}
 )
 
-func err(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
+var (
+	errInputLength = errors.New("incorrect input length")
+	errEncoding    = errors.New("incorrect encoding")
+)
 
 func headerEncoding(isCompressed, isInfinity, isBigYCoord byte) byte {
 	return (isBigYCoord&0x1)<<5 | (isInfinity&0x1)<<6 | (isCompressed&0x1)<<7
@@ -64,6 +64,12 @@ func ratioKummer(z *ff.Fp2, t *ff.Fp12) {
 }
 
 func init() {
+	err := func(e error) {
+		if e != nil {
+			panic(e)
+		}
+	}
+
 	g1Params.b.SetUint64(4)
 	g1Params._3b.SetUint64(12)
 	err(g1Params.genX.SetString("0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb"))

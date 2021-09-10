@@ -35,14 +35,21 @@ func setString(in string, order []byte) ([]uint64, error) {
 		return nil, errInputRange
 	}
 	inBytes := inBig.FillBytes(make([]byte, len(order)))
-	return setBytes(inBytes, order)
+	return setBytesBounded(inBytes, order)
 }
 
-func setBytes(in []byte, order []byte) ([]uint64, error) {
+func setBytesBounded(in []byte, order []byte) ([]uint64, error) {
 	if isLessThan(in, order) == 0 {
 		return nil, errInputRange
 	}
 	return conv.BytesBe2Uint64Le(in), nil
+}
+
+func setBytesUnbounded(in []byte, order []byte) []uint64 {
+	inBig := new(big.Int).SetBytes(in)
+	inBig.Mod(inBig, new(big.Int).SetBytes(order))
+	inBytes := inBig.FillBytes(make([]byte, len(order)))
+	return conv.BytesBe2Uint64Le(inBytes)
 }
 
 // isLessThan returns 1 if 0 <= x < y, otherwise 0. Assumes that slices have the same length.

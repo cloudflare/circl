@@ -14,14 +14,14 @@ func randomCyclo6(t testing.TB) *Cyclo6 {
 }
 
 // phi6primeSq evaluates the 6-th cyclotomic polynomial, \phi_6(x) = x^2-x+1, at p^2.
-func phi6primeSq() *big.Int {
+func phi6primeSq() []byte {
 	one := big.NewInt(1)
 	p := new(big.Int).SetBytes(fpOrder[:]) // p
 	p2 := new(big.Int).Mul(p, p)           // p^2
 	p4 := new(big.Int).Sub(p2, one)        // p^2 - 1
 	p4.Mul(p4, p2)                         // p^4 - p^2
 	p4.Add(p4, one)                        // p^4 - p^2 + 1
-	return p4
+	return p4.Bytes()
 }
 
 func TestCyclo6(t *testing.T) {
@@ -38,7 +38,7 @@ func TestCyclo6(t *testing.T) {
 		}
 	})
 	t.Run("order", func(t *testing.T) {
-		cyclo6Order := phi6primeSq().Bytes()
+		cyclo6Order := phi6primeSq()
 		var z Cyclo6
 		for i := 0; i < 16; i++ {
 			x := randomCyclo6(t)

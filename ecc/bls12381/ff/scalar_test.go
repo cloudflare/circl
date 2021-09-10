@@ -1,7 +1,9 @@
 package ff_test
 
 import (
+	"bytes"
 	"crypto/rand"
+	"math/big"
 	"testing"
 
 	"github.com/cloudflare/circl/ecc/bls12381/ff"
@@ -20,12 +22,16 @@ func randomScalar(t testing.TB) *ff.Scalar {
 
 func TestScalar(t *testing.T) {
 	const testTimes = 1 << 10
-	t.Run("set_bytes", func(t *testing.T) {
+	t.Run("marshal", func(t *testing.T) {
 		for i := 0; i < testTimes; i++ {
 			var y ff.Scalar
 			x := randomScalar(t)
-			bytes := x.Bytes()
-			err := y.SetBytes(bytes)
+
+			bytes, err := x.MarshalBinary()
+			if err != nil {
+				test.ReportError(t, x, y, x)
+			}
+			err = y.UnmarshalBinary(bytes)
 			if err != nil {
 				test.ReportError(t, x, y, x)
 			}
@@ -34,7 +40,6 @@ func TestScalar(t *testing.T) {
 			}
 		}
 	})
-
 	t.Run("no_alias", func(t *testing.T) {
 		var want, got ff.Scalar
 		x := randomScalar(t)
@@ -80,6 +85,36 @@ func TestScalar(t *testing.T) {
 			want := &r0
 			if got.IsEqual(want) == 0 {
 				test.ReportError(t, got, want, x, y)
+			}
+		}
+	})
+	t.Run("bytes", func(t *testing.T) {
+		var data [100]byte
+		_, _ = rand.Read(data[:])
+
+		var a, b ff.Scalar
+		var bigA, bigOrder big.Int
+		bigOrder.SetBytes(ff.ScalarOrder())
+
+		for i := 0; i < 100; i++ {
+			a.SetBytes(data[:i])
+
+			bigA.SetBytes(data[:i])
+			bigA.Mod(&bigA, &bigOrder)
+			bytesA := bigA.Bytes()
+			b.SetBytes(bytesA)
+
+			if a.IsEqual(&b) == 0 {
+				test.ReportError(t, a, b)
+			}
+
+			got, err := a.MarshalBinary()
+			test.CheckNoErr(t, err, "MarshalBinary failed")
+			want, err := b.MarshalBinary()
+			test.CheckNoErr(t, err, "MarshalBinary failed")
+
+			if !bytes.Equal(got, want) {
+				test.ReportError(t, got, want)
 			}
 		}
 	})

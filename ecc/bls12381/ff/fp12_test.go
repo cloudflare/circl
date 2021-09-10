@@ -59,13 +59,14 @@ func TestFp12(t *testing.T) {
 			}
 		}
 	})
-	t.Run("serdes", func(t *testing.T) {
+	t.Run("marshal", func(t *testing.T) {
 		var b Fp12
 		for i := 0; i < testTimes; i++ {
 			a := randomFp12(t)
-			s := a.Bytes()
-			err := b.SetBytes(s)
-			test.CheckNoErr(t, err, "setbytes failed")
+			s, err := a.MarshalBinary()
+			test.CheckNoErr(t, err, "MarshalBinary failed")
+			err = b.UnmarshalBinary(s)
+			test.CheckNoErr(t, err, "UnmarshalBinary failed")
 			if b.IsEqual(a) == 0 {
 				test.ReportError(t, a, b)
 			}

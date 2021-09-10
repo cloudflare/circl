@@ -56,6 +56,7 @@ func TestG2ScalarMult(t *testing.T) {
 }
 
 func TestG2Serial(t *testing.T) {
+	mustOk := "must be ok"
 	mustErr := "must be an error"
 	t.Run("valid", func(t *testing.T) {
 		testTimes := 1 << 6
@@ -81,14 +82,14 @@ func TestG2Serial(t *testing.T) {
 		test.CheckIsErr(t, q.SetBytes(b[:1]), mustErr)
 		test.CheckIsErr(t, q.SetBytes(b[:G2Size-1]), mustErr)
 		test.CheckIsErr(t, q.SetBytes(b[:G2SizeCompressed]), mustErr)
-		test.CheckNoErr(t, q.SetBytes(b), "must be ok")
-		test.CheckNoErr(t, q.SetBytes(append(b, 0)), "must be ok")
+		test.CheckNoErr(t, q.SetBytes(b), mustOk)
+		test.CheckNoErr(t, q.SetBytes(append(b, 0)), mustOk)
 		b = p.BytesCompressed()
 		test.CheckIsErr(t, q.SetBytes(b[:0]), mustErr)
 		test.CheckIsErr(t, q.SetBytes(b[:1]), mustErr)
 		test.CheckIsErr(t, q.SetBytes(b[:G2SizeCompressed-1]), mustErr)
-		test.CheckNoErr(t, q.SetBytes(b), "must be ok")
-		test.CheckNoErr(t, q.SetBytes(append(b, 0)), "must be ok")
+		test.CheckNoErr(t, q.SetBytes(b), mustOk)
+		test.CheckNoErr(t, q.SetBytes(append(b, 0)), mustOk)
 	})
 	t.Run("badInfinity", func(t *testing.T) {
 		var badInf, p G2
@@ -110,7 +111,8 @@ func TestG2Serial(t *testing.T) {
 		var e ff.Fp2
 		_ = e[0].Random(rand.Reader)
 		_ = e[1].Random(rand.Reader)
-		good := e.Bytes()
+		good, err := e.MarshalBinary()
+		test.CheckNoErr(t, err, mustOk)
 
 		// bad x, good y
 		b := append(bad, good...)
@@ -125,7 +127,8 @@ func TestG2Serial(t *testing.T) {
 	t.Run("noQR", func(t *testing.T) {
 		var x ff.Fp2
 		// Let x=0, so x^3+4*(u+1) = 4*(u+1), which is not QR because (u+1) is not.
-		b := x.Bytes()
+		b, err := x.MarshalBinary()
+		test.CheckNoErr(t, err, mustOk)
 		b[0] = b[0]&0x1F | headerEncoding(1, 0, 0)
 		test.CheckIsErr(t, new(G2).SetBytes(b), mustErr)
 	})
@@ -133,7 +136,11 @@ func TestG2Serial(t *testing.T) {
 		// p=(0,1) is not on curve.
 		var x, y ff.Fp2
 		y[0].SetUint64(1)
-		b := append(x.Bytes(), y.Bytes()...)
+		bx, err := x.MarshalBinary()
+		test.CheckNoErr(t, err, mustOk)
+		by, err := y.MarshalBinary()
+		test.CheckNoErr(t, err, mustOk)
+		b := append(bx, by...)
 		b[0] = b[0]&0x1F | headerEncoding(0, 0, 0)
 		test.CheckIsErr(t, new(G2).SetBytes(b), mustErr)
 	})

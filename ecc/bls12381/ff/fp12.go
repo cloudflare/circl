@@ -8,11 +8,7 @@ const Fp12Size = 2 * Fp6Size
 // Fp12 represents an element of the field Fp12 = Fp6[w]/(w^2-v)., where v in Fp6.
 type Fp12 [2]Fp6
 
-func (z Fp12) String() string { return fmt.Sprintf("0: %v\n1: %v", z[0], z[1]) }
-func (z *Fp12) SetBytes(b []byte) error {
-	return errFirst(z[0].SetBytes(b[:Fp6Size]), z[1].SetBytes(b[Fp6Size:2*Fp6Size]))
-}
-func (z Fp12) Bytes() []byte       { return append(z[0].Bytes(), z[1].Bytes()...) }
+func (z Fp12) String() string      { return fmt.Sprintf("0: %v\n1: %v", z[0], z[1]) }
 func (z *Fp12) SetOne()            { z[0].SetOne(); z[1] = Fp6{} }
 func (z Fp12) IsZero() int         { return z.IsEqual(&Fp12{}) }
 func (z Fp12) IsEqual(x *Fp12) int { return z[0].IsEqual(&x[0]) & z[1].IsEqual(&x[1]) }
@@ -70,6 +66,26 @@ func (z *Fp12) ExpVarTime(x *Fp12, n []byte) {
 		}
 	}
 	*z = *zz
+}
+
+func (z *Fp12) UnmarshalBinary(b []byte) error {
+	if len(b) < Fp12Size {
+		return errInputLength
+	}
+	return errFirst(
+		z[1].UnmarshalBinary(b[:Fp6Size]),
+		z[0].UnmarshalBinary(b[Fp6Size:2*Fp6Size]),
+	)
+}
+
+func (z Fp12) MarshalBinary() (b []byte, e error) {
+	var b0, b1 []byte
+	if b1, e = z[1].MarshalBinary(); e == nil {
+		if b0, e = z[0].MarshalBinary(); e == nil {
+			return append(b1, b0...), e
+		}
+	}
+	return
 }
 
 // frob12W1 is Fp2 = [toMont(frob12W1_0), toMont(frob12W1_1) ], where
