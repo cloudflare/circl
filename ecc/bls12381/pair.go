@@ -13,24 +13,26 @@ func Pair(P *G1, Q *G2) *Gt {
 }
 
 func miller(f *ff.Fp12, P *G1, Q *G2) {
-	g := &ff.Fp12{}
-	f.SetOne()
+	g := &ff.LineValue{}
+	acc := &ff.Fp12Cubic{}
+	acc.SetOne()
 	T := &G2{}
 	*T = *Q
 	l := &line{}
 	const lenX = 64
 	for i := lenX - 2; i >= 0; i-- {
-		f.Sqr(f)
+		acc.Sqr(acc)
 		doubleAndLine(T, l)
 		evalLine(g, l, P)
-		f.Mul(f, g)
+		acc.MulLine(acc, g)
 		// paramX is -2 ^ 63 - 2 ^ 62 - 2 ^ 60 - 2 ^ 57 - 2 ^ 48 - 2 ^ 16
 		if (i == 62) || (i == 60) || (i == 57) || (i == 48) || (i == 16) {
 			addAndLine(T, T, Q, l)
 			evalLine(g, l, P)
-			f.Mul(f, g)
+			acc.MulLine(acc, g)
 		}
 	}
+	f.FromFp12Alt(acc)
 	f.Cjg() // inverts f as paramX is negative.
 }
 
@@ -41,7 +43,7 @@ type line [3]ff.Fp2
 
 // evalLine updates f = f * line(P'), where f lives in Fp12 = Fp6[w]/(w^2-v)
 // and P' is the image of P on the twist curve.
-func evalLine(f *ff.Fp12, l *line, P *G1) {
+func evalLine(f *ff.LineValue, l *line, P *G1) {
 	// Send P \in E to the twist
 	//     E    -->        E'
 	//  (xP,yP) |-> (xP*w^2,yP*w^3) = (xP',yP')
@@ -53,18 +55,10 @@ func evalLine(f *ff.Fp12, l *line, P *G1) {
 	var xP, yP ff.Fp2
 	xP[0] = P.x
 	yP[0] = P.y
-	l[0].Mul(&l[0], &xP)
-	l[1].Mul(&l[1], &yP)
+	f[1].Mul(&l[0], &xP)
+	f[2].Mul(&l[1], &yP)
+	f[0] = l[2]
 
-	// Note that w^2=v and w^6=v^3=ξ, so a generic element
-	//   a0*w^0 + a1*w^1 + a2*w^2 + a3*w^3 + a4*w^4 + a5*w^5 \in Fp12 = Fp2[w]/(w^6-ξ).
-	// is converted to
-	//   (a0+a2*v+a4*v^2) + (a1+a3*v+a5*v^2)w \in Fp12 = Fp6[w]/(w^2-v).
-	//
-	// Apply such transformation to construct f \in Fp12 = Fp6[w]/(w^2-v).
-	f[0][0] = l[2]
-	f[0][1] = l[0]
-	f[1][1] = l[1]
 	if f.IsZero() == 1 {
 		f.SetOne()
 	}

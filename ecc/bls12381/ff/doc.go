@@ -13,6 +13,11 @@
 // The binary representation takes Fp2Size = 96 bytes encoded as a[1] || a[0]
 // all in big-endian form.
 //
+// Fp4
+//
+// Fp4 is GF(p^4)=Fp2[t]/(t^2-(u+1)). We use the repesentation  a[1]v+a[0].
+// There is no fixed external form.
+//
 // Fp6
 //
 // Fp6 are elements of the finite field GF(p^6) = Fp2[v]/(v^3-u-1) represented as
@@ -26,6 +31,9 @@
 //  (a[1]w + a[0]) in Fp12, where a[0],a[1] in Fp6
 // The binary representation takes Fp12Size = 576 bytes encoded as a[1] || a[0]
 // all in big-endian form.
+//
+// We can also represent this field via Fp4[w]/(w^3-t). This is the struct Fp12alt,
+// used to accelerate the pairing calculation.
 //
 // Scalar
 //
