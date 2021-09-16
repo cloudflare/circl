@@ -26,13 +26,13 @@ type vector struct {
 	Vectors  []struct {
 		Batch             int    `json:"Batch"`
 		Blind             string `json:"Blind"`
+		Info              string `json:"Info"`
 		BlindedElement    string `json:"BlindedElement"`
 		EvaluationElement string `json:"EvaluationElement"`
-		EvaluationProof   struct {
-			R string `json:"r"`
-			C string `json:"c"`
-			S string `json:"s"`
-		} `json:"EvaluationProof"`
+		Proof             struct {
+			Proof string `json:"proof"`
+			R     string `json:"r"`
+		} `json:"Proof"`
 		Input  string `json:"Input"`
 		Output string `json:"Output"`
 	} `json:"vectors"`
@@ -139,6 +139,7 @@ func (v *vector) test(t *testing.T) {
 
 	for i, vi := range v.Vectors {
 		inputs := toListBytes(t, vi.Input, "input")
+		info := toBytes(t, vi.Info, "info")
 		blindsBytes := toListBytes(t, vi.Blind, "blind")
 
 		blinds := make([]Blind, len(blindsBytes))
@@ -155,9 +156,9 @@ func (v *vector) test(t *testing.T) {
 			toListBytes(t, vi.BlindedElement, "blindedElement"),
 		)
 
-		rr := toScalar(t, client.suite.Group, vi.EvaluationProof.R, "invalid proof random scalar")
+		rr := toScalar(t, client.suite.Group, vi.Proof.R, "invalid proof random scalar")
 
-		eval, err := server.evaluateWithProofScalar(clientReq.BlindedElements(), rr)
+		eval, err := server.evaluateWithProofScalar(clientReq.BlindedElements(), info, rr)
 		test.CheckNoErr(t, err, "invalid evaluation")
 		v.compareLists(t,
 			eval.Elements,
@@ -165,11 +166,11 @@ func (v *vector) test(t *testing.T) {
 		)
 
 		if v.Mode == VerifiableMode {
-			v.compareStrings(t, hex.EncodeToString(eval.Proof.C), vi.EvaluationProof.C)
-			v.compareStrings(t, hex.EncodeToString(eval.Proof.S), vi.EvaluationProof.S)
+			proof := append(eval.Proof.C, eval.Proof.S...) // proof = C || S
+			v.compareStrings(t, hex.EncodeToString(proof), vi.Proof.Proof)
 		}
 
-		outputs, err := client.Finalize(clientReq, eval)
+		outputs, err := client.Finalize(clientReq, eval, info)
 		test.CheckNoErr(t, err, "invalid finalize")
 		expectedOutputs := toListBytes(t, vi.Output, "output")
 		v.compareLists(t,
@@ -178,7 +179,7 @@ func (v *vector) test(t *testing.T) {
 		)
 
 		for j := range inputs {
-			output, err := server.FullEvaluate(inputs[j])
+			output, err := server.FullEvaluate(inputs[j], info)
 			test.CheckNoErr(t, err, "invalid full evaluate")
 			got := output
 			want := expectedOutputs[j]
@@ -186,7 +187,7 @@ func (v *vector) test(t *testing.T) {
 				test.ReportError(t, got, want, v.Name, v.Mode, i, j)
 			}
 
-			test.CheckOk(server.VerifyFinalize(inputs[j], output), "verify finalize", t)
+			test.CheckOk(server.VerifyFinalize(inputs[j], info, output), "verify finalize", t)
 		}
 	}
 }
@@ -195,7 +196,7 @@ func TestVectors(t *testing.T) {
 	// Source of test vectors
 	// published: https://datatracker.ietf.org/doc/draft-irtf-cfrg-voprf
 	// master: https://github.com/cfrg/draft-irtf-cfrg-voprf
-	v := readFile(t, "testdata/allVectors_v07.json")
+	v := readFile(t, "testdata/allVectors.json")
 
 	for i := range v {
 		id := v[i].ID

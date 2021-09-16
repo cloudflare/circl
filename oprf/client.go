@@ -2,6 +2,7 @@ package oprf
 
 import (
 	"crypto/rand"
+	"encoding/binary"
 	"errors"
 
 	"github.com/cloudflare/circl/group"
@@ -73,23 +74,8 @@ func (c *Client) Request(inputs [][]byte) (*ClientRequest, error) {
 
 func (c *Client) blind(inputs [][]byte, blinds []Blind) (*ClientRequest, error) {
 	blindedElements := make([]group.Element, len(inputs))
-	if c.Mode == BaseMode {
-		c.blindMultiplicative(blindedElements, inputs, blinds)
-	} else if c.Mode == VerifiableMode {
-		c.blindAdditive(blindedElements, inputs, blinds)
-	} else {
-		return nil, ErrUnsupportedSuite
-	}
+	c.blindMultiplicative(blindedElements, inputs, blinds)
 	return &ClientRequest{inputs, blinds, blindedElements}, nil
-}
-
-func (c *Client) blindAdditive(blindedElt []group.Element, inputs [][]byte, blinds []Blind) {
-	for i := range inputs {
-		p := c.suite.Group.HashToElement(inputs[i], c.suite.getDST(hashToGroupDST))
-		blindedElt[i] = c.suite.Group.NewElement()
-		blindedElt[i].MulGen(blinds[i])
-		blindedElt[i].Add(blindedElt[i], p)
-	}
 }
 
 func (c *Client) blindMultiplicative(blindedElt []group.Element, inputs [][]byte, blinds []Blind) {
@@ -103,7 +89,7 @@ func (c *Client) blindMultiplicative(blindedElt []group.Element, inputs [][]byte
 // Finalize computes the signed token from the server Evaluation and returns
 // the output of the OPRF protocol. The function uses server's public key
 // to verify the proof in verifiable mode.
-func (c *Client) Finalize(r *ClientRequest, e *Evaluation) ([][]byte, error) {
+func (c *Client) Finalize(r *ClientRequest, e *Evaluation, info []byte) ([][]byte, error) {
 	l := len(r.blinds)
 	if len(r.elements) != l || len(e.Elements) != l {
 		return nil, errors.New("mismatch number of elements")
@@ -120,7 +106,12 @@ func (c *Client) Finalize(r *ClientRequest, e *Evaluation) ([][]byte, error) {
 	}
 
 	if c.Mode == VerifiableMode {
-		if !c.verifyProof(r.elements, evals, e.Proof) {
+		context := c.evaluationContext(info)
+		m := c.Group.HashToScalar(context, c.getDST(hashToScalarDST))
+		T := c.Group.NewElement().MulGen(m)
+		U := c.Group.NewElement().Add(T, c.pkS.e)
+
+		if !c.verifyProof(c.Group.Generator(), U, evals, r.elements, e.Proof) {
 			return nil, errors.New("invalid proof")
 		}
 	}
@@ -131,18 +122,38 @@ func (c *Client) Finalize(r *ClientRequest, e *Evaluation) ([][]byte, error) {
 	}
 	outputs := make([][]byte, l)
 	for i := 0; i < l; i++ {
-		outputs[i] = c.finalizeHash(r.inputs[i], unblindedElements[i])
+		outputs[i] = c.finalizeHash(r.inputs[i], info, unblindedElements[i])
 	}
 	return outputs, nil
 }
 
-func (c *Client) verifyProof(blinds []group.Element, elements []group.Element, proof *Proof) bool {
-	pkSm, err := c.pkS.Serialize()
+func (c *Client) verifyProof(A, B group.Element, Cs, Ds []group.Element, proof *Proof) bool {
+	M, Z, err := c.computeComposites(nil, B, Cs, Ds)
 	if err != nil {
 		return false
 	}
 
-	M, Z, err := c.computeComposites(nil, c.pkS.e, blinds, elements)
+	ss := c.suite.Group.NewScalar()
+	err = ss.UnmarshalBinary(proof.S)
+	if err != nil {
+		return false
+	}
+
+	cc := c.suite.Group.NewScalar()
+	err = cc.UnmarshalBinary(proof.C)
+	if err != nil {
+		return false
+	}
+
+	sA := c.Group.NewElement().Mul(A, ss)
+	cB := c.Group.NewElement().Mul(B, cc)
+	t2 := c.Group.NewElement().Add(sA, cB)
+
+	sM := c.Group.NewElement().Mul(M, ss)
+	cZ := c.Group.NewElement().Mul(Z, cc)
+	t3 := c.Group.NewElement().Add(sM, cZ)
+
+	Bm, err := B.MarshalBinaryCompress()
 	if err != nil {
 		return false
 	}
@@ -155,50 +166,27 @@ func (c *Client) verifyProof(blinds []group.Element, elements []group.Element, p
 	if err != nil {
 		return false
 	}
-
-	sG := c.suite.Group.NewElement()
-	ss := c.suite.Group.NewScalar()
-	err = ss.UnmarshalBinary(proof.S)
+	a2, err := t2.MarshalBinaryCompress()
 	if err != nil {
 		return false
 	}
-	sG.MulGen(ss)
-
-	cP := c.suite.Group.NewElement()
-	cc := c.suite.Group.NewScalar()
-	err = cc.UnmarshalBinary(proof.C)
-	if err != nil {
-		return false
-	}
-	cP.Mul(c.pkS.e, cc)
-	sG.Add(sG, cP)
-	a2, err := sG.MarshalBinaryCompress()
+	a3, err := t3.MarshalBinaryCompress()
 	if err != nil {
 		return false
 	}
 
-	sM := c.suite.Group.NewElement()
-	sM.Mul(M, ss)
-	cZ := c.suite.Group.NewElement()
-	cZ.Mul(Z, cc)
-	sM.Add(sM, cZ)
-	a3, err := sM.MarshalBinaryCompress()
-	if err != nil {
-		return false
-	}
-
-	gotC := c.doChallenge([5][]byte{pkSm, a0, a1, a2, a3})
+	gotC := c.doChallenge([5][]byte{Bm, a0, a1, a2, a3})
 	return gotC.IsEqual(cc)
 }
 
 func (c *Client) unblind(blindedElt []group.Element, blind []Blind) ([]UnBlinded, error) {
-	if c.Mode == BaseMode {
-		return c.unblindMultiplicative(blindedElt, blind)
-	} else if c.Mode == VerifiableMode {
-		return c.unblindAdditive(blindedElt, blind)
-	} else {
-		panic(ErrUnsupportedSuite)
-	}
+	return c.unblindMultiplicative(blindedElt, blind)
+}
+
+func (c *Client) evaluationContext(info []byte) []byte {
+	lenBuf := []byte{0, 0}
+	binary.BigEndian.PutUint16(lenBuf, uint16(len(info)))
+	return append(append(c.getDST(contextDST), lenBuf...), info...)
 }
 
 func (c *Client) unblindMultiplicative(blindedElt []group.Element, blind []Blind) ([]UnBlinded, error) {
@@ -210,23 +198,6 @@ func (c *Client) unblindMultiplicative(blindedElt []group.Element, blind []Blind
 	for i := range blindedElt {
 		invBlind.Inv(blind[i])
 		U.Mul(blindedElt[i], invBlind)
-		unblindedElt[i], err = U.MarshalBinaryCompress()
-		if err != nil {
-			return nil, err
-		}
-	}
-	return unblindedElt, err
-}
-
-func (c *Client) unblindAdditive(blindedElt []group.Element, blind []Blind) ([]UnBlinded, error) {
-	var err error
-	unblindedElt := make([]UnBlinded, len(blindedElt))
-	U := c.Group.NewElement()
-
-	for i := range blindedElt {
-		U.Mul(c.pkS.e, blind[i])
-		U.Neg(U)
-		U.Add(U, blindedElt[i])
 		unblindedElt[i], err = U.MarshalBinaryCompress()
 		if err != nil {
 			return nil, err
