@@ -3,6 +3,7 @@ package oprf
 import (
 	"crypto/rand"
 	"crypto/subtle"
+	"encoding/binary"
 	"errors"
 
 	"github.com/cloudflare/circl/group"
@@ -47,18 +48,29 @@ func newServer(id SuiteID, m Mode, skS *PrivateKey) (*Server, error) {
 func (s *Server) GetPublicKey() *PublicKey { return s.privateKey.Public() }
 
 // Evaluate evaluates a set of blinded inputs from the client.
-func (s *Server) Evaluate(blindedElements []Blinded) (*Evaluation, error) {
+func (s *Server) Evaluate(blindedElements []Blinded, info []byte) (*Evaluation, error) {
 	rr := s.suite.Group.RandomScalar(rand.Reader)
-	return s.evaluateWithProofScalar(blindedElements, rr)
+	return s.evaluateWithProofScalar(blindedElements, info, rr)
+}
+
+func (s *Server) evaluationContext(info []byte) []byte {
+	lenBuf := []byte{0, 0}
+	binary.BigEndian.PutUint16(lenBuf, uint16(len(info)))
+	return append(append(s.getDST(contextDST), lenBuf...), info...)
 }
 
 // Evaluate evaluates a set of blinded inputs from the client using a fixed
 // random scalar for proof generation
-func (s *Server) evaluateWithProofScalar(blindedElements []Blinded, proofScalar group.Scalar) (*Evaluation, error) {
+func (s *Server) evaluateWithProofScalar(blindedElements []Blinded, info []byte, proofScalar group.Scalar) (*Evaluation, error) {
 	l := len(blindedElements)
 	if l == 0 {
 		return nil, errors.New("no elements to evaluate")
 	}
+
+	context := s.evaluationContext(info)
+	m := s.Group.HashToScalar(context, s.getDST(hashToScalarDST))
+	t := s.Group.NewScalar().Add(s.privateKey.k, m)
+	tInv := s.Group.NewScalar().Inv(t)
 
 	var err error
 	input := make([]group.Element, l)
@@ -73,7 +85,7 @@ func (s *Server) evaluateWithProofScalar(blindedElements []Blinded, proofScalar 
 		}
 
 		eval[i] = s.Group.NewElement()
-		eval[i].Mul(input[i], s.privateKey.k)
+		eval[i].Mul(input[i], tInv)
 
 		out[i], err = eval[i].MarshalBinaryCompress()
 		if err != nil {
@@ -83,7 +95,8 @@ func (s *Server) evaluateWithProofScalar(blindedElements []Blinded, proofScalar 
 
 	var proof *Proof
 	if s.Mode == VerifiableMode {
-		proof, err = s.generateProofWithRandomScalar(s.privateKey.k, s.Generator(), s.privateKey.Public().e, input, eval, proofScalar)
+		U := s.Group.NewElement().MulGen(t)
+		proof, err = s.generateProofWithRandomScalar(t, s.Group.Generator(), U, eval, input, proofScalar)
 		if err != nil {
 			return nil, err
 		}
@@ -93,20 +106,24 @@ func (s *Server) evaluateWithProofScalar(blindedElements []Blinded, proofScalar 
 }
 
 // FullEvaluate performs a full OPRF protocol at server-side.
-func (s *Server) FullEvaluate(input []byte) ([]byte, error) {
+func (s *Server) FullEvaluate(input, info []byte) ([]byte, error) {
 	p := s.Group.HashToElement(input, s.getDST(hashToGroupDST))
-	p.Mul(p, s.privateKey.k)
+	context := s.evaluationContext(info)
+	m := s.Group.HashToScalar(context, s.getDST(hashToScalarDST))
+	t := s.Group.NewScalar().Add(s.privateKey.k, m)
+	tInv := s.Group.NewScalar().Inv(t)
+	p.Mul(p, tInv)
 	ser, err := p.MarshalBinaryCompress()
 	if err != nil {
 		return nil, err
 	}
-	return s.finalizeHash(input, ser), nil
+	return s.finalizeHash(input, info, ser), nil
 }
 
 // VerifyFinalize performs a full OPRF protocol and returns true if the output
 // matches the expected output.
-func (s *Server) VerifyFinalize(input, expectedOutput []byte) bool {
-	gotOutput, err := s.FullEvaluate(input)
+func (s *Server) VerifyFinalize(input, info, expectedOutput []byte) bool {
+	gotOutput, err := s.FullEvaluate(input, info)
 	if err != nil {
 		return false
 	}
@@ -120,15 +137,6 @@ func (s *Server) generateProofWithRandomScalar(k group.Scalar, A, B group.Elemen
 	}
 
 	Bm, err := B.MarshalBinaryCompress()
-	if err != nil {
-		return nil, err
-	}
-
-	a0, err := M.MarshalBinaryCompress()
-	if err != nil {
-		return nil, err
-	}
-	a1, err := Z.MarshalBinaryCompress()
 	if err != nil {
 		return nil, err
 	}
@@ -147,9 +155,18 @@ func (s *Server) generateProofWithRandomScalar(k group.Scalar, A, B group.Elemen
 		return nil, err
 	}
 
+	a0, err := M.MarshalBinaryCompress()
+	if err != nil {
+		return nil, err
+	}
+	a1, err := Z.MarshalBinaryCompress()
+	if err != nil {
+		return nil, err
+	}
+
 	cc := s.doChallenge([5][]byte{Bm, a0, a1, a2, a3})
 	ss := s.suite.Group.NewScalar()
-	ss.Mul(cc, s.privateKey.k)
+	ss.Mul(cc, k)
 	ss.Sub(rr, ss)
 
 	serC, err := cc.MarshalBinary()

@@ -26,6 +26,7 @@ import (
 const (
 	version         = "VOPRF07-"
 	seedDST         = "Seed-"
+	contextDST      = "Context-"
 	challengeDST    = "Challenge-"
 	finalizeDST     = "Finalize-"
 	compositeDST    = "Composite-"
@@ -124,7 +125,7 @@ func (s *suite) getDST(name string) []byte {
 		[]byte{s.Mode, 0, byte(s.SuiteID)}...)
 }
 
-func (s *suite) finalizeHash(input, element []byte) []byte {
+func (s *suite) finalizeHash(input, info, element []byte) []byte {
 	h := s.New()
 
 	lenBuf := []byte{0, 0}
@@ -132,6 +133,10 @@ func (s *suite) finalizeHash(input, element []byte) []byte {
 	binary.BigEndian.PutUint16(lenBuf, uint16(len(input)))
 	mustWrite(h, lenBuf)
 	mustWrite(h, input)
+
+	binary.BigEndian.PutUint16(lenBuf, uint16(len(info)))
+	mustWrite(h, lenBuf)
+	mustWrite(h, info)
 
 	binary.BigEndian.PutUint16(lenBuf, uint16(len(element)))
 	mustWrite(h, lenBuf)
