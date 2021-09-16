@@ -1,4 +1,4 @@
-// Package eddilithium3 implements the hybrid signature scheme Ed25519-Dilithium3.
+// Package eddilithium3 implements the hybrid signature scheme Ed448-Dilithium3.
 package eddilithium3
 
 import (
@@ -10,32 +10,32 @@ import (
 	"github.com/cloudflare/circl/internal/sha3"
 	"github.com/cloudflare/circl/sign"
 	"github.com/cloudflare/circl/sign/dilithium/mode3"
-	"github.com/cloudflare/circl/sign/ed25519"
+	"github.com/cloudflare/circl/sign/ed448"
 )
 
 const (
 	// SeedSize is the length of the seed for NewKeyFromSeed
-	SeedSize = mode3.SeedSize // = ed25519.SeedSize = 32
+	SeedSize = ed448.SeedSize // > mode3.SeedSize
 
 	// PublicKeySize is the length in bytes of the packed public key.
-	PublicKeySize = mode3.PublicKeySize + ed25519.PublicKeySize
+	PublicKeySize = mode3.PublicKeySize + ed448.PublicKeySize
 
 	// PrivateKeySize is the length in bytes of the packed public key.
-	PrivateKeySize = mode3.PrivateKeySize + ed25519.SeedSize
+	PrivateKeySize = mode3.PrivateKeySize + ed448.SeedSize
 
 	// SignatureSize is the length in bytes of the signatures.
-	SignatureSize = mode3.SignatureSize + ed25519.SignatureSize
+	SignatureSize = mode3.SignatureSize + ed448.SignatureSize
 )
 
 // PublicKey is the type of an EdDilithium3 public key.
 type PublicKey struct {
-	e ed25519.PublicKey
+	e ed448.PublicKey
 	d mode3.PublicKey
 }
 
 // PrivateKey is the type of an EdDilithium3 private key.
 type PrivateKey struct {
-	e ed25519.PrivateKey
+	e ed448.PrivateKey
 	d mode3.PrivateKey
 }
 
@@ -58,23 +58,16 @@ func GenerateKey(rand io.Reader) (*PublicKey, *PrivateKey, error) {
 // NewKeyFromSeed derives a public/private key pair using the given seed.
 func NewKeyFromSeed(seed *[SeedSize]byte) (*PublicKey, *PrivateKey) {
 	var seed1 [32]byte
-	var seed2 [ed25519.SeedSize]byte
-
-	// Internally, Ed25519 and Dilithium hash the seeds they are passed again
-	// with different hash functions, so it would be safe to use exactly the
-	// same seed for Ed25519 and Dilithium here.  However, in general, when
-	// combining any two signature schemes it might not be the case that this
-	// is safe.  Setting a bad example here isn't worth the tiny gain in
-	// performance.
+	var seed2 [ed448.SeedSize]byte
 
 	h := sha3.NewShake256()
 	_, _ = h.Write(seed[:])
 	_, _ = h.Read(seed1[:])
 	_, _ = h.Read(seed2[:])
 	dpk, dsk := mode3.NewKeyFromSeed(&seed1)
-	esk := ed25519.NewKeyFromSeed(seed2[:])
+	esk := ed448.NewKeyFromSeed(seed2[:])
 
-	return &PublicKey{esk.Public().(ed25519.PublicKey), *dpk}, &PrivateKey{esk, *dsk}
+	return &PublicKey{esk.Public().(ed448.PublicKey), *dpk}, &PrivateKey{esk, *dsk}
 }
 
 // SignTo signs the given message and writes the signature into signature.
@@ -85,9 +78,10 @@ func SignTo(sk *PrivateKey, msg []byte, signature []byte) {
 		msg,
 		signature[:mode3.SignatureSize],
 	)
-	esig := ed25519.Sign(
+	esig := ed448.Sign(
 		sk.e,
 		msg,
+		"",
 	)
 	copy(signature[mode3.SignatureSize:], esig[:])
 }
@@ -101,10 +95,11 @@ func Verify(pk *PublicKey, msg []byte, signature []byte) bool {
 	) {
 		return false
 	}
-	if !ed25519.Verify(
+	if !ed448.Verify(
 		pk.e,
 		msg,
 		signature[mode3.SignatureSize:],
+		"",
 	) {
 		return false
 	}
@@ -116,7 +111,7 @@ func (pk *PublicKey) Unpack(buf *[PublicKeySize]byte) {
 	var tmp [mode3.PublicKeySize]byte
 	copy(tmp[:], buf[:mode3.PublicKeySize])
 	pk.d.Unpack(&tmp)
-	pk.e = make([]byte, ed25519.PublicKeySize)
+	pk.e = make([]byte, ed448.PublicKeySize)
 	copy(pk.e, buf[mode3.PublicKeySize:])
 }
 
@@ -125,7 +120,7 @@ func (sk *PrivateKey) Unpack(buf *[PrivateKeySize]byte) {
 	var tmp [mode3.PrivateKeySize]byte
 	copy(tmp[:], buf[:mode3.PrivateKeySize])
 	sk.d.Unpack(&tmp)
-	sk.e = ed25519.NewKeyFromSeed(buf[mode3.PrivateKeySize:])
+	sk.e = ed448.NewKeyFromSeed(buf[mode3.PrivateKeySize:])
 }
 
 // Pack packs the public key into buf.
@@ -167,7 +162,7 @@ func (sk *PrivateKey) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary the public key from data.
 func (pk *PublicKey) UnmarshalBinary(data []byte) error {
 	if len(data) != PublicKeySize {
-		return errors.New("packed public key must be of eddilithium3.PublicKeySize bytes")
+		return errors.New("packed public key must be of eddilithium4.PublicKeySize bytes")
 	}
 	var buf [PublicKeySize]byte
 	copy(buf[:], data)
@@ -178,7 +173,7 @@ func (pk *PublicKey) UnmarshalBinary(data []byte) error {
 // UnmarshalBinary unpacks the private key from data.
 func (sk *PrivateKey) UnmarshalBinary(data []byte) error {
 	if len(data) != PrivateKeySize {
-		return errors.New("packed private key must be of eddilithium3.PrivateKeySize bytes")
+		return errors.New("packed private key must be of eddilithium4.PrivateKeySize bytes")
 	}
 	var buf [PrivateKeySize]byte
 	copy(buf[:], data)
@@ -219,7 +214,7 @@ func (sk *PrivateKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) (
 	var sig [SignatureSize]byte
 
 	if opts.HashFunc() != crypto.Hash(0) {
-		return nil, errors.New("eddilithium3: cannot sign hashed message")
+		return nil, errors.New("eddilithium4: cannot sign hashed message")
 	}
 
 	SignTo(sk, msg, sig[:])
@@ -232,7 +227,7 @@ func (sk *PrivateKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) (
 // PrivateKey implement the crypto.Signer interface.
 func (sk *PrivateKey) Public() crypto.PublicKey {
 	return &PublicKey{
-		sk.e.Public().(ed25519.PublicKey),
+		sk.e.Public().(ed448.PublicKey),
 		*sk.d.Public().(*mode3.PublicKey),
 	}
 }

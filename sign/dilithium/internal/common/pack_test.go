@@ -32,11 +32,3 @@ func BenchmarkPackLe16Generic(b *testing.B) {
 		p.packLe16Generic(buf[:])
 	}
 }
-
-func BenchmarkUnpackLeGamma1(b *testing.B) {
-	var p Poly
-	var buf [PolyLeGamma1Size]byte
-	for i := 0; i < b.N; i++ {
-		p.UnpackLeGamma1(buf[:])
-	}
-}

@@ -23,9 +23,9 @@ func NewAesStream128(key *[32]byte, nonce uint16) AesStream {
 // Create a new AesStream as a replacement of SHAKE256.  (Note that
 // not all occurrences of SHAKE are replaced by AES in the AES-variants.)
 //
-// Yes, in an AES mode, Dilithium throws away the last 16 bytes of a seed ...
+// Yes, in an AES mode, Dilithium throws away the last 32 bytes of a seed ...
 // See the remark at the end of the caption of Figure 4 in the Round 2 spec.
-func NewAesStream256(key *[48]byte, nonce uint16) AesStream {
+func NewAesStream256(key *[64]byte, nonce uint16) AesStream {
 	c, _ := aes.NewCipher(key[:32])
 	return AesStream{c: c, nonce: nonce}
 }

@@ -13,6 +13,30 @@ const (
 	// Size of a packed polynomial of norm ≤η.
 	// (Note that the  formula is not valid in general.)
 	PolyLeqEtaSize = (common.N * DoubleEtaBits) / 8
+
+	// β = τη, the maximum size of c s₂.
+	Beta = Tau * Eta
+
+	// γ₁ range of y
+	Gamma1 = 1 << Gamma1Bits
+
+	// Size of packed polynomial of norm <γ₁ such as z
+	PolyLeGamma1Size = (Gamma1Bits + 1) * common.N / 8
+
+	// α = 2γ₂ parameter for decompose
+	Alpha = 2 * Gamma2
+
+	// Size of a packed private key
+	PrivateKeySize = 32 + 32 + 32 + PolyLeqEtaSize*(L+K) + common.PolyT0Size*K
+
+	// Size of a packed public key
+	PublicKeySize = 32 + common.PolyT1Size*K
+
+	// Size of a packed signature
+	SignatureSize = L*PolyLeGamma1Size + Omega + K + 32
+
+	// Size of packed w₁
+	PolyW1Size = (common.N * (common.QBits - Gamma1Bits)) / 8
 )
 
 // PublicKey is the type of Dilithium public keys.
@@ -23,7 +47,7 @@ type PublicKey struct {
 	// Cached values
 	t1p [common.PolyT1Size * K]byte
 	A   *Mat
-	tr  *[48]byte
+	tr  *[32]byte
 }
 
 // PrivateKey is the type of Dilithium private keys.
@@ -33,7 +57,7 @@ type PrivateKey struct {
 	s1  VecL
 	s2  VecK
 	t0  VecK
-	tr  [48]byte
+	tr  [32]byte
 
 	// Cached values
 	A   Mat  // ExpandA(ρ)
@@ -45,14 +69,14 @@ type PrivateKey struct {
 type unpackedSignature struct {
 	z    VecL
 	hint VecK
-	c    common.Poly
+	c    [32]byte
 }
 
 // Packs the signature into buf.
 func (sig *unpackedSignature) Pack(buf []byte) {
-	sig.z.PackLeGamma1(buf[:])
-	sig.hint.PackHint(buf[L*common.PolyLeGamma1Size:])
-	sig.c.PackB60(buf[L*common.PolyLeGamma1Size+Omega+K:])
+	copy(buf[:], sig.c[:])
+	sig.z.PackLeGamma1(buf[32:])
+	sig.hint.PackHint(buf[32+L*PolyLeGamma1Size:])
 }
 
 // Sets sig to the signature encoded in the buffer.
@@ -62,14 +86,14 @@ func (sig *unpackedSignature) Unpack(buf []byte) bool {
 	if len(buf) < SignatureSize {
 		return false
 	}
-	sig.z.UnpackLeGamma1(buf[:])
-	if sig.z.Exceeds(common.Gamma1 - Beta) {
+	copy(sig.c[:], buf[:])
+	sig.z.UnpackLeGamma1(buf[32:])
+	if sig.z.Exceeds(Gamma1 - Beta) {
 		return false
 	}
-	if !sig.hint.UnpackHint(buf[L*common.PolyLeGamma1Size:]) {
+	if !sig.hint.UnpackHint(buf[32+L*PolyLeGamma1Size:]) {
 		return false
 	}
-	sig.c.UnpackB60(buf[L*common.PolyLeGamma1Size+Omega+K:])
 	return true
 }
 
@@ -89,7 +113,7 @@ func (pk *PublicKey) Unpack(buf *[PublicKeySize]byte) {
 	pk.A.Derive(&pk.rho)
 
 	// tr = CRH(ρ ‖ t1) = CRH(pk)
-	pk.tr = new([48]byte)
+	pk.tr = new([32]byte)
 	h := sha3.NewShake256()
 	_, _ = h.Write(buf[:])
 	_, _ = h.Read(pk.tr[:])
@@ -99,8 +123,8 @@ func (pk *PublicKey) Unpack(buf *[PublicKeySize]byte) {
 func (sk *PrivateKey) Pack(buf *[PrivateKeySize]byte) {
 	copy(buf[:32], sk.rho[:])
 	copy(buf[32:64], sk.key[:])
-	copy(buf[64:112], sk.tr[:])
-	offset := 112
+	copy(buf[64:96], sk.tr[:])
+	offset := 96
 	sk.s1.PackLeqEta(buf[offset:])
 	offset += PolyLeqEtaSize * L
 	sk.s2.PackLeqEta(buf[offset:])
@@ -112,8 +136,8 @@ func (sk *PrivateKey) Pack(buf *[PrivateKeySize]byte) {
 func (sk *PrivateKey) Unpack(buf *[PrivateKeySize]byte) {
 	copy(sk.rho[:], buf[:32])
 	copy(sk.key[:], buf[32:64])
-	copy(sk.tr[:], buf[64:112])
-	offset := 112
+	copy(sk.tr[:], buf[64:96])
+	offset := 96
 	sk.s1.UnpackLeqEta(buf[offset:])
 	offset += PolyLeqEtaSize * L
 	sk.s2.UnpackLeqEta(buf[offset:])
@@ -145,19 +169,20 @@ func GenerateKey(rand io.Reader) (*PublicKey, *PrivateKey, error) {
 	return pk, sk, nil
 }
 
-// NewKeyFromExpandedSeed derives a public/private key pair using the
-// given expanded seed.
-//
-// Use NewKeyFromSeed instead of this function.  This function is only exposed
-// to generate the NIST KAT test vectors.
-func NewKeyFromExpandedSeed(seed *[96]byte) (*PublicKey, *PrivateKey) {
+// NewKeyFromSeed derives a public/private key pair using the given seed.
+func NewKeyFromSeed(seed *[common.SeedSize]byte) (*PublicKey, *PrivateKey) {
+	var eSeed [128]byte // expanded seed
 	var pk PublicKey
 	var sk PrivateKey
-	var sSeed [32]byte
+	var sSeed [64]byte
 
-	copy(pk.rho[:], seed[:32])
-	copy(sSeed[:], seed[32:64])
-	copy(sk.key[:], seed[64:])
+	h := sha3.NewShake256()
+	_, _ = h.Write(seed[:])
+	_, _ = h.Read(eSeed[:])
+
+	copy(pk.rho[:], eSeed[:32])
+	copy(sSeed[:], eSeed[32:96])
+	copy(sk.key[:], eSeed[96:])
 	copy(sk.rho[:], pk.rho[:])
 
 	sk.A.Derive(&pk.rho)
@@ -189,7 +214,7 @@ func NewKeyFromExpandedSeed(seed *[96]byte) (*PublicKey, *PrivateKey) {
 	pk.Pack(&packedPk)
 
 	// tr = CRH(ρ ‖ t1) = CRH(pk)
-	h := sha3.NewShake256()
+	h.Reset()
 	_, _ = h.Write(packedPk[:])
 	_, _ = h.Read(sk.tr[:])
 
@@ -216,22 +241,15 @@ func (sk *PrivateKey) computeT0andT1(t0, t1 *VecK) {
 	t.Power2Round(t0, t1)
 }
 
-// NewKeyFromSeed derives a public/private key pair using the given seed.
-func NewKeyFromSeed(seed *[common.SeedSize]byte) (*PublicKey, *PrivateKey) {
-	var buf [96]byte
-	h := sha3.NewShake256()
-	_, _ = h.Write(seed[:])
-	_, _ = h.Read(buf[:])
-	return NewKeyFromExpandedSeed(&buf)
-}
-
 // Verify checks whether the given signature by pk on msg is valid.
 func Verify(pk *PublicKey, msg []byte, signature []byte) bool {
 	var sig unpackedSignature
-	var mu [48]byte
+	var mu [64]byte
 	var zh VecL
 	var Az, Az2dct1, w1 VecK
-	var ch, cp common.Poly
+	var ch common.Poly
+	var cp [32]byte
+	var w1Packed [PolyW1Size * K]byte
 
 	// Note that Unpack() checked whether ‖z‖_∞ < γ₁ - β
 	// and ensured that there at most ω ones in pk.hint.
@@ -259,7 +277,7 @@ func Verify(pk *PublicKey, msg []byte, signature []byte) bool {
 	// which is small enough for NTT().
 	Az2dct1.MulBy2toD(&pk.t1)
 	Az2dct1.NTT()
-	ch = sig.c
+	PolyDeriveUniformBall(&ch, &sig.c)
 	ch.NTT()
 	for i := 0; i < K; i++ {
 		Az2dct1[i].MulHat(&Az2dct1[i], &ch)
@@ -274,15 +292,23 @@ func Verify(pk *PublicKey, msg []byte, signature []byte) bool {
 	//    = UseHint(pk.hint, r + c·t₀)
 	//    = r₁ = w₁.
 	w1.UseHint(&Az2dct1, &sig.hint)
+	w1.PackW1(w1Packed[:])
 
 	// c' = H(μ, w₁)
-	PolyDeriveUniformB60(&cp, &mu, &w1)
+	h.Reset()
+	_, _ = h.Write(mu[:])
+	_, _ = h.Write(w1Packed[:])
+	_, _ = h.Read(cp[:])
+
 	return sig.c == cp
 }
 
 // SignTo signs the given message and writes the signature into signature.
+//
+//nolint:funlen
 func SignTo(sk *PrivateKey, msg []byte, signature []byte) {
-	var mu, rhop [48]byte
+	var mu, rhop [64]byte
+	var w1Packed [PolyW1Size * K]byte
 	var y, yh VecL
 	var w, w0, w1, w0mcs2, ct0, w0mcs2pct0 VecK
 	var ch common.Poly
@@ -299,7 +325,7 @@ func SignTo(sk *PrivateKey, msg []byte, signature []byte) {
 	_, _ = h.Write(msg)
 	_, _ = h.Read(mu[:])
 
-	// ρ' = CRH(μ ‖ key)
+	// ρ' = CRH(key ‖ μ)
 	h.Reset()
 	_, _ = h.Write(sk.key[:])
 	_, _ = h.Write(mu[:])
@@ -333,9 +359,14 @@ func SignTo(sk *PrivateKey, msg []byte, signature []byte) {
 		w.NormalizeAssumingLe2Q()
 		w.Decompose(&w0, &w1)
 
-		// c = H(μ, w₁)
-		PolyDeriveUniformB60(&sig.c, &mu, &w1)
-		ch = sig.c
+		// c~ = H(μ ‖ w₁)
+		w1.PackW1(w1Packed[:])
+		h.Reset()
+		_, _ = h.Write(mu[:])
+		_, _ = h.Write(w1Packed[:])
+		_, _ = h.Read(sig.c[:])
+
+		PolyDeriveUniformBall(&ch, &sig.c)
 		ch.NTT()
 
 		// Ensure ‖ w₀ - c·s2 ‖_∞ < γ₂ - β.
@@ -351,7 +382,7 @@ func SignTo(sk *PrivateKey, msg []byte, signature []byte) {
 		w0mcs2.Sub(&w0, &w0mcs2)
 		w0mcs2.Normalize()
 
-		if w0mcs2.Exceeds(common.Gamma2 - Beta) {
+		if w0mcs2.Exceeds(Gamma2 - Beta) {
 			continue
 		}
 
@@ -364,7 +395,7 @@ func SignTo(sk *PrivateKey, msg []byte, signature []byte) {
 		sig.z.Normalize()
 
 		// Ensure  ‖z‖_∞ < γ₁ - β
-		if sig.z.Exceeds(common.Gamma1 - Beta) {
+		if sig.z.Exceeds(Gamma1 - Beta) {
 			continue
 		}
 
@@ -376,7 +407,7 @@ func SignTo(sk *PrivateKey, msg []byte, signature []byte) {
 		ct0.NormalizeAssumingLe2Q()
 
 		// Ensure ‖c·t₀‖_∞ < γ₂.
-		if ct0.Exceeds(common.Gamma2) {
+		if ct0.Exceeds(Gamma2) {
 			continue
 		}
 

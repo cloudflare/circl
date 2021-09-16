@@ -9,7 +9,7 @@ type Poly [N]uint32
 // Reduces each of the coefficients to <2q.
 func (p *Poly) reduceLe2QGeneric() {
 	for i := uint(0); i < N; i++ {
-		p[i] = reduceLe2Q(p[i])
+		p[i] = ReduceLe2Q(p[i])
 	}
 }
 
@@ -70,15 +70,6 @@ func (p *Poly) exceedsGeneric(bound uint32) bool {
 	return false
 }
 
-// Splits each of the coefficients using decompose.
-//
-// Requires p to be normalized.
-func (p *Poly) decomposeGeneric(p0PlusQ, p1 *Poly) {
-	for i := 0; i < N; i++ {
-		p0PlusQ[i], p1[i] = decompose(p[i])
-	}
-}
-
 // Splits p into p1 and p0 such that [i]p1 * 2ᴰ + [i]p0 = [i]p
 // with -2ᴰ⁻¹ < [i]p0 ≤ 2ᴰ⁻¹.  Returns p0 + Q and p1.
 //
@@ -87,44 +78,6 @@ func (p *Poly) Power2Round(p0PlusQ, p1 *Poly) {
 	for i := 0; i < N; i++ {
 		p0PlusQ[i], p1[i] = power2round(p[i])
 	}
-}
-
-// Sets p to the hint polynomial for p0 the modified low bits and p1
-// the unmodified high bits --- see makeHint().
-//
-// Returns the number of ones in the hint polynomial.
-func (p *Poly) makeHintGeneric(p0, p1 *Poly) (pop uint32) {
-	for i := 0; i < N; i++ {
-		h := makeHint(p0[i], p1[i])
-		pop += h
-		p[i] = h
-	}
-	return
-}
-
-// Computes corrections to the high bits of the polynomial q according
-// to the hints in h and sets p to the corrected high bits.  Returns p.
-func (p *Poly) UseHint(q, hint *Poly) *Poly {
-	var q0PlusQ Poly
-
-	// See useHint() and makeHint() for an explanation.  We reimplement it
-	// here so that we can call Poly.Decompose(), which might be way faster
-	// than calling decompose() in a loop (for instance when having AVX2.)
-
-	q.Decompose(&q0PlusQ, p)
-
-	for i := 0; i < N; i++ {
-		if hint[i] == 0 {
-			continue
-		}
-		if q0PlusQ[i] > Q {
-			p[i] = (p[i] + 1) & 15
-		} else {
-			p[i] = (p[i] - 1) & 15
-		}
-	}
-
-	return p
 }
 
 // Sets p to the polynomial whose coefficients are the pointwise multiplication

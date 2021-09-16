@@ -25,11 +25,6 @@ func (m *{{ .Impl }}) GenerateKey(rand io.Reader) (
 	return {{ .Pkg }}.GenerateKey(rand)
 }
 
-func (m *{{ .Impl }}) NewKeyFromExpandedSeed(seed *[96]byte) (PublicKey,
-	PrivateKey) {
-	return {{ .Pkg }}.NewKeyFromExpandedSeed(seed)
-}
-
 func (m *{{ .Impl }}) NewKeyFromSeed(seed []byte) (PublicKey,
 	PrivateKey) {
 	if len(seed) != common.SeedSize {

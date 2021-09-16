@@ -3,8 +3,8 @@
 // Implemented schemes:
 //  Ed25519
 //  Ed448
-//  Ed25519-Dilithium3
-//  Ed448-Dilithium4
+//  Ed25519-Dilithium2
+//  Ed448-Dilithium3
 package schemes
 
 import (
@@ -13,15 +13,15 @@ import (
 	"github.com/cloudflare/circl/sign"
 	"github.com/cloudflare/circl/sign/ed25519"
 	"github.com/cloudflare/circl/sign/ed448"
+	"github.com/cloudflare/circl/sign/eddilithium2"
 	"github.com/cloudflare/circl/sign/eddilithium3"
-	"github.com/cloudflare/circl/sign/eddilithium4"
 )
 
 var allSchemes = [...]sign.Scheme{
 	ed25519.Scheme(),
 	ed448.Scheme(),
+	eddilithium2.Scheme(),
 	eddilithium3.Scheme(),
-	eddilithium4.Scheme(),
 }
 
 var allSchemeNames map[string]sign.Scheme

@@ -44,7 +44,7 @@ func PolyPackLeqEta(p *common.Poly, buf []byte) {
 // Output coefficients of p are not normalized, but in [q-η,q+η] provided
 // buf was created using PackLeqEta.
 //
-// Beware, for arbitrary buf the coefficients of p might en up in
+// Beware, for arbitrary buf the coefficients of p might end up in
 // the interval [q-2^b,q+2^b] where b is the least b with η≤2^b.
 func PolyUnpackLeqEta(p *common.Poly, buf []byte) {
 	if DoubleEtaBits == 4 { // compiler eliminates branch
@@ -138,4 +138,133 @@ func (v *VecK) UnpackHint(buf []byte) bool {
 	}
 
 	return true
+}
+
+// Sets p to the polynomial packed into buf by PolyPackLeGamma1.
+//
+// p will be normalized.
+func PolyUnpackLeGamma1(p *common.Poly, buf []byte) {
+	if Gamma1Bits == 17 {
+		j := 0
+		for i := 0; i < PolyLeGamma1Size; i += 9 {
+			p0 := uint32(buf[i]) | (uint32(buf[i+1]) << 8) |
+				(uint32(buf[i+2]&0x3) << 16)
+			p1 := uint32(buf[i+2]>>2) | (uint32(buf[i+3]) << 6) |
+				(uint32(buf[i+4]&0xf) << 14)
+			p2 := uint32(buf[i+4]>>4) | (uint32(buf[i+5]) << 4) |
+				(uint32(buf[i+6]&0x3f) << 12)
+			p3 := uint32(buf[i+6]>>6) | (uint32(buf[i+7]) << 2) |
+				(uint32(buf[i+8]) << 10)
+
+			// coefficients in [0,…,2γ₁)
+			p0 = Gamma1 - p0 // (-γ₁,…,γ₁]
+			p1 = Gamma1 - p1
+			p2 = Gamma1 - p2
+			p3 = Gamma1 - p3
+
+			p0 += uint32(int32(p0)>>31) & common.Q // normalize
+			p1 += uint32(int32(p1)>>31) & common.Q
+			p2 += uint32(int32(p2)>>31) & common.Q
+			p3 += uint32(int32(p3)>>31) & common.Q
+
+			p[j] = p0
+			p[j+1] = p1
+			p[j+2] = p2
+			p[j+3] = p3
+
+			j += 4
+		}
+	} else if Gamma1Bits == 19 {
+		j := 0
+		for i := 0; i < PolyLeGamma1Size; i += 5 {
+			p0 := uint32(buf[i]) | (uint32(buf[i+1]) << 8) |
+				(uint32(buf[i+2]&0xf) << 16)
+			p1 := uint32(buf[i+2]>>4) | (uint32(buf[i+3]) << 4) |
+				(uint32(buf[i+4]) << 12)
+
+			p0 = Gamma1 - p0
+			p1 = Gamma1 - p1
+
+			p0 += uint32(int32(p0)>>31) & common.Q
+			p1 += uint32(int32(p1)>>31) & common.Q
+
+			p[j] = p0
+			p[j+1] = p1
+
+			j += 2
+		}
+	} else {
+		panic("γ₁ not supported")
+	}
+}
+
+// Writes p whose coefficients are in (-γ₁,γ₁] into buf
+// which has to be of length PolyLeGamma1Size.
+//
+// Assumes p is normalized.
+func PolyPackLeGamma1(p *common.Poly, buf []byte) {
+	if Gamma1Bits == 17 {
+		j := 0
+		// coefficients in [0,…,γ₁] ∪ (q-γ₁,…,q)
+		for i := 0; i < PolyLeGamma1Size; i += 9 {
+			p0 := Gamma1 - p[j]                    // [0,…,γ₁] ∪ (γ₁-q,…,2γ₁-q)
+			p0 += uint32(int32(p0)>>31) & common.Q // [0,…,2γ₁)
+			p1 := Gamma1 - p[j+1]
+			p1 += uint32(int32(p1)>>31) & common.Q
+			p2 := Gamma1 - p[j+2]
+			p2 += uint32(int32(p2)>>31) & common.Q
+			p3 := Gamma1 - p[j+3]
+			p3 += uint32(int32(p3)>>31) & common.Q
+
+			buf[i+0] = byte(p0)
+			buf[i+1] = byte(p0 >> 8)
+			buf[i+2] = byte(p0>>16) | byte(p1<<2)
+			buf[i+3] = byte(p1 >> 6)
+			buf[i+4] = byte(p1>>14) | byte(p2<<4)
+			buf[i+5] = byte(p2 >> 4)
+			buf[i+6] = byte(p2>>12) | byte(p3<<6)
+			buf[i+7] = byte(p3 >> 2)
+			buf[i+8] = byte(p3 >> 10)
+
+			j += 4
+		}
+	} else if Gamma1Bits == 19 {
+		j := 0
+		for i := 0; i < PolyLeGamma1Size; i += 5 {
+			// Coefficients are in [0, γ₁] ∪ (Q-γ₁, Q)
+			p0 := Gamma1 - p[j]
+			p0 += uint32(int32(p0)>>31) & common.Q
+			p1 := Gamma1 - p[j+1]
+			p1 += uint32(int32(p1)>>31) & common.Q
+
+			buf[i+0] = byte(p0)
+			buf[i+1] = byte(p0 >> 8)
+			buf[i+2] = byte(p0>>16) | byte(p1<<4)
+			buf[i+3] = byte(p1 >> 4)
+			buf[i+4] = byte(p1 >> 12)
+
+			j += 2
+		}
+	} else {
+		panic("γ₁ not supported")
+	}
+}
+
+// Pack w₁ into buf, which must be of length PolyW1Size.
+//
+// Assumes w₁ is normalized.
+func PolyPackW1(p *common.Poly, buf []byte) {
+	if Gamma1Bits == 19 {
+		p.PackLe16(buf)
+	} else if Gamma1Bits == 17 {
+		j := 0
+		for i := 0; i < PolyW1Size; i += 3 {
+			buf[i] = byte(p[j]) | byte(p[j+1]<<6)
+			buf[i+1] = byte(p[j+1]>>2) | byte(p[j+2]<<4)
+			buf[i+2] = byte(p[j+2]>>4) | byte(p[j+3]<<2)
+			j += 4
+		}
+	} else {
+		panic("unsupported γ₁")
+	}
 }

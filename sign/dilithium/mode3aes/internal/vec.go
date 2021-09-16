@@ -67,7 +67,7 @@ func (v *VecL) Power2Round(v0PlusQ, v1 *VecL) {
 // Requires the vector to be normalized.
 func (v *VecL) Decompose(v0PlusQ, v1 *VecL) {
 	for i := 0; i < L; i++ {
-		v[i].Decompose(&v0PlusQ[i], &v1[i])
+		PolyDecompose(&v[i], &v0PlusQ[i], &v1[i])
 	}
 }
 
@@ -89,12 +89,12 @@ func (v *VecL) UnpackLeqEta(buf []byte) {
 	}
 }
 
-// Sequentially packs each polynomial using Poly.PackLeGamma1().
+// Sequentially packs each polynomial using PolyPackLeGamma1().
 func (v *VecL) PackLeGamma1(buf []byte) {
 	offset := 0
 	for i := 0; i < L; i++ {
-		v[i].PackLeGamma1(buf[offset:])
-		offset += common.PolyLeGamma1Size
+		PolyPackLeGamma1(&v[i], buf[offset:])
+		offset += PolyLeGamma1Size
 	}
 }
 
@@ -102,8 +102,8 @@ func (v *VecL) PackLeGamma1(buf []byte) {
 func (v *VecL) UnpackLeGamma1(buf []byte) {
 	offset := 0
 	for i := 0; i < L; i++ {
-		v[i].UnpackLeGamma1(buf[offset:])
-		offset += common.PolyLeGamma1Size
+		PolyUnpackLeGamma1(&v[i], buf[offset:])
+		offset += PolyLeGamma1Size
 	}
 }
 
@@ -155,7 +155,7 @@ func (v *VecK) Power2Round(v0PlusQ, v1 *VecK) {
 // Requires the vector to be normalized.
 func (v *VecK) Decompose(v0PlusQ, v1 *VecK) {
 	for i := 0; i < K; i++ {
-		v[i].Decompose(&v0PlusQ[i], &v1[i])
+		PolyDecompose(&v[i], &v0PlusQ[i], &v1[i])
 	}
 }
 
@@ -165,7 +165,7 @@ func (v *VecK) Decompose(v0PlusQ, v1 *VecK) {
 // Returns the number of ones in the hint vector.
 func (v *VecK) MakeHint(v0, v1 *VecK) (pop uint32) {
 	for i := 0; i < K; i++ {
-		pop += v[i].MakeHint(&v0[i], &v1[i])
+		pop += PolyMakeHint(&v[i], &v0[i], &v1[i])
 	}
 	return
 }
@@ -175,7 +175,7 @@ func (v *VecK) MakeHint(v0, v1 *VecK) (pop uint32) {
 // See useHint().
 func (v *VecK) UseHint(q, hint *VecK) *VecK {
 	for i := 0; i < K; i++ {
-		v[i].UseHint(&q[i], &hint[i])
+		PolyUseHint(&v[i], &q[i], &hint[i])
 	}
 	return v
 }
@@ -241,12 +241,12 @@ func (v *VecK) NTT() {
 	}
 }
 
-// Sequentially packs each polynomial using Poly.PackLe16().
-func (v *VecK) PackLe16(buf []byte) {
+// Sequentially packs each polynomial using PolyPackW1().
+func (v *VecK) PackW1(buf []byte) {
 	offset := 0
 	for i := 0; i < K; i++ {
-		v[i].PackLe16(buf[offset:])
-		offset += common.PolyLe16Size
+		PolyPackW1(&v[i], buf[offset:])
+		offset += PolyW1Size
 	}
 }
 

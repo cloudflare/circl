@@ -21,11 +21,6 @@ func (m *implMode2AES) GenerateKey(rand io.Reader) (
 	return mode2aes.GenerateKey(rand)
 }
 
-func (m *implMode2AES) NewKeyFromExpandedSeed(seed *[96]byte) (PublicKey,
-	PrivateKey) {
-	return mode2aes.NewKeyFromExpandedSeed(seed)
-}
-
 func (m *implMode2AES) NewKeyFromSeed(seed []byte) (PublicKey,
 	PrivateKey) {
 	if len(seed) != common.SeedSize {

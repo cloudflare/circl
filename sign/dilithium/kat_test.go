@@ -12,49 +12,63 @@ import (
 )
 
 func TestPQCgenKATSign(t *testing.T) {
-	// From SHA256SUMS in the reference implementation.
-	testPQCgenKATSign(t, "Dilithium1", "dd83f8584fded0398547827edff081969335c32069f3e4a9dbd865fd5c2ecd2b")
-	testPQCgenKATSign(t, "Dilithium2", "532f4a7a416bba96b607395a6d07fc0eaab1f1f968e49758d2a97c718de832e7")
-	testPQCgenKATSign(t, "Dilithium3", "37a16744627f2566180a547d022f03a36d22c50080303027179751070e626c72")
-	testPQCgenKATSign(t, "Dilithium4", "4c2e6d7c8675e9345e3ab7036a4e9fb786549d242462ba9b68f58db94e84147a")
-	testPQCgenKATSign(t, "Dilithium1-AES", "68fabe91565c9a664d2461c7510ac32419eadfac0566dc3e9141d276bb98e11a")
-	testPQCgenKATSign(t, "Dilithium2-AES", "08865a608edcdb5723769c583b37c17c9ff8cae578f1d88df7e173ed06dd23fa")
-	testPQCgenKATSign(t, "Dilithium3-AES", "f3c5fcceafa9fb2462721f272791a26c9a123b3a07fad7e07dfec232085fdd7f")
-	testPQCgenKATSign(t, "Dilithium4-AES", "8de4e2ac2032f714263aa0d045275ec62b6f192f8828cfe82b63ec0b0b32deb6")
-}
+	// Generated from reference implementation commit 61b51a71701b8ae9f546a1e5,
+	// which can be found at https://github.com/pq-crystals/dilithium
+	for _, tc := range []struct {
+		name string
+		want string
+	}{
+		{"Dilithium2", "38ed991c5ca11e39ab23945ca37af89e059d16c5474bf8ba96b15cb4e948af2a"},
+		{"Dilithium3", "8196b32212753f525346201ffec1c7a0a852596fa0b57bd4e2746231dab44d55"},
+		{"Dilithium5", "7ded97a6e6c809b43b54c248171d7504fa6a0cab651bf288bb00034782667481"},
+		{"Dilithium2-AES", "b6673f8da5bba7dfae63adbbdf559f4fcfb715d1f91da98d4b52e26203d69196"},
+		{"Dilithium3-AES", "482f4d672a9f1dc38cc8bcf8b1731b03fe99fcb6f2b73aa4a376b99faf89ccbe"},
+		{"Dilithium5-AES", "54dfa85013d1b3da4f1d7c6dd270bc91a083cfece3d320c97906da125fd2a48f"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			mode := ModeByName(tc.name)
+			if mode == nil {
+				t.Fatal()
+			}
 
-func testPQCgenKATSign(t *testing.T, name, expected string) {
-	mode := ModeByName(name)
-	if mode == nil {
-		t.Fatal()
-	}
+			var seed [48]byte
+			var eseed [32]byte
+			for i := 0; i < 48; i++ {
+				seed[i] = byte(i)
+			}
+			f := sha256.New()
+			g := nist.NewDRBG(&seed)
+			fmt.Fprintf(f, "# %s\n\n", tc.name)
+			for i := 0; i < 100; i++ {
+				mlen := 33 * (i + 1)
+				g.Fill(seed[:])
+				msg := make([]byte, mlen)
+				g.Fill(msg[:])
 
-	var seed [48]byte
-	var eseed [96]byte
-	for i := 0; i < 48; i++ {
-		seed[i] = byte(i)
-	}
-	f := sha256.New()
-	g := nist.NewDRBG(&seed)
-	fmt.Fprintf(f, "# %s\n\n", name)
-	for i := 0; i < 100; i++ {
-		mlen := 33 * (i + 1)
-		g.Fill(seed[:])
-		msg := make([]byte, mlen)
-		g.Fill(msg[:])
-		fmt.Fprintf(f, "count = %d\n", i)
-		fmt.Fprintf(f, "seed = %X\n", seed)
-		fmt.Fprintf(f, "mlen = %d\n", mlen)
-		fmt.Fprintf(f, "msg = %X\n", msg)
-		g2 := nist.NewDRBG(&seed)
-		g2.Fill(eseed[:])
-		pk, sk := mode.NewKeyFromExpandedSeed(&eseed)
-		fmt.Fprintf(f, "pk = %X\n", pk.Bytes())
-		fmt.Fprintf(f, "sk = %X\n", sk.Bytes())
-		fmt.Fprintf(f, "smlen = %d\n", mlen+mode.SignatureSize())
-		fmt.Fprintf(f, "sm = %X%X\n\n", mode.Sign(sk, msg[:]), msg)
-	}
-	if fmt.Sprintf("%x", f.Sum(nil)) != expected {
-		t.Fatal()
+				fmt.Fprintf(f, "count = %d\n", i)
+				fmt.Fprintf(f, "seed = %X\n", seed)
+				fmt.Fprintf(f, "mlen = %d\n", mlen)
+				fmt.Fprintf(f, "msg = %X\n", msg)
+
+				g2 := nist.NewDRBG(&seed)
+				g2.Fill(eseed[:])
+				pk, sk := mode.NewKeyFromSeed(eseed[:])
+
+				fmt.Fprintf(f, "pk = %X\n", pk.Bytes())
+				fmt.Fprintf(f, "sk = %X\n", sk.Bytes())
+				fmt.Fprintf(f, "smlen = %d\n", mlen+mode.SignatureSize())
+
+				sig := mode.Sign(sk, msg[:])
+
+				fmt.Fprintf(f, "sm = %X%X\n\n", sig, msg)
+
+				if !mode.Verify(pk, msg[:], sig) {
+					t.Fatal()
+				}
+			}
+			if fmt.Sprintf("%x", f.Sum(nil)) != tc.want {
+				t.Fatal()
+			}
+		})
 	}
 }

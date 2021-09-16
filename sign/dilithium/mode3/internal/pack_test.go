@@ -8,7 +8,7 @@ import (
 
 func TestPolyPackLeqEta(t *testing.T) {
 	var p1, p2 common.Poly
-	var seed [32]byte
+	var seed [64]byte
 	var buf [PolyLeqEtaSize]byte
 
 	for i := uint16(0); i < 100; i++ {
@@ -60,22 +60,30 @@ func TestPolyPackT0(t *testing.T) {
 		p0.PackT0(buf[:])
 		p2.UnpackT0(buf[:])
 		if p0 != p2 {
-			t.Fatalf("%v != %v", p1, p2)
+			t.Fatalf("%v !=\n%v", p0, p2)
 		}
+	}
+}
+
+func BenchmarkUnpackLeGamma1(b *testing.B) {
+	var p common.Poly
+	var buf [PolyLeGamma1Size]byte
+	for i := 0; i < b.N; i++ {
+		PolyUnpackLeGamma1(&p, buf[:])
 	}
 }
 
 func TestPolyPackLeGamma1(t *testing.T) {
 	var p0, p1 common.Poly
-	var seed [48]byte
-	var buf [common.PolyLeGamma1Size]byte
+	var seed [64]byte
+	var buf [PolyLeGamma1Size]byte
 
 	for i := uint16(0); i < 100; i++ {
 		PolyDeriveUniformLeGamma1(&p0, &seed, i)
 		p0.Normalize()
 
-		p0.PackLeGamma1(buf[:])
-		p1.UnpackLeGamma1(buf[:])
+		PolyPackLeGamma1(&p0, buf[:])
+		PolyUnpackLeGamma1(&p1, buf[:])
 		if p0 != p1 {
 			t.Fatalf("%v != %v", p0, p1)
 		}
