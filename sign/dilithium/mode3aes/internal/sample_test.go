@@ -124,7 +124,7 @@ func TestDeriveUniform(t *testing.T) {
 
 func TestDeriveUniformLeqEta(t *testing.T) {
 	var p common.Poly
-	var seed [32]byte
+	var seed [64]byte
 	for i := 0; i < 100; i++ {
 		binary.LittleEndian.PutUint64(seed[:], uint64(i))
 		PolyDeriveUniformLeqEta(&p, &seed, uint16(i))
@@ -138,119 +138,24 @@ func TestDeriveUniformLeqEta(t *testing.T) {
 
 func TestDeriveUniformLeGamma1(t *testing.T) {
 	var p common.Poly
-	var seed [48]byte
+	var seed [64]byte
 	for i := 0; i < 100; i++ {
 		binary.LittleEndian.PutUint64(seed[:], uint64(i))
 		PolyDeriveUniformLeGamma1(&p, &seed, uint16(i))
 		for j := 0; j < common.N; j++ {
-			if p[j] < common.Q-common.Gamma1 || p[j] > common.Q+common.Gamma1 {
+			if (p[j] > Gamma1 && p[j] <= common.Q-Gamma1) || p[j] >= common.Q {
 				t.Fatal()
 			}
 		}
 	}
 }
 
-func TestVectorDeriveUniformLeGamma1(t *testing.T) {
-	var p, p2 common.Poly
-	var seed [48]byte
-	if UseAES {
-		p2 = common.Poly{
-			90940, 8133770, 8210940, 8218464, 8362467, 431142, 98024,
-			320453, 7892373, 144162, 495313, 7910122, 308198, 8024421,
-			8313699, 8323445, 8242093, 7946588, 418979, 427179, 353562,
-			20972, 455962, 213062, 361787, 8141790, 8321931, 7885366,
-			88645, 181202, 8094142, 8303121, 8059515, 7919812, 191865,
-			7910073, 7896561, 8096830, 7899355, 8338900, 72693, 236799,
-			8183042, 347570, 8153528, 8364233, 8077851, 8312277, 104682,
-			8037310, 8356199, 7994081, 240369, 70229, 8108858, 8175836,
-			466639, 50909, 339919, 8029663, 341659, 154398, 64345,
-			97101, 212245, 8285367, 521225, 325882, 296235, 8110929,
-			8015814, 7953234, 158409, 329908, 8331330, 449258, 167701,
-			8197796, 8228247, 7940020, 1985, 304704, 475316, 8037482,
-			8250449, 304557, 8216567, 432266, 213295, 8162216, 381001,
-			7995314, 7988689, 128534, 245586, 67041, 8232744, 398441,
-			223116, 443612, 149856, 222852, 158723, 54746, 171906,
-			163070, 353915, 8263276, 8016812, 8229081, 31827, 489715,
-			450171, 8069106, 53220, 7932381, 7955335, 8197363, 201044,
-			8306733, 446376, 8211025, 7889271, 8070595, 495514, 8158685,
-			7524, 7973394, 247673, 4293, 184924, 457334, 138349, 8123964,
-			284179, 8255307, 8068216, 8291492, 243759, 8060601, 20962,
-			8058389, 420953, 8305974, 455136, 8218139, 7121, 147703,
-			7951253, 394376, 8127066, 365861, 8062390, 8138732, 366555,
-			8280514, 221, 395861, 7968769, 7977119, 8098083, 343056,
-			8190769, 223361, 163270, 203059, 109219, 8228600, 8127695,
-			321016, 295979, 8201961, 49891, 8335504, 8190386, 8190984,
-			8278654, 336364, 7878013, 7922436, 7974101, 8075534, 8200852,
-			8333820, 415982, 8089662, 149553, 7946740, 474102, 7937116,
-			8026845, 356056, 191053, 86928, 8218644, 8375040, 8029184,
-			8025675, 8193350, 295360, 7905768, 487174, 8362961, 386108,
-			282213, 8373318, 50167, 8238992, 7911505, 493459, 8335164,
-			8079327, 250697, 263154, 221028, 40778, 87515, 8372585,
-			504728, 7980935, 8307600, 298972, 427523, 93352, 89915,
-			391490, 80320, 7975008, 336136, 7949815, 8048682, 8332244,
-			8204778, 8177783, 7910684, 7925292, 518641, 59663, 53608,
-			222225, 463772, 8022091, 8173722, 8291385, 472741, 8105898,
-			7943299, 267137, 7957660, 371874, 409084, 203750, 477334,
-			83412, 111278, 120444,
-		}
-	} else {
-		p2 = common.Poly{
-			338083, 7978692, 8044913, 373628, 427855, 79725, 91018,
-			349821, 501552, 7955127, 8316400, 290708, 216142, 8199666,
-			8040144, 109426, 8177916, 8200218, 8125680, 358131, 160961,
-			497383, 25361, 156297, 8033745, 7897189, 48397, 498732,
-			464556, 7862704, 8308667, 236080, 91240, 8328377, 326190,
-			509979, 8313264, 8106493, 8210965, 8328036, 172602, 8108765,
-			8192963, 8361660, 8026473, 7932022, 322006, 8305874, 8254440,
-			7866474, 373371, 8023413, 8221878, 486124, 36080, 8324512,
-			8042056, 7984472, 8048111, 7910387, 8205382, 8259636, 188609,
-			8316587, 59306, 119803, 8067108, 8155455, 8153450, 7983908,
-			8222256, 21521, 114297, 8069037, 151621, 8014482, 8052856,
-			376107, 8004652, 175001, 8079461, 8351123, 8021484, 144547,
-			7908116, 8278100, 8136941, 142399, 8026843, 8081852, 124334,
-			242796, 266768, 7919478, 7954016, 28927, 8329064, 514031,
-			423911, 27907, 8142788, 8078298, 273978, 382723, 8148646,
-			186476, 8030712, 8067268, 356250, 145817, 60045, 122764,
-			56856, 8225416, 136437, 199652, 8343127, 8109765, 7936848,
-			446966, 8351681, 288663, 409663, 512988, 8350788, 8191864,
-			8366223, 281267, 7921696, 8213978, 442484, 67457, 8030602,
-			238514, 230458, 8301866, 8359700, 150320, 143893, 461735,
-			225443, 8027502, 151113, 365244, 7911438, 82498, 405398,
-			8207009, 8108255, 367485, 514660, 8294055, 8168958, 127725,
-			402955, 8051625, 7859029, 7980052, 321819, 7949587, 125778,
-			8287078, 131972, 499609, 256795, 8180323, 8269393, 5878,
-			8145473, 8238676, 383855, 415547, 424071, 241989, 8165743,
-			8207329, 149608, 8315331, 7901850, 8114275, 360650, 516061,
-			255090, 8277977, 270877, 8125200, 479248, 7991711, 8028595,
-			73426, 8215429, 208217, 153872, 429336, 229856, 461204,
-			236682, 7930158, 8298847, 228327, 8009399, 8111520, 345025,
-			386495, 93454, 8336429, 8161305, 7980811, 286795, 162808,
-			224476, 7972825, 85118, 287488, 8029791, 119071, 371, 518524,
-			473496, 451205, 127000, 19233, 211519, 2442, 7950959, 481888,
-			8041598, 8281176, 437202, 7912610, 8080153, 8237500, 7926828,
-			8009421, 204880, 62495, 8192310, 8314388, 98616, 182368,
-			323894, 59901, 481049, 8139275, 7872144, 254106, 376257,
-			93339, 301342, 366536, 438920, 84773, 461471, 8125755,
-			7930085, 405116,
-		}
-	}
-	for i := 0; i < 48; i++ {
-		seed[i] = byte(i)
-	}
-	PolyDeriveUniformLeGamma1(&p, &seed, 30000)
-	p.Normalize()
-	if p != p2 {
-		t.Fatalf("%v != %v", p, p2)
-	}
-}
-
-func TestDeriveUniformB60(t *testing.T) {
+func TestDeriveUniformBall(t *testing.T) {
 	var p common.Poly
-	var w1 VecK
-	var seed [48]byte
+	var seed [32]byte
 	for i := 0; i < 100; i++ {
 		binary.LittleEndian.PutUint64(seed[:], uint64(i))
-		PolyDeriveUniformB60(&p, &seed, &w1)
+		PolyDeriveUniformBall(&p, &seed)
 		nonzero := 0
 		for j := 0; j < common.N; j++ {
 			if p[j] != 0 {
@@ -260,7 +165,7 @@ func TestDeriveUniformB60(t *testing.T) {
 				nonzero++
 			}
 		}
-		if nonzero != 60 {
+		if nonzero != Tau {
 			t.Fatal()
 		}
 	}
@@ -289,77 +194,44 @@ func TestDeriveUniformX4(t *testing.T) {
 	}
 }
 
-func TestDeriveUniformB60X4(t *testing.T) {
+func TestDeriveUniformBallX4(t *testing.T) {
 	if !DeriveX4Available {
 		t.SkipNow()
 	}
 	var ps [4]common.Poly
 	var p common.Poly
-	var seed [48]byte
-	var w1s [4]VecK
-	for j := 0; j < 4; j++ {
-		for k := 0; k < K; k++ {
-			for i := 0; i < common.N; i++ {
-				w1s[j][k][i] = uint32(j+k*4+i*4*K) & 15
-			}
-		}
-	}
-	PolyDeriveUniformB60X4(
+	var seed [32]byte
+	PolyDeriveUniformBallX4(
 		[4]*common.Poly{&ps[0], &ps[1], &ps[2], &ps[3]},
 		&seed,
-		[4]*VecK{&w1s[0], &w1s[1], &w1s[2], &w1s[3]},
 	)
 	for j := 0; j < 4; j++ {
-		PolyDeriveUniformB60(&p, &seed, &w1s[j])
+		PolyDeriveUniformBall(&p, &seed)
 		if ps[j] != p {
-			t.Fatalf("%v %v", ps[j], p)
+			t.Fatalf("%d\n%v\n%v", j, ps[j], p)
 		}
 	}
 }
 
-func TestDeriveUniformLeGamma1X4(t *testing.T) {
-	if !DeriveX4Available {
-		t.SkipNow()
-	}
-	var ps [4]common.Poly
-	var p common.Poly
-	var seed [48]byte
-	nonces := [4]uint16{12345, 54321, 13532, 37377}
-
-	for i := 0; i < len(seed); i++ {
-		seed[i] = byte(i)
-	}
-
-	PolyDeriveUniformLeGamma1X4([4]*common.Poly{&ps[0], &ps[1], &ps[2], &ps[3]},
-		&seed, nonces)
-	for i := 0; i < 4; i++ {
-		PolyDeriveUniformLeGamma1(&p, &seed, nonces[i])
-		if ps[i] != p {
-			t.Fatalf("%d\n%v\n%v", i, p, ps[i])
-		}
-	}
-}
-
-func BenchmarkPolyDeriveUniformB60(b *testing.B) {
-	var seed [48]byte
+func BenchmarkPolyDeriveUniformBall(b *testing.B) {
+	var seed [32]byte
 	var p common.Poly
 	var w1 VecK
 	for i := 0; i < b.N; i++ {
 		w1[0][0] = uint32(i)
-		PolyDeriveUniformB60(&p, &seed, &w1)
+		PolyDeriveUniformBall(&p, &seed)
 	}
 }
 
-func BenchmarkPolyDeriveUniformB60X4(b *testing.B) {
-	var seed [48]byte
+func BenchmarkPolyDeriveUniformBallX4(b *testing.B) {
+	var seed [32]byte
 	var p common.Poly
 	var w1 VecK
 	for i := 0; i < b.N; i++ {
 		w1[0][0] = uint32(i)
-		PolyDeriveUniformB60X4(
+		PolyDeriveUniformBallX4(
 			[4]*common.Poly{&p, &p, &p, &p},
 			&seed,
-			[4]*VecK{&w1, &w1, &w1, &w1},
 		)
 	}
 }
@@ -386,22 +258,9 @@ func BenchmarkPolyDeriveUniformX4(b *testing.B) {
 }
 
 func BenchmarkPolyDeriveUniformLeGamma1(b *testing.B) {
-	var seed [48]byte
+	var seed [64]byte
 	var p common.Poly
 	for i := 0; i < b.N; i++ {
 		PolyDeriveUniformLeGamma1(&p, &seed, uint16(i))
-	}
-}
-
-func BenchmarkPolyDeriveUniformLeGamma1X4(b *testing.B) {
-	if !DeriveX4Available {
-		b.SkipNow()
-	}
-	var seed [48]byte
-	var p [4]common.Poly
-	for i := 0; i < b.N; i++ {
-		nonce := uint16(4 * i)
-		PolyDeriveUniformLeGamma1X4([4]*common.Poly{&p[0], &p[1], &p[2], &p[3]},
-			&seed, [4]uint16{nonce, nonce + 1, nonce + 2, nonce + 3})
 	}
 }

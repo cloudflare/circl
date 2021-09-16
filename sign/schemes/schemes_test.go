@@ -115,8 +115,8 @@ func Example() {
 	// Output:
 	// Ed25519
 	// Ed448
-	// Ed25519-Dilithium3
-	// Ed448-Dilithium4
+	// Ed25519-Dilithium2
+	// Ed448-Dilithium3
 }
 
 func BenchmarkGenerateKeyPair(b *testing.B) {

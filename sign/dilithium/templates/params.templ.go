@@ -7,15 +7,14 @@
 package internal
 
 const (
-	Name           = "{{ .Name }}"
-	UseAES         = {{ .UseAES }}
-	PublicKeySize  = {{ .PublicKeySize }}
-	PrivateKeySize = {{ .PrivateKeySize }}
-	SignatureSize  = {{ .SignatureSize }}
-	K              = {{ .K }}
-	L              = {{ .L }}
-	Eta            = {{ .Eta }}
-	DoubleEtaBits  = {{ .DoubleEtaBits }}
-	Beta           = {{ .Beta }}
-	Omega          = {{ .Omega }}
+	Name          = "{{ .Name }}"
+	UseAES        = {{ .UseAES }}
+	K             = {{ .K }}
+	L             = {{ .L }}
+	Eta           = {{ .Eta }}
+	DoubleEtaBits = {{ .DoubleEtaBits }}
+	Omega         = {{ .Omega }}
+	Tau           = {{ .Tau }}
+	Gamma1Bits    = {{ .Gamma1Bits }}
+	Gamma2        = {{ .Gamma2 }}
 )

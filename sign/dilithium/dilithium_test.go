@@ -15,42 +15,42 @@ func hexHash(in []byte) string {
 	return hex.EncodeToString(ret[:])
 }
 
-func testNewKeyFromSeed(t *testing.T, name, esk, epk string) {
-	mode := ModeByName(name)
-	if mode == nil {
-		t.Fatal()
-	}
-	var seed [96]byte
-	h := sha3.NewShake128()
-	_, _ = h.Write(make([]byte, mode.SeedSize()))
-	_, _ = h.Read(seed[:])
-	pk, sk := mode.NewKeyFromExpandedSeed(&seed)
-	pkh := hexHash(pk.Bytes())
-	skh := hexHash(sk.Bytes())
-	if pkh != epk {
-		t.Fatalf("%s expected pk %s, got %s", name, epk, pkh)
-	}
-	if skh != esk {
-		t.Fatalf("%s expected pk %s, got %s", name, esk, skh)
-	}
-}
-
 func TestNewKeyFromSeed(t *testing.T) {
 	// Test vectors generated from reference implementation
-	testNewKeyFromSeed(t, "Dilithium1",
-		"af470e12a57d00c04c4a2b5998f41c71", "83616951b98312a97ea10e12b7b69675")
-	testNewKeyFromSeed(t, "Dilithium2",
-		"48dec3d688330dfc68f9bf4277fb92e1", "38e7339d00e64348cb2f965ecf9ee38b")
-	testNewKeyFromSeed(t, "Dilithium3",
-		"a44fcf1f43d124865c63cbf381a3b7eb", "b725d31fb709664f8587e2fb6a60fe80")
-	testNewKeyFromSeed(t, "Dilithium4",
-		"e054319bbabd2e156c56e8ee923c2a8e", "e7997fc71a6796056d4633a40769c495")
-	testNewKeyFromSeed(t, "Dilithium1-AES",
-		"be55853ce1d2c1113fc96f1295928789", "7782ac146d9e636221329cfe64647112")
-	testNewKeyFromSeed(t, "Dilithium2-AES",
-		"2abfd0d294ce1b2bab5b860482c4bbc1", "23c4e9516662394e88e559cf2874d7a4")
-	testNewKeyFromSeed(t, "Dilithium3-AES",
-		"ba72ed309182aa509e595013b3ad9089", "887baaf3a98d0aa6b95c8c1a6867e609")
-	testNewKeyFromSeed(t, "Dilithium4-AES",
-		"7c1c8b5df63fd096901da43c00fa71e8", "f7f850c1d8ff82c868ab2f188ac624b3")
+	for _, tc := range []struct {
+		name string
+		esk  string
+		epk  string
+	}{
+		{"Dilithium2", "afe2e91f5f5899354230744c18410498",
+			"7522162619f3329b5312322d3ee45b87"},
+		{"Dilithium3", "8ad3142e08b718b33f7c2668cd9d053c",
+			"3562fc184dce1a10aad099051705b5d3"},
+		{"Dilithium5", "3956d812a7961af6e5dad16af15c736c",
+			"665388291aa01e12e7f94bdc7769db18"},
+		{"Dilithium2-AES", "8466a752b0a09e63e42f66d3174a6471",
+			"c3f8e705a0d8dfd489b98b205670f393"},
+		{"Dilithium3-AES", "2bb713ba7cb15f3ebf05c4c1fbb1b03c",
+			"eb2bd8d98630835a3b18594ac436368b"},
+		{"Dilithium5-AES", "a613a08b564ee8717ba4f5ccfddc2693",
+			"2f541bf6fedd12854d06a6b80090932a"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			mode := ModeByName(tc.name)
+			if mode == nil {
+				t.Fatal()
+			}
+			var seed [32]byte
+			pk, sk := mode.NewKeyFromSeed(seed[:])
+
+			pkh := hexHash(pk.Bytes())
+			skh := hexHash(sk.Bytes())
+			if pkh != tc.epk {
+				t.Fatalf("%s expected pk %s, got %s", tc.name, tc.epk, pkh)
+			}
+			if skh != tc.esk {
+				t.Fatalf("%s expected pk %s, got %s", tc.name, tc.esk, skh)
+			}
+		})
+	}
 }

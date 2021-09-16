@@ -12,7 +12,7 @@ func BenchmarkVerify(b *testing.B) {
 	// instead of at the moment of verification (as compared to the reference
 	// implementation.  A fair comparison thus should sum verification
 	// times with unpacking times.)
-	var seed [32]byte
+	var seed [57]byte
 	var msg [8]byte
 	var sig [eddilithium3.SignatureSize]byte
 	pk, sk := eddilithium3.NewKeyFromSeed(&seed)
@@ -32,7 +32,7 @@ func BenchmarkSign(b *testing.B) {
 	// instead of at the moment of signing (as compared to the reference
 	// implementation.  A fair comparison thus should sum sign times with
 	// unpacking times.)
-	var seed [32]byte
+	var seed [57]byte
 	var msg [8]byte
 	var sig [eddilithium3.SignatureSize]byte
 	_, sk := eddilithium3.NewKeyFromSeed(&seed)
@@ -44,7 +44,7 @@ func BenchmarkSign(b *testing.B) {
 }
 
 func BenchmarkGenerateKey(b *testing.B) {
-	var seed [32]byte
+	var seed [57]byte
 	for i := 0; i < b.N; i++ {
 		binary.LittleEndian.PutUint64(seed[:], uint64(i))
 		eddilithium3.NewKeyFromSeed(&seed)
@@ -52,7 +52,7 @@ func BenchmarkGenerateKey(b *testing.B) {
 }
 
 func BenchmarkPublicFromPrivate(b *testing.B) {
-	var seed [32]byte
+	var seed [57]byte
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
 		binary.LittleEndian.PutUint64(seed[:], uint64(i))
@@ -66,8 +66,8 @@ func TestSignThenVerifyAndPkSkPacking(t *testing.T) {
 	var seed [eddilithium3.SeedSize]byte
 	var sig [eddilithium3.SignatureSize]byte
 	var msg [8]byte
-	var pkb [eddilithium3.PublicKeySize]byte
-	var skb [eddilithium3.PrivateKeySize]byte
+	var pkb1, pkb2 [eddilithium3.PublicKeySize]byte
+	var skb1, skb2 [eddilithium3.PrivateKeySize]byte
 	var pk2 eddilithium3.PublicKey
 	var sk2 eddilithium3.PrivateKey
 	for i := uint64(0); i < 100; i++ {
@@ -80,14 +80,16 @@ func TestSignThenVerifyAndPkSkPacking(t *testing.T) {
 				t.Fatal()
 			}
 		}
-		pk.Pack(&pkb)
-		pk2.Unpack(&pkb)
-		if !pk.Equal(&pk2) {
+		pk.Pack(&pkb1)
+		pk2.Unpack(&pkb1)
+		pk2.Pack(&pkb2)
+		if pkb1 != pkb2 {
 			t.Fatal()
 		}
-		sk.Pack(&skb)
-		sk2.Unpack(&skb)
-		if !sk.Equal(&sk2) {
+		sk.Pack(&skb1)
+		sk2.Unpack(&skb1)
+		sk2.Pack(&skb2)
+		if skb1 != skb2 {
 			t.Fatal()
 		}
 	}

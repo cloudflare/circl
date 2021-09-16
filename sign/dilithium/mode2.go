@@ -21,11 +21,6 @@ func (m *implMode2) GenerateKey(rand io.Reader) (
 	return mode2.GenerateKey(rand)
 }
 
-func (m *implMode2) NewKeyFromExpandedSeed(seed *[96]byte) (PublicKey,
-	PrivateKey) {
-	return mode2.NewKeyFromExpandedSeed(seed)
-}
-
 func (m *implMode2) NewKeyFromSeed(seed []byte) (PublicKey,
 	PrivateKey) {
 	if len(seed) != common.SeedSize {

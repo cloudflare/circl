@@ -1,9 +1,9 @@
 // Code generated from modePkg.templ.go. DO NOT EDIT.
 
 // mode3 implements the CRYSTALS-Dilithium signature scheme Dilithium3
-// as submitted to round2 of the NIST PQC competition and described in
+// as submitted to round3 of the NIST PQC competition and described in
 //
-// https://pq-crystals.org/dilithium/data/dilithium-specification-round2.pdf
+// https://pq-crystals.org/dilithium/data/dilithium-specification-round3-20210208.pdf
 package mode3
 
 import (
@@ -45,16 +45,6 @@ func GenerateKey(rand io.Reader) (*PublicKey, *PrivateKey, error) {
 // NewKeyFromSeed derives a public/private key pair using the given seed.
 func NewKeyFromSeed(seed *[SeedSize]byte) (*PublicKey, *PrivateKey) {
 	pk, sk := internal.NewKeyFromSeed(seed)
-	return (*PublicKey)(pk), (*PrivateKey)(sk)
-}
-
-// NewKeyFromExpandedSeed derives a public/private key pair using the
-// given expanded seed.
-//
-// Use NewKeyFromSeed instead of this function.  This function is only exposed
-// to generate the NIST KAT test vectors.
-func NewKeyFromExpandedSeed(seed *[96]byte) (*PublicKey, *PrivateKey) {
-	pk, sk := internal.NewKeyFromExpandedSeed(seed)
 	return (*PublicKey)(pk), (*PrivateKey)(sk)
 }
 

@@ -14,15 +14,15 @@ func Scheme() sign.Scheme { return sch }
 
 type scheme struct{}
 
-func (*scheme) Name() string          { return "Ed25519-Dilithium3" }
+func (*scheme) Name() string          { return "Ed448-Dilithium3" }
 func (*scheme) PublicKeySize() int    { return PublicKeySize }
 func (*scheme) PrivateKeySize() int   { return PrivateKeySize }
 func (*scheme) SignatureSize() int    { return SignatureSize }
 func (*scheme) SeedSize() int         { return SeedSize }
-func (*scheme) TLSIdentifier() uint   { return 0xfe61 /* temp*/ }
+func (*scheme) TLSIdentifier() uint   { return 0xfe62 /* temp */ }
 func (*scheme) SupportsContext() bool { return false }
 func (*scheme) Oid() asn1.ObjectIdentifier {
-	return asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 44363, 45, 9}
+	return asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 44363, 45, 10}
 }
 
 func (*scheme) GenerateKey() (sign.PublicKey, sign.PrivateKey, error) {

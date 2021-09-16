@@ -129,3 +129,16 @@ func TestPublicFromPrivate(t *testing.T) {
 		}
 	}
 }
+
+func TestGamma1Size(t *testing.T) {
+	var expected int
+	switch Gamma1Bits {
+	case 17:
+		expected = 576
+	case 19:
+		expected = 640
+	}
+	if expected != PolyLeGamma1Size {
+		t.Fatal()
+	}
+}
