@@ -13,12 +13,3 @@ type storageBuf [maxRate]byte
 func (b *storageBuf) asBytes() *[maxRate]byte {
 	return (*[maxRate]byte)(b)
 }
-
-var (
-	xorIn            = xorInGeneric
-	copyOut          = copyOutGeneric
-	xorInUnaligned   = xorInGeneric
-	copyOutUnaligned = copyOutGeneric
-)
-
-const xorImplementationUnaligned = "generic"
