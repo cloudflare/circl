@@ -49,121 +49,101 @@ type KeccakKats struct {
 	}
 }
 
-// nolint:unparam
-func testUnalignedAndGeneric(t *testing.T, testf func(impl string)) {
-	xorInOrig, copyOutOrig := xorIn, copyOut
-	xorIn, copyOut = xorInGeneric, copyOutGeneric
-	testf("generic")
-	if xorImplementationUnaligned != "generic" {
-		xorIn, copyOut = xorInUnaligned, copyOutUnaligned
-		testf("unaligned")
-	}
-	xorIn, copyOut = xorInOrig, copyOutOrig
-}
-
 // TestKeccakKats tests the SHA-3 and Shake implementations against all the
 // ShortMsgKATs from https://github.com/gvanas/KeccakCodePackage
 // (The testvectors are stored in keccakKats.json.deflate due to their length.)
 func TestKeccakKats(t *testing.T) {
-	testUnalignedAndGeneric(t, func(impl string) {
-		// Read the KATs.
-		deflated, err := os.Open(katFilename)
-		if err != nil {
-			t.Errorf("error opening %s: %s", katFilename, err)
-		}
-		file := flate.NewReader(deflated)
-		dec := json.NewDecoder(file)
-		var katSet KeccakKats
-		err = dec.Decode(&katSet)
-		if err != nil {
-			t.Errorf("error decoding KATs: %s", err)
-		}
+	// Read the KATs.
+	deflated, err := os.Open(katFilename)
+	if err != nil {
+		t.Errorf("error opening %s: %s", katFilename, err)
+	}
+	file := flate.NewReader(deflated)
+	dec := json.NewDecoder(file)
+	var katSet KeccakKats
+	err = dec.Decode(&katSet)
+	if err != nil {
+		t.Errorf("error decoding KATs: %s", err)
+	}
 
-		for algo, function := range testDigests {
-			d := function()
-			for _, kat := range katSet.Kats[algo] {
-				d.Reset()
-				in, err := hex.DecodeString(kat.Message)
-				if err != nil {
-					t.Errorf("error decoding KAT: %s", err)
-				}
-				_, _ = d.Write(in[:kat.Length/8])
-				got := strings.ToUpper(hex.EncodeToString(d.Sum(nil)))
-				if got != kat.Digest {
-					t.Errorf("function=%s, implementation=%s, length=%d\nmessage:\n %s\ngot:\n  %s\nwanted:\n %s",
-						algo, impl, kat.Length, kat.Message, got, kat.Digest)
-					t.Logf("wanted %+v", kat)
-					t.FailNow()
-				}
-				continue
+	for algo, function := range testDigests {
+		d := function()
+		for _, kat := range katSet.Kats[algo] {
+			d.Reset()
+			in, err := hex.DecodeString(kat.Message)
+			if err != nil {
+				t.Errorf("error decoding KAT: %s", err)
 			}
+			_, _ = d.Write(in[:kat.Length/8])
+			got := strings.ToUpper(hex.EncodeToString(d.Sum(nil)))
+			if got != kat.Digest {
+				t.Errorf("function=%s, length=%d\nmessage:\n %s\ngot:\n  %s\nwanted:\n %s",
+					algo, kat.Length, kat.Message, got, kat.Digest)
+				t.Logf("wanted %+v", kat)
+				t.FailNow()
+			}
+			continue
 		}
-	})
+	}
 }
 
 // TestUnalignedWrite tests that writing data in an arbitrary pattern with
 // small input buffers.
 func TestUnalignedWrite(t *testing.T) {
-	testUnalignedAndGeneric(t, func(impl string) {
-		buf := sequentialBytes(0x10000)
-		for alg, df := range testDigests {
-			d := df()
-			d.Reset()
-			_, _ = d.Write(buf)
-			want := d.Sum(nil)
-			d.Reset()
-			for i := 0; i < len(buf); {
-				// Cycle through offsets which make a 137 byte sequence.
-				// Because 137 is prime this sequence should exercise all corner cases.
-				offsets := [17]int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 1}
-				for _, j := range offsets {
-					if v := len(buf) - i; v < j {
-						j = v
-					}
-					_, _ = d.Write(buf[i : i+j])
-					i += j
+	buf := sequentialBytes(0x10000)
+	for alg, df := range testDigests {
+		d := df()
+		d.Reset()
+		_, _ = d.Write(buf)
+		want := d.Sum(nil)
+		d.Reset()
+		for i := 0; i < len(buf); {
+			// Cycle through offsets which make a 137 byte sequence.
+			// Because 137 is prime this sequence should exercise all corner cases.
+			offsets := [17]int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 1}
+			for _, j := range offsets {
+				if v := len(buf) - i; v < j {
+					j = v
 				}
-			}
-			got := d.Sum(nil)
-			if !bytes.Equal(got, want) {
-				t.Errorf("Unaligned writes, implementation=%s, alg=%s\ngot %q, want %q", impl, alg, got, want)
+				_, _ = d.Write(buf[i : i+j])
+				i += j
 			}
 		}
-	})
+		got := d.Sum(nil)
+		if !bytes.Equal(got, want) {
+			t.Errorf("Unaligned writes, alg=%s\ngot %q, want %q", alg, got, want)
+		}
+	}
 }
 
 // TestAppend checks that appending works when reallocation is necessary.
 func TestAppend(t *testing.T) {
-	testUnalignedAndGeneric(t, func(impl string) {
-		d := New224()
+	d := New224()
 
-		for capacity := 2; capacity <= 66; capacity += 64 {
-			// The first time around the loop, Sum will have to reallocate.
-			// The second time, it will not.
-			buf := make([]byte, 2, capacity)
-			d.Reset()
-			_, _ = d.Write([]byte{0xcc})
-			buf = d.Sum(buf)
-			expected := "0000DF70ADC49B2E76EEE3A6931B93FA41841C3AF2CDF5B32A18B5478C39"
-			if got := strings.ToUpper(hex.EncodeToString(buf)); got != expected {
-				t.Errorf("got %s, want %s", got, expected)
-			}
+	for capacity := 2; capacity <= 66; capacity += 64 {
+		// The first time around the loop, Sum will have to reallocate.
+		// The second time, it will not.
+		buf := make([]byte, 2, capacity)
+		d.Reset()
+		_, _ = d.Write([]byte{0xcc})
+		buf = d.Sum(buf)
+		expected := "0000DF70ADC49B2E76EEE3A6931B93FA41841C3AF2CDF5B32A18B5478C39"
+		if got := strings.ToUpper(hex.EncodeToString(buf)); got != expected {
+			t.Errorf("got %s, want %s", got, expected)
 		}
-	})
+	}
 }
 
 // TestAppendNoRealloc tests that appending works when no reallocation is necessary.
 func TestAppendNoRealloc(t *testing.T) {
-	testUnalignedAndGeneric(t, func(impl string) {
-		buf := make([]byte, 1, 200)
-		d := New224()
-		_, _ = d.Write([]byte{0xcc})
-		buf = d.Sum(buf)
-		expected := "00DF70ADC49B2E76EEE3A6931B93FA41841C3AF2CDF5B32A18B5478C39"
-		if got := strings.ToUpper(hex.EncodeToString(buf)); got != expected {
-			t.Errorf("%s: got %s, want %s", impl, got, expected)
-		}
-	})
+	buf := make([]byte, 1, 200)
+	d := New224()
+	_, _ = d.Write([]byte{0xcc})
+	buf = d.Sum(buf)
+	expected := "00DF70ADC49B2E76EEE3A6931B93FA41841C3AF2CDF5B32A18B5478C39"
+	if got := strings.ToUpper(hex.EncodeToString(buf)); got != expected {
+		t.Errorf("got %s, want %s", got, expected)
+	}
 }
 
 // sequentialBytes produces a buffer of size consecutive bytes 0x00, 0x01, ..., used for testing.
