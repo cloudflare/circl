@@ -47,9 +47,9 @@ func testExpander(t *testing.T, vs *vectorExpanderSuite) {
 	case "SHA512":
 		exp = group.NewExpanderMD(crypto.SHA512, []byte(vs.DST))
 	case "SHAKE128":
-		exp = group.NewExpanderXOF(xof.SHAKE128, 0, []byte(vs.DST))
+		exp = group.NewExpanderXOF(xof.SHAKE128, vs.K, []byte(vs.DST))
 	case "SHAKE256":
-		exp = group.NewExpanderXOF(xof.SHAKE256, 0, []byte(vs.DST))
+		exp = group.NewExpanderXOF(xof.SHAKE256, vs.K, []byte(vs.DST))
 	default:
 		t.Skip("hash not supported: " + vs.Hash)
 	}
@@ -76,6 +76,7 @@ type vectorExpanderSuite struct {
 	DST   string `json:"DST"`
 	Hash  string `json:"hash"`
 	Name  string `json:"name"`
+	K     uint   `json:"k"`
 	Tests []struct {
 		DstPrime     string `json:"DST_prime"`
 		Len          string `json:"len_in_bytes"`
