@@ -263,7 +263,7 @@ func (g wG) mapToCurveParams() (mapping func(u *big.Int) *wElt, h crypto.Hash, L
 	case 384:
 		Z.SetInt64(-12)
 		C2.SetString("0x19877cc1041b7555743c0ae2e3a3e61fb2aaa2e0e87ea557a563d8b598a0940d0a697a9e0b9e92cfaa314f583c9d066", 0)
-		h = crypto.SHA512
+		h = crypto.SHA384
 		L = 72
 	case 521:
 		Z.SetInt64(-4)

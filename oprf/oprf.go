@@ -89,7 +89,7 @@ func suiteFromID(id SuiteID, m Mode) (*suite, error) {
 	case OPRFP256:
 		return &suite{id, m, group.P256, crypto.SHA256}, nil
 	case OPRFP384:
-		return &suite{id, m, group.P384, crypto.SHA512}, nil
+		return &suite{id, m, group.P384, crypto.SHA384}, nil
 	case OPRFP521:
 		return &suite{id, m, group.P521, crypto.SHA512}, nil
 	default:
