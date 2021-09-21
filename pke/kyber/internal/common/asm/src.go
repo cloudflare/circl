@@ -1,6 +1,4 @@
 //go:generate go run src.go -out ../amd64.s -stubs ../stubs_amd64.go -pkg common
-//go:build ignore
-// +build ignore
 
 // AVX2 optimized version of polynomial operations.  See the comments on the
 // generic implementation for the details of the maths involved.
