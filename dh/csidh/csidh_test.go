@@ -48,9 +48,9 @@ func TestCompare64(t *testing.T) {
 	const s uint64 = 0xFFFFFFFFFFFFFFFF
 	var val1 = fp{0, 2, 3, 4, 5, 6, 7, 8}
 	var val2 = fp{s, s, s, s, s, s, s, s}
-	var fp fp
+	var zero fp
 
-	if !fp.isZero() {
+	if !zero.isZero() {
 		t.Errorf("isZero returned true, where it should be false")
 	}
 	if val1.isZero() {

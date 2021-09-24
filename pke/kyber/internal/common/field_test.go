@@ -52,12 +52,12 @@ func randSliceUint32WithMax(length uint, max uint32) []uint32 {
 }
 
 func TestMontReduce(t *testing.T) {
-	N := 1000
+	size := 1000
 	max := uint32(Q) * (1 << 16)
 	mid := int32(Q) * (1 << 15)
-	r := randSliceUint32WithMax(uint(N), max)
+	r := randSliceUint32WithMax(uint(size), max)
 
-	for i := 0; i < N; i++ {
+	for i := 0; i < size; i++ {
 		x := int32(r[i]) - mid
 		y := montReduce(x)
 		if modQ32(x) != modQ32(int32(y)*(1<<16)) {
