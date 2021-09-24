@@ -74,7 +74,7 @@ func NewKeyFromSeed(seed []byte) (*PublicKey, *PrivateKey) {
 	sk.pk.Pack(ppk[:])
 	h := sha3.New256()
 	h.Write(ppk[:])
-	h.Sum(sk.hpk[:0])
+	h.Read(sk.hpk[:])
 	copy(pk.hpk[:], sk.hpk[:])
 
 	return &pk, &sk
@@ -125,14 +125,14 @@ func (pk *PublicKey) EncapsulateTo(ct, ss []byte, seed []byte) {
 	var m [32]byte
 	h := sha3.New256()
 	h.Write(seed[:])
-	h.Sum(m[:0])
+	h.Read(m[:])
 
 	// (K', r) = G(m ‖ H(pk))
 	var kr [64]byte
 	g := sha3.New512()
 	g.Write(m[:])
 	g.Write(pk.hpk[:])
-	g.Sum(kr[:0])
+	g.Read(kr[:])
 
 	// c = Kyber.CPAPKE.Enc(pk, m, r)
 	pk.pk.EncryptTo(ct, m[:], kr[32:])
@@ -140,7 +140,7 @@ func (pk *PublicKey) EncapsulateTo(ct, ss []byte, seed []byte) {
 	// Compute H(c) and put in second slot of kr, which will be (K', H(c)).
 	h.Reset()
 	h.Write(ct[:CiphertextSize])
-	h.Sum(kr[32:32])
+	h.Read(kr[32:])
 
 	// K = KDF(K' ‖ H(c))
 	kdf := sha3.NewShake256()
@@ -171,7 +171,7 @@ func (sk *PrivateKey) DecapsulateTo(ss, ct []byte) {
 	g := sha3.New512()
 	g.Write(m2[:])
 	g.Write(sk.hpk[:])
-	g.Sum(kr2[:0])
+	g.Read(kr2[:])
 
 	// c' = Kyber.CPAPKE.Enc(pk, m', r')
 	var ct2 [CiphertextSize]byte
@@ -180,7 +180,7 @@ func (sk *PrivateKey) DecapsulateTo(ss, ct []byte) {
 	// Compute H(c) and put in second slot of kr2, which will be (K'', H(c)).
 	h := sha3.New256()
 	h.Write(ct[:CiphertextSize])
-	h.Sum(kr2[32:32])
+	h.Read(kr2[32:])
 
 	// Replace K'' by  z in the first slot of kr2 if c ≠ c'.
 	subtle.ConstantTimeCopy(
@@ -255,7 +255,7 @@ func (pk *PublicKey) Unpack(buf []byte) {
 	// Compute cached H(pk)
 	h := sha3.New256()
 	h.Write(buf)
-	h.Sum(pk.hpk[:0])
+	h.Read(pk.hpk[:])
 }
 
 // Boilerplate down below for the KEM scheme API.

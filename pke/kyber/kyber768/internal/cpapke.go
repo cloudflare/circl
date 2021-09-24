@@ -53,12 +53,11 @@ func NewKeyFromSeed(seed []byte) (*PublicKey, *PrivateKey) {
 
 	var expandedSeed [64]byte
 
-	// XXX use internal sha3 implementation
 	h := sha3.New512()
 	_, _ = h.Write(seed)
 
 	// This writes hash into expandedSeed.  Yes, this is idiomatic Go.
-	h.Sum(expandedSeed[:0])
+	_, _ = h.Read(expandedSeed[:])
 
 	copy(pk.rho[:], expandedSeed[:32])
 	sigma := expandedSeed[32:] // σ, the noise seed
