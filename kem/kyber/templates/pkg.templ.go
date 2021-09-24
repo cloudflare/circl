@@ -109,7 +109,7 @@ func GenerateKeyPair(rand io.Reader) (*PublicKey, *PrivateKey, error) {
 // seed may be nil, in which case crypto/rand.Reader is used to generate one.
 func (pk *PublicKey) EncapsulateTo(ct, ss []byte, seed []byte) {
 	if seed == nil {
-		seed := make([]byte, EncapsulationSeedSize)
+		seed = make([]byte, EncapsulationSeedSize)
 		cryptoRand.Read(seed[:])
 	} else {
 		if len(seed) != EncapsulationSeedSize {
