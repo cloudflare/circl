@@ -40,6 +40,8 @@ linters-settings:
     statements: 80
   nestif:
     min-complexity: 6
+  govet:
+    check-shadowing: true
 
 issues:
   max-issues-per-linter: 0
