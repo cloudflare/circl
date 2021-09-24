@@ -114,6 +114,17 @@ func TestApi(t *testing.T) {
 				t.Fatal()
 			}
 
+			ct3, ss3, err := scheme.Encapsulate(pk2)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if bytes.Equal(ss3, ss) {
+				t.Fatal()
+			}
+			if bytes.Equal(ct3, ct) {
+				t.Fatal()
+			}
+
 			ss2, err := scheme.Decapsulate(sk2, ct)
 			if err != nil {
 				t.Fatal(err)
