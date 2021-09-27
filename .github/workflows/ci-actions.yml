@@ -21,6 +21,10 @@ jobs:
         with:
           version: v1.42
           args: --config=./.etc/golangci.yml ./...
+      - name: Check shadowing
+        run: |
+         go install golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow@latest
+         go vet -vettool=$(which shadow) ./... 2>&1 | awk -f .etc/action.awk
       - name: Setup Go-${{ matrix.GOVER }}
         uses: actions/setup-go@v2
         with:
