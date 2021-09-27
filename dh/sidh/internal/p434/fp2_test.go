@@ -173,8 +173,8 @@ func TestFp2Inv(t *testing.T) {
 	}
 
 	// This is more expensive; run fewer tests
-	var quickCheckConfig = &quick.Config{MaxCount: (1 << 11)}
-	if err := quick.Check(inverseIsCorrect, quickCheckConfig); err != nil {
+	var fasterCheckConfig = &quick.Config{MaxCount: (1 << 11)}
+	if err := quick.Check(inverseIsCorrect, fasterCheckConfig); err != nil {
 		t.Error(err)
 	}
 }
@@ -193,8 +193,8 @@ func TestFp2Batch3Inv(t *testing.T) {
 	}
 
 	// This is more expensive; run fewer tests
-	var quickCheckConfig = &quick.Config{MaxCount: (1 << 8)}
-	if err := quick.Check(batchInverseIsCorrect, quickCheckConfig); err != nil {
+	var fasterCheckConfig = &quick.Config{MaxCount: (1 << 8)}
+	if err := quick.Check(batchInverseIsCorrect, fasterCheckConfig); err != nil {
 		t.Error(err)
 	}
 }
