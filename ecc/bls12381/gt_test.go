@@ -27,7 +27,7 @@ func BenchmarkGt(b *testing.B) {
 	})
 	b.Run("Exp", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			e3.ExpVarTime(e1, sc)
+			e3.Exp(e1, sc)
 		}
 	})
 }

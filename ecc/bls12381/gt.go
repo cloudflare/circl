@@ -18,5 +18,5 @@ func (z *Gt) Mul(x, y *Gt)                   { z.i.Mul(&x.i, &y.i) }
 func (z *Gt) Sqr(x *Gt)                      { z.i.Sqr(&x.i) }
 func (z *Gt) Inv(x *Gt)                      { z.i.Inv(&x.i) }
 
-// ExpVarTime calculates z=x^n, where n is the exponent in big-endian order.
-func (z *Gt) ExpVarTime(x *Gt, n *Scalar) { b, _ := n.MarshalBinary(); z.i.ExpVarTime(&x.i, b) }
+// Exp calculates z=x^n, where n is the exponent in big-endian order.
+func (z *Gt) Exp(x *Gt, n *Scalar) { b, _ := n.MarshalBinary(); z.i.Exp(&x.i, b) }

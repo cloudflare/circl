@@ -31,7 +31,7 @@ func TestURoot(t *testing.T) {
 		var z URoot
 		for i := 0; i < 16; i++ {
 			x := randomURoot(t)
-			(*Cyclo6)(&z).expVarTime((*Cyclo6)(x), order)
+			(*Cyclo6)(&z).exp((*Cyclo6)(x), order)
 
 			// x^order = 1
 			got := z.IsIdentity()
