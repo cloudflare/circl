@@ -136,6 +136,12 @@ func (z *Fp6) Frob(x *Fp6) {
 	z[2].Mul(&z[2], &Fp2{frob6V2, Fp{}})
 }
 
+func (z *Fp6) CMov(x, y *Fp6, b int) {
+	z[0].CMov(&x[0], &y[0], b)
+	z[1].CMov(&x[1], &y[1], b)
+	z[2].CMov(&x[2], &y[2], b)
+}
+
 func (z Fp6) MarshalBinary() (b []byte, e error) {
 	var b0, b1, b2 []byte
 	if b2, e = z[2].MarshalBinary(); e == nil {

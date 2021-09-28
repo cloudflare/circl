@@ -1,6 +1,9 @@
 package ff
 
-import "fmt"
+import (
+	"crypto/subtle"
+	"fmt"
+)
 
 // Fp12Size is the length in bytes of an Fp12 element.
 const Fp12Size = 2 * Fp6Size
@@ -53,17 +56,35 @@ func (z *Fp12) Inv(x *Fp12) {
 	z[1].Neg()
 }
 
-// ExpVarTime calculates z=x^n, where n is the exponent in big-endian order.
-func (z *Fp12) ExpVarTime(x *Fp12, n []byte) {
+func (z *Fp12) CMov(x, y *Fp12, b int) {
+	z[0].CMov(&x[0], &y[0], b)
+	z[1].CMov(&x[1], &y[1], b)
+}
+
+// Exp calculates z=x^n, where n is the exponent in big-endian order.
+func (z *Fp12) Exp(x *Fp12, n []byte) {
 	zz := new(Fp12)
 	zz.SetOne()
+	T := new(Fp12)
+	var mults [16]Fp12
+	mults[0].SetOne()
+	mults[1] = *x
+	for i := 1; i < 8; i++ {
+		mults[2*i] = mults[i]
+		mults[2*i].Sqr(&mults[2*i])
+		mults[2*i+1].Mul(&mults[2*i], x)
+	}
 	N := 8 * len(n)
-	for i := 0; i < N; i++ {
+	for i := 0; i < N; i += 4 {
 		zz.Sqr(zz)
-		bit := 0x1 & (n[i/8] >> uint(7-i%8))
-		if bit != 0 {
-			zz.Mul(zz, x)
+		zz.Sqr(zz)
+		zz.Sqr(zz)
+		zz.Sqr(zz)
+		idx := 0xf & (n[i/8] >> uint(4-i%8))
+		for j := 0; j < 16; j++ {
+			T.CMov(T, &mults[j], subtle.ConstantTimeByteEq(idx, uint8(j)))
 		}
+		zz.Mul(zz, T)
 	}
 	*z = *zz
 }

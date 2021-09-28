@@ -80,7 +80,7 @@ func TestFp12(t *testing.T) {
 
 			// Frob(x) == x^p
 			got.Frob(x)
-			want.ExpVarTime(x, p)
+			want.Exp(x, p)
 
 			if got.IsEqual(&want) == 0 {
 				test.ReportError(t, got, want, x)
