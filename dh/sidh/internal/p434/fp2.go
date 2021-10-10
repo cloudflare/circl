@@ -157,6 +157,29 @@ func cswap(xPx, xPz, xQx, xQz *common.Fp2, choice uint8) {
 	cswapP434(&xPz.B, &xQz.B, choice)
 }
 
+// In case choice == 1, performs following moves in constant time:
+//     xPx <- xQx
+//     xPz <- xQz
+// Otherwise returns xPx, xPz, xQx, xQz unchanged
+func cmov(xPx, xPz, xQx, xQz *common.Fp2, choice uint8) {
+	cmovP434(&xPx.A, &xQx.A, choice)
+	cmovP434(&xPx.B, &xQx.B, choice)
+	cmovP434(&xPz.A, &xQz.A, choice)
+	cmovP434(&xPz.B, &xQz.B, choice)
+}
+
+func isZero(x *common.Fp2) uint8 {
+	r64 := uint64(0)
+	for i := 0; i < FpWords; i++ {
+		r64 |= x.A[i] | x.B[i]
+	}
+	r := uint8(0)
+	for i := uint64(0); i < 64; i++ {
+		r |= uint8((r64 >> i) & 0x1)
+	}
+	return 1 - r
+}
+
 // Converts in.A and in.B to Montgomery domain and stores
 // in 'out'
 // out.A = in.A * R mod p

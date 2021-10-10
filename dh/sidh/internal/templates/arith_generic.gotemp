@@ -51,6 +51,16 @@ func sub{{ .FIELD }}(z, x, y *common.Fp) {
 	}
 }
 
+// If choice = 0, leave x unchanged. If choice = 1, sets x to y.
+// If choice is neither 0 nor 1 then behaviour is undefined.
+// This function executes in constant time.
+func cmov{{ .FIELD }}(x, y *common.Fp, choice uint8) {
+	mask := 0 - uint64(choice)
+	for i := 0; i < FpWords; i++ {
+		x[i] ^= mask & (x[i] ^ y[i])
+	}
+}
+
 // Conditionally swaps bits in x and y in constant time.
 // mask indicates bits to be swapped (set bits are swapped)
 // For details see "Hackers Delight, 2.20"
