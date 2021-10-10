@@ -4,6 +4,8 @@
 package {{ .PACKAGE}}
 
 import (
+	"crypto/rand"
+
 	. "github.com/cloudflare/circl/dh/sidh/internal/common"
 )
 
@@ -239,6 +241,12 @@ func ScalarMul3Pt(cparams *ProjectiveCurveParameters, P, Q, PmQ *ProjectivePoint
 	R2 = *PmQ
 	R0 = *Q
 
+	var blind ProjectivePoint
+	b := make([]byte, 4*params.Bytelen)
+	_, _ = rand.Read(b)
+	BytesToFp2(&blind.X, b[:2*params.Bytelen], params.Bytelen)
+	BytesToFp2(&blind.Z, b[2*params.Bytelen:], params.Bytelen)
+
 	// Iterate over the bits of the scalar, bottom to top
 	prevBit := uint8(0)
 	for i := uint(0); i < nbits; i++ {
@@ -246,6 +254,7 @@ func ScalarMul3Pt(cparams *ProjectiveCurveParameters, P, Q, PmQ *ProjectivePoint
 		swap := prevBit ^ bit
 		prevBit = bit
 		cswap(&R1.X, &R1.Z, &R2.X, &R2.Z, swap)
+		cmov(&R1.X, &R1.Z, &blind.X, &blind.Z, isZero(&R1.X) | isZero(&R1.Z))
 		R0, R2 = xDbladd(&R0, &R2, &R1, &aPlus2Over4)
 	}
 	cswap(&R1.X, &R1.Z, &R2.X, &R2.Z, prevBit)

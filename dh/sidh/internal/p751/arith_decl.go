@@ -10,6 +10,12 @@ import (
 	. "github.com/cloudflare/circl/dh/sidh/internal/common"
 )
 
+// If choice = 0, leave x unchanged. If choice = 1, sets x to y.
+// If choice is neither 0 nor 1 then behaviour is undefined.
+// This function executes in constant time.
+//go:noescape
+func cmovP751(x, y *Fp, choice uint8)
+
 // If choice = 0, leave x,y unchanged. If choice = 1, set x,y = y,x.
 // If choice is neither 0 nor 1 then behaviour is undefined.
 // This function executes in constant time.

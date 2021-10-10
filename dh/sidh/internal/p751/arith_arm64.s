@@ -2,6 +2,53 @@
 
 #include "textflag.h"
 
+TEXT ·cmovP751(SB), NOSPLIT, $0-17
+	MOVD	x+0(FP), R0
+	MOVD	y+8(FP), R1
+	MOVB	choice+16(FP), R2
+
+	// Set flags
+	// If choice is not 0 or 1, this implementation will swap completely
+	CMP	$0, R2
+
+	LDP	0(R0), (R3, R4)
+	LDP	0(R1), (R5, R6)
+	CSEL	EQ, R3, R5, R7
+	CSEL	EQ, R4, R6, R8
+	STP	(R7, R8), 0(R0)
+
+	LDP	16(R0), (R3, R4)
+	LDP	16(R1), (R5, R6)
+	CSEL	EQ, R3, R5, R7
+	CSEL	EQ, R4, R6, R8
+	STP	(R7, R8), 16(R0)
+
+	LDP	32(R0), (R3, R4)
+	LDP	32(R1), (R5, R6)
+	CSEL	EQ, R3, R5, R7
+	CSEL	EQ, R4, R6, R8
+	STP	(R7, R8), 32(R0)
+
+	LDP	48(R0), (R3, R4)
+	LDP	48(R1), (R5, R6)
+	CSEL	EQ, R3, R5, R7
+	CSEL	EQ, R4, R6, R8
+	STP	(R7, R8), 48(R0)
+
+	LDP	64(R0), (R3, R4)
+	LDP	64(R1), (R5, R6)
+	CSEL	EQ, R3, R5, R7
+	CSEL	EQ, R4, R6, R8
+	STP	(R7, R8), 64(R0)
+
+	LDP	80(R0), (R3, R4)
+	LDP	80(R1), (R5, R6)
+	CSEL	EQ, R3, R5, R7
+	CSEL	EQ, R4, R6, R8
+	STP	(R7, R8), 80(R0)
+
+	RET
+
 TEXT ·cswapP751(SB), NOSPLIT, $0-17
 	MOVD	x+0(FP), R0
 	MOVD	y+8(FP), R1

@@ -29,7 +29,7 @@ func TestFpCswap(t *testing.T) {
 	cswapP434(&x, &y, 0)
 	for i := 0; i < FpWords; i++ {
 		if (x[i] != one[i]) || (y[i] != two[i]) {
-			t.Error("Found", x, "expected", two)
+			t.Error("Found", x, "expected", one)
 		}
 	}
 
@@ -37,6 +37,34 @@ func TestFpCswap(t *testing.T) {
 	for i := 0; i < FpWords; i++ {
 		if (x[i] != two[i]) || (y[i] != one[i]) {
 			t.Error("Found", x, "expected", two)
+		}
+	}
+}
+
+func TestFpCmov(t *testing.T) {
+	var one = common.Fp{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
+	var two = common.Fp{2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2}
+
+	var x = one
+	var y = two
+
+	cmovP434(&x, &y, 0)
+	for i := 0; i < FpWords; i++ {
+		if x[i] != one[i] {
+			t.Error("Found", x, "expected", one)
+		}
+		if y[i] != two[i] {
+			t.Error("Found", y, "expected", two)
+		}
+	}
+
+	cmovP434(&x, &y, 1)
+	for i := 0; i < FpWords; i++ {
+		if x[i] != two[i] {
+			t.Error("Found", x, "expected", two)
+		}
+		if y[i] != two[i] {
+			t.Error("Found", y, "expected", two)
 		}
 	}
 }

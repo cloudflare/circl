@@ -544,6 +544,35 @@ TEXT ·cswapP503(SB),NOSPLIT,$0-17
 
 	RET
 
+TEXT ·cmovP503(SB),NOSPLIT,$0-17
+
+    MOVQ    x+0(FP), DI
+    MOVQ    y+8(FP), SI
+    MOVB    choice+16(FP), AL   // AL = 0 or 1
+    MOVBLZX AL, AX  // AX = 0 or 1
+    NEGQ    AX          // AX = 0x00..00 or 0xff..ff
+#ifndef CMOV_BLOCK
+#define CMOV_BLOCK(idx)    \
+    MOVQ    (idx*8)(DI), BX \ // BX = x[idx]
+    MOVQ    (idx*8)(SI), DX \ // DX = y[idx]
+    XORQ    BX, DX          \ // DX = y[idx] ^ x[idx]
+    ANDQ    AX, DX          \ // DX = (y[idx] ^ x[idx]) & mask
+    XORQ    DX, BX          \ // BX = (y[idx] ^ x[idx]) & mask) ^ x[idx] = x[idx] or y[idx]
+    MOVQ    BX, (idx*8)(DI)
+#endif
+    CMOV_BLOCK(0)
+    CMOV_BLOCK(1)
+    CMOV_BLOCK(2)
+    CMOV_BLOCK(3)
+    CMOV_BLOCK(4)
+    CMOV_BLOCK(5)
+    CMOV_BLOCK(6)
+    CMOV_BLOCK(7)
+#ifdef CMOV_BLOCK
+#undef CMOV_BLOCK
+#endif
+    RET
+
 TEXT ·addP503(SB),NOSPLIT,$0-24
 
 	MOVQ	z+0(FP), REG_P3
