@@ -2,6 +2,7 @@
 
 # CIRCL
 
+[![GitHub release](https://img.shields.io/github/release/cloudflare/circl.svg)](https://GitHub.com/cloudflare/circl/releases/)
 [![CIRCL](https://github.com/cloudflare/circl/workflows/CIRCL/badge.svg)](https://github.com/cloudflare/circl/actions)
 [![GoDoc](https://godoc.org/github.com/cloudflare/circl?status.svg)](https://pkg.go.dev/github.com/cloudflare/circl?tab=overview)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cloudflare/circl)](https://goreportcard.com/report/github.com/cloudflare/circl)
@@ -14,44 +15,62 @@ Curve Cryptography (ECC).
 
 ## Security Disclaimer
 
-🚨 This library is offered as-is, and without a guarantee. Therefore, it is expected that changes in the code, repository, and API occur in the future. We recommend to take caution before using this library in a production application since part of its content is experimental.
+🚨 This library is offered as-is, and without a guarantee. Therefore, it is expected that changes in the code, repository, and API occur in the future. We recommend to take caution before using this library in a production application since part of its content is experimental. All security issues must be reported, please notify us immediately following the instructions given in our [Security Policy](https://github.com/cloudflare/circl/security/policy).
 
 ## Installation
 
-You can get it by typing:
+You can get CIRCL by fetching:
 
 ```sh
 go get -u github.com/cloudflare/circl
 ```
 
-## Versioning
+## List of Algorithms
 
-Version numbers are [Semvers](https://semver.org/). We release a minor version for new functionality, a major version for breaking API changes, and increment the patchlevel for bugfixes.
+#### Diffie-Hellman Protocol
+- [X25519](https://datatracker.ietf.org/doc/html/rfc7748/)
+- [X448](https://datatracker.ietf.org/doc/html/rfc7748/)
+- [Curve4Q](https://datatracker.ietf.org/doc/draft-ladd-cfrg-4q/)
 
-## Implemented Primitives
+#### Digital Signature Schemes
+- [Ed25519](https://datatracker.ietf.org/doc/rfc8032/)
+- [Ed448](https://datatracker.ietf.org/doc/rfc8032/)
 
-| Category | Algorithms | Description | Applications |
-|-----------|------------|-------------|--------------|
-| PQ Key Exchange | SIDH | SIDH provide key exchange mechanisms using ephemeral keys. | Post-quantum key exchange in TLS |
-| PQ Key Exchange | cSIDH | Isogeny based drop-in replacement for Diffie–Hellman | Post-Quantum Key exchange. |
-| PQ KEM | SIKE | SIKE is a key encapsulation mechanism (KEM). | Post-quantum key exchange in TLS |
-| Key Exchange | X25519, X448 | RFC-7748 provides new key exchange mechanisms based on Montgomery elliptic curves. | TLS 1.3. Secure Shell. |
-| Key Exchange | FourQ | One of the fastest elliptic curves at 128-bit security level. | Experimental for key agreement and digital signatures. |
-| Key Exchange / Digital signatures | P-384 | Our optimizations reduce the burden when moving from P-256 to P-384. |  ECDSA and ECDH using Suite B at top secret level. |
-| Digital Signatures | Ed25519, Ed448 | RFC-8032 provides new signature schemes based on Edwards curves. | Digital certificates and authentication. |
-| Key Encapsulation | P-256, P-384, P-521, X25519 and X448 | Key encapsulation methods based on Diffie-Hellman. | HPKE |
-| Hybrid Public-Key Encryption | Base, Auth, PSK, AuthPSK | [HPKE](https://www.ietf.org/archive/id/draft-irtf-cfrg-hpke-07.html) is a combination of KEM and AEAD. | TLS |
-| PQ KEM/PKE | Kyber | Lattice (M-LWE) based IND-CCA2 secure key encapsulation mechanism and IND-CPA secure public key encryption  | Post-Quantum Key exchange |
-| PQ Digital Signatures | Dilithium, Hybrid modes | Lattice (Module LWE) based signature scheme | Post-Quantum PKI |
+#### Groups based on Elliptic Curves
+ - P-256, P-384, P-521, [FIPS 186-4](https://doi.org/10.6028/NIST.FIPS.186-4)
+ - [Ristretto](https://datatracker.ietf.org/doc/draft-irtf-cfrg-ristretto255-decaf448/01/)
+ - [Hash to Curve](https://datatracker.ietf.org/doc/draft-irtf-cfrg-hash-to-curve/)
 
-### Work in Progress
+#### High-Level Protocols
+ - Bilinear pairings with [BLS12-381](https://electriccoin.co/blog/new-snark-curve/).
+ - [HPKE](https://datatracker.ietf.org/doc/draft-irtf-cfrg-hpke/): Hybrid Public-Key Encryption
+ - [VOPRF](https://datatracker.ietf.org/doc/draft-irtf-cfrg-voprf/): Verifiable Oblivious Pseudorandom function.
 
-| Category | Algorithms | Description | Applications |
-|----------|------------|-------------|--------------|
-| Hashing to Elliptic Curve Groups | Several algorithms: Elligator2, Ristretto, SWU, Icart. | Protocols based on elliptic curves require hash functions that map bit strings to points on an elliptic curve.  | VOPRF. OPAQUE. PAKE. Verifiable random functions. |
-| Bilinear Pairings | Plans for moving BN256 to stronger pairing curves. | A bilineal pairing is a mathematical operation that enables the implementation of advanced cryptographic protocols, such as identity-based encryption (IBE), short digital signatures (BLS), and attribute-based encryption (ABE). | Geo Key Manager, Randomness Beacon, Ethereum and other blockchain applications. |
-| PQ KEM | HRSS-SXY | Lattice (NTRU) based key encapsulation mechanism. | Key exchange for low-latency environments |
-| PQ Digital Signatures | SPHINCS+ | Stateless hash-based signature scheme | Post-Quantum PKI |
+#### Post-Quantum Key Encapsulation Methods
+ - [SIDH/SIKE](https://sike.org/): Supersingular Key Encapsulation with  rimes p434, p503, p751
+ - [CSIDH](https://csidh.isogeny.org/): Post-Quantum Commutative Group Action
+ - [Kyber](https://pq-crystals.org/kyber/) KEM: modes 512, 768, 1024
+
+#### Post-Quantum Public-Key Encryption
+ - [Kyber](https://pq-crystals.org/kyber/) PKE: modes 512, 768, 1024
+
+#### Post-Quantum Digital Signature Schemes
+ - [Dilithium](https://pq-crystals.org/dilithium/): modes 2, 3, 5
+
+#### Field Arithmetic
+ - Fp25519, Fp448, Fp381
+
+#### Elliptic Curves
+ - P-384 Curve
+ - [FourQ](https://eprint.iacr.org/2015/565)
+ - [Goldilocks](https://eprint.iacr.org/2015/625)
+
+#### Parallel SIMD
+ - [Keccak](https://keccak.team/keccak_specs_summary.html) f1600 Permutation
+
+#### XOF: eXtendable Output Functions
+ - [FIPS 202](https://doi.org/10.6028/NIST.FIPS.202): SHAKE128 and SHAKE256
+ - [BLAKE2X](https://www.blake2.net/blake2x.pdf): BLAKE2XB and BLAKE2XS
 
 ## Testing and Benchmarking
 
@@ -69,17 +88,16 @@ To contribute, fork this repository and make your changes, and then make a Pull
 Request. A Pull Request requires approval of the admin team and a successful
 CI build.
 
-## How to Cite 
+## How to Cite
 
-To cite CIRCL, use one of the following formats and update with the date
-you accessed this project.
+To cite CIRCL, use one of the following formats and update the version and  date you accessed this project.
 
 APA Style
 
 ```
-Faz-Hernández, A. and Kwiatkowski, K. (2019). Introducing CIRCL: 
-An Advanced Cryptographic Library. Cloudflare. Available at 
-https://github.com/cloudflare/circl. Accessed Feb 2021.
+Faz-Hernández, A. and Kwiatkowski, K. (2019). Introducing CIRCL:
+An Advanced Cryptographic Library. Cloudflare. Available at
+https://github.com/cloudflare/circl. v1.1.0 Accessed Oct 2021.
 ```
 
 Bibtex Source
@@ -90,11 +108,11 @@ Bibtex Source
   author       = {Armando Faz-Hern\'{a}ndez and Kris Kwiatkowski},
   organization = {Cloudflare},
   abstract     = {{CIRCL (Cloudflare Interoperable, Reusable Cryptographic Library) is
-                   a collection of cryptographic primitives written in Go. The goal 
-                   of this library is to be used as a tool for experimental 
+                   a collection of cryptographic primitives written in Go. The goal
+                   of this library is to be used as a tool for experimental
                    deployment of cryptographic algorithms targeting Post-Quantum (PQ)
                    and Elliptic Curve Cryptography (ECC).}},
-  note         = {Available at \url{https://github.com/cloudflare/circl}. Accessed Feb 2021},
+  note         = {Available at \url{https://github.com/cloudflare/circl}. v1.1.0 Accessed Oct 2021},
   month        = jun,
   year         = {2019}
 }
