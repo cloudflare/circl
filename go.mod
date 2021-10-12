@@ -1,9 +1,9 @@
 module github.com/cloudflare/circl
 
-go 1.12
+go 1.15
 
 require (
 	github.com/bwesterb/go-ristretto v1.2.0
-	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
-	golang.org/x/sys v0.0.0-20210902050250-f475640dd07b
+	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
+	golang.org/x/sys v0.0.0-20211007075335-d3039528d8ac
 )
