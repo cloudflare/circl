@@ -1,10 +1,12 @@
 package bls12381
 
 import (
+	"crypto"
 	"crypto/subtle"
 	"fmt"
 
 	"github.com/cloudflare/circl/ecc/bls12381/ff"
+	"github.com/cloudflare/circl/group"
 )
 
 // G2Size is the length in bytes of an element in G2 in uncompressed form..
@@ -154,6 +156,33 @@ func (g *G2) psi() {
 	g.y.Mul(&g2PsiCoeff.beta, &g.y)
 }
 
+// clearCofactor maps g to a point in the r-torsion subgroup.
+//
+// This method multiplies g times a multiple of the cofactor as proposed by
+// Fuentes-Knapp-Rodríguez at https://doi.org/10.1007/978-3-642-28496-0_25.
+//
+// The explicit formulas for BLS curves are in Section 4.1 of Budroni-Pintore
+// "Efficient hash maps to G2 on BLS curves" at https://eprint.iacr.org/2017/419
+//  h(a)P = [x^2-x-1]P + [x-1]ψ(P) + ψ^2(2P)
+func (g *G2) clearCofactor() {
+	x := g2PsiCoeff.minusZ[:]
+	xP, psiP := &G2{}, &G2{}
+	_2P := *g
+
+	_2P.Double()              // 2P
+	_2P.psi()                 // ψ(2P)
+	_2P.psi()                 // ψ^2(2P)
+	xP.scalarMultShort(x, g)  // -xP
+	xP.Add(xP, g)             // -xP + P = [-x+1]P
+	*psiP = *xP               //
+	psiP.psi()                // ψ(-xP + P) = [-x+1]ψ(P)
+	xP.scalarMultShort(x, xP) // x^2P - xP = [x^2-x]P
+	g.Add(g, psiP)            // P + [-x+1]ψ(P)
+	g.Neg()                   // -P + [x-1]ψ(P)
+	g.Add(g, xP)              // [x^2-x-1]P + [x-1]ψ(P)
+	g.Add(g, &_2P)            // [x^2-x-1]P + [x-1]ψ(P) + 2ψ^2(P)
+}
+
 // Double updates g = 2g.
 func (g *G2) Double() { doubleAndLine(g, nil) }
 
@@ -191,6 +220,23 @@ func (g *G2) scalarMult(k []byte, P *G2) {
 	*g = Q
 }
 
+// scalarMultShort multiplies by a short, constant scalar k, where k is the
+// scalar in big-endian order. Runtime depends on the scalar.
+func (g *G2) scalarMultShort(k []byte, P *G2) {
+	// Since the scalar is short and low Hamming weight not much helps.
+	var Q G2
+	Q.SetIdentity()
+	N := 8 * len(k)
+	for i := 0; i < N; i++ {
+		Q.Double()
+		bit := 0x1 & (k[i/8] >> uint(7-i%8))
+		if bit != 0 {
+			Q.Add(&Q, P)
+		}
+	}
+	*g = Q
+}
+
 // IsEqual returns true if g and p are equivalent.
 func (g *G2) IsEqual(p *G2) bool {
 	var lx, rx, ly, ry ff.Fp2
@@ -201,6 +247,46 @@ func (g *G2) IsEqual(p *G2) bool {
 	ry.Mul(&p.y, &g.z) // ry = y2*z1
 	ly.Sub(&ly, &ry)   // ly = ly-ry
 	return lx.IsZero() == 1 && ly.IsZero() == 1
+}
+
+// EncodeToCurve is a non-uniform encoding from an input byte string (and
+// an optional domain separation tag) to elements in G2. This function must not
+// be used as a hash function, otherwise use G2.Hash instead.
+func (g *G2) Encode(input, dst []byte) {
+	const L = 64
+	pseudo := group.NewExpanderMD(crypto.SHA256, dst).Expand(input, 2*L)
+
+	var u ff.Fp2
+	u[0].SetBytes(pseudo[0*L : 1*L])
+	u[1].SetBytes(pseudo[1*L : 2*L])
+
+	var q isogG2Point
+	q.sswu(&u)
+	g.evalIsogG2(&q)
+	g.clearCofactor()
+}
+
+// Hash produces an element of G2 from the hash of an input byte string and
+// an optional domain separation tag. This function is safe to use when a
+// random oracle returning points in G2 be required.
+func (g *G2) Hash(input, dst []byte) {
+	const L = 64
+	pseudo := group.NewExpanderMD(crypto.SHA256, dst).Expand(input, 4*L)
+
+	var u0, u1 ff.Fp2
+	u0[0].SetBytes(pseudo[0*L : 1*L])
+	u0[1].SetBytes(pseudo[1*L : 2*L])
+	u1[0].SetBytes(pseudo[2*L : 3*L])
+	u1[1].SetBytes(pseudo[3*L : 4*L])
+
+	var q0, q1 isogG2Point
+	q0.sswu(&u0)
+	q1.sswu(&u1)
+	var p0, p1 G2
+	p0.evalIsogG2(&q0)
+	p1.evalIsogG2(&q1)
+	g.Add(&p0, &p1)
+	g.clearCofactor()
 }
 
 // isOnCurve returns true if g is a valid point on the curve.

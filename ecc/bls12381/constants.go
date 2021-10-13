@@ -21,14 +21,29 @@ var (
 		b, _3b, genX, genY ff.Fp
 		cofactorSmall      [8]byte // (1-z), where z is the BLS12 parameter (big-endian).
 	}
-	g2Params struct{ b, _3b, genX, genY ff.Fp2 }
+	g2Params struct {
+		b, _3b, genX, genY ff.Fp2
+		z                  [8]byte // z, where z is the BLS12 parameter (big-endian).
+	}
 	g1Isog11 struct {
 		a, b, c2 ff.Fp
-		c1       [ff.FpSize]byte // integer c1 = (p - 3) / 4 (big-endian)
+		c1       [48]byte // integer c1 = (p - 3) / 4 (big-endian)
 		xNum     [12]ff.Fp
 		xDen     [11]ff.Fp
 		yNum     [16]ff.Fp
 		yDen     [16]ff.Fp
+	}
+	g2Isog3 struct {
+		a, b ff.Fp2
+		c1   [95]byte // integer c1 = (p^2 - 9) / 16 (big-endian)
+		c2   ff.Fp2   // sqrt(-1)
+		c3   ff.Fp2   // sqrt(c2)
+		c4   ff.Fp2   // sqrt(Z^3 / c3)
+		c5   ff.Fp2   // sqrt(Z^3 / (c2 * c3))
+		xNum [4]ff.Fp2
+		xDen [3]ff.Fp2
+		yNum [4]ff.Fp2
+		yDen [4]ff.Fp2
 	}
 	g1Check struct {
 		coef  [16]byte // coef  = (z^2-1)/3, where z is the BLS12 parameter (big-endian).
@@ -84,8 +99,9 @@ func init() {
 	err(g2Params.genX[1].SetString("0x13e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7e"))
 	err(g2Params.genY[0].SetString("0x0ce5d527727d6e118cc9cdc6da2e351aadfd9baa8cbdd3a76d429a695160d12c923ac9cc3baca289e193548608b82801"))
 	err(g2Params.genY[1].SetString("0x0606c4a02ea734cc32acd2b02bc28b99cb3e287e85a763af267492ab572e99ab3f370d275cec1da1aaa9075ff05f79be"))
+	g2Params.z = [8]byte{0xd2, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01} // (big-endian)
 
-	g1Isog11.c1 = [ff.FpSize]byte{ // (big-endian)
+	g1Isog11.c1 = [48]byte{ // (big-endian)
 		0x06, 0x80, 0x44, 0x7a, 0x8e, 0x5f, 0xf9, 0xa6,
 		0x92, 0xc6, 0xe9, 0xed, 0x90, 0xd2, 0xeb, 0x35,
 		0xd9, 0x1d, 0xd2, 0xe1, 0x3c, 0xe1, 0x44, 0xaf,
@@ -155,6 +171,94 @@ func init() {
 	err(g1Isog11.yDen[13].SetString("0x02660400eb2e4f3b628bdd0d53cd76f2bf565b94e72927c1cb748df27942480e420517bd8714cc80d1fadc1326ed06f7"))
 	err(g1Isog11.yDen[14].SetString("0x0e0fa1d816ddc03e6b24255e0d7819c171c40f65e273b853324efcd6356caa205ca2f570f13497804415473a1d634b8f"))
 	g1Isog11.yDen[15].SetOne()
+
+	err(g2Isog3.a.SetString("0x00", "0xF0"))
+	err(g2Isog3.b.SetString("0x03F4", "0x03F4"))
+	g2Isog3.c1 = [95]byte{ // (big-endian)
+		0x2a, 0x43, 0x7a, 0x4b, 0x8c, 0x35, 0xfc, 0x74,
+		0xbd, 0x27, 0x8e, 0xaa, 0x22, 0xf2, 0x5e, 0x9e,
+		0x2d, 0xc9, 0x0e, 0x50, 0xe7, 0x04, 0x6b, 0x46,
+		0x6e, 0x59, 0xe4, 0x93, 0x49, 0xe8, 0xbd, 0x05,
+		0x0a, 0x62, 0xcf, 0xd1, 0x6d, 0xdc, 0xa6, 0xef,
+		0x53, 0x14, 0x93, 0x30, 0x97, 0x8e, 0xf0, 0x11,
+		0xd6, 0x86, 0x19, 0xc8, 0x61, 0x85, 0xc7, 0xb2,
+		0x92, 0xe8, 0x5a, 0x87, 0x09, 0x1a, 0x04, 0x96,
+		0x6b, 0xf9, 0x1e, 0xd3, 0xe7, 0x1b, 0x74, 0x31,
+		0x62, 0xc3, 0x38, 0x36, 0x21, 0x13, 0xcf, 0xd7,
+		0xce, 0xd6, 0xb1, 0xd7, 0x63, 0x82, 0xea, 0xb2,
+		0x6a, 0xa0, 0x00, 0x01, 0xc7, 0x18, 0xe3,
+	}
+	err(g2Isog3.c2.SetString("0x00", "0x01"))
+	err(g2Isog3.c3.SetString(
+		"0x135203e60180a68ee2e9c448d77a2cd91c3dedd930b1cf60ef396489f61eb45e304466cf3e67fa0af1ee7b04121bdea2",
+		"0x6af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09",
+	))
+	err(g2Isog3.c4.SetString(
+		"0x699be3b8c6870965e5bf892ad5d2cc7b0e85a117402dfd83b7f4a947e02d978498255a2aaec0ac627b5afbdf1bf1c90",
+		"0x8157cd83046453f5dd0972b6e3949e4288020b5b8a9cc99ca07e27089a2ce2436d965026adad3ef7baba37f2183e9b5",
+	))
+	err(g2Isog3.c5.SetString(
+		"0xf5d0d63d2797471e6d39f306cc0dc0ab85de3bd9f39ce46f3649ac0de9e844417cc8de88716c1fd323fa68040801aea",
+		"0xab1c2ffdd6c253ca155231eb3e71ba044fd562f6f72bc5bad5ec46a0b7a3b0247cf08ce6c6317f40edbc653a72dee17",
+	))
+
+	err(g2Isog3.xNum[0].SetString(
+		"0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97d6",
+		"0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97d6",
+	))
+	err(g2Isog3.xNum[1].SetString(
+		"0x00",
+		"0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71a",
+	))
+	err(g2Isog3.xNum[2].SetString(
+		"0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71e",
+		"0x8ab05f8bdd54cde190937e76bc3e447cc27c3d6fbd7063fcd104635a790520c0a395554e5c6aaaa9354ffffffffe38d",
+	))
+	err(g2Isog3.xNum[3].SetString(
+		"0x171d6541fa38ccfaed6dea691f5fb614cb14b4e7f4e810aa22d6108f142b85757098e38d0f671c7188e2aaaaaaaa5ed1",
+		"0x00",
+	))
+
+	err(g2Isog3.xDen[0].SetString(
+		"0x00",
+		"0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa63",
+	))
+	err(g2Isog3.xDen[1].SetString(
+		"0x0c",
+		"0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa9f",
+	))
+	g2Isog3.xDen[2].SetOne()
+
+	err(g2Isog3.yNum[0].SetString(
+		"0x1530477c7ab4113b59a4c18b076d11930f7da5d4a07f649bf54439d87d27e500fc8c25ebf8c92f6812cfc71c71c6d706",
+		"0x1530477c7ab4113b59a4c18b076d11930f7da5d4a07f649bf54439d87d27e500fc8c25ebf8c92f6812cfc71c71c6d706",
+	))
+	err(g2Isog3.yNum[1].SetString(
+		"0x00",
+		"0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97be",
+	))
+	err(g2Isog3.yNum[2].SetString(
+		"0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71c",
+		"0x8ab05f8bdd54cde190937e76bc3e447cc27c3d6fbd7063fcd104635a790520c0a395554e5c6aaaa9354ffffffffe38f",
+	))
+	err(g2Isog3.yNum[3].SetString(
+		"0x124c9ad43b6cf79bfbf7043de3811ad0761b0f37a1e26286b0e977c69aa274524e79097a56dc4bd9e1b371c71c718b10",
+		"0x00",
+	))
+
+	err(g2Isog3.yDen[0].SetString(
+		"0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa8fb",
+		"0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa8fb",
+	))
+	err(g2Isog3.yDen[1].SetString(
+		"0x00",
+		"0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa9d3",
+	))
+	err(g2Isog3.yDen[2].SetString(
+		"0x12",
+		"0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa99",
+	))
+	g2Isog3.yDen[3].SetOne()
 
 	err(g1Check.beta0.SetString("0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaac"))
 	err(g1Check.beta1.SetString("0x5f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffe"))

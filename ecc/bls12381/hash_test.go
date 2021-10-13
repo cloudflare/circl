@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/cloudflare/circl/ecc/bls12381/ff"
@@ -21,33 +22,60 @@ type vectorHash struct {
 		P   point  `json:"P"`
 		Msg string `json:"msg"`
 	} `json:"vectors"`
+	Field struct {
+		M string `json:"m"`
+		P string `json:"p"`
+	} `json:"field"`
+}
+
+type elm string
+
+func (e elm) toBytes(t *testing.T) (out []byte) {
+	var buf [ff.FpSize]byte
+	for _, s := range strings.Split(string(e), ",") {
+		x, err := hex.DecodeString(s[2:])
+		if err != nil {
+			t.Fatal(err)
+		}
+		copy(buf[ff.FpSize-len(x):ff.FpSize], x)
+		out = append(append([]byte{}, buf[:]...), out...)
+	}
+	return
 }
 
 type point struct {
-	X string `json:"x"`
-	Y string `json:"y"`
+	X elm `json:"x"`
+	Y elm `json:"y"`
 }
 
-func (p point) toBytes() []byte {
-	out := make([]byte, G1Size)
-	x, err := hex.DecodeString(p.X[2:])
-	if err != nil {
-		panic(err)
-	}
-	copy(out[1*ff.FpSize-len(x):1*ff.FpSize], x)
+func (p point) toBytes(t *testing.T) []byte { return append(p.X.toBytes(t), p.Y.toBytes(t)...) }
 
-	y, err := hex.DecodeString(p.Y[2:])
-	if err != nil {
-		panic(err)
-	}
-	copy(out[2*ff.FpSize-len(y):2*ff.FpSize], y)
-
-	return out
+type hasher interface {
+	Encode(_, _ []byte)
+	Hash(_, _ []byte)
+	SetBytes([]byte) error
+	IsEqualTo(_ hasher) bool
+	IsRTorsion() bool
 }
+
+type g1Hasher struct{ *G1 }
+
+func (g g1Hasher) IsEqualTo(x hasher) bool { return g.IsEqual(x.(g1Hasher).G1) }
+func (g g1Hasher) IsRTorsion() bool        { return g.IsOnG1() }
+
+type g2Hasher struct{ *G2 }
+
+func (g g2Hasher) IsEqualTo(x hasher) bool { return g.IsEqual(x.(g2Hasher).G2) }
+func (g g2Hasher) IsRTorsion() bool        { return g.IsOnG2() }
 
 func (v *vectorHash) test(t *testing.T) {
-	got := new(G1)
-	want := new(G1)
+	var got, want hasher
+	if v.Field.M == "0x1" {
+		got, want = g1Hasher{new(G1)}, g1Hasher{new(G1)}
+	} else if v.Field.M == "0x2" {
+		got, want = g2Hasher{new(G2)}, g2Hasher{new(G2)}
+	}
+
 	dst := []byte(v.DST)
 
 	doHash := got.Encode
@@ -59,10 +87,10 @@ func (v *vectorHash) test(t *testing.T) {
 		input := []byte(vi.Msg)
 		doHash(input, dst)
 
-		err := want.SetBytes(vi.P.toBytes())
+		err := want.SetBytes(vi.P.toBytes(t))
 		test.CheckNoErr(t, err, "bad deserialization")
 
-		if !got.IsEqual(want) || !got.IsOnG1() {
+		if !got.IsEqualTo(want) || !got.IsRTorsion() {
 			test.ReportError(t, got, want, v.SuiteID, i)
 		}
 	}

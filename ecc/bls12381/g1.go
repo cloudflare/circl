@@ -4,7 +4,6 @@ import (
 	"crypto"
 	"crypto/subtle"
 	"fmt"
-	"math/big"
 
 	"github.com/cloudflare/circl/ecc/bls12381/ff"
 	"github.com/cloudflare/circl/group"
@@ -337,14 +336,9 @@ func (g *G1) toAffine() {
 func (g *G1) Encode(input, dst []byte) {
 	const L = 64
 	pseudo := group.NewExpanderMD(crypto.SHA256, dst).Expand(input, L)
-
-	bu := new(big.Int).SetBytes(pseudo)
-	bu.Mod(bu, new(big.Int).SetBytes(ff.FpOrder()))
 	var u ff.Fp
-	err := u.UnmarshalBinary(bu.FillBytes(make([]byte, ff.FpSize)))
-	if err != nil {
-		panic(err)
-	}
+	u.SetBytes(pseudo[:L])
+
 	var q isogG1Point
 	q.sswu(&u)
 	g.evalIsogG1(&q)
@@ -359,20 +353,8 @@ func (g *G1) Hash(input, dst []byte) {
 	pseudo := group.NewExpanderMD(crypto.SHA256, dst).Expand(input, 2*L)
 
 	var u0, u1 ff.Fp
-	fpOrder := new(big.Int).SetBytes(ff.FpOrder())
-	bu := new(big.Int).SetBytes(pseudo[0*L : 1*L])
-	bu.Mod(bu, fpOrder)
-	err := u0.UnmarshalBinary(bu.FillBytes(make([]byte, ff.FpSize)))
-	if err != nil {
-		panic(err)
-	}
-
-	bu.SetBytes(pseudo[1*L : 2*L])
-	bu.Mod(bu, fpOrder)
-	err = u1.UnmarshalBinary(bu.FillBytes(make([]byte, ff.FpSize)))
-	if err != nil {
-		panic(err)
-	}
+	u0.SetBytes(pseudo[0*L : 1*L])
+	u1.SetBytes(pseudo[1*L : 2*L])
 
 	var q0, q1 isogG1Point
 	q0.sswu(&u0)
