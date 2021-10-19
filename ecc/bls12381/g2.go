@@ -138,22 +138,24 @@ func (g *G2) cmov(P *G2, b int) {
 // isRTorsion returns true if point is in the r-torsion subgroup.
 func (g *G2) isRTorsion() bool {
 	// Bowe, "Faster Subgroup Checks for BLS12-381" (https://eprint.iacr.org/2019/814)
+	_z := bls12381.minusZ[:]
 	Q := *g
-	Q.psi()                                // Q = \psi(g)
-	Q.scalarMult(g2PsiCoeff.minusZ[:], &Q) // Q = -[z]\psi(g)
-	Q.Add(&Q, g)                           // Q = -[z]\psi(g)+g
-	Q.psi()                                // Q = -[z]\psi^2(g)+\psi(g)
-	Q.psi()                                // Q = -[z]\psi^3(g)+\psi^2(g)
+	Q.psi()                   // Q = \psi(g)
+	Q.scalarMultShort(_z, &Q) // Q = -[z]\psi(g)
+	Q.Add(&Q, g)              // Q = -[z]\psi(g)+g
+	Q.psi()                   // Q = -[z]\psi^2(g)+\psi(g)
+	Q.psi()                   // Q = -[z]\psi^3(g)+\psi^2(g)
 
 	return Q.IsEqual(g) // Equivalent to verification equation in paper
 }
 
+// psi is the Galbraith-Scott endomorphism. See https://eprint.iacr.org/2008/117.
 func (g *G2) psi() {
 	g.x.Frob(&g.x)
 	g.y.Frob(&g.y)
 	g.z.Frob(&g.z)
-	g.x.Mul(&g2PsiCoeff.alpha, &g.x)
-	g.y.Mul(&g2PsiCoeff.beta, &g.y)
+	g.x.Mul(&g2Psi.alpha, &g.x)
+	g.y.Mul(&g2Psi.beta, &g.y)
 }
 
 // clearCofactor maps g to a point in the r-torsion subgroup.
@@ -165,7 +167,7 @@ func (g *G2) psi() {
 // "Efficient hash maps to G2 on BLS curves" at https://eprint.iacr.org/2017/419
 //  h(a)P = [x^2-x-1]P + [x-1]ψ(P) + ψ^2(2P)
 func (g *G2) clearCofactor() {
-	x := g2PsiCoeff.minusZ[:]
+	x := bls12381.minusZ[:]
 	xP, psiP := &G2{}, &G2{}
 	_2P := *g
 
