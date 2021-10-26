@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	version         = "VOPRF07-"
+	version         = "VOPRF08-"
 	seedDST         = "Seed-"
 	contextDST      = "Context-"
 	challengeDST    = "Challenge-"
