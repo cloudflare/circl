@@ -183,6 +183,8 @@ func testScalar(t *testing.T, testTimes int, g group.Group) {
 	d := g.NewScalar()
 	e := g.NewScalar()
 	f := g.NewScalar()
+	one := g.NewScalar()
+	one.SetUint64(1)
 	params := g.Params()
 	for i := 0; i < testTimes; i++ {
 		a := g.RandomScalar(rand.Reader)
@@ -190,11 +192,13 @@ func testScalar(t *testing.T, testTimes int, g group.Group) {
 		c.Add(a, b)
 		d.Sub(a, b)
 		e.Mul(c, d)
+		e.Add(e, one)
 
 		c.Mul(a, a)
 		d.Mul(b, b)
 		d.Neg(d)
 		f.Add(c, d)
+		f.Add(f, one)
 		enc1, err1 := e.MarshalBinary()
 		enc2, err2 := f.MarshalBinary()
 		if err1 != nil || err2 != nil || !bytes.Equal(enc1, enc2) {
@@ -203,6 +207,13 @@ func testScalar(t *testing.T, testTimes int, g group.Group) {
 		if l := uint(len(enc1)); l != params.ScalarLength {
 			test.ReportError(t, l, params.ScalarLength)
 		}
+	}
+
+	a := g.RandomScalar(rand.Reader)
+	c.Inv(a)
+	c.Mul(c, a)
+	if !one.IsEqual(c) {
+		test.ReportError(t, c, one, a)
 	}
 }
 

@@ -45,6 +45,7 @@ type Element interface {
 // Scalar represents an integer scalar.
 type Scalar interface {
 	IsEqual(Scalar) bool
+	SetUint64(uint64)
 	Add(Scalar, Scalar) Scalar
 	Sub(Scalar, Scalar) Scalar
 	Mul(Scalar, Scalar) Scalar

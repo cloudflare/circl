@@ -195,7 +195,8 @@ type wScl struct {
 	k []byte
 }
 
-func (s *wScl) String() string { return fmt.Sprintf("0x%x", s.k) }
+func (s *wScl) String() string     { return fmt.Sprintf("0x%x", s.k) }
+func (s *wScl) SetUint64(n uint64) { s.fromBig(new(big.Int).SetUint64(n)) }
 func (s *wScl) IsEqual(a Scalar) bool {
 	aa := s.cvtScl(a)
 	return subtle.ConstantTimeCompare(s.k, aa.k) == 1
