@@ -4,7 +4,6 @@ import (
 	"crypto"
 	_ "crypto/sha512" // to link libraries
 	"io"
-	"math/big"
 
 	r255 "github.com/bwesterb/go-ristretto"
 )
@@ -146,7 +145,7 @@ func (e *ristrettoElement) UnmarshalBinary(data []byte) error {
 	return e.p.UnmarshalBinary(data)
 }
 
-func (s *ristrettoScalar) SetUint64(n uint64) { s.s.SetBigInt(new(big.Int).SetUint64(n)) }
+func (s *ristrettoScalar) SetUint64(n uint64) { s.s.SetUint64(n) }
 
 func (s *ristrettoScalar) IsEqual(x Scalar) bool {
 	return s.s.Equals(&x.(*ristrettoScalar).s)
