@@ -1,8 +1,10 @@
-package group_test
+package expander_test
 
 import (
 	"bytes"
 	"crypto"
+	_ "crypto/sha256" // to link libraries
+	_ "crypto/sha512" // to link libraries
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -11,13 +13,13 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/cloudflare/circl/group"
+	"github.com/cloudflare/circl/expander"
 	"github.com/cloudflare/circl/internal/test"
 	"github.com/cloudflare/circl/xof"
 )
 
 func TestExpander(t *testing.T) {
-	fileNames, err := filepath.Glob("./testdata/expand*.json")
+	fileNames, err := filepath.Glob("./testdata/*.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,16 +42,16 @@ func TestExpander(t *testing.T) {
 }
 
 func testExpander(t *testing.T, vs *vectorExpanderSuite) {
-	var exp group.Expander
+	var exp expander.Expander
 	switch vs.Hash {
 	case "SHA256":
-		exp = group.NewExpanderMD(crypto.SHA256, []byte(vs.DST))
+		exp = expander.NewExpanderMD(crypto.SHA256, []byte(vs.DST))
 	case "SHA512":
-		exp = group.NewExpanderMD(crypto.SHA512, []byte(vs.DST))
+		exp = expander.NewExpanderMD(crypto.SHA512, []byte(vs.DST))
 	case "SHAKE128":
-		exp = group.NewExpanderXOF(xof.SHAKE128, vs.K, []byte(vs.DST))
+		exp = expander.NewExpanderXOF(xof.SHAKE128, vs.K, []byte(vs.DST))
 	case "SHAKE256":
-		exp = group.NewExpanderXOF(xof.SHAKE256, vs.K, []byte(vs.DST))
+		exp = expander.NewExpanderXOF(xof.SHAKE256, vs.K, []byte(vs.DST))
 	default:
 		t.Skip("hash not supported: " + vs.Hash)
 	}
@@ -92,10 +94,10 @@ func BenchmarkExpander(b *testing.B) {
 
 	for _, v := range []struct {
 		Name string
-		Exp  group.Expander
+		Exp  expander.Expander
 	}{
-		{"XMD", group.NewExpanderMD(crypto.SHA256, dst)},
-		{"XOF", group.NewExpanderXOF(xof.SHAKE128, 0, dst)},
+		{"XMD", expander.NewExpanderMD(crypto.SHA256, dst)},
+		{"XOF", expander.NewExpanderXOF(xof.SHAKE128, 0, dst)},
 	} {
 		exp := v.Exp
 		for l := 8; l <= 10; l++ {

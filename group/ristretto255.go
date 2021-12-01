@@ -6,6 +6,7 @@ import (
 	"io"
 
 	r255 "github.com/bwesterb/go-ristretto"
+	"github.com/cloudflare/circl/expander"
 )
 
 var (
@@ -86,7 +87,7 @@ func (g ristrettoGroup) HashToElementNonUniform(b, dst []byte) Element {
 	return g.HashToElement(b, dst)
 }
 func (g ristrettoGroup) HashToElement(msg, dst []byte) Element {
-	xmd := NewExpanderMD(crypto.SHA512, dst)
+	xmd := expander.NewExpanderMD(crypto.SHA512, dst)
 	data := xmd.Expand(msg, 64)
 	e := g.NewElement()
 	e.(*ristrettoElement).p.Derive(data)

@@ -3,14 +3,13 @@ package group
 import (
 	"crypto"
 	"crypto/elliptic"
-	_ "crypto/sha256" // to link libraries
-	_ "crypto/sha512" // to link libraries
 	"crypto/subtle"
 	"fmt"
 	"io"
 	"math/big"
 
 	"github.com/cloudflare/circl/ecc/p384"
+	"github.com/cloudflare/circl/expander"
 )
 
 var (
@@ -36,12 +35,16 @@ func (g wG) Generator() Element  { return &wElt{g, g.c.Params().Gx, g.c.Params()
 func (g wG) Order() Scalar       { s := &wScl{g, nil}; s.fromBig(g.c.Params().N); return s }
 func (g wG) RandomElement(rd io.Reader) Element {
 	b := make([]byte, (g.c.Params().BitSize+7)/8)
-	mustReadFull(rd, b)
+	if n, err := io.ReadFull(rd, b); err != nil || n != len(b) {
+		panic(err)
+	}
 	return g.HashToElement(b, nil)
 }
 func (g wG) RandomScalar(rd io.Reader) Scalar {
 	b := make([]byte, (g.c.Params().BitSize+7)/8)
-	mustReadFull(rd, b)
+	if n, err := io.ReadFull(rd, b); err != nil || n != len(b) {
+		panic(err)
+	}
 	return g.HashToScalar(b, nil)
 }
 func (g wG) cvtElt(e Element) *wElt {
@@ -75,14 +78,14 @@ func (g wG) Params() *Params {
 func (g wG) HashToElementNonUniform(b, dst []byte) Element {
 	var u [1]big.Int
 	mapping, h, L := g.mapToCurveParams()
-	xmd := NewExpanderMD(h, dst)
+	xmd := expander.NewExpanderMD(h, dst)
 	HashToField(u[:], b, xmd, g.c.Params().P, L)
 	return mapping(&u[0])
 }
 func (g wG) HashToElement(b, dst []byte) Element {
 	var u [2]big.Int
 	mapping, h, L := g.mapToCurveParams()
-	xmd := NewExpanderMD(h, dst)
+	xmd := expander.NewExpanderMD(h, dst)
 	HashToField(u[:], b, xmd, g.c.Params().P, L)
 	Q0 := mapping(&u[0])
 	Q1 := mapping(&u[1])
@@ -91,7 +94,7 @@ func (g wG) HashToElement(b, dst []byte) Element {
 func (g wG) HashToScalar(b, dst []byte) Scalar {
 	var u [1]big.Int
 	_, h, L := g.mapToCurveParams()
-	xmd := NewExpanderMD(h, dst)
+	xmd := expander.NewExpanderMD(h, dst)
 	HashToField(u[:], b, xmd, g.c.Params().N, L)
 	s := g.NewScalar().(*wScl)
 	s.fromBig(&u[0])

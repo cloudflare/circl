@@ -1,4 +1,5 @@
-package group
+// Package expander generates arbitrary bytes from an XOF or Hash function.
+package expander
 
 import (
 	"crypto"
