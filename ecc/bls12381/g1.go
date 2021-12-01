@@ -2,12 +2,13 @@ package bls12381
 
 import (
 	"crypto"
+	_ "crypto/sha256" // to link library
 	"crypto/subtle"
 	"fmt"
 	"math/big"
 
 	"github.com/cloudflare/circl/ecc/bls12381/ff"
-	"github.com/cloudflare/circl/group"
+	"github.com/cloudflare/circl/expander"
 )
 
 // G1Size is the length in bytes of an element in G1 in uncompressed form..
@@ -336,7 +337,7 @@ func (g *G1) toAffine() {
 // be used as a hash function, otherwise use G1.Hash instead.
 func (g *G1) Encode(input, dst []byte) {
 	const L = 64
-	pseudo := group.NewExpanderMD(crypto.SHA256, dst).Expand(input, L)
+	pseudo := expander.NewExpanderMD(crypto.SHA256, dst).Expand(input, L)
 
 	bu := new(big.Int).SetBytes(pseudo)
 	bu.Mod(bu, new(big.Int).SetBytes(ff.FpOrder()))
@@ -356,7 +357,7 @@ func (g *G1) Encode(input, dst []byte) {
 // random oracle returning points in G1 be required.
 func (g *G1) Hash(input, dst []byte) {
 	const L = 64
-	pseudo := group.NewExpanderMD(crypto.SHA256, dst).Expand(input, 2*L)
+	pseudo := expander.NewExpanderMD(crypto.SHA256, dst).Expand(input, 2*L)
 
 	var u0, u1 ff.Fp
 	fpOrder := new(big.Int).SetBytes(ff.FpOrder())
