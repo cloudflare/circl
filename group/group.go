@@ -23,6 +23,7 @@ type Group interface {
 	Order() Scalar
 	RandomElement(io.Reader) Element
 	RandomScalar(io.Reader) Scalar
+	RandomNonZeroScalar(io.Reader) Scalar
 	HashToElement(data, dst []byte) Element
 	HashToElementNonUniform(b, dst []byte) Element
 	HashToScalar(data, dst []byte) Scalar

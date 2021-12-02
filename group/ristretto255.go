@@ -3,6 +3,7 @@ package group
 import (
 	"crypto"
 	_ "crypto/sha512" // to link libraries
+	"fmt"
 	"io"
 
 	r255 "github.com/bwesterb/go-ristretto"
@@ -75,11 +76,20 @@ func (g ristrettoGroup) RandomElement(r io.Reader) Element {
 	}
 }
 
-func (g ristrettoGroup) RandomScalar(r io.Reader) Scalar {
+func (g ristrettoGroup) RandomScalar(io.Reader) Scalar {
 	var x r255.Scalar
 	x.Rand()
 	return &ristrettoScalar{
 		s: x,
+	}
+}
+func (g ristrettoGroup) RandomNonZeroScalar(io.Reader) Scalar {
+	var s r255.Scalar
+	for {
+		s.Rand()
+		if s.IsNonZeroI() == 1 {
+			return &ristrettoScalar{s}
+		}
 	}
 }
 func (g ristrettoGroup) HashToElementNonUniform(b, dst []byte) Element {
@@ -145,6 +155,7 @@ func (e *ristrettoElement) UnmarshalBinary(data []byte) error {
 	return e.p.UnmarshalBinary(data)
 }
 
+func (s *ristrettoScalar) String() string     { return fmt.Sprintf("0x%x", s.s.Bytes()) }
 func (s *ristrettoScalar) SetUint64(n uint64) { s.s.SetUint64(n) }
 
 func (s *ristrettoScalar) IsEqual(x Scalar) bool {
