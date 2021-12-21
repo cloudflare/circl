@@ -2,6 +2,7 @@ package blindrsa
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
 	_ "crypto/sha256"
@@ -96,6 +97,17 @@ func runSignatureProtocol(signer RSASigner, verifier RSAVerifier, message []byte
 	}
 
 	sig, err := state.Finalize(blindedSig)
+	if err != nil {
+		return nil, err
+	}
+
+	hash := sha512.New()
+	hash.Write(message)
+	digest := hash.Sum(nil)
+	err = rsa.VerifyPSS(verifier.pk, crypto.SHA512, digest, sig, &rsa.PSSOptions{
+		Hash:       crypto.SHA512,
+		SaltLength: crypto.SHA512.Size(),
+	})
 	if err != nil {
 		return nil, err
 	}
