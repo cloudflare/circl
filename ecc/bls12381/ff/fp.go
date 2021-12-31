@@ -82,6 +82,15 @@ func (z *Fp) ExpVarTime(x *Fp, n []byte) {
 	*z = *zz
 }
 
+// SetBytes assigns to z the number modulo FpOrder stored in the slice
+// (in big-endian order).
+func (z *Fp) SetBytes(data []byte) {
+	in64 := setBytesUnbounded(data, fpOrder[:])
+	s := &fpRaw{}
+	copy(s[:], in64[:FpSize/8])
+	z.toMont(s)
+}
+
 // MarshalBinary returns a slice of FpSize bytes that contains the minimal
 // residue of z such that 0 <= z < FpOrder (in big-endian order).
 func (z *Fp) MarshalBinary() ([]byte, error) {

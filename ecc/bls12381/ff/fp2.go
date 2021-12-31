@@ -52,6 +52,12 @@ func (z *Fp2) Inv(x *Fp2) {
 	z[1].Neg()
 }
 
+func (z Fp2) Sgn0() int {
+	s0, s1 := z[0].Sgn0(), z[1].Sgn0()
+	z0 := z[0].IsZero()
+	return s0 | (z0 & s1)
+}
+
 func (z *Fp2) UnmarshalBinary(b []byte) error {
 	if len(b) < Fp2Size {
 		return errInputLength
@@ -72,13 +78,22 @@ func (z Fp2) MarshalBinary() (b []byte, e error) {
 	return
 }
 
+// SetString reconstructs a Fp2 element as s0+s1*i, where s0 and s1 are numeric
+// strings from 0 to FpOrder-1.
+func (z *Fp2) SetString(s0, s1 string) (err error) {
+	if err = z[0].SetString(s0); err == nil {
+		err = z[1].SetString(s1)
+	}
+	return
+}
+
 func (z *Fp2) CMov(x, y *Fp2, b int) {
 	z[0].CMov(&x[0], &y[0], b)
 	z[1].CMov(&x[1], &y[1], b)
 }
 
 // ExpVarTime calculates z=x^n, where n is the exponent in big-endian order.
-func (z *Fp2) expVarTime(x *Fp2, n []byte) {
+func (z *Fp2) ExpVarTime(x *Fp2, n []byte) {
 	zz := new(Fp2)
 	zz.SetOne()
 	N := 8 * len(n)
@@ -97,7 +112,7 @@ func (z *Fp2) Sqrt(x *Fp2) int {
 	// "Square-root for q = p^2 = 9 (mod 16)" Appendix I.3 of Hashing to elliptic curves.
 	// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#appendix-I.3
 	var t, tv1, tv2, tv3, tv4 Fp2
-	tv1.expVarTime(x, fp2SqrtConst.c4[:])
+	tv1.ExpVarTime(x, fp2SqrtConst.c4[:])
 	tv2.Mul(&fp2SqrtConst.c1, &tv1)
 	tv3.Mul(&fp2SqrtConst.c2, &tv1)
 	tv4.Mul(&fp2SqrtConst.c3, &tv1)

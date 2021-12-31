@@ -138,20 +138,28 @@ func (g *G1) cmov(P *G1, b int) {
 	(&g.z).CMov(&g.z, &P.z, b)
 }
 
+// sigma is an edomorphism defined by (x, y) → (βx, y) for some β ∈ Fp of
+// multiplicative order 3.
+func (g *G1) sigma(P *G1) { *g = *P; g.x.Mul(&g.x, &g1Sigma.beta0) }
+
+// sigma2 is sigma(sigma(P)).
+func (g *G1) sigma2(P *G1) { *g = *P; g.x.Mul(&g.x, &g1Sigma.beta1) }
+
 // isRTorsion returns true if point is in the r-torsion subgroup.
 func (g *G1) isRTorsion() bool {
 	// Bowe, "Faster Subgroup Checks for BLS12-381" (https://eprint.iacr.org/2019/814)
-	Q, _2sP, ssP := &G1{}, *g, *g
+	Q, _2sP, ssP := &G1{}, &G1{}, &G1{}
+	coef := bls12381.g1Check[:]
 
-	_2sP.x.Mul(&g.x, &g1Check.beta0)      // s(P)
-	_2sP.Double()                         // 2*s(P)
-	ssP.x.Mul(&g.x, &g1Check.beta1)       // s(s(P))
-	Q.Add(g, &ssP)                        // P + s(s(P))
-	Q.Neg()                               // -P - s(s(P))
-	Q.Add(Q, &_2sP)                       // 2*s(P) - P - s(s(P))
-	Q.scalarMultShort(g1Check.coef[:], Q) // coef * [2*s(P) - P - s(s(P))]
-	ssP.Neg()                             // -s(s(P))
-	Q.Add(Q, &ssP)                        // coef * [2*s(P) - P - s(s(P))] - s(s(P))
+	_2sP.sigma(g)              // s(P)
+	_2sP.Double()              // 2*s(P)
+	ssP.sigma2(g)              // s(s(P))
+	Q.Add(g, ssP)              // P + s(s(P))
+	Q.Neg()                    // -P - s(s(P))
+	Q.Add(Q, _2sP)             // 2*s(P) - P - s(s(P))
+	Q.scalarMultShort(coef, Q) // coef * [2*s(P) - P - s(s(P))]
+	ssP.Neg()                  // -s(s(P))
+	Q.Add(Q, ssP)              // coef * [2*s(P) - P - s(s(P))] - s(s(P))
 
 	return Q.IsIdentity()
 }
@@ -164,7 +172,7 @@ func (g *G1) isRTorsion() bool {
 // and because there are no points of order h^2. See Section 5 of Wahby-Boneh
 // "Fast and simple constant-time hashing to the BLS12-381 elliptic curve" at
 // https://eprint.iacr.org/2019/403
-func (g *G1) clearCofactor() { g.scalarMultShort(g1Params.cofactorSmall[:], g) }
+func (g *G1) clearCofactor() { g.scalarMultShort(bls12381.oneMinusZ[:], g) }
 
 // Double updates g = 2g.
 func (g *G1) Double() {
@@ -341,11 +349,10 @@ func (g *G1) Encode(input, dst []byte) {
 
 	bu := new(big.Int).SetBytes(pseudo)
 	bu.Mod(bu, new(big.Int).SetBytes(ff.FpOrder()))
+
 	var u ff.Fp
-	err := u.UnmarshalBinary(bu.FillBytes(make([]byte, ff.FpSize)))
-	if err != nil {
-		panic(err)
-	}
+	u.SetBytes(pseudo[:L])
+
 	var q isogG1Point
 	q.sswu(&u)
 	g.evalIsogG1(&q)
@@ -360,20 +367,8 @@ func (g *G1) Hash(input, dst []byte) {
 	pseudo := expander.NewExpanderMD(crypto.SHA256, dst).Expand(input, 2*L)
 
 	var u0, u1 ff.Fp
-	fpOrder := new(big.Int).SetBytes(ff.FpOrder())
-	bu := new(big.Int).SetBytes(pseudo[0*L : 1*L])
-	bu.Mod(bu, fpOrder)
-	err := u0.UnmarshalBinary(bu.FillBytes(make([]byte, ff.FpSize)))
-	if err != nil {
-		panic(err)
-	}
-
-	bu.SetBytes(pseudo[1*L : 2*L])
-	bu.Mod(bu, fpOrder)
-	err = u1.UnmarshalBinary(bu.FillBytes(make([]byte, ff.FpSize)))
-	if err != nil {
-		panic(err)
-	}
+	u0.SetBytes(pseudo[0*L : 1*L])
+	u1.SetBytes(pseudo[1*L : 2*L])
 
 	var q0, q1 isogG1Point
 	q0.sswu(&u0)
