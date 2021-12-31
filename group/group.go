@@ -23,6 +23,7 @@ type Group interface {
 	Order() Scalar
 	RandomElement(io.Reader) Element
 	RandomScalar(io.Reader) Scalar
+	RandomNonZeroScalar(io.Reader) Scalar
 	HashToElement(data, dst []byte) Element
 	HashToElementNonUniform(b, dst []byte) Element
 	HashToScalar(data, dst []byte) Scalar
@@ -45,6 +46,7 @@ type Element interface {
 // Scalar represents an integer scalar.
 type Scalar interface {
 	IsEqual(Scalar) bool
+	SetUint64(uint64)
 	Add(Scalar, Scalar) Scalar
 	Sub(Scalar, Scalar) Scalar
 	Mul(Scalar, Scalar) Scalar

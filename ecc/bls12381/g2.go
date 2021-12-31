@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/cloudflare/circl/ecc/bls12381/ff"
-	"github.com/cloudflare/circl/group"
+	"github.com/cloudflare/circl/expander"
 )
 
 // G2Size is the length in bytes of an element in G2 in uncompressed form..
@@ -256,7 +256,7 @@ func (g *G2) IsEqual(p *G2) bool {
 // be used as a hash function, otherwise use G2.Hash instead.
 func (g *G2) Encode(input, dst []byte) {
 	const L = 64
-	pseudo := group.NewExpanderMD(crypto.SHA256, dst).Expand(input, 2*L)
+	pseudo := expander.NewExpanderMD(crypto.SHA256, dst).Expand(input, 2*L)
 
 	var u ff.Fp2
 	u[0].SetBytes(pseudo[0*L : 1*L])
@@ -273,7 +273,7 @@ func (g *G2) Encode(input, dst []byte) {
 // random oracle returning points in G2 be required.
 func (g *G2) Hash(input, dst []byte) {
 	const L = 64
-	pseudo := group.NewExpanderMD(crypto.SHA256, dst).Expand(input, 4*L)
+	pseudo := expander.NewExpanderMD(crypto.SHA256, dst).Expand(input, 4*L)
 
 	var u0, u1 ff.Fp2
 	u0[0].SetBytes(pseudo[0*L : 1*L])

@@ -3,14 +3,13 @@ package group
 import (
 	"crypto"
 	"crypto/elliptic"
-	_ "crypto/sha256" // to link libraries
-	_ "crypto/sha512" // to link libraries
 	"crypto/subtle"
 	"fmt"
 	"io"
 	"math/big"
 
 	"github.com/cloudflare/circl/ecc/p384"
+	"github.com/cloudflare/circl/expander"
 )
 
 var (
@@ -30,19 +29,32 @@ func (g wG) String() string      { return g.c.Params().Name }
 func (g wG) NewElement() Element { return g.zeroElement() }
 func (g wG) NewScalar() Scalar   { return g.zeroScalar() }
 func (g wG) Identity() Element   { return g.zeroElement() }
-func (g wG) zeroScalar() *wScl   { return &wScl{g, nil} }
+func (g wG) zeroScalar() *wScl   { return &wScl{g, make([]byte, (g.c.Params().BitSize+7)/8)} }
 func (g wG) zeroElement() *wElt  { return &wElt{g, new(big.Int), new(big.Int)} }
 func (g wG) Generator() Element  { return &wElt{g, g.c.Params().Gx, g.c.Params().Gy} }
 func (g wG) Order() Scalar       { s := &wScl{g, nil}; s.fromBig(g.c.Params().N); return s }
 func (g wG) RandomElement(rd io.Reader) Element {
 	b := make([]byte, (g.c.Params().BitSize+7)/8)
-	mustReadFull(rd, b)
+	if n, err := io.ReadFull(rd, b); err != nil || n != len(b) {
+		panic(err)
+	}
 	return g.HashToElement(b, nil)
 }
 func (g wG) RandomScalar(rd io.Reader) Scalar {
 	b := make([]byte, (g.c.Params().BitSize+7)/8)
-	mustReadFull(rd, b)
+	if n, err := io.ReadFull(rd, b); err != nil || n != len(b) {
+		panic(err)
+	}
 	return g.HashToScalar(b, nil)
+}
+func (g wG) RandomNonZeroScalar(rd io.Reader) Scalar {
+	zero := g.zeroScalar()
+	for {
+		s := g.RandomScalar(rd)
+		if !s.IsEqual(zero) {
+			return s
+		}
+	}
 }
 func (g wG) cvtElt(e Element) *wElt {
 	if e == nil {
@@ -75,14 +87,14 @@ func (g wG) Params() *Params {
 func (g wG) HashToElementNonUniform(b, dst []byte) Element {
 	var u [1]big.Int
 	mapping, h, L := g.mapToCurveParams()
-	xmd := NewExpanderMD(h, dst)
+	xmd := expander.NewExpanderMD(h, dst)
 	HashToField(u[:], b, xmd, g.c.Params().P, L)
 	return mapping(&u[0])
 }
 func (g wG) HashToElement(b, dst []byte) Element {
 	var u [2]big.Int
 	mapping, h, L := g.mapToCurveParams()
-	xmd := NewExpanderMD(h, dst)
+	xmd := expander.NewExpanderMD(h, dst)
 	HashToField(u[:], b, xmd, g.c.Params().P, L)
 	Q0 := mapping(&u[0])
 	Q1 := mapping(&u[1])
@@ -91,7 +103,7 @@ func (g wG) HashToElement(b, dst []byte) Element {
 func (g wG) HashToScalar(b, dst []byte) Scalar {
 	var u [1]big.Int
 	_, h, L := g.mapToCurveParams()
-	xmd := NewExpanderMD(h, dst)
+	xmd := expander.NewExpanderMD(h, dst)
 	HashToField(u[:], b, xmd, g.c.Params().N, L)
 	s := g.NewScalar().(*wScl)
 	s.fromBig(&u[0])
@@ -195,41 +207,43 @@ type wScl struct {
 	k []byte
 }
 
-func (s *wScl) String() string { return fmt.Sprintf("0x%x", s.k) }
+func (s *wScl) String() string     { return fmt.Sprintf("0x%x", s.k) }
+func (s *wScl) SetUint64(n uint64) { s.fromBig(new(big.Int).SetUint64(n)) }
 func (s *wScl) IsEqual(a Scalar) bool {
 	aa := s.cvtScl(a)
 	return subtle.ConstantTimeCompare(s.k, aa.k) == 1
 }
 func (s *wScl) fromBig(b *big.Int) {
-	if err := s.UnmarshalBinary(b.Bytes()); err != nil {
+	k := new(big.Int).Mod(b, s.c.Params().N)
+	if err := s.UnmarshalBinary(k.Bytes()); err != nil {
 		panic(err)
 	}
 }
 func (s *wScl) Add(a, b Scalar) Scalar {
 	aa, bb := s.cvtScl(a), s.cvtScl(b)
 	r := new(big.Int)
-	r.SetBytes(aa.k).Add(r, new(big.Int).SetBytes(bb.k)).Mod(r, s.c.Params().N)
+	r.SetBytes(aa.k).Add(r, new(big.Int).SetBytes(bb.k))
 	s.fromBig(r)
 	return s
 }
 func (s *wScl) Sub(a, b Scalar) Scalar {
 	aa, bb := s.cvtScl(a), s.cvtScl(b)
 	r := new(big.Int)
-	r.SetBytes(aa.k).Sub(r, new(big.Int).SetBytes(bb.k)).Mod(r, s.c.Params().N)
+	r.SetBytes(aa.k).Sub(r, new(big.Int).SetBytes(bb.k))
 	s.fromBig(r)
 	return s
 }
 func (s *wScl) Mul(a, b Scalar) Scalar {
 	aa, bb := s.cvtScl(a), s.cvtScl(b)
 	r := new(big.Int)
-	r.SetBytes(aa.k).Mul(r, new(big.Int).SetBytes(bb.k)).Mod(r, s.c.Params().N)
+	r.SetBytes(aa.k).Mul(r, new(big.Int).SetBytes(bb.k))
 	s.fromBig(r)
 	return s
 }
 func (s *wScl) Neg(a Scalar) Scalar {
 	aa := s.cvtScl(a)
 	r := new(big.Int)
-	r.SetBytes(aa.k).Neg(r).Mod(r, s.c.Params().N)
+	r.SetBytes(aa.k).Neg(r)
 	s.fromBig(r)
 	return s
 }
