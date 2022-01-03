@@ -78,7 +78,9 @@ func (v RSAVerifier) fixedBlind(message, salt []byte, r, rInv *big.Int) ([]byte,
 	z.Mul(z, x)
 	z.Mod(z, v.pk.N)
 
-	blindedMsg := z.Bytes()
+	kLen := (v.pk.N.BitLen() + 7) / 8
+	blindedMsg := make([]byte, kLen)
+	z.FillBytes(blindedMsg)
 
 	return blindedMsg, RSAVerifierState{
 		encodedMsg: encodedMsg,
@@ -152,7 +154,8 @@ func (state RSAVerifierState) Finalize(data []byte) ([]byte, error) {
 	s.Mul(s, z)
 	s.Mod(s, state.verifier.pk.N)
 
-	sig := s.Bytes()
+	sig := make([]byte, kLen)
+	s.FillBytes(sig)
 
 	err := verifyBlindSignature(state.verifier.pk, state.encodedMsg, sig)
 	if err != nil {
@@ -197,7 +200,10 @@ func (signer RSASigner) BlindSign(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return s.Bytes(), nil
+	blindSig := make([]byte, kLen)
+	s.FillBytes(blindSig)
+
+	return blindSig, nil
 }
 
 var (
