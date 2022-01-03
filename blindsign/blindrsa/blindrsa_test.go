@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"math/big"
@@ -91,9 +92,18 @@ func runSignatureProtocol(signer RSASigner, verifier RSAVerifier, message []byte
 		return nil, err
 	}
 
+	kLen := (signer.sk.N.BitLen() + 7) / 8
+	if len(blindedMsg) != kLen {
+		return nil, fmt.Errorf("Protocol message (blind message) length mismatch, expected %d, got %d", kLen, len(blindedMsg))
+	}
+
 	blindedSig, err := signer.BlindSign(blindedMsg)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(blindedSig) != kLen {
+		return nil, fmt.Errorf("Protocol message (blind signature) length mismatch, expected %d, got %d", kLen, len(blindedMsg))
 	}
 
 	sig, err := state.Finalize(blindedSig)
@@ -340,6 +350,10 @@ func verifyTestVector(t *testing.T, vector testVector) {
 	sig, err := state.Finalize(blindSig)
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	if !bytes.Equal(state.(RSAVerifierState).encodedMsg, vector.encodedMessage) {
+		t.Errorf("Encoded message mismatch: expected %x, got %x", state.(RSAVerifierState).encodedMsg, vector.encodedMessage)
 	}
 
 	if !bytes.Equal(sig, vector.sig) {
