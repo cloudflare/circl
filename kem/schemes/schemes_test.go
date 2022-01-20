@@ -148,6 +148,7 @@ func Example_schemes() {
 	// HPKE_KEM_P521_HKDF_SHA512
 	// HPKE_KEM_X25519_HKDF_SHA256
 	// HPKE_KEM_X448_HKDF_SHA512
+	// FrodoKEM-640-SHAKE
 	// Kyber512
 	// Kyber768
 	// Kyber1024
