@@ -6,8 +6,8 @@
 package frodo640shake
 
 import (
+	"github.com/cloudflare/circl/internal/sha3"
 	"github.com/cloudflare/circl/kem"
-	"github.com/cloudflare/circl/xof"
 
 	"bytes"
 	cryptoRand "crypto/rand"
@@ -82,7 +82,7 @@ func newKeyFromSeed(seed []byte) (*PublicKey, *PrivateKey, error) {
 	var A [paramN * paramN]uint16
 
 	// Generate the secret value s, and the seed for S, E, and A. Add seedA to the public key
-	shake128 := xof.SHAKE128.New()
+	shake128 := sha3.NewShake128()
 	_, err := shake128.Write(seed[2*SharedKeySize:])
 	if err != nil {
 		return nil, nil, err
@@ -200,7 +200,7 @@ func (pk *PublicKey) EncapsulateTo(ct []byte, ss []byte, seed []byte) error {
 	mu := seed[:messageSize]
 
 	// compute hpk = G_1(packed(pk))
-	shake128 := xof.SHAKE128.New()
+	shake128 := sha3.NewShake128()
 	var ppk [PublicKeySize]byte
 	pk.Pack(ppk[:])
 	_, err := shake128.Write(ppk[:])
@@ -323,7 +323,7 @@ func (sk *PrivateKey) DecapsulateTo(ss, ct []byte) error {
 	decodeMessage(muprime[:], W[:])
 
 	// Generate (seedSE' || k') = G_2(hpk || mu')
-	shake128 := xof.SHAKE128.New()
+	shake128 := sha3.NewShake128()
 	_, err := shake128.Write(sk.hpk[:])
 	if err != nil {
 		return err
