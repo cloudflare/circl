@@ -1,10 +1,10 @@
 package frodo640shake
 
 import (
-	"github.com/cloudflare/circl/xof"
+	"github.com/cloudflare/circl/internal/sha3"
 )
 
-func expandSeedIntoA(A []uint16, seed []byte, xof xof.XOF) error {
+func expandSeedIntoA(A []uint16, seed []byte, xof sha3.State) error {
 	var ARow [paramN * 2]byte
 	var seedSeparated [2 + seedASize]byte
 
