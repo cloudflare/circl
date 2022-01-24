@@ -142,23 +142,14 @@ func mulBS(out []uint16, b []uint16, s []uint16) {
 	}
 }
 
-func ctVerify(lhs []uint16, rhs []uint16) byte {
+func ctCompareU16(lhs []uint16, rhs []uint16) int {
 	// Compare lhs and rhs in constant time.
-	// Returns 0 if they are equal, -1 otherwise.
-	res := uint16(0)
+	// Returns 0 if they are equal, 1 otherwise.
+	var v uint16
 
 	for i := range lhs {
-		res |= lhs[i] ^ rhs[i]
+		v |= lhs[i] ^ rhs[i]
 	}
 
-	return -byte((res | -res) >> 15)
-}
-
-func ctSelect(out []byte, lhs []byte, rhs []byte, selector byte) {
-	// Select one of the two input arrays to be moved to r
-	// If (selector == 0) then load r with a, else if (selector == -1) load r with b
-
-	for i := range out {
-		out[i] = (^selector & lhs[i]) | (selector & rhs[i])
-	}
+	return int((v | -v) >> 15)
 }

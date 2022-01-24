@@ -11,6 +11,7 @@ import (
 
 	"bytes"
 	cryptoRand "crypto/rand"
+	"crypto/subtle"
 	"io"
 )
 
@@ -313,8 +314,6 @@ func (sk *PrivateKey) DecapsulateTo(ss, ct []byte) error {
 
 	kprime := G2out[SharedKeySize:]
 
-	var FinK [SharedKeySize]byte
-
 	// Compute W = C - Bp*S (mod q), and decode the randomness mu
 	unpack(Bp[:], ct[0:matrixBpPackedSize])
 	unpack(C[:], ct[matrixBpPackedSize:])
@@ -381,16 +380,16 @@ func (sk *PrivateKey) DecapsulateTo(ss, ct []byte) error {
 	// Needs to avoid branching on secret data as per:
 	//     Qian Guo, Thomas Johansson, Alexander Nilsson. A key-recovery timing attack on post-quantum
 	//     primitives using the Fujisaki-Okamoto transformation and its application on FrodoKEM. In CRYPTO 2020.
-	selector := ctVerify(Bp[:], BBp[:]) | ctVerify(C[:], CC[:])
-	// If (selector == 0) then load k' to do ss = F(ct || k'), else if (selector == -1) load s to do ss = F(ct || s)
-	ctSelect(FinK[:], kprime[:], sk.hashInputIfDecapsFail[:], selector)
+	selector := ctCompareU16(Bp[:], BBp[:]) | ctCompareU16(C[:], CC[:])
+	// If (selector == 0) then load k' to do ss = F(ct || k'), else if (selector == 1) load s to do ss = F(ct || s)
+	subtle.ConstantTimeCopy(selector, kprime[:], sk.hashInputIfDecapsFail[:])
 
 	shake128.Reset()
 	_, err = shake128.Write(ct[:])
 	if err != nil {
 		return err
 	}
-	_, err = shake128.Write(FinK[:])
+	_, err = shake128.Write(kprime[:])
 	if err != nil {
 		return err
 	}
@@ -510,12 +509,8 @@ func (sk *PrivateKey) Equal(other kem.PrivateKey) bool {
 	if sk.pk == nil || oth.pk == nil {
 		return false
 	}
-	for i := range sk.matrixS[:] {
-		if sk.matrixS[i] != oth.matrixS[i] {
-			return false
-		}
-	}
-	return bytes.Equal(sk.hashInputIfDecapsFail[:], oth.hashInputIfDecapsFail[:]) &&
+	return ctCompareU16(sk.matrixS[:], oth.matrixS[:]) == 0 &&
+		bytes.Equal(sk.hashInputIfDecapsFail[:], oth.hashInputIfDecapsFail[:]) &&
 		sk.pk.Equal(oth.pk) &&
 		bytes.Equal(sk.hpk[:], oth.hpk[:])
 }
