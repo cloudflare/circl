@@ -7,13 +7,13 @@ func min(x uint, y uint) uint {
 	return y
 }
 
-func add(out []uint16, lhs []uint16, rhs []uint16) {
+func add(out *[paramNbar * paramNbar]uint16, lhs *[paramNbar * paramNbar]uint16, rhs *[paramNbar * paramNbar]uint16) {
 	for i := 0; i < len(out); i++ {
 		out[i] = (lhs[i] + rhs[i]) & ((1 << logQ) - 1)
 	}
 }
 
-func sub(out []uint16, lhs []uint16, rhs []uint16) {
+func sub(out *[paramNbar * paramNbar]uint16, lhs *[paramNbar * paramNbar]uint16, rhs *[paramNbar * paramNbar]uint16) {
 	for i := 0; i < len(out); i++ {
 		out[i] = (lhs[i] - rhs[i]) & ((1 << logQ) - 1)
 	}
@@ -110,7 +110,7 @@ func decodeMessage(out []byte, msg []uint16) {
 	}
 }
 
-func mulAddSBPlusE(out []uint16, b []uint16, s []uint16, e []uint16) {
+func mulAddSBPlusE(out *[paramNbar * paramNbar]uint16, b *[paramN * paramNbar]uint16, s []uint16, e []uint16) {
 	// Multiply by s on the left
 	// Inputs: b (N x N_BAR), s (N_BAR x N), e (N_BAR x N_BAR)
 	// Output: out = s*b + e (N_BAR x N_BAR)
@@ -126,11 +126,7 @@ func mulAddSBPlusE(out []uint16, b []uint16, s []uint16, e []uint16) {
 	}
 }
 
-func mulBS(out []uint16, b []uint16, s []uint16) {
-	// Multiply by s on the right
-	// Inputs: b (N_BAR x N), s (N x N_BAR)
-	// Output: out = b*s (N_BAR x N_BAR)
-
+func mulBS(out *[paramNbar * paramNbar]uint16, b *[paramNbar * paramN]uint16, s *[paramN * paramNbar]uint16) {
 	for i := 0; i < paramNbar; i++ {
 		for j := 0; j < paramNbar; j++ {
 			out[i*paramNbar+j] = 0
