@@ -110,11 +110,11 @@ func newKeyFromSeed(seed []byte) (*PublicKey, *PrivateKey, error) {
 	}
 	sample(SE[:])
 
-	err = expandSeedIntoA(A[:], pk.seedA[:], shake128)
+	err = expandSeedIntoA(&A, &pk.seedA, &shake128)
 	if err != nil {
 		return nil, nil, err
 	}
-	mulAddASPlusE(pk.matrixB[:], S[:], E[:], A[:])
+	mulAddASPlusE(&pk.matrixB, S[:], E[:], &A)
 
 	// Populate the private key
 	copy(sk.hashInputIfDecapsFail[:], seed[0:SharedKeySize])
@@ -246,17 +246,17 @@ func (pk *PublicKey) EncapsulateTo(ct []byte, ss []byte, seed []byte) error {
 	}
 	sample(SpEpEpp[:])
 
-	err = expandSeedIntoA(A[:], pk.seedA[:], shake128)
+	err = expandSeedIntoA(&A, &pk.seedA, &shake128)
 	if err != nil {
 		return err
 	}
-	mulAddSAPlusE(Bp[:], Sp, Ep, A[:])
+	mulAddSAPlusE(&Bp, Sp, Ep, &A)
 
-	mulAddSBPlusE(V[:], pk.matrixB[:], Sp, Epp)
+	mulAddSBPlusE(&V, &pk.matrixB, Sp, Epp)
 
 	// Encode mu, and compute C = V + enc(mu) (mod q)
 	encodeMessage(C[:], mu[:])
-	add(C[:], V[:], C[:])
+	add(&C, &V, &C)
 
 	// Prepare the ciphertext
 	pack(ct[:matrixBpPackedSize], Bp[:])
@@ -317,8 +317,8 @@ func (sk *PrivateKey) DecapsulateTo(ss, ct []byte) error {
 	// Compute W = C - Bp*S (mod q), and decode the randomness mu
 	unpack(Bp[:], ct[0:matrixBpPackedSize])
 	unpack(C[:], ct[matrixBpPackedSize:])
-	mulBS(W[:], Bp[:], sk.matrixS[:])
-	sub(W[:], C[:], W[:])
+	mulBS(&W, &Bp, &sk.matrixS)
+	sub(&W, &C, &W)
 
 	decodeMessage(muprime[:], W[:])
 
@@ -356,11 +356,11 @@ func (sk *PrivateKey) DecapsulateTo(ss, ct []byte) error {
 
 	sample(SpEpEpp[:])
 
-	err = expandSeedIntoA(A[:], sk.pk.seedA[:], shake128)
+	err = expandSeedIntoA(&A, &sk.pk.seedA, &shake128)
 	if err != nil {
 		return err
 	}
-	mulAddSAPlusE(BBp[:], Sp[:], Ep[:], A[:])
+	mulAddSAPlusE(&BBp, Sp[:], Ep[:], &A)
 
 	// Reduce BBp modulo q
 	for i := range BBp {
@@ -368,11 +368,11 @@ func (sk *PrivateKey) DecapsulateTo(ss, ct []byte) error {
 	}
 
 	// compute W = Sp*B + Epp
-	mulAddSBPlusE(W[:], sk.pk.matrixB[:], Sp[:], Epp[:])
+	mulAddSBPlusE(&W, &sk.pk.matrixB, Sp, Epp)
 
 	// Encode mu, and compute CC = W + enc(mu') (mod q)
 	encodeMessage(CC[:], muprime[:])
-	add(CC[:], W[:], CC[:])
+	add(&CC, &W, &CC)
 
 	// Prepare input to F
 
