@@ -19,7 +19,7 @@ func TestPQCgenKATKem(t *testing.T) {
 		want string
 	}{
 		// Computed from:
-		// https://github.com/microsoft/PQCrypto-LWEKE/blob/master/KAT/PQCkemKAT_19888_shake.rsp
+		// https://github.com/microsoft/PQCrypto-LWEKE/blob/66fc7744c3aae6acfc5fcc587ec7f2cdec48d216/KAT/PQCkemKAT_19888_shake.rsp
 		{"FrodoKEM-640-SHAKE", "604a10cfc871dfaed9cb5b057c644ab03b16852cea7f39bc7f9831513b5b1cfa"},
 	}
 	for _, kat := range kats {
