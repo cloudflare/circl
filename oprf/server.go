@@ -12,7 +12,7 @@ import (
 // Server is a representation of a OPRF server during protocol execution.
 type Server struct {
 	suite
-	privateKey PrivateKey
+	PrivateKey PrivateKey
 }
 
 // NewServer creates a Server in base mode, and generates a key if no skS is
@@ -45,7 +45,7 @@ func newServer(id SuiteID, m Mode, skS *PrivateKey) (*Server, error) {
 }
 
 // GetPublicKey returns the public key corresponding to the server.
-func (s *Server) GetPublicKey() *PublicKey { return s.privateKey.Public() }
+func (s *Server) GetPublicKey() *PublicKey { return s.PrivateKey.Public() }
 
 // Evaluate evaluates a set of blinded inputs from the client.
 func (s *Server) Evaluate(blindedElements []Blinded, info []byte) (*Evaluation, error) {
@@ -69,7 +69,7 @@ func (s *Server) evaluateWithProofScalar(blindedElements []Blinded, info []byte,
 
 	context := s.evaluationContext(info)
 	m := s.Group.HashToScalar(context, s.getDST(hashToScalarDST))
-	t := s.Group.NewScalar().Add(s.privateKey.k, m)
+	t := s.Group.NewScalar().Add(s.PrivateKey.k, m)
 	tInv := s.Group.NewScalar().Inv(t)
 
 	var err error
@@ -110,7 +110,7 @@ func (s *Server) FullEvaluate(input, info []byte) ([]byte, error) {
 	p := s.Group.HashToElement(input, s.getDST(hashToGroupDST))
 	context := s.evaluationContext(info)
 	m := s.Group.HashToScalar(context, s.getDST(hashToScalarDST))
-	t := s.Group.NewScalar().Add(s.privateKey.k, m)
+	t := s.Group.NewScalar().Add(s.PrivateKey.k, m)
 	tInv := s.Group.NewScalar().Inv(t)
 	p.Mul(p, tInv)
 	ser, err := p.MarshalBinaryCompress()
