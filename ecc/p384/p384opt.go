@@ -54,16 +54,9 @@ func (c curve) Double(x1, y1 *big.Int) (x, y *big.Int) {
 
 // reduceScalar shorten a scalar modulo the order of the curve.
 func (c curve) reduceScalar(k []byte) []byte {
-	const max = sizeFp
-	if len(k) > max {
-		bigK := new(big.Int).SetBytes(k)
-		bigK.Mod(bigK, c.Params().N)
-		k = bigK.Bytes()
-	}
-	if len(k) < max {
-		k = append(make([]byte, max-len(k)), k...)
-	}
-	return k
+	bigK := new(big.Int).SetBytes(k)
+	bigK.Mod(bigK, c.Params().N)
+	return bigK.FillBytes(make([]byte, sizeFp))
 }
 
 // toOdd performs k = (-k mod N) if k is even.
