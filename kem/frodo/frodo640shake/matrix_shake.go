@@ -31,7 +31,7 @@ func expandSeedIntoA(A *[paramN * paramN]uint16, seed *[seedASize]byte, xof *sha
 	return nil
 }
 
-func mulAddASPlusE(out *[paramN * paramNbar]uint16, s []uint16, e []uint16, A *[paramN * paramN]uint16) {
+func mulAddASPlusE(out *[paramN * paramNbar]uint16, A *[paramN * paramN]uint16, s []uint16, e []uint16) {
 	copy(out[:], e)
 
 	for i := 0; i < paramN; i++ {
@@ -47,7 +47,7 @@ func mulAddASPlusE(out *[paramN * paramNbar]uint16, s []uint16, e []uint16, A *[
 	}
 }
 
-func mulAddSAPlusE(out *[paramNbar * paramN]uint16, s []uint16, e []uint16, A *[paramN * paramN]uint16) {
+func mulAddSAPlusE(out *[paramNbar * paramN]uint16, s []uint16, A *[paramN * paramN]uint16, e []uint16) {
 	copy(out[:], e)
 
 	for i := 0; i < paramN; i++ {
