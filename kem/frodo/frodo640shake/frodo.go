@@ -1,8 +1,4 @@
-// Package frodo640shake implements the IND-CCA2 secure key encapsulation mechanism
-// FrodoKEM-640-SHAKE as submitted to round 3 of the NIST PQC competition and
-// described in
-//
-// https://frodokem.org/files/FrodoKEM-specification-20210604.pdf
+// Package frodo640shake implements the variant FrodoKEM-640 with SHAKE.
 package frodo640shake
 
 import (
