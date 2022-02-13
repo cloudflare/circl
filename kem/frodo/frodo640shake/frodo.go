@@ -15,6 +15,7 @@ const (
 	paramN             = 640
 	paramNbar          = 8
 	logQ               = 15
+	logQMask           = ((1 << logQ) - 1)
 	seedASize          = 16
 	pkHashSize         = 16
 	extractedBits      = 2
@@ -110,7 +111,7 @@ func newKeyFromSeed(seed []byte) (*PublicKey, *PrivateKey, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	mulAddASPlusE(&pk.matrixB, S[:], E[:], &A)
+	mulAddASPlusE(&pk.matrixB, &A, S[:], E[:])
 
 	// Populate the private key
 	copy(sk.hashInputIfDecapsFail[:], seed[0:SharedKeySize])
@@ -246,9 +247,9 @@ func (pk *PublicKey) EncapsulateTo(ct []byte, ss []byte, seed []byte) error {
 	if err != nil {
 		return err
 	}
-	mulAddSAPlusE(&Bp, Sp, Ep, &A)
+	mulAddSAPlusE(&Bp, Sp, &A, Ep)
 
-	mulAddSBPlusE(&V, &pk.matrixB, Sp, Epp)
+	mulAddSBPlusE(&V, Sp, &pk.matrixB, Epp)
 
 	// Encode mu, and compute C = V + enc(mu) (mod q)
 	encodeMessage(C[:], mu[:])
@@ -356,15 +357,15 @@ func (sk *PrivateKey) DecapsulateTo(ss, ct []byte) error {
 	if err != nil {
 		return err
 	}
-	mulAddSAPlusE(&BBp, Sp[:], Ep[:], &A)
+	mulAddSAPlusE(&BBp, Sp[:], &A, Ep[:])
 
 	// Reduce BBp modulo q
 	for i := range BBp {
-		BBp[i] = BBp[i] & ((1 << logQ) - 1)
+		BBp[i] = BBp[i] & logQMask
 	}
 
 	// compute W = Sp*B + Epp
-	mulAddSBPlusE(&W, &sk.pk.matrixB, Sp, Epp)
+	mulAddSBPlusE(&W, Sp, &sk.pk.matrixB, Epp)
 
 	// Encode mu, and compute CC = W + enc(mu') (mod q)
 	encodeMessage(CC[:], muprime[:])
@@ -506,7 +507,7 @@ func (sk *PrivateKey) Equal(other kem.PrivateKey) bool {
 		return false
 	}
 	return ctCompareU16(sk.matrixS[:], oth.matrixS[:]) == 0 &&
-		bytes.Equal(sk.hashInputIfDecapsFail[:], oth.hashInputIfDecapsFail[:]) &&
+		subtle.ConstantTimeCompare(sk.hashInputIfDecapsFail[:], oth.hashInputIfDecapsFail[:]) == 1 &&
 		sk.pk.Equal(oth.pk) &&
 		bytes.Equal(sk.hpk[:], oth.hpk[:])
 }
@@ -523,9 +524,8 @@ func (pk *PublicKey) Equal(other kem.PublicKey) bool {
 		return false
 	}
 
-	maskQ := uint16((1 << logQ) - 1)
 	for i := range pk.matrixB {
-		if (pk.matrixB[i] & maskQ) != (oth.matrixB[i] & maskQ) {
+		if (pk.matrixB[i] & logQMask) != (oth.matrixB[i] & logQMask) {
 			return false
 		}
 	}
