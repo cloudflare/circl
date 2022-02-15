@@ -79,7 +79,7 @@ func unpack(out []uint16, in []byte) {
 	}
 }
 
-func encodeMessage(out []uint16, msg []byte) {
+func encodeMessage(out *[paramNbar * paramNbar]uint16, msg *[messageSize]byte) {
 	extractedBitsMask := uint16((1 << extractedBits) - 1)
 	outPos := 0
 
@@ -94,7 +94,7 @@ func encodeMessage(out []uint16, msg []byte) {
 	}
 }
 
-func decodeMessage(out []byte, msg []uint16) {
+func decodeMessage(out *[messageSize]byte, msg *[paramNbar * paramNbar]uint16) {
 	extractedBitsMask := uint16((1 << extractedBits) - 1)
 	msgPos := 0
 
