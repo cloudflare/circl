@@ -1,4 +1,5 @@
 // Package frodo640shake implements the variant FrodoKEM-640 with SHAKE.
+// Multi-dimensional arrays are stored in 1-dimensional arrays in row-major order.
 package frodo640shake
 
 import (
@@ -12,13 +13,19 @@ import (
 )
 
 const (
-	paramN             = 640
-	paramNbar          = 8
-	logQ               = 15
-	logQMask           = ((1 << logQ) - 1)
-	seedASize          = 16
-	pkHashSize         = 16
-	extractedBits      = 2
+	paramN = 640
+
+	// Denoted by 'mbar' in the FrodoKEM spec.
+	paramNbar = 8
+
+	logQ       = 15
+	logQMask   = ((1 << logQ) - 1)
+	seedASize  = 16
+	pkHashSize = 16
+
+	// Denoted by 'B' in the FrodoKEM spec.
+	extractedBits = 2
+
 	messageSize        = 16
 	matrixBpPackedSize = (logQ * (paramN * paramNbar)) / 8
 )
@@ -53,15 +60,19 @@ type PublicKey struct {
 type PrivateKey struct {
 	hashInputIfDecapsFail [SharedKeySize]byte
 	pk                    *PublicKey
-	matrixS               [paramN * paramNbar]uint16
-	hpk                   [pkHashSize]byte // H(packed(pk))
+
+	// matrixS stores transpose(S)
+	matrixS [paramN * paramNbar]uint16
+
+	// H(packed(pk))
+	hpk [pkHashSize]byte
 }
 
 // NewKeyFromSeed derives a public/private keypair deterministically
 // from the given seed.
 //
 // Panics if seed is not of length KeySeedSize.
-func newKeyFromSeed(seed []byte) (*PublicKey, *PrivateKey, error) {
+func newKeyFromSeed(seed []byte) (*PublicKey, *PrivateKey) {
 	if len(seed) != KeySeedSize {
 		panic("seed must be of length KeySeedSize")
 	}
@@ -69,69 +80,49 @@ func newKeyFromSeed(seed []byte) (*PublicKey, *PrivateKey, error) {
 	var sk PrivateKey
 	var pk PublicKey
 
-	var shakeInputForSE [1 + SharedKeySize]byte
-
-	var SE [2 * paramN * paramNbar]uint16
-	var byteSE [2 * len(SE)]byte
-	S := SE[0 : paramN*paramNbar]
-	E := SE[paramN*paramNbar : 2*paramN*paramNbar]
+	var E [paramN * paramNbar]uint16
+	var byteSE [2 * (len(sk.matrixS) + len(E))]byte
 
 	var A [paramN * paramN]uint16
 
 	// Generate the secret value s, and the seed for S, E, and A. Add seedA to the public key
 	shake128 := sha3.NewShake128()
-	_, err := shake128.Write(seed[2*SharedKeySize:])
-	if err != nil {
-		return nil, nil, err
-	}
-	_, err = shake128.Read(pk.seedA[:])
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// Generate S,E, and A, and compute B = A*S + E.
-	shakeInputForSE[0] = 0x5F
-	copy(shakeInputForSE[1:], seed[SharedKeySize:2*SharedKeySize])
+	_, _ = shake128.Write(seed[2*SharedKeySize:])
+	_, _ = shake128.Read(pk.seedA[:])
 
 	shake128.Reset()
-	_, err = shake128.Write(shakeInputForSE[:])
-	if err != nil {
-		return nil, nil, err
-	}
-	_, err = shake128.Read(byteSE[:])
-	if err != nil {
-		return nil, nil, err
-	}
-	for i := range SE {
-		SE[i] = uint16(byteSE[i*2]) | (uint16(byteSE[(i*2)+1]) << 8)
-	}
-	sample(SE[:])
+	_, _ = shake128.Write([]byte{0x5F})
+	_, _ = shake128.Write(seed[SharedKeySize : 2*SharedKeySize])
+	_, _ = shake128.Read(byteSE[:])
 
-	err = expandSeedIntoA(&A, &pk.seedA, &shake128)
-	if err != nil {
-		return nil, nil, err
+	i := 0
+	for i < len(sk.matrixS) {
+		sk.matrixS[i] = uint16(byteSE[i*2]) | (uint16(byteSE[(i*2)+1]) << 8)
+		i++
 	}
-	mulAddASPlusE(&pk.matrixB, &A, S[:], E[:])
+	sample(sk.matrixS[:])
+
+	for j := range E {
+		E[j] = uint16(byteSE[i*2]) | (uint16(byteSE[(i*2)+1]) << 8)
+		i++
+	}
+	sample(E[:])
+
+	expandSeedIntoA(&A, &pk.seedA, &shake128)
+	mulAddASPlusE(&pk.matrixB, &A, sk.matrixS[:], E[:])
 
 	// Populate the private key
 	copy(sk.hashInputIfDecapsFail[:], seed[0:SharedKeySize])
 	sk.pk = &pk
-	copy(sk.matrixS[:], S[:])
 
 	// Add H(pk) to the private key
 	shake128.Reset()
 	var ppk [PublicKeySize]byte
 	pk.Pack(ppk[:])
-	_, err = shake128.Write(ppk[:])
-	if err != nil {
-		return nil, nil, err
-	}
-	_, err = shake128.Read(sk.hpk[:])
-	if err != nil {
-		return nil, nil, err
-	}
+	_, _ = shake128.Write(ppk[:])
+	_, _ = shake128.Read(sk.hpk[:])
 
-	return &pk, &sk, nil
+	return &pk, &sk
 }
 
 // GenerateKeyPair generates public and private keys using entropy from rand.
@@ -145,7 +136,7 @@ func generateKeyPair(rand io.Reader) (*PublicKey, *PrivateKey, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	pk, sk, err := newKeyFromSeed(seed[:])
+	pk, sk := newKeyFromSeed(seed[:])
 	return pk, sk, err
 }
 
@@ -157,13 +148,10 @@ func generateKeyPair(rand io.Reader) (*PublicKey, *PrivateKey, error) {
 // and EncapsulationSeedSize respectively.
 //
 // seed may be nil, in which case crypto/rand.Reader is used to generate one.
-func (pk *PublicKey) EncapsulateTo(ct []byte, ss []byte, seed []byte) error {
+func (pk *PublicKey) EncapsulateTo(ct []byte, ss []byte, seed []byte) {
 	if seed == nil {
 		seed = make([]byte, EncapsulationSeedSize)
-		_, err := cryptoRand.Read(seed[:])
-		if err != nil {
-			return err
-		}
+		_, _ = cryptoRand.Read(seed[:])
 	}
 	if len(seed) != EncapsulationSeedSize {
 		panic("seed must be of length EncapsulationSeedSize")
@@ -176,8 +164,6 @@ func (pk *PublicKey) EncapsulateTo(ct []byte, ss []byte, seed []byte) error {
 	}
 
 	var G2out [2 * SharedKeySize]byte
-
-	var shakeInputForSpEpEpp [1 + SharedKeySize]byte
 
 	var SpEpEpp [(paramN * paramNbar) + (paramN * paramNbar) + (paramNbar * paramNbar)]uint16
 	var byteSpEpEpp [2 * len(SpEpEpp)]byte
@@ -194,65 +180,41 @@ func (pk *PublicKey) EncapsulateTo(ct []byte, ss []byte, seed []byte) error {
 
 	var hpk [pkHashSize]byte
 
-	mu := seed[:messageSize]
+	var mu [messageSize]byte
+	copy(mu[:], seed[:messageSize])
 
 	// compute hpk = G_1(packed(pk))
 	shake128 := sha3.NewShake128()
 	var ppk [PublicKeySize]byte
 	pk.Pack(ppk[:])
-	_, err := shake128.Write(ppk[:])
-	if err != nil {
-		return err
-	}
-	_, err = shake128.Read(hpk[:])
-	if err != nil {
-		return err
-	}
+	_, _ = shake128.Write(ppk[:])
+	_, _ = shake128.Read(hpk[:])
 
 	// compute (seedSE || k) = G_2(hpk || mu)
 	shake128.Reset()
-	_, err = shake128.Write(hpk[:])
-	if err != nil {
-		return err
-	}
-	_, err = shake128.Write(mu[:])
-	if err != nil {
-		return err
-	}
-	_, err = shake128.Read(G2out[:])
-	if err != nil {
-		return err
-	}
+	_, _ = shake128.Write(hpk[:])
+	_, _ = shake128.Write(mu[:])
+	_, _ = shake128.Read(G2out[:])
 
 	// Generate Sp, Ep, Epp, and A, and compute:
 	// Bp = Sp*A + Ep
 	// V = Sp*B + Epp
-	shakeInputForSpEpEpp[0] = 0x96
-	copy(shakeInputForSpEpEpp[1:], G2out[:SharedKeySize])
 	shake128.Reset()
-	_, err = shake128.Write(shakeInputForSpEpEpp[:])
-	if err != nil {
-		return err
-	}
-	_, err = shake128.Read(byteSpEpEpp[:])
-	if err != nil {
-		return err
-	}
+	shake128.Write([]byte{0x96})
+	shake128.Write(G2out[:SharedKeySize])
+	_, _ = shake128.Read(byteSpEpEpp[:])
 	for i := range SpEpEpp {
 		SpEpEpp[i] = uint16(byteSpEpEpp[i*2]) | (uint16(byteSpEpEpp[(i*2)+1]) << 8)
 	}
 	sample(SpEpEpp[:])
 
-	err = expandSeedIntoA(&A, &pk.seedA, &shake128)
-	if err != nil {
-		return err
-	}
+	expandSeedIntoA(&A, &pk.seedA, &shake128)
 	mulAddSAPlusE(&Bp, Sp, &A, Ep)
 
 	mulAddSBPlusE(&V, Sp, &pk.matrixB, Epp)
 
 	// Encode mu, and compute C = V + enc(mu) (mod q)
-	encodeMessage(C[:], mu[:])
+	encodeMessage(&C, &mu)
 	add(&C, &V, &C)
 
 	// Prepare the ciphertext
@@ -261,19 +223,9 @@ func (pk *PublicKey) EncapsulateTo(ct []byte, ss []byte, seed []byte) error {
 
 	// Compute ss = F(ct||k)
 	shake128.Reset()
-	_, err = shake128.Write(ct[:])
-	if err != nil {
-		return err
-	}
-	_, err = shake128.Write(G2out[SharedKeySize:])
-	if err != nil {
-		return err
-	}
-	_, err = shake128.Read(ss[:])
-	if err != nil {
-		return err
-	}
-	return nil
+	_, _ = shake128.Write(ct[:])
+	_, _ = shake128.Write(G2out[SharedKeySize:])
+	_, _ = shake128.Read(ss[:])
 }
 
 // DecapsulateTo computes the shared key that is encapsulated in ct
@@ -281,7 +233,7 @@ func (pk *PublicKey) EncapsulateTo(ct []byte, ss []byte, seed []byte) error {
 //
 // Panics if ct or ss are not of length CiphertextSize and SharedKeySize
 // respectively.
-func (sk *PrivateKey) DecapsulateTo(ss, ct []byte) error {
+func (sk *PrivateKey) DecapsulateTo(ss, ct []byte) {
 	if len(ct) != CiphertextSize {
 		panic("ct must be of length CiphertextSize")
 	}
@@ -295,8 +247,6 @@ func (sk *PrivateKey) DecapsulateTo(ss, ct []byte) error {
 	var W [paramNbar * paramNbar]uint16
 	var CC [paramNbar * paramNbar]uint16
 	var BBp [paramN * paramNbar]uint16
-
-	var shakeInputForSEprime [1 + SharedKeySize]byte
 
 	var SpEpEpp [(paramN * paramNbar) + (paramN * paramNbar) + (paramNbar * paramNbar)]uint16
 	var byteSpEpEpp [2 * len(SpEpEpp)]byte
@@ -317,46 +267,26 @@ func (sk *PrivateKey) DecapsulateTo(ss, ct []byte) error {
 	mulBS(&W, &Bp, &sk.matrixS)
 	sub(&W, &C, &W)
 
-	decodeMessage(muprime[:], W[:])
+	decodeMessage(&muprime, &W)
 
 	// Generate (seedSE' || k') = G_2(hpk || mu')
 	shake128 := sha3.NewShake128()
-	_, err := shake128.Write(sk.hpk[:])
-	if err != nil {
-		return err
-	}
-	_, err = shake128.Write(muprime[:])
-	if err != nil {
-		return err
-	}
-	_, err = shake128.Read(G2out[:])
-	if err != nil {
-		return err
-	}
+	_, _ = shake128.Write(sk.hpk[:])
+	_, _ = shake128.Write(muprime[:])
+	_, _ = shake128.Read(G2out[:])
 
 	// Generate Sp, Ep, Epp, A, and compute BBp = Sp*A + Ep.
-	shakeInputForSEprime[0] = 0x96
-	copy(shakeInputForSEprime[1:], G2out[0:SharedKeySize])
-
 	shake128.Reset()
-	_, err = shake128.Write(shakeInputForSEprime[:])
-	if err != nil {
-		return err
-	}
-	_, err = shake128.Read(byteSpEpEpp[:])
-	if err != nil {
-		return err
-	}
+	_, _ = shake128.Write([]byte{0x96})
+	_, _ = shake128.Write(G2out[:SharedKeySize])
+	_, _ = shake128.Read(byteSpEpEpp[:])
 	for i := range SpEpEpp {
 		SpEpEpp[i] = uint16(byteSpEpEpp[i*2]) | (uint16(byteSpEpEpp[(i*2)+1]) << 8)
 	}
 
 	sample(SpEpEpp[:])
 
-	err = expandSeedIntoA(&A, &sk.pk.seedA, &shake128)
-	if err != nil {
-		return err
-	}
+	expandSeedIntoA(&A, &sk.pk.seedA, &shake128)
 	mulAddSAPlusE(&BBp, Sp[:], &A, Ep[:])
 
 	// Reduce BBp modulo q
@@ -368,7 +298,7 @@ func (sk *PrivateKey) DecapsulateTo(ss, ct []byte) error {
 	mulAddSBPlusE(&W, Sp, &sk.pk.matrixB, Epp)
 
 	// Encode mu, and compute CC = W + enc(mu') (mod q)
-	encodeMessage(CC[:], muprime[:])
+	encodeMessage(&CC, &muprime)
 	add(&CC, &W, &CC)
 
 	// Prepare input to F
@@ -382,19 +312,9 @@ func (sk *PrivateKey) DecapsulateTo(ss, ct []byte) error {
 	subtle.ConstantTimeCopy(selector, kprime[:], sk.hashInputIfDecapsFail[:])
 
 	shake128.Reset()
-	_, err = shake128.Write(ct[:])
-	if err != nil {
-		return err
-	}
-	_, err = shake128.Write(kprime[:])
-	if err != nil {
-		return err
-	}
-	_, err = shake128.Read(ss[:])
-	if err != nil {
-		return err
-	}
-	return nil
+	_, _ = shake128.Write(ct[:])
+	_, _ = shake128.Write(kprime[:])
+	_, _ = shake128.Read(ss[:])
 }
 
 // Packs sk to buf.
@@ -550,11 +470,7 @@ func (*scheme) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 	if len(seed) != KeySeedSize {
 		panic(kem.ErrSeedSize)
 	}
-	pk, sk, err := newKeyFromSeed(seed[:])
-	if err != nil {
-		panic(err)
-	}
-	return pk, sk
+	return newKeyFromSeed(seed[:])
 }
 
 func (*scheme) Encapsulate(pk kem.PublicKey) (ct, ss []byte, err error) {
@@ -565,7 +481,7 @@ func (*scheme) Encapsulate(pk kem.PublicKey) (ct, ss []byte, err error) {
 	if !ok {
 		return nil, nil, kem.ErrTypeMismatch
 	}
-	err = pub.EncapsulateTo(ct, ss, nil)
+	pub.EncapsulateTo(ct, ss, nil)
 	return
 }
 
@@ -582,7 +498,7 @@ func (*scheme) EncapsulateDeterministically(pk kem.PublicKey, seed []byte) (
 	if !ok {
 		return nil, nil, kem.ErrTypeMismatch
 	}
-	err = pub.EncapsulateTo(ct, ss, seed)
+	pub.EncapsulateTo(ct, ss, seed)
 	return
 }
 
@@ -596,8 +512,8 @@ func (*scheme) Decapsulate(sk kem.PrivateKey, ct []byte) ([]byte, error) {
 		return nil, kem.ErrTypeMismatch
 	}
 	ss := make([]byte, SharedKeySize)
-	err := priv.DecapsulateTo(ss, ct)
-	return ss, err
+	priv.DecapsulateTo(ss, ct)
+	return ss, nil
 }
 
 func (*scheme) UnmarshalBinaryPublicKey(buf []byte) (kem.PublicKey, error) {

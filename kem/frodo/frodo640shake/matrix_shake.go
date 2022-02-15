@@ -4,7 +4,7 @@ import (
 	"github.com/cloudflare/circl/internal/sha3"
 )
 
-func expandSeedIntoA(A *[paramN * paramN]uint16, seed *[seedASize]byte, xof *sha3.State) error {
+func expandSeedIntoA(A *[paramN * paramN]uint16, seed *[seedASize]byte, xof *sha3.State) {
 	var ARow [paramN * 2]byte
 	var seedSeparated [2 + seedASize]byte
 
@@ -15,20 +15,15 @@ func expandSeedIntoA(A *[paramN * paramN]uint16, seed *[seedASize]byte, xof *sha
 		seedSeparated[1] = byte(i >> 8)
 
 		xof.Reset()
-		_, err := xof.Write(seedSeparated[:])
-		if err != nil {
-			return err
-		}
-		_, err = xof.Read(ARow[:])
-		if err != nil {
-			return err
-		}
+		_, _ = xof.Write(seedSeparated[:])
+		_, _ = xof.Read(ARow[:])
 
 		for j := 0; j < paramN; j++ {
+			// No need to reduce modulo 2^15, extra bits are removed
+			// later on via packing or explicit reduction.
 			A[(i*paramN)+j] = uint16(ARow[j*2]) | (uint16(ARow[(j*2)+1]) << 8)
 		}
 	}
-	return nil
 }
 
 func mulAddASPlusE(out *[paramN * paramNbar]uint16, A *[paramN * paramN]uint16, s []uint16, e []uint16) {
@@ -40,8 +35,8 @@ func mulAddASPlusE(out *[paramN * paramNbar]uint16, A *[paramN * paramN]uint16, 
 			for j := 0; j < paramN; j++ {
 				sum += A[i*paramN+j] * s[k*paramN+j]
 			}
-			// Adding e. No need to reduce modulo 2^15, extra bits are taken
-			// care of during packing later on.
+			// No need to reduce modulo 2^15, extra bits are removed
+			// later on via packing or explicit reduction.
 			out[i*paramNbar+k] += sum
 		}
 	}
@@ -56,8 +51,8 @@ func mulAddSAPlusE(out *[paramNbar * paramN]uint16, s []uint16, A *[paramN * par
 			for j := 0; j < paramN; j++ {
 				sum += A[j*paramN+i] * s[k*paramN+j]
 			}
-			// Adding e. No need to reduce modulo 2^15, extra bits are taken
-			// care of during packing later on.
+			// No need to reduce modulo 2^15, extra bits are removed
+			// later on via packing or explicit reduction.
 			out[k*paramN+i] += sum
 		}
 	}
