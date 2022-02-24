@@ -1,70 +1,96 @@
 package oprf
 
 import (
+	"encoding/binary"
 	"io"
 
 	"github.com/cloudflare/circl/group"
 )
 
 type PrivateKey struct {
-	s SuiteID
-	k group.Scalar
+	p   params
+	k   group.Scalar
+	pub *PublicKey
 }
+
 type PublicKey struct {
-	s SuiteID
+	p params
 	e group.Element
 }
 
-func (k *PrivateKey) Serialize() ([]byte, error) { return k.k.MarshalBinary() }
-func (k *PublicKey) Serialize() ([]byte, error)  { return k.e.MarshalBinaryCompress() }
+func (k *PrivateKey) MarshalBinary() ([]byte, error) { return k.k.MarshalBinary() }
+func (k *PublicKey) MarshalBinary() ([]byte, error)  { return k.e.MarshalBinaryCompress() }
 
-func (k *PrivateKey) Deserialize(id SuiteID, data []byte) error {
-	suite, err := suiteFromID(id, BaseMode)
-	if err != nil {
-		return err
+func (k *PrivateKey) UnmarshalBinary(s Suite, data []byte) error {
+	p, ok := s.(params)
+	if !ok {
+		return ErrInvalidSuite
 	}
-	k.s = id
-	k.k = suite.Group.NewScalar()
+	k.p = p
+	k.k = k.p.g.NewScalar()
+
 	return k.k.UnmarshalBinary(data)
 }
 
-func (k *PublicKey) Deserialize(id SuiteID, data []byte) error {
-	suite, err := suiteFromID(id, BaseMode)
-	if err != nil {
-		return err
+func (k *PublicKey) UnmarshalBinary(s Suite, data []byte) error {
+	p, ok := s.(params)
+	if !ok {
+		return ErrInvalidSuite
 	}
-	k.s = id
-	k.e = suite.Group.NewElement()
+	k.p = p
+	k.e = k.p.g.NewElement()
+
 	return k.e.UnmarshalBinary(data)
 }
 
 func (k *PrivateKey) Public() *PublicKey {
-	suite, _ := suiteFromID(k.s, BaseMode)
-	publicKey := suite.Group.NewElement()
-	publicKey.MulGen(k.k)
-	return &PublicKey{k.s, publicKey}
+	if k.pub == nil {
+		k.pub = &PublicKey{k.p, k.p.g.NewElement().MulGen(k.k)}
+	}
+
+	return k.pub
 }
 
-// GenerateKey generates a pair of keys in accordance with the suite. Panics if
-// rnd is nil.
-func GenerateKey(id SuiteID, rnd io.Reader) (*PrivateKey, error) {
-	suite, err := suiteFromID(id, BaseMode)
-	if err != nil {
-		return nil, err
-	}
+// GenerateKey generates a private key compatible with the suite.
+func GenerateKey(s Suite, rnd io.Reader) (*PrivateKey, error) {
 	if rnd == nil {
-		panic("rnd must be an non-nil io.Reader")
+		return nil, io.ErrNoProgress
 	}
-	privateKey := suite.Group.RandomScalar(rnd)
-	return &PrivateKey{suite.SuiteID, privateKey}, nil
+
+	p, ok := s.(params)
+	if !ok {
+		return nil, ErrInvalidSuite
+	}
+	privateKey := p.g.RandomScalar(rnd)
+
+	return &PrivateKey{p, privateKey, nil}, nil
 }
 
-// DeriveKey derives a pair of keys given a seed and in accordance with the suite and mode.
-func DeriveKey(id SuiteID, mode Mode, seed []byte) (*PrivateKey, error) {
-	suite, err := suiteFromID(id, mode)
-	if err != nil {
-		return nil, err
+// DeriveKey generates a private key from a given seed and optional info string.
+func DeriveKey(s Suite, mode Mode, seed, info []byte) (*PrivateKey, error) {
+	const maxTries = 255
+	p, ok := s.(params)
+	if !ok {
+		return nil, ErrInvalidSuite
 	}
-	privateKey := suite.Group.HashToScalar(seed, suite.getDST(hashToScalarDST))
-	return &PrivateKey{suite.SuiteID, privateKey}, nil
+	if !isValidMode(mode) {
+		return nil, ErrInvalidMode
+	}
+	p.m = mode
+
+	lenInfo := []byte{0, 0}
+	binary.BigEndian.PutUint16(lenInfo, uint16(len(info)))
+	deriveInput := append(append(append([]byte{}, seed...), lenInfo...), info...)
+
+	dst := p.getDST(deriveKeyPairDST)
+	zero := p.g.NewScalar()
+	privateKey := p.g.NewScalar()
+	for counter := byte(0); privateKey.IsEqual(zero); counter++ {
+		if counter > maxTries {
+			return nil, ErrDeriveKeyPairError
+		}
+		privateKey = p.g.HashToScalar(append(deriveInput, counter), dst)
+	}
+
+	return &PrivateKey{p, privateKey, nil}, nil
 }
