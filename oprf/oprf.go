@@ -1,16 +1,50 @@
-// Package oprf provides an Oblivious Pseudo-Random Function protocol.
+// Package oprf provides Verifiable, Oblivious Pseudo-Random Functions.
 //
 // An Oblivious Pseudorandom Function (OPRFs) is a two-party protocol for
 // computing the output of a PRF. One party (the server) holds the PRF secret
 // key, and the other (the client) holds the PRF input.
 //
-// Obliviousness: Ensures that the server does not learn anything
-// about the client's input during the Evaluation step.
+// This package is compatible with the OPRF specification at draft-irtf-cfrg-voprf [1].
 //
-// Verifiability: Allows the client to verify that the server used
-// a committed secret key during Evaluation step.
 //
-// OPRF is defined on draft-irtf-cfrg-voprf: https://datatracker.ietf.org/doc/draft-irtf-cfrg-voprf
+// Protocol Overview
+//
+// This diagram shows the steps of the protocol that are common for all operation modes.
+//
+//   Client(info*)                               Server(sk, pk, info*)
+//   =================================================================
+//   finData, evalReq = Blind(input)
+//
+//                               evalReq
+//                             ---------->
+//
+//                               evaluation = Evaluate(evalReq, info*)
+//
+//                              evaluation
+//                             <----------
+//
+//   output = Finalize(finData, evaluation, info*)
+//
+// Operation Modes
+//
+// Each operation mode provides different properties to the PRF.
+//
+// Base Mode: Provides obliviousness to the PRF evaluation, i.e., it ensures
+// that the server does not learn anything about the client's input and output
+// during the Evaluation step.
+//
+// Verifiable Mode: Extends the Base mode allowing the client to verify that
+// Server used the private key that corresponds to the public key.
+//
+// Partial Oblivious Mode: Extends the Verifiable mode by including shared
+// public information to the PRF input.
+//
+// All three modes can perform batches of PRF evaluations, so passing an array
+// of inputs will produce an array of outputs.
+//
+// References
+//
+// [1] draft-irtf-cfrg-voprf: https://datatracker.ietf.org/doc/draft-irtf-cfrg-voprf
 //
 package oprf
 
@@ -18,136 +52,178 @@ import (
 	"crypto"
 	"encoding/binary"
 	"errors"
+	"fmt"
+	"hash"
 	"io"
+	"math"
 
 	"github.com/cloudflare/circl/group"
+	"github.com/cloudflare/circl/group/dleq"
 )
 
 const (
-	version         = "VOPRF08-"
-	seedDST         = "Seed-"
-	contextDST      = "Context-"
-	challengeDST    = "Challenge-"
-	finalizeDST     = "Finalize-"
-	compositeDST    = "Composite-"
-	hashToGroupDST  = "HashToGroup-"
-	hashToScalarDST = "HashToScalar-"
+	version          = "VOPRF09-"
+	finalizeDST      = "Finalize"
+	hashToGroupDST   = "HashToGroup-"
+	hashToScalarDST  = "HashToScalar-"
+	deriveKeyPairDST = "DeriveKeyPair"
+	infoLabel        = "Info"
 )
 
-// SuiteID identifies supported suites.
-type SuiteID = uint16
-
-const (
-	// OPRFP256 represents the OPRF with P-256 and SHA-256.
-	OPRFP256 SuiteID = 0x0003
-	// OPRFP384 represents the OPRF with P-384 and SHA-512.
-	OPRFP384 SuiteID = 0x0004
-	// OPRFP521 represents the OPRF with P-521 and SHA-512.
-	OPRFP521 SuiteID = 0x0005
-)
-
-// Mode specifies properties of the OPRF protocol.
 type Mode = uint8
 
 const (
-	// BaseMode provides obliviousness.
-	BaseMode Mode = 0x00
-	// VerifiableMode provides obliviousness and verifiability.
-	VerifiableMode Mode = 0x01
+	BaseMode             Mode = 0x00
+	VerifiableMode       Mode = 0x01
+	PartialObliviousMode Mode = 0x02
 )
 
-// ErrUnsupportedSuite is thrown when requesting a non-supported suite.
-var ErrUnsupportedSuite = errors.New("non-supported suite")
-
-type Blind group.Scalar
-type SerializedElement = []byte
-type SerializedScalar = []byte
-type Blinded = SerializedElement
-type UnBlinded = SerializedElement
-
-type Proof struct {
-	C, S SerializedScalar
+func isValidMode(m Mode) bool {
+	return m == BaseMode || m == VerifiableMode || m == PartialObliviousMode
 }
 
-type Evaluation struct {
-	Elements []SerializedElement
-	Proof    *Proof
-}
+type Suite interface{ cannotBeImplementedExternally() }
 
-type suite struct {
-	SuiteID
-	Mode
-	group.Group
-	crypto.Hash
-}
+var (
+	// SuiteP256 represents the OPRF with P-256 and SHA-256.
+	SuiteP256 Suite = params{ID: 3, g: group.P256, h: crypto.SHA256}
+	// SuiteP384 represents the OPRF with P-384 and SHA-384.
+	SuiteP384 Suite = params{ID: 4, g: group.P384, h: crypto.SHA384}
+	// SuiteP521 represents the OPRF with P-521 and SHA-512.
+	SuiteP521 Suite = params{ID: 5, g: group.P521, h: crypto.SHA512}
+)
 
-func suiteFromID(id SuiteID, m Mode) (*suite, error) {
-	if !(m == BaseMode || m == VerifiableMode) {
-		return nil, ErrUnsupportedSuite
-	}
-	switch id {
-	case OPRFP256:
-		return &suite{id, m, group.P256, crypto.SHA256}, nil
-	case OPRFP384:
-		return &suite{id, m, group.P384, crypto.SHA384}, nil
-	case OPRFP521:
-		return &suite{id, m, group.P521, crypto.SHA512}, nil
+func GetSuite(id int) (Suite, error) {
+	switch uint16(id) {
+	case SuiteP256.(params).ID:
+		return SuiteP256, nil
+	case SuiteP384.(params).ID:
+		return SuiteP384, nil
+	case SuiteP521.(params).ID:
+		return SuiteP521, nil
 	default:
-		return nil, ErrUnsupportedSuite
+		return nil, ErrInvalidSuite
 	}
 }
 
-// GetSizes returns the size in bytes of a SerializedElement, SerializedScalar,
-// and the length of the OPRF's output protocol.
-func GetSizes(id SuiteID) (
-	s struct {
-		SerializedElementLength uint // Size in bytes of a serialized element.
-		SerializedScalarLength  uint // Size in bytes of a serialized scalar.
-		OutputLength            uint // Size in bytes of OPRF's output.
-	},
-	err error,
-) {
-	if suite, err := suiteFromID(id, BaseMode); err == nil {
-		p := suite.Group.Params()
-		s.SerializedElementLength = p.CompressedElementLength
-		s.SerializedScalarLength = p.ScalarLength
-		s.OutputLength = uint(suite.Size())
-	}
-	return
+func NewClient(s Suite) Client {
+	p := s.(params)
+	p.m = BaseMode
+
+	return Client{client{p}}
 }
 
-func (s *suite) GetMode() Mode { return s.Mode }
+func NewVerifiableClient(s Suite, server *PublicKey) VerifiableClient {
+	p, ok := s.(params)
+	if !ok || server == nil {
+		panic(ErrNoKey)
+	}
+	p.m = VerifiableMode
 
-func (s *suite) getDST(name string) []byte {
+	return VerifiableClient{client{p}, server}
+}
+
+func NewPartialObliviousClient(s Suite, server *PublicKey) PartialObliviousClient {
+	p, ok := s.(params)
+	if !ok || server == nil {
+		panic(ErrNoKey)
+	}
+	p.m = PartialObliviousMode
+
+	return PartialObliviousClient{client{p}, server}
+}
+
+func NewServer(s Suite, key *PrivateKey) Server {
+	p, ok := s.(params)
+	if !ok || key == nil {
+		panic(ErrNoKey)
+	}
+	p.m = BaseMode
+
+	return Server{server{p, key}}
+}
+
+func NewVerifiableServer(s Suite, key *PrivateKey) VerifiableServer {
+	p, ok := s.(params)
+	if !ok || key == nil {
+		panic(ErrNoKey)
+	}
+	p.m = VerifiableMode
+
+	return VerifiableServer{server{p, key}}
+}
+
+func NewPartialObliviousServer(s Suite, key *PrivateKey) PartialObliviousServer {
+	p, ok := s.(params)
+	if !ok || key == nil {
+		panic(ErrNoKey)
+	}
+	p.m = PartialObliviousMode
+
+	return PartialObliviousServer{server{p, key}}
+}
+
+type params struct {
+	ID uint16
+	m  Mode
+	g  group.Group
+	h  crypto.Hash
+}
+
+func (p params) cannotBeImplementedExternally() {}
+
+func (p params) String() string { return fmt.Sprintf("Suite%v", p.g) }
+
+func (p params) getDST(name string) []byte {
 	return append(append(append([]byte{},
 		[]byte(name)...),
 		[]byte(version)...),
-		[]byte{s.Mode, 0, byte(s.SuiteID)}...)
+		[]byte{p.m, 0, byte(p.ID)}...)
 }
 
-func (s *suite) finalizeHash(input, info, element []byte) []byte {
-	h := s.New()
+func (p params) scalarFromInfo(info []byte) (group.Scalar, error) {
+	if len(info) > math.MaxUint16 {
+		return nil, ErrInvalidInfo
+	}
+	lenInfo := []byte{0, 0}
+	binary.BigEndian.PutUint16(lenInfo, uint16(len(info)))
+	framedInfo := append(append(append([]byte{},
+		[]byte(infoLabel)...),
+		lenInfo...),
+		info...)
 
+	return p.g.HashToScalar(framedInfo, p.getDST(hashToScalarDST)), nil
+}
+
+func (p params) finalizeHash(h hash.Hash, input, info, element []byte) []byte {
+	h.Reset()
 	lenBuf := []byte{0, 0}
 
 	binary.BigEndian.PutUint16(lenBuf, uint16(len(input)))
 	mustWrite(h, lenBuf)
 	mustWrite(h, input)
 
-	binary.BigEndian.PutUint16(lenBuf, uint16(len(info)))
-	mustWrite(h, lenBuf)
-	mustWrite(h, info)
+	if p.m == PartialObliviousMode {
+		binary.BigEndian.PutUint16(lenBuf, uint16(len(info)))
+		mustWrite(h, lenBuf)
+		mustWrite(h, info)
+	}
 
 	binary.BigEndian.PutUint16(lenBuf, uint16(len(element)))
 	mustWrite(h, lenBuf)
 	mustWrite(h, element)
 
-	dst := s.getDST(finalizeDST)
-	binary.BigEndian.PutUint16(lenBuf, uint16(len(dst)))
-	mustWrite(h, lenBuf)
-	mustWrite(h, dst)
+	mustWrite(h, []byte(finalizeDST))
 
 	return h.Sum(nil)
+}
+
+func (p params) getDLEQParams() (out dleq.Params) {
+	out.G = p.g
+	out.H = p.h
+	out.DST = p.getDST("")
+
+	return
 }
 
 func mustWrite(h io.Writer, bytes []byte) {
@@ -160,94 +236,38 @@ func mustWrite(h io.Writer, bytes []byte) {
 	}
 }
 
-func (s *suite) computeComposites(
-	k group.Scalar,
-	B group.Element,
-	Cs []group.Element,
-	Ds []group.Element,
-) (group.Element, group.Element, error) {
-	Bm, err := B.MarshalBinaryCompress()
-	if err != nil {
-		return nil, nil, err
-	}
+var (
+	ErrInvalidSuite       = errors.New("invalid suite")
+	ErrInvalidMode        = errors.New("invalid mode")
+	ErrDeriveKeyPairError = errors.New("key pair derivation failed")
+	ErrInvalidInput       = errors.New("invalid input")
+	ErrInvalidInfo        = errors.New("invalid info")
+	ErrInvalidProof       = errors.New("proof verification failed")
+	ErrInverseZero        = errors.New("inverting a zero value")
+	ErrNoKey              = errors.New("must provide a key")
+)
 
-	lenBuf := []byte{0, 0}
-	H := s.New()
+type (
+	blind     = group.Scalar
+	Blinded   = group.Element
+	Evaluated = group.Element
+)
 
-	binary.BigEndian.PutUint16(lenBuf, uint16(len(Bm)))
-	mustWrite(H, lenBuf)
-	mustWrite(H, Bm)
-
-	dst := s.getDST(seedDST)
-	binary.BigEndian.PutUint16(lenBuf, uint16(len(dst)))
-	mustWrite(H, lenBuf)
-	mustWrite(H, dst)
-
-	seed := H.Sum(nil)
-
-	M := s.Group.Identity()
-	Z := s.Group.Identity()
-	h2sDST := s.getDST(hashToScalarDST)
-	for i := range Cs {
-		h2Input := []byte{}
-
-		Ci, err := Cs[i].MarshalBinaryCompress()
-		if err != nil {
-			return nil, nil, err
-		}
-
-		Di, err := Ds[i].MarshalBinaryCompress()
-		if err != nil {
-			return nil, nil, err
-		}
-
-		binary.BigEndian.PutUint16(lenBuf, uint16(len(seed)))
-		h2Input = append(append(h2Input, lenBuf...), seed...)
-
-		binary.BigEndian.PutUint16(lenBuf, uint16(i))
-		h2Input = append(h2Input, lenBuf...)
-
-		binary.BigEndian.PutUint16(lenBuf, uint16(len(Ci)))
-		h2Input = append(append(h2Input, lenBuf...), Ci...)
-
-		binary.BigEndian.PutUint16(lenBuf, uint16(len(Di)))
-		h2Input = append(append(h2Input, lenBuf...), Di...)
-
-		dst := s.getDST(compositeDST)
-		binary.BigEndian.PutUint16(lenBuf, uint16(len(dst)))
-		h2Input = append(append(h2Input, lenBuf...), dst...)
-
-		di := s.Group.HashToScalar(h2Input, h2sDST)
-		Mi := s.Group.NewElement()
-		Mi.Mul(Cs[i], di)
-		M.Add(M, Mi)
-
-		if k == nil {
-			Zi := s.Group.NewElement()
-			Zi.Mul(Ds[i], di)
-			Z.Add(Z, Zi)
-		}
-	}
-
-	if k != nil {
-		Z.Mul(M, k)
-	}
-
-	return M, Z, nil
+// FinalizeData encapsulates data needed for Finalize step.
+type FinalizeData struct {
+	inputs  [][]byte
+	blinds  []blind
+	evalReq *EvaluationRequest
 }
 
-func (s *suite) doChallenge(a [5][]byte) group.Scalar {
-	h2Input := []byte{}
-	lenBuf := []byte{0, 0}
+// EvaluationRequest contains the blinded elements to be evaluated by the Server.
+type EvaluationRequest struct {
+	Elements []Blinded
+}
 
-	for i := range a {
-		binary.BigEndian.PutUint16(lenBuf, uint16(len(a[i])))
-		h2Input = append(append(h2Input, lenBuf...), a[i]...)
-	}
-
-	dst := s.getDST(challengeDST)
-	binary.BigEndian.PutUint16(lenBuf, uint16(len(dst)))
-	h2Input = append(append(h2Input, lenBuf...), dst...)
-
-	return s.Group.HashToScalar(h2Input, s.getDST(hashToScalarDST))
+// Evaluation contains a list of elements produced during server's evaluation, and
+// for verifiable modes it also includes a proof.
+type Evaluation struct {
+	Elements []Evaluated
+	Proof    *dleq.Proof
 }
