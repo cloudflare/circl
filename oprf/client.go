@@ -16,17 +16,17 @@ type Client struct {
 
 // ClientRequest is a structure to encapsulate the output of a Request call.
 type ClientRequest struct {
-	inputs   [][]byte
-	blinds   []Blind
-	elements []group.Element
+	Inputs   [][]byte
+	Blinds   []Blind
+	Elements []group.Element
 }
 
 // BlindedElements returns the serialized blinded elements produced for the client request.
 func (r ClientRequest) BlindedElements() [][]byte {
 	var err error
-	serializedBlinds := make([][]byte, len(r.elements))
-	for i := range r.elements {
-		serializedBlinds[i], err = r.elements[i].MarshalBinaryCompress()
+	serializedBlinds := make([][]byte, len(r.Elements))
+	for i := range r.Elements {
+		serializedBlinds[i], err = r.Elements[i].MarshalBinaryCompress()
 		if err != nil {
 			return nil
 		}
@@ -90,8 +90,8 @@ func (c *Client) blindMultiplicative(blindedElt []group.Element, inputs [][]byte
 // the output of the OPRF protocol. The function uses server's public key
 // to verify the proof in verifiable mode.
 func (c *Client) Finalize(r *ClientRequest, e *Evaluation, info []byte) ([][]byte, error) {
-	l := len(r.blinds)
-	if len(r.elements) != l || len(e.Elements) != l {
+	l := len(r.Blinds)
+	if len(r.Elements) != l || len(e.Elements) != l {
 		return nil, errors.New("mismatch number of elements")
 	}
 
@@ -111,18 +111,18 @@ func (c *Client) Finalize(r *ClientRequest, e *Evaluation, info []byte) ([][]byt
 		T := c.Group.NewElement().MulGen(m)
 		U := c.Group.NewElement().Add(T, c.pkS.e)
 
-		if !c.verifyProof(c.Group.Generator(), U, evals, r.elements, e.Proof) {
+		if !c.verifyProof(c.Group.Generator(), U, evals, r.Elements, e.Proof) {
 			return nil, errors.New("invalid proof")
 		}
 	}
 
-	unblindedElements, err := c.unblind(evals, r.blinds)
+	unblindedElements, err := c.unblind(evals, r.Blinds)
 	if err != nil {
 		return nil, err
 	}
 	outputs := make([][]byte, l)
 	for i := 0; i < l; i++ {
-		outputs[i] = c.finalizeHash(r.inputs[i], info, unblindedElements[i])
+		outputs[i] = c.finalizeHash(r.Inputs[i], info, unblindedElements[i])
 	}
 	return outputs, nil
 }
