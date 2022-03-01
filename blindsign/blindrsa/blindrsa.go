@@ -85,6 +85,7 @@ func (v RSAVerifier) fixedBlind(message, salt []byte, r, rInv *big.Int) ([]byte,
 	return blindedMsg, RSAVerifierState{
 		encodedMsg: encodedMsg,
 		verifier:   v,
+		salt:       salt,
 		rInv:       rInv,
 	}, nil
 }
@@ -114,6 +115,21 @@ func (v RSAVerifier) Blind(random io.Reader, message []byte) ([]byte, blindsign.
 	return v.fixedBlind(message, salt, r, rInv)
 }
 
+// FixedBlind runs the Blind function with fixed blind and salt inputs.
+func (v RSAVerifier) FixedBlind(message, blind, salt []byte) ([]byte, blindsign.VerifierState, error) {
+	if blind == nil {
+		return nil, nil, ErrInvalidRandomness
+	}
+
+	r := new(big.Int).SetBytes(blind)
+	rInv := new(big.Int).ModInverse(r, v.pk.N)
+	if rInv == nil {
+		return nil, nil, ErrInvalidBlind
+	}
+
+	return v.fixedBlind(message, salt, r, rInv)
+}
+
 // An RSAVerifierState carries state needed to complete the blind signature protocol
 // as a verifier.
 type RSAVerifierState struct {
@@ -122,6 +138,9 @@ type RSAVerifierState struct {
 
 	// The hashed and encoded message being signed
 	encodedMsg []byte
+
+	// The salt used when encoding the message
+	salt []byte
 
 	// Inverse of the blinding factor produced by the Verifier
 	rInv *big.Int
@@ -163,6 +182,17 @@ func (state RSAVerifierState) Finalize(data []byte) ([]byte, error) {
 	}
 
 	return sig, nil
+}
+
+// CopyBlind returns an encoding of the blind value used in the protocol.
+func (state RSAVerifierState) CopyBlind() []byte {
+	r := new(big.Int).ModInverse(state.rInv, state.verifier.pk.N)
+	return r.Bytes()
+}
+
+// CopySalt returns an encoding of the per-message salt used in the protocol.
+func (state RSAVerifierState) CopySalt() []byte {
+	return state.salt
 }
 
 // An RSASigner represents the Signer in the blind RSA protocol.
