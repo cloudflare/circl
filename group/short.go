@@ -134,7 +134,7 @@ func (e *wElt) Dbl(a Element) Element {
 func (e *wElt) Neg(a Element) Element {
 	aa := e.cvtElt(a)
 	e.x.Set(aa.x)
-	e.y.Neg(aa.y)
+	e.y.Neg(aa.y).Mod(e.y, e.c.Params().P)
 	return e
 }
 func (e *wElt) Mul(a Element, s Scalar) Element {
@@ -151,18 +151,17 @@ func (e *wElt) MarshalBinary() ([]byte, error) {
 	if e.IsIdentity() {
 		return []byte{0x0}, nil
 	}
+	e.x.Mod(e.x, e.c.Params().P)
+	e.y.Mod(e.y, e.c.Params().P)
 	return elliptic.Marshal(e.wG.c, e.x, e.y), nil
 }
 func (e *wElt) MarshalBinaryCompress() ([]byte, error) {
 	if e.IsIdentity() {
 		return []byte{0x0}, nil
 	}
-	l := (e.c.Params().BitSize + 7) / 8
-	data := make([]byte, 1+l)
-	bytes := e.x.Bytes()
-	copy(data[1+l-len(bytes):], bytes)
-	data[0] = 0x02 | byte(e.y.Bit(0))
-	return data, nil
+	e.x.Mod(e.x, e.c.Params().P)
+	e.y.Mod(e.y, e.c.Params().P)
+	return elliptic.MarshalCompressed(e.wG.c, e.x, e.y), nil
 }
 func (e *wElt) UnmarshalBinary(b []byte) error {
 	byteLen := (e.c.Params().BitSize + 7) / 8
@@ -172,22 +171,9 @@ func (e *wElt) UnmarshalBinary(b []byte) error {
 		e.x.SetInt64(0)
 		e.y.SetInt64(0)
 	case l == 1+byteLen && (b[0] == 0x02 || b[0] == 0x03): // compressed
-		p := e.wG.c.Params().P
-		x := new(big.Int).SetBytes(b[1:])
-		y := new(big.Int)
-		y.Mul(x, x)                 // x^2
-		y.Mul(y, x)                 // x^3
-		y.Sub(y, x)                 // x^3-x
-		y.Sub(y, x)                 // x^3-2x
-		y.Sub(y, x)                 // x^3-3x
-		y.Add(y, e.wG.c.Params().B) // x^3-3x+b
-		y.Mod(y, p)                 //
-		qr := y.ModSqrt(y, p)       // sqrt(x^3-3x+b)
-		if qr == nil {
+		x, y := elliptic.UnmarshalCompressed(e.wG.c, b)
+		if x == nil {
 			return ErrUnmarshal
-		}
-		if byte(y.Bit(0)) != (b[0] & 1) {
-			y.Neg(y).Mod(y, p)
 		}
 		e.x, e.y = x, y
 	case l == 1+2*byteLen && b[0] == 0x04: // uncompressed
