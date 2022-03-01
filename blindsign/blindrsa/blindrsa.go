@@ -192,7 +192,9 @@ func (state RSAVerifierState) CopyBlind() []byte {
 
 // CopySalt returns an encoding of the per-message salt used in the protocol.
 func (state RSAVerifierState) CopySalt() []byte {
-	return state.salt
+	salt := make([]byte, len(state.salt))
+	copy(salt, state.salt)
+	return salt
 }
 
 // An RSASigner represents the Signer in the blind RSA protocol.
