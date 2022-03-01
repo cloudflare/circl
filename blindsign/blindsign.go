@@ -20,6 +20,12 @@ type VerifierState interface {
 	// Finalize completes the blind signature protocol and produces a signature
 	// over the corresponding Verifier-provided message.
 	Finalize(data []byte) ([]byte, error)
+
+	// CopyBlind returns an encoding of the blind value used in the protocol.
+	CopyBlind() []byte
+
+	// CopySalt returns an encoding of the per-message salt used in the protocol.
+	CopySalt() []byte
 }
 
 // A Signer represents a specific instance of a blind signature signer.
