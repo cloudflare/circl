@@ -1,10 +1,10 @@
 package eddilithium3_test
 
 import (
-	"github.com/cloudflare/circl/sign/eddilithium3"
-
 	"encoding/binary"
 	"testing"
+
+	"github.com/cloudflare/circl/sign/eddilithium3"
 )
 
 func BenchmarkVerify(b *testing.B) {

@@ -23,6 +23,7 @@ func (e *Fq) toBytes(buf []byte) {
 		e[1].toBytes(buf[SizeFp:])
 	}
 }
+
 func (e *Fq) fromBytes(buf []byte) bool {
 	if len(buf) == 2*SizeFp {
 		return e[0].fromBytes(buf[:SizeFp]) &&

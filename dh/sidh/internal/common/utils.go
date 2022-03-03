@@ -7,7 +7,7 @@ import "encoding/binary"
 // if pick == 0 (out = in2)
 // else out is undefined.
 func Cpick(pick int, out, in1, in2 []byte) {
-	var which = byte((int8(pick << 7)) >> 7)
+	which := byte((int8(pick << 7)) >> 7)
 	for i := range out {
 		out[i] = (in1[i] & which) | (in2[i] & ^which)
 	}

@@ -19,7 +19,7 @@ jobs:
       - name: Linting
         uses: golangci/golangci-lint-action@v2
         with:
-          version: v1.42
+          version: v1.44
           args: --config=./.etc/golangci.yml ./...
       - name: Check shadowing
         run: |

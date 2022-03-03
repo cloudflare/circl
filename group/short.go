@@ -40,6 +40,7 @@ func (g wG) RandomElement(rd io.Reader) Element {
 	}
 	return g.HashToElement(b, nil)
 }
+
 func (g wG) RandomScalar(rd io.Reader) Scalar {
 	b := make([]byte, (g.c.Params().BitSize+7)/8)
 	if n, err := io.ReadFull(rd, b); err != nil || n != len(b) {
@@ -47,6 +48,7 @@ func (g wG) RandomScalar(rd io.Reader) Scalar {
 	}
 	return g.HashToScalar(b, nil)
 }
+
 func (g wG) RandomNonZeroScalar(rd io.Reader) Scalar {
 	zero := g.zeroScalar()
 	for {
@@ -56,6 +58,7 @@ func (g wG) RandomNonZeroScalar(rd io.Reader) Scalar {
 		}
 	}
 }
+
 func (g wG) cvtElt(e Element) *wElt {
 	if e == nil {
 		return g.zeroElement()
@@ -66,6 +69,7 @@ func (g wG) cvtElt(e Element) *wElt {
 	}
 	return ee
 }
+
 func (g wG) cvtScl(s Scalar) *wScl {
 	if s == nil {
 		return g.zeroScalar()
@@ -76,6 +80,7 @@ func (g wG) cvtScl(s Scalar) *wScl {
 	}
 	return ss
 }
+
 func (g wG) Params() *Params {
 	fieldLen := uint((g.c.Params().BitSize + 7) / 8)
 	return &Params{
@@ -84,6 +89,7 @@ func (g wG) Params() *Params {
 		ScalarLength:            fieldLen,
 	}
 }
+
 func (g wG) HashToElementNonUniform(b, dst []byte) Element {
 	var u [1]big.Int
 	mapping, h, L := g.mapToCurveParams()
@@ -91,6 +97,7 @@ func (g wG) HashToElementNonUniform(b, dst []byte) Element {
 	HashToField(u[:], b, xmd, g.c.Params().P, L)
 	return mapping(&u[0])
 }
+
 func (g wG) HashToElement(b, dst []byte) Element {
 	var u [2]big.Int
 	mapping, h, L := g.mapToCurveParams()
@@ -100,6 +107,7 @@ func (g wG) HashToElement(b, dst []byte) Element {
 	Q1 := mapping(&u[1])
 	return Q0.Add(Q0, Q1)
 }
+
 func (g wG) HashToScalar(b, dst []byte) Scalar {
 	var u [1]big.Int
 	_, h, L := g.mapToCurveParams()
@@ -121,32 +129,38 @@ func (e *wElt) IsEqual(o Element) bool {
 	oo := e.cvtElt(o)
 	return e.x.Cmp(oo.x) == 0 && e.y.Cmp(oo.y) == 0
 }
+
 func (e *wElt) Add(a, b Element) Element {
 	aa, bb := e.cvtElt(a), e.cvtElt(b)
 	e.x, e.y = e.c.Add(aa.x, aa.y, bb.x, bb.y)
 	return e
 }
+
 func (e *wElt) Dbl(a Element) Element {
 	aa := e.cvtElt(a)
 	e.x, e.y = e.c.Double(aa.x, aa.y)
 	return e
 }
+
 func (e *wElt) Neg(a Element) Element {
 	aa := e.cvtElt(a)
 	e.x.Set(aa.x)
 	e.y.Neg(aa.y).Mod(e.y, e.c.Params().P)
 	return e
 }
+
 func (e *wElt) Mul(a Element, s Scalar) Element {
 	aa, ss := e.cvtElt(a), e.cvtScl(s)
 	e.x, e.y = e.c.ScalarMult(aa.x, aa.y, ss.k)
 	return e
 }
+
 func (e *wElt) MulGen(s Scalar) Element {
 	ss := e.cvtScl(s)
 	e.x, e.y = e.c.ScalarBaseMult(ss.k)
 	return e
 }
+
 func (e *wElt) MarshalBinary() ([]byte, error) {
 	if e.IsIdentity() {
 		return []byte{0x0}, nil
@@ -155,6 +169,7 @@ func (e *wElt) MarshalBinary() ([]byte, error) {
 	e.y.Mod(e.y, e.c.Params().P)
 	return elliptic.Marshal(e.wG.c, e.x, e.y), nil
 }
+
 func (e *wElt) MarshalBinaryCompress() ([]byte, error) {
 	if e.IsIdentity() {
 		return []byte{0x0}, nil
@@ -163,6 +178,7 @@ func (e *wElt) MarshalBinaryCompress() ([]byte, error) {
 	e.y.Mod(e.y, e.c.Params().P)
 	return elliptic.MarshalCompressed(e.wG.c, e.x, e.y), nil
 }
+
 func (e *wElt) UnmarshalBinary(b []byte) error {
 	byteLen := (e.c.Params().BitSize + 7) / 8
 	l := len(b)
@@ -199,12 +215,14 @@ func (s *wScl) IsEqual(a Scalar) bool {
 	aa := s.cvtScl(a)
 	return subtle.ConstantTimeCompare(s.k, aa.k) == 1
 }
+
 func (s *wScl) fromBig(b *big.Int) {
 	k := new(big.Int).Mod(b, s.c.Params().N)
 	if err := s.UnmarshalBinary(k.Bytes()); err != nil {
 		panic(err)
 	}
 }
+
 func (s *wScl) Add(a, b Scalar) Scalar {
 	aa, bb := s.cvtScl(a), s.cvtScl(b)
 	r := new(big.Int)
@@ -212,6 +230,7 @@ func (s *wScl) Add(a, b Scalar) Scalar {
 	s.fromBig(r)
 	return s
 }
+
 func (s *wScl) Sub(a, b Scalar) Scalar {
 	aa, bb := s.cvtScl(a), s.cvtScl(b)
 	r := new(big.Int)
@@ -219,6 +238,7 @@ func (s *wScl) Sub(a, b Scalar) Scalar {
 	s.fromBig(r)
 	return s
 }
+
 func (s *wScl) Mul(a, b Scalar) Scalar {
 	aa, bb := s.cvtScl(a), s.cvtScl(b)
 	r := new(big.Int)
@@ -226,6 +246,7 @@ func (s *wScl) Mul(a, b Scalar) Scalar {
 	s.fromBig(r)
 	return s
 }
+
 func (s *wScl) Neg(a Scalar) Scalar {
 	aa := s.cvtScl(a)
 	r := new(big.Int)
@@ -233,6 +254,7 @@ func (s *wScl) Neg(a Scalar) Scalar {
 	s.fromBig(r)
 	return s
 }
+
 func (s *wScl) Inv(a Scalar) Scalar {
 	aa := s.cvtScl(a)
 	r := new(big.Int)
@@ -240,11 +262,13 @@ func (s *wScl) Inv(a Scalar) Scalar {
 	s.fromBig(r)
 	return s
 }
+
 func (s *wScl) MarshalBinary() (data []byte, err error) {
 	data = make([]byte, (s.c.Params().BitSize+7)/8)
 	copy(data, s.k)
 	return data, nil
 }
+
 func (s *wScl) UnmarshalBinary(b []byte) error {
 	l := (s.c.Params().BitSize + 7) / 8
 	s.k = make([]byte, l)

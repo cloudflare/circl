@@ -2,7 +2,7 @@ package bls12381
 
 import (
 	"crypto"
-	_ "crypto/sha256" // to link library
+	_ "crypto/sha256"
 	"crypto/subtle"
 	"fmt"
 	"math/big"

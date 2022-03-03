@@ -91,10 +91,12 @@ func ladderStepBig(work [5]*big.Int, p *big.Int, b uint) {
 	z3.Mul(z3, z3).Mul(z3, x1).Mod(z3, p)
 }
 
-type tDouble func(x, z *fp.Elt)
-type tDiffAdd func(w *[5]fp.Elt, b uint)
-type tLadderStep func(w *[5]fp.Elt, b uint)
-type tMulA24 func(z, x *fp.Elt)
+type (
+	tDouble     func(x, z *fp.Elt)
+	tDiffAdd    func(w *[5]fp.Elt, b uint)
+	tLadderStep func(w *[5]fp.Elt, b uint)
+	tMulA24     func(z, x *fp.Elt)
+)
 
 func TestGeneric(t *testing.T) {
 	testDouble(t, doubleGeneric)

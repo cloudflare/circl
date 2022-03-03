@@ -3,8 +3,8 @@ package hpke
 import (
 	"crypto"
 	"crypto/rand"
-	_ "crypto/sha256" // linking sha256 packages.
-	_ "crypto/sha512" // linking sha512 packages.
+	_ "crypto/sha256"
+	_ "crypto/sha512"
 	"encoding/binary"
 	"io"
 

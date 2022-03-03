@@ -77,7 +77,7 @@ func cofactorMul(p *point, a *coeff, halfL, halfR int, order *fp) (bool, bool) {
 	if (halfR - halfL) == 1 {
 		// base case
 		if !p.z.isZero() {
-			var tmp = fp{primes[halfL]}
+			tmp := fp{primes[halfL]}
 			xMul(p, p, a, &tmp)
 
 			if !p.z.isZero() {
@@ -96,7 +96,7 @@ func cofactorMul(p *point, a *coeff, halfL, halfR int, order *fp) (bool, bool) {
 
 	// perform another recursive step
 	mid := halfL + ((halfR - halfL + 1) / 2)
-	var mulL, mulR = fp{1}, fp{1}
+	mulL, mulR := fp{1}, fp{1}
 	// compute u = primes_1 * ... * primes_m
 	for i := halfL; i < mid; i++ {
 		mul512(&mulR, &mulR, primes[i])
@@ -121,8 +121,8 @@ func cofactorMul(p *point, a *coeff, halfL, halfR int, order *fp) (bool, bool) {
 func groupAction(pub *PublicKey, prv *PrivateKey, rng io.Reader) {
 	var k [2]fp
 	var e [2][primeCount]uint8
-	var done = [2]bool{false, false}
-	var A = coeff{a: pub.a, c: one}
+	done := [2]bool{false, false}
+	A := coeff{a: pub.a, c: one}
 
 	k[0][0] = 4
 	k[1][0] = 4
@@ -162,7 +162,7 @@ func groupAction(pub *PublicKey, prv *PrivateKey, rng io.Reader) {
 
 		for i, v := range primes {
 			if e[sign][i] != 0 {
-				var cof = fp{1}
+				cof := fp{1}
 				var K point
 
 				for j := i + 1; j < len(primes); j++ {
@@ -299,7 +299,7 @@ func Validate(pub *PublicKey, rng io.Reader) bool {
 	// Check if pub represents a supersingular curve.
 	for {
 		var P point
-		var A = point{pub.a, one}
+		A := point{pub.a, one}
 
 		// Randomly chosen P must have big enough order to check
 		// supersingularity. Probability of random P having big

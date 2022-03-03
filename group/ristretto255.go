@@ -2,7 +2,7 @@ package group
 
 import (
 	"crypto"
-	_ "crypto/sha512" // to link libraries
+	_ "crypto/sha512"
 	"fmt"
 	"io"
 
@@ -10,10 +10,8 @@ import (
 	"github.com/cloudflare/circl/expander"
 )
 
-var (
-	// Ristretto255 is a quotient group generated from edwards25519 curve.
-	Ristretto255 Group = ristrettoGroup{}
-)
+// Ristretto255 is a quotient group generated from edwards25519 curve.
+var Ristretto255 Group = ristrettoGroup{}
 
 type ristrettoGroup struct{}
 
@@ -84,6 +82,7 @@ func (g ristrettoGroup) RandomScalar(io.Reader) Scalar {
 		s: x,
 	}
 }
+
 func (g ristrettoGroup) RandomNonZeroScalar(io.Reader) Scalar {
 	var s r255.Scalar
 	for {
@@ -93,9 +92,11 @@ func (g ristrettoGroup) RandomNonZeroScalar(io.Reader) Scalar {
 		}
 	}
 }
+
 func (g ristrettoGroup) HashToElementNonUniform(b, dst []byte) Element {
 	return g.HashToElement(b, dst)
 }
+
 func (g ristrettoGroup) HashToElement(msg, dst []byte) Element {
 	xmd := expander.NewExpanderMD(crypto.SHA512, dst)
 	data := xmd.Expand(msg, 64)

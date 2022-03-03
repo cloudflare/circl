@@ -18,8 +18,10 @@ type encdecContext struct {
 	nonce []byte
 }
 
-type sealContext struct{ *encdecContext }
-type openContext struct{ *encdecContext }
+type (
+	sealContext struct{ *encdecContext }
+	openContext struct{ *encdecContext }
+)
 
 // Export takes a context string exporterContext and a desired length (in
 // bytes), and produces a secret derived from the internal exporter secret

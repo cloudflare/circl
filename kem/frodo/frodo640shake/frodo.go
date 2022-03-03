@@ -2,13 +2,13 @@
 package frodo640shake
 
 import (
-	"github.com/cloudflare/circl/internal/sha3"
-	"github.com/cloudflare/circl/kem"
-
 	"bytes"
 	cryptoRand "crypto/rand"
 	"crypto/subtle"
 	"io"
+
+	"github.com/cloudflare/circl/internal/sha3"
+	"github.com/cloudflare/circl/kem"
 )
 
 const (

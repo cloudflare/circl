@@ -26,6 +26,9 @@ endif
 lint:
 	$(GOLANGCILINT) run --config $(ETC_DIR)/golangci.yml ./...
 
+lint-fix:
+	$(GOLANGCILINT) run --config $(ETC_DIR)/golangci.yml --fix ./...
+
 build:
 	$(GO) build ./...
 

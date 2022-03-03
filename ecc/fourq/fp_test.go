@@ -8,12 +8,14 @@ import (
 	"github.com/cloudflare/circl/internal/test"
 )
 
-type tFpAdd = func(z, x, y *Fp)
-type tFpSub = func(z, x, y *Fp)
-type tFpMul = func(z, x, y *Fp)
-type tFpSqr = func(z, x *Fp)
-type tFpHlf = func(z, x *Fp)
-type tFpModp = func(z *Fp)
+type (
+	tFpAdd  = func(z, x, y *Fp)
+	tFpSub  = func(z, x, y *Fp)
+	tFpMul  = func(z, x, y *Fp)
+	tFpSqr  = func(z, x *Fp)
+	tFpHlf  = func(z, x *Fp)
+	tFpModp = func(z *Fp)
+)
 
 func getModulus() *big.Int {
 	p := big.NewInt(1)

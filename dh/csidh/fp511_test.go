@@ -124,12 +124,14 @@ func TestFp512Sub3_DoesntReturnCarry(t *testing.T) {
 		0xFFFFFFFFFFFFFFFF, 1,
 		0, 0,
 		0, 0,
-		0, 0}
+		0, 0,
+	}
 	c := fp{
 		0xFFFFFFFFFFFFFFFF, 2,
 		0, 0,
 		0, 0,
-		0, 0}
+		0, 0,
+	}
 
 	if sub512(&a, &b, &c) != 1 {
 		t.Error("Carry not returned")
@@ -142,12 +144,14 @@ func TestFp512Sub3_ReturnsCarry(t *testing.T) {
 		0xFFFFFFFFFFFFFFFF, 2,
 		0, 0,
 		0, 0,
-		0, 0}
+		0, 0,
+	}
 	c := fp{
 		0xFFFFFFFFFFFFFFFF, 1,
 		0, 0,
 		0, 0,
-		0, 0}
+		0, 0,
+	}
 
 	if sub512(&a, &b, &c) != 0 {
 		t.Error("Carry not returned")
@@ -220,24 +224,28 @@ func TestSubRdc(t *testing.T) {
 
 func testMulRdc(t *testing.T, f func(*fp, *fp, *fp)) {
 	var res fp
-	var m1 = fp{
+	m1 := fp{
 		0x85E2579C786882D0, 0x4E3433657E18DA95,
-		0x850AE5507965A0B3, 0xA15BC4E676475964}
-	var m2 = fp{
+		0x850AE5507965A0B3, 0xA15BC4E676475964,
+	}
+	m2 := fp{
 		0x85E2579C786882CF, 0x4E3433657E18DA95,
-		0x850AE5507965A0B3, 0xA15BC4E676475964}
+		0x850AE5507965A0B3, 0xA15BC4E676475964,
+	}
 
 	// Expected
-	var m1m1 = fp{
+	m1m1 := fp{
 		0xAEBF46E92C88A4B4, 0xCFE857977B946347,
 		0xD3B264FF08493901, 0x6EEB3D23746B6C7C,
 		0xC0CA874A349D64B4, 0x7AD4A38B406F8504,
-		0x38B6B6CEB82472FB, 0x1587015FD7DDFC7D}
-	var m1m2 = fp{
+		0x38B6B6CEB82472FB, 0x1587015FD7DDFC7D,
+	}
+	m1m2 := fp{
 		0x51534771258C4624, 0x2BFEDE86504E2160,
 		0xE8127D5E9329670B, 0x0C84DBD584491D75,
 		0x656C73C68B16E38C, 0x01C0DA470B30B8DE,
-		0x2532E3903EAA950B, 0x3F2C28EA97FE6FEC}
+		0x2532E3903EAA950B, 0x3F2C28EA97FE6FEC,
+	}
 
 	// 0*0
 	tmp := zeroFp512
@@ -335,7 +343,7 @@ func TestIsNonQuadRes(t *testing.T) {
 
 func TestCheckSmaller(t *testing.T) {
 	// p-1
-	var pMin1 = p
+	pMin1 := p
 	pMin1[0]--
 
 	// p-1 < p => 1

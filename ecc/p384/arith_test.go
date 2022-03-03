@@ -58,7 +58,8 @@ func TestFpSetBigInt(t *testing.T) {
 	two768 := new(big.Int).Lsh(one, 768)           // 2^768
 
 	for id, b := range []*big.Int{
-		neg, zero, one, two96, two384, two384two96, two768} {
+		neg, zero, one, two96, two384, two384two96, two768,
+	} {
 		var x fp384
 		x.SetBigInt(b)
 		got := x.BigInt()

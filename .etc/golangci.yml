@@ -14,9 +14,11 @@ linters:
     - dogsled
     - errcheck
     - funlen
+    - gci
     - goconst
     - gocyclo
     - gofmt
+    - gofumpt
     - goimports
     - gosec
     - gosimple

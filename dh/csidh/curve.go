@@ -88,8 +88,8 @@ func xMul(kP, P *point, co *coeff, k *fp) {
 	var A24 coeff
 	var Q point
 	var j uint
-	var A = point{x: co.a, z: co.c}
-	var R = *P
+	A := point{x: co.a, z: co.c}
+	R := *P
 
 	// Precompyte A24 = (A+2C:4C) => (A24.x = A.x+2A.z; A24.z = 4*A.z)
 	addRdc(&A24.a, &co.c, &co.c)
@@ -130,7 +130,7 @@ func xIso(img *point, co *coeff, kern *point, kernOrder uint64) {
 	var t0, t1, t2, S, D fp
 	var Q, prod point
 	var coEd coeff
-	var M = [3]point{*kern}
+	M := [3]point{*kern}
 
 	// Compute twisted Edwards coefficients
 	// coEd.a = co.a + 2*co.c

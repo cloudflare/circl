@@ -38,7 +38,7 @@ func pack(out []byte, in []uint16) {
 			i += 1
 		}
 
-		var toCopy = min(outBitsFree, inBitsLeft)
+		toCopy := min(outBitsFree, inBitsLeft)
 		outBitsFree -= toCopy
 		inBitsLeft -= toCopy
 
@@ -69,7 +69,7 @@ func unpack(out []uint16, in []byte) {
 			i += 1
 		}
 
-		var toCopy = min(outBitsFree, inBitsLeft)
+		toCopy := min(outBitsFree, inBitsLeft)
 		outBitsFree -= toCopy
 		inBitsLeft -= toCopy
 

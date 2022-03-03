@@ -79,12 +79,14 @@ func (c *KEM) Encapsulate(ciphertext, secret []byte, pub *PublicKey) error {
 	}
 
 	var buf [3 * common.MaxSharedSecretBsz]byte
-	var skA = PrivateKey{
+	skA := PrivateKey{
 		key: key{
 			params:     c.params,
-			keyVariant: KeyVariantSidhA},
-		Scalar: c.secretBytes}
-	var pkA = NewPublicKey(c.params.ID, KeyVariantSidhA)
+			keyVariant: KeyVariantSidhA,
+		},
+		Scalar: c.secretBytes,
+	}
+	pkA := NewPublicKey(c.params.ID, KeyVariantSidhA)
 
 	pub.Export(buf[:])
 	c.shake.Reset()
@@ -133,12 +135,14 @@ func (c *KEM) Decapsulate(secret []byte, prv *PrivateKey, pub *PublicKey, cipher
 	var m [common.MaxMsgBsz]byte
 	var r [common.MaxSidhPrivateKeyBsz]byte
 	var pkBytes [3 * common.MaxSharedSecretBsz]byte
-	var skA = PrivateKey{
+	skA := PrivateKey{
 		key: key{
 			params:     c.params,
-			keyVariant: KeyVariantSidhA},
-		Scalar: c.secretBytes}
-	var pkA = NewPublicKey(c.params.ID, KeyVariantSidhA)
+			keyVariant: KeyVariantSidhA,
+		},
+		Scalar: c.secretBytes,
+	}
+	pkA := NewPublicKey(c.params.ID, KeyVariantSidhA)
 	c1Len, err := c.decrypt(m[:], prv, ciphertext)
 	if err != nil {
 		return err
@@ -211,7 +215,7 @@ func (c *KEM) PrivateKeySize() int {
 func (c *KEM) generateCiphertext(ctext []byte, skA *PrivateKey, pkA, pkB *PublicKey, ptext []byte) {
 	var n [common.MaxMsgBsz]byte
 	var j [common.MaxSharedSecretBsz]byte
-	var ptextLen = skA.params.MsgLen
+	ptextLen := skA.params.MsgLen
 
 	skA.DeriveSecret(j[:], pkB)
 	c.shake.Reset()
@@ -229,7 +233,7 @@ func (c *KEM) generateCiphertext(ctext []byte, skA *PrivateKey, pkA, pkB *Public
 // PRNG. Returns ciphertext in case encryption succeeds. Returns error in case PRNG fails
 // or wrongly formated input was provided.
 func (c *KEM) encrypt(ctext []byte, rng io.Reader, pub *PublicKey, ptext []byte) error {
-	var ptextLen = len(ptext)
+	ptextLen := len(ptext)
 	// c1 must be security level + 64 bits (see [SIKE] 1.4 and 4.3.3)
 	if ptextLen != pub.params.KemSize {
 		return errors.New("unsupported message length")
@@ -253,7 +257,7 @@ func (c *KEM) encrypt(ctext []byte, rng io.Reader, pub *PublicKey, ptext []byte)
 func (c *KEM) decrypt(n []byte, prv *PrivateKey, ctext []byte) (int, error) {
 	var c1Len int
 	var j [common.MaxSharedSecretBsz]byte
-	var pkLen = prv.params.PublicKeySize
+	pkLen := prv.params.PublicKeySize
 
 	// ctext is a concatenation of (ciphertext = pubkey_A || c1)
 	// it must be security level + 64 bits (see [SIKE] 1.4 and 4.3.3)

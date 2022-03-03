@@ -1,6 +1,6 @@
 package fourq
 
-//All values in little endian
+// All values in little endian
 var (
 
 	// prime is the modulus 2^127-1
