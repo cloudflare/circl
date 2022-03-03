@@ -42,11 +42,15 @@ func setupAeadTest() (*sealContext, *openContext, error) {
 		return nil, nil, fmt.Errorf("unexpected base nonce size: got %d; want %d", n, len(baseNonce))
 	}
 
-	sealer := &sealContext{&encdecContext{
-		suite, nil, nil, baseNonce, make([]byte, Nn), aead, make([]byte, Nn)},
+	sealer := &sealContext{
+		&encdecContext{
+			suite, nil, nil, baseNonce, make([]byte, Nn), aead, make([]byte, Nn),
+		},
 	}
-	opener := &openContext{&encdecContext{
-		suite, nil, nil, baseNonce, make([]byte, Nn), aead, make([]byte, Nn)},
+	opener := &openContext{
+		&encdecContext{
+			suite, nil, nil, baseNonce, make([]byte, Nn), aead, make([]byte, Nn),
+		},
 	}
 	return sealer, opener, nil
 }

@@ -27,6 +27,7 @@ func (f *Fp) toBytes(buf []byte) {
 		copy(buf, f[:])
 	}
 }
+
 func (f *Fp) fromBytes(buf []byte) bool {
 	if len(buf) == SizeFp {
 		if (buf[SizeFp-1] >> 7) == 0 {

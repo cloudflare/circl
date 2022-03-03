@@ -3,8 +3,8 @@ package hpke
 import (
 	"crypto/elliptic"
 	"crypto/rand"
-	_ "crypto/sha256" // linking sha256 packages.
-	_ "crypto/sha512" // linking sha512 packages.
+	_ "crypto/sha256"
+	_ "crypto/sha512"
 	"crypto/subtle"
 	"fmt"
 	"math/big"
@@ -50,7 +50,7 @@ func (s shortKEM) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 		panic(kem.ErrSeedSize)
 	}
 
-	var bitmask = byte(0xFF)
+	bitmask := byte(0xFF)
 	if s.Params().BitSize == 521 {
 		bitmask = 0x01
 	}
@@ -76,6 +76,7 @@ func (s shortKEM) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 	copy(sk.priv[l-len(bytes):], bytes)
 	return sk.Public(), sk
 }
+
 func (s shortKEM) GenerateKeyPair() (kem.PublicKey, kem.PrivateKey, error) {
 	sk, x, y, err := elliptic.GenerateKey(s, rand.Reader)
 	pub := &shortKEMPubKey{s, x, y}
@@ -92,6 +93,7 @@ func (s shortKEM) UnmarshalBinaryPrivateKey(data []byte) (
 	copy(sk.priv[l-len(data):l], data[:l])
 	return sk, nil
 }
+
 func (s shortKEM) UnmarshalBinaryPublicKey(data []byte) (kem.PublicKey, error) {
 	x, y := elliptic.Unmarshal(s, data)
 	if x == nil {
@@ -112,6 +114,7 @@ func (k *shortKEMPubKey) Scheme() kem.Scheme { return k.scheme }
 func (k *shortKEMPubKey) MarshalBinary() ([]byte, error) {
 	return elliptic.Marshal(k.scheme, k.x, k.y), nil
 }
+
 func (k *shortKEMPubKey) Equal(pk kem.PublicKey) bool {
 	k1, ok := pk.(*shortKEMPubKey)
 	return ok &&
@@ -119,6 +122,7 @@ func (k *shortKEMPubKey) Equal(pk kem.PublicKey) bool {
 		k.x.Cmp(k1.x) == 0 &&
 		k.y.Cmp(k1.y) == 0
 }
+
 func (k *shortKEMPubKey) Validate() bool {
 	p := k.scheme.Params().P
 	notAtInfinity := k.x.Sign() > 0 && k.y.Sign() > 0
@@ -138,12 +142,14 @@ func (k *shortKEMPrivKey) Scheme() kem.Scheme { return k.scheme }
 func (k *shortKEMPrivKey) MarshalBinary() ([]byte, error) {
 	return append(make([]byte, 0, k.scheme.PrivateKeySize()), k.priv...), nil
 }
+
 func (k *shortKEMPrivKey) Equal(pk kem.PrivateKey) bool {
 	k1, ok := pk.(*shortKEMPrivKey)
 	return ok &&
 		k.scheme.Params().Name == k1.scheme.Params().Name &&
 		subtle.ConstantTimeCompare(k.priv, k1.priv) == 1
 }
+
 func (k *shortKEMPrivKey) Public() kem.PublicKey {
 	if k.pub == nil {
 		x, y := k.scheme.ScalarBaseMult(k.priv)
@@ -151,6 +157,7 @@ func (k *shortKEMPrivKey) Public() kem.PublicKey {
 	}
 	return k.pub
 }
+
 func (k *shortKEMPrivKey) Validate() bool {
 	n := new(big.Int).SetBytes(k.priv)
 	order := k.scheme.Curve.Params().N

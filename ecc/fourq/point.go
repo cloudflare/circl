@@ -9,11 +9,13 @@ import (
 type pointR1 struct {
 	X, Y, Z, Ta, Tb Fq // (x,y,z,t=ta*tb)
 }
+
 type pointR3 struct {
 	addYX Fq // y + x
 	subYX Fq // y - x
 	dt2   Fq // 2*d*t
 }
+
 type pointR2 struct {
 	pointR3
 	z2 Fq // 2 * z

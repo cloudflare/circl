@@ -3,8 +3,8 @@ package expander_test
 import (
 	"bytes"
 	"crypto"
-	_ "crypto/sha256" // to link libraries
-	_ "crypto/sha512" // to link libraries
+	_ "crypto/sha256"
+	_ "crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"

@@ -48,6 +48,7 @@ func checkEprime(t *testing.T, x *ff.Fp12, y *ff.Fp12) {
 		t.Fail()
 	}
 }
+
 func TestPsi(t *testing.T) {
 	xp12 := &ff.Fp12{}
 	yp12 := &ff.Fp12{}

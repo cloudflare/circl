@@ -18,14 +18,12 @@ package hybrid
 import (
 	"errors"
 
-	"github.com/cloudflare/circl/kem"
-
 	"github.com/cloudflare/circl/hpke"
+	"github.com/cloudflare/circl/internal/sha3"
+	"github.com/cloudflare/circl/kem"
 	"github.com/cloudflare/circl/kem/kyber/kyber1024"
 	"github.com/cloudflare/circl/kem/kyber/kyber512"
 	"github.com/cloudflare/circl/kem/kyber/kyber768"
-
-	"github.com/cloudflare/circl/internal/sha3"
 )
 
 var ErrUninitialized = errors.New("public or private key not initialized")
@@ -44,11 +42,13 @@ var kyber512X kem.Scheme = &scheme{
 	kyber512.Scheme(),
 	hpke.KEM_X25519_HKDF_SHA256.Scheme(),
 }
+
 var kyber768X kem.Scheme = &scheme{
 	"Kyber768-X448",
 	kyber768.Scheme(),
 	hpke.KEM_X448_HKDF_SHA512.Scheme(),
 }
+
 var kyber1024X kem.Scheme = &scheme{
 	"Kyber1024-X448",
 	kyber1024.Scheme(),
@@ -80,9 +80,11 @@ func (sch *scheme) Name() string { return sch.name }
 func (sch *scheme) PublicKeySize() int {
 	return sch.first.PublicKeySize() + sch.second.PublicKeySize()
 }
+
 func (sch *scheme) PrivateKeySize() int {
 	return sch.first.PrivateKeySize() + sch.second.PrivateKeySize()
 }
+
 func (sch *scheme) SeedSize() int {
 	first := sch.first.SeedSize()
 	second := sch.second.SeedSize()
@@ -95,12 +97,15 @@ func (sch *scheme) SeedSize() int {
 	}
 	return ret
 }
+
 func (sch *scheme) SharedKeySize() int {
 	return sch.first.SharedKeySize() + sch.second.SharedKeySize()
 }
+
 func (sch *scheme) CiphertextSize() int {
 	return sch.first.CiphertextSize() + sch.second.CiphertextSize()
 }
+
 func (sch *scheme) EncapsulationSeedSize() int {
 	first := sch.first.EncapsulationSeedSize()
 	second := sch.second.EncapsulationSeedSize()

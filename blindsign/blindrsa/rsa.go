@@ -37,8 +37,10 @@ import (
 	"math/big"
 )
 
-var bigZero = big.NewInt(0)
-var bigOne = big.NewInt(1)
+var (
+	bigZero = big.NewInt(0)
+	bigOne  = big.NewInt(1)
+)
 
 // ErrVerification represents a failure to verify a signature.
 // It is deliberately vague to avoid adaptive attacks.

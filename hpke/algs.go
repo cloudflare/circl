@@ -238,8 +238,10 @@ func (a AEAD) CipherLen(mLen uint) uint {
 	}
 }
 
-var dhkemp256hkdfsha256, dhkemp384hkdfsha384, dhkemp521hkdfsha512 shortKEM
-var dhkemx25519hkdfsha256, dhkemx448hkdfsha512 xKEM
+var (
+	dhkemp256hkdfsha256, dhkemp384hkdfsha384, dhkemp521hkdfsha512 shortKEM
+	dhkemx25519hkdfsha256, dhkemx448hkdfsha512                    xKEM
+)
 
 func init() {
 	dhkemp256hkdfsha256.Curve = elliptic.P256()

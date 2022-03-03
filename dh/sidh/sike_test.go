@@ -40,7 +40,8 @@ var tdataSike = map[uint8]sikeVec{
 			"A511360926FB7DA8EBF5CB5272F396AE06608422BE9792E2CE9BEF21BF55B7EF" +
 			"F8DC7EC8C99910D3F800",
 		"4B622DE1350119C45A9F2E2EF3DC5DF56A27FCDFCDDAF58CD69B903752D68C20" +
-			"0934E160B234E49EDE247601"},
+			"0934E160B234E49EDE247601",
+	},
 	Fp503: {
 		Fp503, "P-503", NewSike503(rand.Reader),
 		"testdata/PQCkemKAT_434.rsp",
@@ -57,7 +58,8 @@ var tdataSike = map[uint8]sikeVec{
 			"0B4981BDCDFA70F3430A89D2A88EEED474CF0CFAC65CE883F44B4722FA280C6F" +
 			"A9C4724D414B35AF69D6ECB21BFDA23BFF6B66C22C2451DC8E1C",
 		"7BF6938C975658AEB8B4D37CFFBDE25D97E561F36C219A0E8FE645816DBBC7ED7B57" +
-			"7700AE8DC3138E97A0C3F6F002065C92A0B1B8180208"},
+			"7700AE8DC3138E97A0C3F6F002065C92A0B1B8180208",
+	},
 	Fp751: {
 		Fp751, "P-751", NewSike751(rand.Reader),
 		"testdata/PQCkemKAT_644.rsp",
@@ -81,16 +83,17 @@ var tdataSike = map[uint8]sikeVec{
 			"BDC47F5A0159729641A7C950AB9E03F2DC045135",
 		"0001020304050607080900010203040506070809000102030405060708090102" +
 			"8626ED79D451140800E03B59B956F8210E556067407D13DC90FA9E8B872BFB8F" +
-			"AB0A7289852106E40538D3575C500201"},
+			"AB0A7289852106E40538D3575C500201",
+	},
 }
 
 // Encrypt, Decrypt, check if input/output plaintext is the same.
 func testPKERoundTrip(t *testing.T, v sikeVec) {
 	// Message to be encrypted
 	var pt [common.MaxMsgBsz]byte
-	var params = common.Params(v.id)
-	var ct = make([]byte, v.kem.CiphertextSize())
-	var msg = make([]byte, params.MsgLen)
+	params := common.Params(v.id)
+	ct := make([]byte, v.kem.CiphertextSize())
+	msg := make([]byte, params.MsgLen)
 	for i := range msg {
 		msg[i] = byte(i)
 	}
@@ -119,13 +122,13 @@ func testPKERoundTrip(t *testing.T, v sikeVec) {
 // Generate key and check if can encrypt.
 func testPKEKeyGeneration(t *testing.T, v sikeVec) {
 	var err error
-	var params = common.Params(v.id)
+	params := common.Params(v.id)
 	var pt [common.MaxMsgBsz]byte
-	var msg = make([]byte, params.MsgLen)
-	var ct = make([]byte, v.kem.CiphertextSize())
+	msg := make([]byte, params.MsgLen)
+	ct := make([]byte, v.kem.CiphertextSize())
 	// static buffer to ensure no overrides
-	var pk = NewPublicKey(v.id, KeyVariantSike)
-	var sk = NewPrivateKey(v.id, KeyVariantSike)
+	pk := NewPublicKey(v.id, KeyVariantSike)
+	sk := NewPrivateKey(v.id, KeyVariantSike)
 
 	for i := range msg {
 		msg[i] = byte(i)
@@ -148,9 +151,9 @@ func testPKEKeyGeneration(t *testing.T, v sikeVec) {
 func testNegativePKE(t *testing.T, v sikeVec) {
 	var err error
 	var msg [common.MaxMsgBsz]byte
-	var ct = make([]byte, v.kem.CiphertextSize())
-	var pk = NewPublicKey(v.id, KeyVariantSike)
-	var sk = NewPrivateKey(v.id, KeyVariantSike)
+	ct := make([]byte, v.kem.CiphertextSize())
+	pk := NewPublicKey(v.id, KeyVariantSike)
+	sk := NewPrivateKey(v.id, KeyVariantSike)
 
 	// Generate key
 	err = sk.Generate(rand.Reader)
@@ -172,10 +175,10 @@ func testKEMRoundTrip(t *testing.T, pkB, skB []byte, v sikeVec) {
 	var err error
 	var ssE [common.MaxSharedSecretBsz]byte
 	var ssD [common.MaxSharedSecretBsz]byte
-	var pk = NewPublicKey(v.id, KeyVariantSike)
-	var sk = NewPrivateKey(v.id, KeyVariantSike)
-	var ct = make([]byte, v.kem.CiphertextSize())
-	var ssBsz = v.kem.SharedSecretSize()
+	pk := NewPublicKey(v.id, KeyVariantSike)
+	sk := NewPrivateKey(v.id, KeyVariantSike)
+	ct := make([]byte, v.kem.CiphertextSize())
+	ssBsz := v.kem.SharedSecretSize()
 
 	err = pk.Import(pkB)
 	CheckNoErr(t, err, "Public key import failed")
@@ -197,7 +200,7 @@ func testKEMRoundTrip(t *testing.T, pkB, skB []byte, v sikeVec) {
 func testKEMKeyGeneration(t *testing.T, v sikeVec) {
 	var ssE [common.MaxSharedSecretBsz]byte
 	var ssD [common.MaxSharedSecretBsz]byte
-	var ct = make([]byte, v.kem.CiphertextSize())
+	ct := make([]byte, v.kem.CiphertextSize())
 
 	sk := NewPrivateKey(v.id, KeyVariantSike)
 	pk := NewPublicKey(v.id, KeyVariantSike)
@@ -221,8 +224,8 @@ func testNegativeKEM(t *testing.T, v sikeVec) {
 	var ssE [common.MaxSharedSecretBsz]byte
 	var ssD [common.MaxSharedSecretBsz]byte
 	var ssTmp [common.MaxSharedSecretBsz]byte
-	var ct = make([]byte, v.kem.CiphertextSize())
-	var ssBsz = v.kem.SharedSecretSize()
+	ct := make([]byte, v.kem.CiphertextSize())
+	ssBsz := v.kem.SharedSecretSize()
 
 	sk := NewPrivateKey(v.id, KeyVariantSike)
 	pk := NewPublicKey(v.id, KeyVariantSike)
@@ -282,8 +285,8 @@ func testNegativeKEMSameWrongResult(t *testing.T, v sikeVec) {
 	var ssE [common.MaxSharedSecretBsz]byte
 	var ssD1 [common.MaxSharedSecretBsz]byte
 	var ssD2 [common.MaxSharedSecretBsz]byte
-	var ct = make([]byte, v.kem.CiphertextSize())
-	var ssBsz = v.kem.SharedSecretSize()
+	ct := make([]byte, v.kem.CiphertextSize())
+	ssBsz := v.kem.SharedSecretSize()
 
 	sk := NewPrivateKey(v.id, KeyVariantSike)
 	pk := NewPublicKey(v.id, KeyVariantSike)
@@ -328,8 +331,8 @@ func testNegativeKEMSameWrongResult(t *testing.T, v sikeVec) {
 func testKAT(t *testing.T, v sikeVec) {
 	ssGot := make([]byte, v.kem.SharedSecretSize())
 	testDecapsulation := func(pk, sk, ct, ssExpected []byte) {
-		var pubKey = NewPublicKey(v.id, KeyVariantSike)
-		var prvKey = NewPrivateKey(v.id, KeyVariantSike)
+		pubKey := NewPublicKey(v.id, KeyVariantSike)
+		prvKey := NewPrivateKey(v.id, KeyVariantSike)
 		if pubKey.Import(pk) != nil || prvKey.Import(sk) != nil {
 			panic("sike test: can't load KAT")
 		}
@@ -362,9 +365,9 @@ func testKAT(t *testing.T, v sikeVec) {
 
 	testKeygen := func(pk, sk []byte) {
 		// Import provided private key
-		var prvKey = NewPrivateKey(v.id, KeyVariantSike)
-		var pubKey = NewPublicKey(v.id, KeyVariantSike)
-		var pubKeyBytes = make([]byte, pubKey.Size())
+		prvKey := NewPrivateKey(v.id, KeyVariantSike)
+		pubKey := NewPublicKey(v.id, KeyVariantSike)
+		pubKeyBytes := make([]byte, pubKey.Size())
 		CheckNoErr(t, prvKey.Import(sk), "Can't load KAT")
 
 		// Generate public key
@@ -492,7 +495,7 @@ func benchmarkEncaps(b *testing.B, v sikeVec) {
 func benchmarkDecaps(b *testing.B, v sikeVec) {
 	var ct [common.MaxCiphertextBsz]byte
 	var ss [common.MaxSharedSecretBsz]byte
-	var ssBsz = v.kem.SharedSecretSize()
+	ssBsz := v.kem.SharedSecretSize()
 
 	pkA := NewPublicKey(v.id, KeyVariantSike)
 	prvA := NewPrivateKey(v.id, KeyVariantSike)
@@ -545,7 +548,7 @@ func ExampleKEM() {
 	}
 	prvB.GeneratePublicKey(pubB)
 	// Initialize internal KEM structures
-	var kem = NewSike503(rand.Reader)
+	kem := NewSike503(rand.Reader)
 	// Create buffers for ciphertext, shared secret received
 	// from encapsulation and shared secret from decapsulation
 	ct := make([]byte, kem.CiphertextSize())

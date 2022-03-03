@@ -16,7 +16,7 @@ import (
 func TestInternals(t *testing.T) {
 	t.Run("reduceScalar", func(t *testing.T) {
 		var c curve
-		var order = c.Params().N
+		order := c.Params().N
 		var buffer [3 * sizeFp]byte
 
 		for i := 0; i < sizeFp; i++ {

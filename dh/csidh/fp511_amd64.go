@@ -53,7 +53,7 @@ func mulRdcAmd64(r, x, y *fp) {
 	t[6], c = bits.Sub64(r[6], p[6], c)
 	t[7], c = bits.Sub64(r[7], p[7], c)
 
-	var w = 0 - c
+	w := 0 - c
 	r[0] = ctPick64(w, r[0], t[0])
 	r[1] = ctPick64(w, r[1], t[1])
 	r[2] = ctPick64(w, r[2], t[2])

@@ -49,7 +49,7 @@ func CheckIsErr(t testing.TB, err error, msg string) { t.Helper(); checkErr(t, e
 
 // CheckPanic returns true if call to function 'f' caused panic.
 func CheckPanic(f func()) error {
-	var hasPanicked = errors.New("no panic detected")
+	hasPanicked := errors.New("no panic detected")
 	defer func() {
 		if r := recover(); r != nil {
 			hasPanicked = nil

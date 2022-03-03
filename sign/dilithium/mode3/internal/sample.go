@@ -1,12 +1,11 @@
 package internal
 
 import (
-	"github.com/cloudflare/circl/internal/sha3"
-	"github.com/cloudflare/circl/simd/keccakf1600"
-
-	"github.com/cloudflare/circl/sign/dilithium/internal/common"
-
 	"encoding/binary"
+
+	"github.com/cloudflare/circl/internal/sha3"
+	"github.com/cloudflare/circl/sign/dilithium/internal/common"
+	"github.com/cloudflare/circl/simd/keccakf1600"
 )
 
 // DeriveX4Available indicates whether the system supports the quick fourway

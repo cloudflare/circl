@@ -59,16 +59,19 @@ func (zzAdd) Sqr(x mlsbset.EltG) {
 	a := x.(*big.Int)
 	a.Add(a, a)
 }
+
 func (zzAdd) Mul(x mlsbset.EltG, y mlsbset.EltP) {
 	a := x.(*big.Int)
 	b := y.(*big.Int)
 	a.Add(a, b)
 }
+
 func (z zzAdd) ExtendedEltP() mlsbset.EltP {
 	a := big.NewInt(1)
 	a.Lsh(a, z.set.W*z.set.D)
 	return a
 }
+
 func (z zzAdd) Lookup(x mlsbset.EltP, idTable uint, sgnElt int32, idElt int32) {
 	a := x.(*big.Int)
 	a.SetInt64(1)

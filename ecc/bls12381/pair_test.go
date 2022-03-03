@@ -2,7 +2,7 @@ package bls12381
 
 import (
 	"fmt"
-	"math/rand" //nolint
+	"math/rand"
 	"testing"
 
 	"github.com/cloudflare/circl/ecc/bls12381/ff"

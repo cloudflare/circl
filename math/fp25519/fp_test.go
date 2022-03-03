@@ -11,14 +11,16 @@ import (
 	"github.com/cloudflare/circl/internal/test"
 )
 
-type tcmov func(x, y *Elt, n uint)
-type tcswap func(x, y *Elt, n uint)
-type tadd func(z, x, y *Elt)
-type tsub func(z, x, y *Elt)
-type taddsub func(x, y *Elt)
-type tmul func(z, x, y *Elt)
-type tsqr func(z, x *Elt)
-type tmodp func(z *Elt)
+type (
+	tcmov   func(x, y *Elt, n uint)
+	tcswap  func(x, y *Elt, n uint)
+	tadd    func(z, x, y *Elt)
+	tsub    func(z, x, y *Elt)
+	taddsub func(x, y *Elt)
+	tmul    func(z, x, y *Elt)
+	tsqr    func(z, x *Elt)
+	tmodp   func(z *Elt)
+)
 
 func testCmov(t *testing.T, f tcmov) {
 	const numTests = 1 << 9
@@ -388,6 +390,7 @@ func TestNative(t *testing.T) {
 	t.Run("Sqr", func(t *testing.T) { testSqr(t, Sqr) })
 	t.Run("Modp", func(t *testing.T) { testModp(t, Modp) })
 }
+
 func BenchmarkFp(b *testing.B) {
 	var x, y, z Elt
 	_, _ = rand.Read(x[:])

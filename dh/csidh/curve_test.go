@@ -244,23 +244,28 @@ func TestXMul(t *testing.T) {
 }
 
 func TestMappointHardcoded3(t *testing.T) {
-	var P = point{
+	P := point{
 		x: fp{0xca1a2fdec38c669b, 0xf2fe3678ebeb978b, 0xfda3e9a6f0c719d, 0x6f7bffa41772570b, 0x3d90cdd6283dc150, 0x21b55b738eb1ded9, 0x209515d0a9f41dd6, 0x5275cf397d154a12},
-		z: fp{0x1fff8309761576e, 0xef239cbeda7c2ba1, 0x6136ae2d76e95873, 0x1f8f6ac909570cec, 0x780fdf0cc7d676d8, 0x548098fe92ed04e1, 0xb39da564701ef35d, 0x5fec19626df41306}}
-	var A = coeff{
+		z: fp{0x1fff8309761576e, 0xef239cbeda7c2ba1, 0x6136ae2d76e95873, 0x1f8f6ac909570cec, 0x780fdf0cc7d676d8, 0x548098fe92ed04e1, 0xb39da564701ef35d, 0x5fec19626df41306},
+	}
+	A := coeff{
 		a: fp{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0},
-		c: fp{0xc8fc8df598726f0a, 0x7b1bc81750a6af95, 0x5d319e67c1e961b4, 0xb0aa7275301955f1, 0x4a080672d9ba6c64, 0x97a5ef8a246ee77b, 0x6ea9e5d4383676a, 0x3496e2e117e0ec80}}
-	var K = point{
+		c: fp{0xc8fc8df598726f0a, 0x7b1bc81750a6af95, 0x5d319e67c1e961b4, 0xb0aa7275301955f1, 0x4a080672d9ba6c64, 0x97a5ef8a246ee77b, 0x6ea9e5d4383676a, 0x3496e2e117e0ec80},
+	}
+	K := point{
 		x: fp{0x597616608e291c6f, 0xd14230b008736798, 0xa63099b1ace67e6e, 0xe37c13afd768bcfa, 0xc6ef718894f08135, 0x53a4fd09091f3522, 0xc9a1f9f670645fe1, 0x628c4a8efd83e5f0},
-		z: fp{0x8f18a654312ac1ad, 0xbc20a9b2472785c9, 0xdaf97c29bbf9e492, 0xf91a8c799e2f6119, 0xc8dc675cc8e528e6, 0x9a7b2c2f0df95171, 0x85629cd38cdd9fdb, 0x656d5253d3fd1a6e}}
+		z: fp{0x8f18a654312ac1ad, 0xbc20a9b2472785c9, 0xdaf97c29bbf9e492, 0xf91a8c799e2f6119, 0xc8dc675cc8e528e6, 0x9a7b2c2f0df95171, 0x85629cd38cdd9fdb, 0x656d5253d3fd1a6e},
+	}
 	var k uint64 = 3
 
-	var expA = coeff{
+	expA := coeff{
 		a: fp{0x6fa92a66e77cfc1, 0x9efbfb7118f1832c, 0x441894cc5d1d24ae, 0x5a2f0fafa26761de, 0x8095c36d3a20a78a, 0xb22be0023612a135, 0x5eb844d06ef0f430, 0x52e53309d1c90cf8},
-		c: fp{0x98173d5664a23e5c, 0xd8fe1c6306bbc11a, 0xa774fbc502648059, 0x766a0d839aa62c83, 0x4b074f9b93d1633d, 0xf306019dbf87f505, 0x77c720ca059234b0, 0x3d47ab65269c5908}}
-	var expP = point{
+		c: fp{0x98173d5664a23e5c, 0xd8fe1c6306bbc11a, 0xa774fbc502648059, 0x766a0d839aa62c83, 0x4b074f9b93d1633d, 0xf306019dbf87f505, 0x77c720ca059234b0, 0x3d47ab65269c5908},
+	}
+	expP := point{
 		x: fp{0x91aba9b39f280495, 0xfbd8ea69d2990aeb, 0xb03e1b8ed7fe3dba, 0x3d30a41499f08998, 0xb15a42630de9c606, 0xa7dd487fef16f5c8, 0x8673948afed8e968, 0x57ecc8710004cd4d},
-		z: fp{0xce8819869a942526, 0xb98ca2ff79ef8969, 0xd49c9703743a1812, 0x21dbb090f9152e03, 0xbabdcac831b1adea, 0x8cee90762baa2ddd, 0xa0dd2ddcef809d96, 0x1de2a8887a32f19b}}
+		z: fp{0xce8819869a942526, 0xb98ca2ff79ef8969, 0xd49c9703743a1812, 0x21dbb090f9152e03, 0xbabdcac831b1adea, 0x8cee90762baa2ddd, 0xa0dd2ddcef809d96, 0x1de2a8887a32f19b},
+	}
 	xIso(&P, &A, &K, k)
 	if !eqFp(&P.x, &expP.x) || !eqFp(&P.z, &expP.z) {
 		normP := toNormX(&P)
@@ -273,23 +278,28 @@ func TestMappointHardcoded3(t *testing.T) {
 }
 
 func TestMappointHardcoded5(t *testing.T) {
-	var P = point{
+	P := point{
 		x: fp{0xca1a2fdec38c669b, 0xf2fe3678ebeb978b, 0xfda3e9a6f0c719d, 0x6f7bffa41772570b, 0x3d90cdd6283dc150, 0x21b55b738eb1ded9, 0x209515d0a9f41dd6, 0x5275cf397d154a12},
-		z: fp{0x1fff8309761576e, 0xef239cbeda7c2ba1, 0x6136ae2d76e95873, 0x1f8f6ac909570cec, 0x780fdf0cc7d676d8, 0x548098fe92ed04e1, 0xb39da564701ef35d, 0x5fec19626df41306}}
-	var A = coeff{
+		z: fp{0x1fff8309761576e, 0xef239cbeda7c2ba1, 0x6136ae2d76e95873, 0x1f8f6ac909570cec, 0x780fdf0cc7d676d8, 0x548098fe92ed04e1, 0xb39da564701ef35d, 0x5fec19626df41306},
+	}
+	A := coeff{
 		a: fp{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0},
-		c: fp{0xc8fc8df598726f0a, 0x7b1bc81750a6af95, 0x5d319e67c1e961b4, 0xb0aa7275301955f1, 0x4a080672d9ba6c64, 0x97a5ef8a246ee77b, 0x6ea9e5d4383676a, 0x3496e2e117e0ec80}}
-	var K = point{
+		c: fp{0xc8fc8df598726f0a, 0x7b1bc81750a6af95, 0x5d319e67c1e961b4, 0xb0aa7275301955f1, 0x4a080672d9ba6c64, 0x97a5ef8a246ee77b, 0x6ea9e5d4383676a, 0x3496e2e117e0ec80},
+	}
+	K := point{
 		x: fp{0x597616608e291c6f, 0xd14230b008736798, 0xa63099b1ace67e6e, 0xe37c13afd768bcfa, 0xc6ef718894f08135, 0x53a4fd09091f3522, 0xc9a1f9f670645fe1, 0x628c4a8efd83e5f0},
-		z: fp{0x8f18a654312ac1ad, 0xbc20a9b2472785c9, 0xdaf97c29bbf9e492, 0xf91a8c799e2f6119, 0xc8dc675cc8e528e6, 0x9a7b2c2f0df95171, 0x85629cd38cdd9fdb, 0x656d5253d3fd1a6e}}
+		z: fp{0x8f18a654312ac1ad, 0xbc20a9b2472785c9, 0xdaf97c29bbf9e492, 0xf91a8c799e2f6119, 0xc8dc675cc8e528e6, 0x9a7b2c2f0df95171, 0x85629cd38cdd9fdb, 0x656d5253d3fd1a6e},
+	}
 	var k uint64 = 5
 
-	var expA = coeff{
+	expA := coeff{
 		a: fp{0x32076f58298ed474, 0x5094a1fc8696d307, 0x82e510594157944a, 0xb60ce760f88c83a9, 0xae8a28c325186983, 0xe31d2446a4ad2f18, 0xb266c612b5f141c1, 0x64283e618db5a705},
-		c: fp{0x4472b49b65272190, 0x2bd5919309778f56, 0x6132753691fe016c, 0x8f654849c09e6d34, 0xfa208dd9aea1ef12, 0xf7df0dd10071411a, 0x75afb7860500922c, 0x52fb7d34b129fb65}}
-	var expP = point{
+		c: fp{0x4472b49b65272190, 0x2bd5919309778f56, 0x6132753691fe016c, 0x8f654849c09e6d34, 0xfa208dd9aea1ef12, 0xf7df0dd10071411a, 0x75afb7860500922c, 0x52fb7d34b129fb65},
+	}
+	expP := point{
 		x: fp{0x3b75fc94b2a6df2d, 0x96d53dc9b0e867a0, 0x22e87202421d274e, 0x30a361440697ee1a, 0x8b52ee078bdbddcd, 0x64425d500e6b934d, 0xf47d1f568f6df391, 0x5d9d3607431395ab},
-		z: fp{0x746e02dafa040976, 0xcd408f2cddbf3a8e, 0xf643354e0e13a93f, 0x7c39ed96ce9a5e29, 0xfcdf26f1a1a550ca, 0x2fc8aafc4ca0a559, 0x5d204a2b14cf19ba, 0xbd2c3406762f05d}}
+		z: fp{0x746e02dafa040976, 0xcd408f2cddbf3a8e, 0xf643354e0e13a93f, 0x7c39ed96ce9a5e29, 0xfcdf26f1a1a550ca, 0x2fc8aafc4ca0a559, 0x5d204a2b14cf19ba, 0xbd2c3406762f05d},
+	}
 
 	xIso(&P, &A, &K, k)
 	if !eqFp(&P.x, &expP.x) || !eqFp(&P.z, &expP.z) {
@@ -355,7 +365,7 @@ func BenchmarkIsom(b *testing.B) {
 	var P, kern point
 	var expPhiP big.Int
 	var co coeff
-	var k = uint64(2)
+	k := uint64(2)
 
 	expPhiP.SetString("0x5FEBD68F795F9AEB732ECF0D1507904922F2B0736704E0751EF242B4E191E6F630D83778B5E5681161FD071CDEF7DF4C3A41D0ECEB30E90B119C5BF86C5AB51A", 0)
 	P.x = toFp("0x5FD8D226C228FD6AA3CCDCAB931C5D3AA000A46B47041F59D9724E517594F696D38F2CB45C987ACF68BB1057D8D518F926D8F55171F337D05354E0022BC66B23")

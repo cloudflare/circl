@@ -299,11 +299,12 @@ func testImportExport(t *testing.T, v sidhVec) {
 func testPrivateKeyBelowMax(t *testing.T, vec sidhVec) {
 	for variant, keySz := range map[KeyVariant]*common.DomainParams{
 		KeyVariantSidhA: &common.Params(vec.id).A,
-		KeyVariantSidhB: &common.Params(vec.id).B} {
+		KeyVariantSidhB: &common.Params(vec.id).B,
+	} {
 		func(v KeyVariant, dp *common.DomainParams) {
-			var blen = int(dp.SecretByteLen)
-			var prv = NewPrivateKey(vec.id, v)
-			var secretBytes = make([]byte, prv.Size())
+			blen := int(dp.SecretByteLen)
+			prv := NewPrivateKey(vec.id, v)
+			secretBytes := make([]byte, prv.Size())
 
 			// Calculate either (2^e2 - 1) or (2^s - 1); where s=ceil(log_2(3^e3)))
 			maxSecretVal := big.NewInt(int64(dp.SecretBitLen))

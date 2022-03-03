@@ -8,10 +8,12 @@ import (
 	"github.com/cloudflare/circl/internal/test"
 )
 
-type tFqAdd = func(z, x, y *Fq)
-type tFqSub = func(z, x, y *Fq)
-type tFqMul = func(z, x, y *Fq)
-type tFqSqr = func(z, x *Fq)
+type (
+	tFqAdd = func(z, x, y *Fq)
+	tFqSub = func(z, x, y *Fq)
+	tFqMul = func(z, x, y *Fq)
+	tFqSqr = func(z, x *Fq)
+)
 
 func TestFqOne(t *testing.T) {
 	x := &Fq{}

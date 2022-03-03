@@ -222,7 +222,7 @@ func (prv *PrivateKey) Generate(rand io.Reader) error {
 
 // Generates public key.
 func (prv *PrivateKey) GeneratePublicKey(pub *PublicKey) {
-	var isA = (prv.keyVariant & KeyVariantSidhA) == KeyVariantSidhA
+	isA := (prv.keyVariant & KeyVariantSidhA) == KeyVariantSidhA
 
 	if (pub.keyVariant != prv.keyVariant) || (pub.params.ID != prv.params.ID) {
 		panic("sidh: incompatible public key")
@@ -258,7 +258,7 @@ func (prv *PrivateKey) GeneratePublicKey(pub *PublicKey) {
 //
 // Caller must make sure key SIDH key pair is not used more than once.
 func (prv *PrivateKey) DeriveSecret(ss []byte, pub *PublicKey) {
-	var isA = (prv.keyVariant & KeyVariantSidhA) == KeyVariantSidhA
+	isA := (prv.keyVariant & KeyVariantSidhA) == KeyVariantSidhA
 
 	if (pub.keyVariant == prv.keyVariant) || (pub.params.ID != prv.params.ID) {
 		panic("sidh: public and private are incompatible")

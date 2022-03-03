@@ -14,6 +14,7 @@ func (z *Fp4) SetOne() {
 	z[0].SetOne()
 	z[1] = Fp2{}
 }
+
 func (z *Fp4) IsZero() int {
 	return z.IsEqual(&Fp4{})
 }

@@ -12,9 +12,11 @@ type LineValue [3]Fp2
 func (z Fp12Cubic) String() string {
 	return fmt.Sprintf("%s + ( %s )*w + ( %s )*w^2", z[0], z[1], z[2])
 }
+
 func (z Fp12Cubic) IsEqual(x *Fp12Cubic) int {
 	return z[0].IsEqual(&x[0]) & z[1].IsEqual(&x[1]) & z[2].IsEqual(&x[2])
 }
+
 func (z *Fp12Cubic) FromFp12(x *Fp12) {
 	// To understand this function, write everything in Fp2[w]/(w^6-(u+1)).
 	// v = w^2
