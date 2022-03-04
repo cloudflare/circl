@@ -164,25 +164,25 @@ func (v *vector) test(t *testing.T) {
 
 		blinds := make([]Blind, len(blindsBytes))
 		for j := range blindsBytes {
-			blinds[j] = params.Group.NewScalar()
+			blinds[j] = params.group.NewScalar()
 			err := blinds[j].UnmarshalBinary(blindsBytes[j])
 			test.CheckNoErr(t, err, "invalid blind")
 		}
 
 		finData, evalReq, err := client.blind(inputs, blinds)
 		test.CheckNoErr(t, err, "invalid client request")
-		evalReqBytes, err := elementsMarshalBinary(params.Group, evalReq.Elements)
+		evalReqBytes, err := elementsMarshalBinary(params.group, evalReq.Elements)
 		test.CheckNoErr(t, err, "bad serialization")
 		v.compareBytes(t, evalReqBytes, flattenList(t, vi.BlindedElement, "blindedElement"))
 
 		eval, err := server.Evaluate(evalReq)
 		test.CheckNoErr(t, err, "invalid evaluation")
-		elemBytes, err := elementsMarshalBinary(params.Group, eval.Elements)
+		elemBytes, err := elementsMarshalBinary(params.group, eval.Elements)
 		test.CheckNoErr(t, err, "invalid evaluations marshaling")
 		v.compareBytes(t, elemBytes, flattenList(t, vi.EvaluationElement, "evaluation"))
 
 		if v.Mode == VerifiableMode || v.Mode == PartialObliviousMode {
-			randomness := toScalar(t, params.Group, vi.Proof.R, "invalid proof random scalar")
+			randomness := toScalar(t, params.group, vi.Proof.R, "invalid proof random scalar")
 			var proof encoding.BinaryMarshaler
 			switch v.Mode {
 			case VerifiableMode:
@@ -190,7 +190,7 @@ func (v *vector) test(t *testing.T) {
 				prover := dleq.Prover{Params: ss.getDLEQParams()}
 				proof, err = prover.ProveBatchWithRandomness(
 					ss.privateKey.k,
-					ss.params.Group.Generator(),
+					ss.params.group.Generator(),
 					server.PublicKey().e,
 					evalReq.Elements,
 					eval.Elements,
@@ -201,8 +201,8 @@ func (v *vector) test(t *testing.T) {
 				prover := dleq.Prover{Params: ss.getDLEQParams()}
 				proof, err = prover.ProveBatchWithRandomness(
 					keyProof,
-					ss.params.Group.Generator(),
-					ss.params.Group.NewElement().MulGen(keyProof),
+					ss.params.group.Generator(),
+					ss.params.group.NewElement().MulGen(keyProof),
 					eval.Elements,
 					evalReq.Elements,
 					randomness)

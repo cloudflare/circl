@@ -82,24 +82,29 @@ func isValidMode(m Mode) bool {
 	return m == BaseMode || m == VerifiableMode || m == PartialObliviousMode
 }
 
-type Suite interface{ cannotBeImplementedExternally() }
+type Suite interface {
+	ID() int
+	Group() group.Group
+	Hash() crypto.Hash
+	cannotBeImplementedExternally()
+}
 
 var (
 	// SuiteP256 represents the OPRF with P-256 and SHA-256.
-	SuiteP256 Suite = params{ID: 3, Group: group.P256, Hash: crypto.SHA256}
+	SuiteP256 Suite = params{id: 3, group: group.P256, hash: crypto.SHA256}
 	// SuiteP384 represents the OPRF with P-384 and SHA-384.
-	SuiteP384 Suite = params{ID: 4, Group: group.P384, Hash: crypto.SHA384}
+	SuiteP384 Suite = params{id: 4, group: group.P384, hash: crypto.SHA384}
 	// SuiteP521 represents the OPRF with P-521 and SHA-512.
-	SuiteP521 Suite = params{ID: 5, Group: group.P521, Hash: crypto.SHA512}
+	SuiteP521 Suite = params{id: 5, group: group.P521, hash: crypto.SHA512}
 )
 
 func GetSuite(id int) (Suite, error) {
 	switch uint16(id) {
-	case SuiteP256.(params).ID:
+	case SuiteP256.(params).id:
 		return SuiteP256, nil
-	case SuiteP384.(params).ID:
+	case SuiteP384.(params).id:
 		return SuiteP384, nil
-	case SuiteP521.(params).ID:
+	case SuiteP521.(params).id:
 		return SuiteP521, nil
 	default:
 		return nil, ErrInvalidSuite
@@ -164,21 +169,24 @@ func NewPartialObliviousServer(s Suite, key *PrivateKey) PartialObliviousServer 
 }
 
 type params struct {
-	ID    uint16
+	id    uint16
 	m     Mode
-	Group group.Group
-	Hash  crypto.Hash
+	group group.Group
+	hash  crypto.Hash
 }
 
 func (p params) cannotBeImplementedExternally() {}
 
-func (p params) String() string { return fmt.Sprintf("Suite%v", p.Group) }
+func (p params) String() string     { return fmt.Sprintf("Suite%v", p.group) }
+func (p params) ID() int            { return int(p.id) }
+func (p params) Group() group.Group { return p.group }
+func (p params) Hash() crypto.Hash  { return p.hash }
 
 func (p params) getDST(name string) []byte {
 	return append(append(append([]byte{},
 		[]byte(name)...),
 		[]byte(version)...),
-		[]byte{p.m, 0, byte(p.ID)}...)
+		[]byte{p.m, 0, byte(p.id)}...)
 }
 
 func (p params) scalarFromInfo(info []byte) (group.Scalar, error) {
@@ -192,7 +200,7 @@ func (p params) scalarFromInfo(info []byte) (group.Scalar, error) {
 		lenInfo...),
 		info...)
 
-	return p.Group.HashToScalar(framedInfo, p.getDST(hashToScalarDST)), nil
+	return p.group.HashToScalar(framedInfo, p.getDST(hashToScalarDST)), nil
 }
 
 func (p params) finalizeHash(h hash.Hash, input, info, element []byte) []byte {
@@ -219,8 +227,8 @@ func (p params) finalizeHash(h hash.Hash, input, info, element []byte) []byte {
 }
 
 func (p params) getDLEQParams() (out dleq.Params) {
-	out.G = p.Group
-	out.H = p.Hash
+	out.G = p.group
+	out.H = p.hash
 	out.DST = p.getDST("")
 
 	return
