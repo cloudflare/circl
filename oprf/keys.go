@@ -27,7 +27,7 @@ func (k *PrivateKey) UnmarshalBinary(s Suite, data []byte) error {
 		return ErrInvalidSuite
 	}
 	k.p = p
-	k.k = k.p.g.NewScalar()
+	k.k = k.p.Group.NewScalar()
 
 	return k.k.UnmarshalBinary(data)
 }
@@ -38,14 +38,14 @@ func (k *PublicKey) UnmarshalBinary(s Suite, data []byte) error {
 		return ErrInvalidSuite
 	}
 	k.p = p
-	k.e = k.p.g.NewElement()
+	k.e = k.p.Group.NewElement()
 
 	return k.e.UnmarshalBinary(data)
 }
 
 func (k *PrivateKey) Public() *PublicKey {
 	if k.pub == nil {
-		k.pub = &PublicKey{k.p, k.p.g.NewElement().MulGen(k.k)}
+		k.pub = &PublicKey{k.p, k.p.Group.NewElement().MulGen(k.k)}
 	}
 
 	return k.pub
@@ -61,7 +61,7 @@ func GenerateKey(s Suite, rnd io.Reader) (*PrivateKey, error) {
 	if !ok {
 		return nil, ErrInvalidSuite
 	}
-	privateKey := p.g.RandomScalar(rnd)
+	privateKey := p.Group.RandomScalar(rnd)
 
 	return &PrivateKey{p, privateKey, nil}, nil
 }
@@ -83,13 +83,13 @@ func DeriveKey(s Suite, mode Mode, seed, info []byte) (*PrivateKey, error) {
 	deriveInput := append(append(append([]byte{}, seed...), lenInfo...), info...)
 
 	dst := p.getDST(deriveKeyPairDST)
-	zero := p.g.NewScalar()
-	privateKey := p.g.NewScalar()
+	zero := p.Group.NewScalar()
+	privateKey := p.Group.NewScalar()
 	for counter := byte(0); privateKey.IsEqual(zero); counter++ {
 		if counter > maxTries {
 			return nil, ErrDeriveKeyPairError
 		}
-		privateKey = p.g.HashToScalar(append(deriveInput, counter), dst)
+		privateKey = p.Group.HashToScalar(append(deriveInput, counter), dst)
 	}
 
 	return &PrivateKey{p, privateKey, nil}, nil

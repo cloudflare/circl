@@ -30,7 +30,7 @@ func (c client) Blind(inputs [][]byte) (*FinalizeData, *EvaluationRequest, error
 
 	blinds := make([]blind, len(inputs))
 	for i := range inputs {
-		blinds[i] = c.params.g.RandomScalar(rand.Reader)
+		blinds[i] = c.params.Group.RandomScalar(rand.Reader)
 	}
 
 	return c.blind(inputs, blinds)
@@ -40,11 +40,11 @@ func (c client) blind(inputs [][]byte, blinds []blind) (*FinalizeData, *Evaluati
 	blindedElements := make([]Blinded, len(inputs))
 	dst := c.params.getDST(hashToGroupDST)
 	for i := range inputs {
-		point := c.params.g.HashToElement(inputs[i], dst)
+		point := c.params.Group.HashToElement(inputs[i], dst)
 		if point.IsIdentity() {
 			return nil, nil, ErrInvalidInput
 		}
-		blindedElements[i] = c.params.g.NewElement().Mul(point, blinds[i])
+		blindedElements[i] = c.params.Group.NewElement().Mul(point, blinds[i])
 	}
 
 	evalReq := &EvaluationRequest{blindedElements}
@@ -55,8 +55,8 @@ func (c client) blind(inputs [][]byte, blinds []blind) (*FinalizeData, *Evaluati
 
 func (c client) unblind(serUnblindeds [][]byte, blindeds []group.Element, blind []blind) error {
 	var err error
-	invBlind := c.params.g.NewScalar()
-	U := c.params.g.NewElement()
+	invBlind := c.params.Group.NewScalar()
+	U := c.params.Group.NewElement()
 
 	for i := range blindeds {
 		invBlind.Inv(blind[i])
@@ -85,7 +85,7 @@ func (c client) finalize(f *FinalizeData, e *Evaluation, info []byte) ([][]byte,
 		return nil, err
 	}
 
-	h := c.params.h.New()
+	h := c.params.Hash.New()
 	outputs := make([][]byte, len(f.inputs))
 	for i := range f.inputs {
 		outputs[i] = c.params.finalizeHash(h, f.inputs[i], info, unblindedElements[i])
@@ -108,7 +108,7 @@ func (c VerifiableClient) Finalize(f *FinalizeData, e *Evaluation) (outputs [][]
 	}
 
 	if !(dleq.Verifier{Params: c.getDLEQParams()}).VerifyBatch(
-		c.params.g.Generator(),
+		c.params.Group.Generator(),
 		c.pkS.e,
 		f.evalReq.Elements,
 		e.Elements,
@@ -131,7 +131,7 @@ func (c PartialObliviousClient) Finalize(f *FinalizeData, e *Evaluation, info []
 	}
 
 	if !(dleq.Verifier{Params: c.getDLEQParams()}).VerifyBatch(
-		c.params.g.Generator(),
+		c.params.Group.Generator(),
 		tweakedKey,
 		e.Elements,
 		f.evalReq.Elements,
@@ -149,8 +149,8 @@ func (c PartialObliviousClient) pointFromInfo(info []byte) (group.Element, error
 		return nil, err
 	}
 
-	T := c.params.g.NewElement().MulGen(m)
-	tweakedKey := c.params.g.NewElement().Add(T, c.pkS.e)
+	T := c.params.Group.NewElement().MulGen(m)
+	tweakedKey := c.params.Group.NewElement().Add(T, c.pkS.e)
 	if tweakedKey.IsIdentity() {
 		return nil, ErrInvalidInfo
 	}
