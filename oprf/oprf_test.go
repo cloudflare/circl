@@ -14,6 +14,7 @@ import (
 
 type commonClient interface {
 	blind(inputs [][]byte, blinds []blind) (*FinalizeData, *EvaluationRequest, error)
+	DeterministicBlind(inputs, blinds [][]byte) (*FinalizeData, *EvaluationRequest, error)
 	Blind(inputs [][]byte) (*FinalizeData, *EvaluationRequest, error)
 	Finalize(d *FinalizeData, e *Evaluation) ([][]byte, error)
 }
@@ -94,6 +95,14 @@ func testAPI(t *testing.T, server commonServer, client commonClient) {
 	inputs := [][]byte{{0x00}, {0xFF}}
 	finData, evalReq, err := client.Blind(inputs)
 	test.CheckNoErr(t, err, "invalid blinding of client")
+
+	blinds := finData.CopyBlinds()
+	_, detEvalReq, err := client.DeterministicBlind(inputs, blinds)
+	test.CheckNoErr(t, err, "invalid deterministic blinding of client")
+	test.CheckOk(len(detEvalReq.Elements) == len(evalReq.Elements), "invalid number of evaluations", t)
+	for i := range evalReq.Elements {
+		test.CheckOk(evalReq.Elements[i].IsEqual(detEvalReq.Elements[i]), "invalid blinded element mismatch", t)
+	}
 
 	eval, err := server.Evaluate(evalReq)
 	test.CheckNoErr(t, err, "invalid evaluation of server")

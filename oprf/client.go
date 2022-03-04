@@ -36,6 +36,26 @@ func (c client) Blind(inputs [][]byte) (*FinalizeData, *EvaluationRequest, error
 	return c.blind(inputs, blinds)
 }
 
+func (c client) DeterministicBlind(inputs, blinds [][]byte) (*FinalizeData, *EvaluationRequest, error) {
+	if len(inputs) == 0 {
+		return nil, nil, ErrInvalidInput
+	}
+	if len(inputs) != len(blinds) {
+		return nil, nil, ErrInvalidInput
+	}
+
+	blindScalars := make([]blind, len(blinds))
+	for i := range blinds {
+		blindScalars[i] = c.params.g.NewScalar()
+		err := blindScalars[i].UnmarshalBinary(blinds[i])
+		if err != nil {
+			return nil, nil, ErrInvalidInput
+		}
+	}
+
+	return c.blind(inputs, blindScalars)
+}
+
 func (c client) blind(inputs [][]byte, blinds []blind) (*FinalizeData, *EvaluationRequest, error) {
 	blindedElements := make([]Blinded, len(inputs))
 	dst := c.params.getDST(hashToGroupDST)
