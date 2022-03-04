@@ -132,6 +132,14 @@ func (e *wElt) IsEqual(o Element) bool {
 	return e.x.Cmp(oo.x) == 0 && e.y.Cmp(oo.y) == 0
 }
 
+func (e *wElt) Set(a Element) Element {
+	aa := e.cvtElt(a)
+	e.x.Set(aa.x)
+	e.y.Set(aa.y)
+	return e
+}
+
+func (e *wElt) Copy() Element { return e.wG.zeroElement().Set(e) }
 func (e *wElt) Add(a, b Element) Element {
 	aa, bb := e.cvtElt(a), e.cvtElt(b)
 	e.x, e.y = e.c.Add(aa.x, aa.y, bb.x, bb.y)
@@ -225,6 +233,15 @@ func (s *wScl) fromBig(b *big.Int) {
 	}
 }
 
+func (s *wScl) Set(a Scalar) Scalar {
+	aa := s.cvtScl(a)
+	if err := s.UnmarshalBinary(aa.k); err != nil {
+		panic(err)
+	}
+	return s
+}
+
+func (s *wScl) Copy() Scalar { return s.wG.zeroScalar().Set(s) }
 func (s *wScl) Add(a, b Scalar) Scalar {
 	aa, bb := s.cvtScl(a), s.cvtScl(b)
 	r := new(big.Int)
