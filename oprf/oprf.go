@@ -260,6 +260,21 @@ type FinalizeData struct {
 	evalReq *EvaluationRequest
 }
 
+// CopyBlinds copies the serialized blinds to use when determinstically
+// invoking DeterministicBlind.
+func (d FinalizeData) CopyBlinds() [][]byte {
+	blinds := make([][]byte, len(d.blinds))
+	for i := range d.blinds {
+		blind := d.blinds[i]
+		blindEnc, err := blind.MarshalBinary()
+		if err != nil {
+			panic(err)
+		}
+		blinds[i] = blindEnc
+	}
+	return blinds
+}
+
 // EvaluationRequest contains the blinded elements to be evaluated by the Server.
 type EvaluationRequest struct {
 	Elements []Blinded
