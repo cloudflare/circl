@@ -102,7 +102,6 @@ func readFile(t *testing.T, fileName string) []vector {
 }
 
 func (v *vector) SetUpParties(t *testing.T) (id params, s commonServer, c commonClient) {
-	t.Helper()
 	suite, err := GetSuite(v.ID)
 	test.CheckNoErr(t, err, "suite id")
 	seed := toBytes(t, v.Seed, "seed for key derivation")

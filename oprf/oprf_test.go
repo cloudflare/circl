@@ -129,6 +129,7 @@ func TestAPI(t *testing.T) {
 	info := []byte("shared info")
 
 	for _, suite := range []Suite{
+		SuiteRistretto255,
 		SuiteP256,
 		SuiteP384,
 		SuiteP521,
