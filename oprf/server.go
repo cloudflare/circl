@@ -21,7 +21,7 @@ type PartialObliviousServer struct{ server }
 
 func (s server) PublicKey() *PublicKey { return s.privateKey.Public() }
 
-func (s server) evaluate(elements []Blinded, secret blind) []Evaluated {
+func (s server) evaluate(elements []Blinded, secret Blind) []Evaluated {
 	evaluations := make([]Evaluated, len(elements))
 	for i := range elements {
 		evaluations[i] = s.params.Group.NewElement().Mul(elements[i], secret)

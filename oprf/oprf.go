@@ -248,7 +248,7 @@ var (
 )
 
 type (
-	blind     = group.Scalar
+	Blind     = group.Scalar
 	Blinded   = group.Element
 	Evaluated = group.Element
 )
@@ -256,23 +256,14 @@ type (
 // FinalizeData encapsulates data needed for Finalize step.
 type FinalizeData struct {
 	inputs  [][]byte
-	blinds  []blind
+	blinds  []Blind
 	evalReq *EvaluationRequest
 }
 
 // CopyBlinds copies the serialized blinds to use when determinstically
 // invoking DeterministicBlind.
-func (d FinalizeData) CopyBlinds() [][]byte {
-	blinds := make([][]byte, len(d.blinds))
-	for i := range d.blinds {
-		blind := d.blinds[i]
-		blindEnc, err := blind.MarshalBinary()
-		if err != nil {
-			panic(err)
-		}
-		blinds[i] = blindEnc
-	}
-	return blinds
+func (d FinalizeData) CopyBlinds() []Blind {
+	return d.blinds
 }
 
 // EvaluationRequest contains the blinded elements to be evaluated by the Server.

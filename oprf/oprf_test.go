@@ -13,8 +13,8 @@ import (
 )
 
 type commonClient interface {
-	blind(inputs [][]byte, blinds []blind) (*FinalizeData, *EvaluationRequest, error)
-	DeterministicBlind(inputs, blinds [][]byte) (*FinalizeData, *EvaluationRequest, error)
+	blind(inputs [][]byte, blinds []Blind) (*FinalizeData, *EvaluationRequest, error)
+	DeterministicBlind(inputs [][]byte, blinds []Blind) (*FinalizeData, *EvaluationRequest, error)
 	Blind(inputs [][]byte) (*FinalizeData, *EvaluationRequest, error)
 	Finalize(d *FinalizeData, e *Evaluation) ([][]byte, error)
 }

@@ -162,7 +162,7 @@ func (v *vector) test(t *testing.T) {
 		inputs := toListBytes(t, vi.Input, "input")
 		blindsBytes := toListBytes(t, vi.Blind, "blind")
 
-		blinds := make([]blind, len(blindsBytes))
+		blinds := make([]Blind, len(blindsBytes))
 		for j := range blindsBytes {
 			blinds[j] = params.Group.NewScalar()
 			err := blinds[j].UnmarshalBinary(blindsBytes[j])
