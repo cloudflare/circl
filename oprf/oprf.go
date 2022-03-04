@@ -86,11 +86,11 @@ type Suite interface{ cannotBeImplementedExternally() }
 
 var (
 	// SuiteP256 represents the OPRF with P-256 and SHA-256.
-	SuiteP256 Suite = params{ID: 3, g: group.P256, h: crypto.SHA256}
+	SuiteP256 Suite = params{ID: 3, Group: group.P256, Hash: crypto.SHA256}
 	// SuiteP384 represents the OPRF with P-384 and SHA-384.
-	SuiteP384 Suite = params{ID: 4, g: group.P384, h: crypto.SHA384}
+	SuiteP384 Suite = params{ID: 4, Group: group.P384, Hash: crypto.SHA384}
 	// SuiteP521 represents the OPRF with P-521 and SHA-512.
-	SuiteP521 Suite = params{ID: 5, g: group.P521, h: crypto.SHA512}
+	SuiteP521 Suite = params{ID: 5, Group: group.P521, Hash: crypto.SHA512}
 )
 
 func GetSuite(id int) (Suite, error) {
@@ -164,15 +164,15 @@ func NewPartialObliviousServer(s Suite, key *PrivateKey) PartialObliviousServer 
 }
 
 type params struct {
-	ID uint16
-	m  Mode
-	g  group.Group
-	h  crypto.Hash
+	ID    uint16
+	m     Mode
+	Group group.Group
+	Hash  crypto.Hash
 }
 
 func (p params) cannotBeImplementedExternally() {}
 
-func (p params) String() string { return fmt.Sprintf("Suite%v", p.g) }
+func (p params) String() string { return fmt.Sprintf("Suite%v", p.Group) }
 
 func (p params) getDST(name string) []byte {
 	return append(append(append([]byte{},
@@ -192,7 +192,7 @@ func (p params) scalarFromInfo(info []byte) (group.Scalar, error) {
 		lenInfo...),
 		info...)
 
-	return p.g.HashToScalar(framedInfo, p.getDST(hashToScalarDST)), nil
+	return p.Group.HashToScalar(framedInfo, p.getDST(hashToScalarDST)), nil
 }
 
 func (p params) finalizeHash(h hash.Hash, input, info, element []byte) []byte {
@@ -219,8 +219,8 @@ func (p params) finalizeHash(h hash.Hash, input, info, element []byte) []byte {
 }
 
 func (p params) getDLEQParams() (out dleq.Params) {
-	out.G = p.g
-	out.H = p.h
+	out.G = p.Group
+	out.H = p.Hash
 	out.DST = p.getDST("")
 
 	return
