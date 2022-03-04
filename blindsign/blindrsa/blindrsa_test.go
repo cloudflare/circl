@@ -362,7 +362,7 @@ func verifyTestVector(t *testing.T, vector testVector) {
 }
 
 func TestVectors(t *testing.T) {
-	data, err := ioutil.ReadFile("test_vectors.json")
+	data, err := ioutil.ReadFile("testdata/test_vectors.json")
 	if err != nil {
 		t.Fatal("Failed reading test vectors:", err)
 	}
