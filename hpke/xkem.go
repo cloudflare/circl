@@ -3,8 +3,6 @@ package hpke
 import (
 	"bytes"
 	"crypto/rand"
-	_ "crypto/sha256"
-	_ "crypto/sha512"
 	"crypto/subtle"
 	"fmt"
 	"io"

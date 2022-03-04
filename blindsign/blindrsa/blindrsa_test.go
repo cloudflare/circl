@@ -5,7 +5,6 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
-	_ "crypto/sha256"
 	"crypto/sha512"
 	"crypto/x509"
 	"encoding/hex"
