@@ -98,16 +98,31 @@ func (g ristrettoGroup) HashToElementNonUniform(b, dst []byte) Element {
 }
 
 func (g ristrettoGroup) HashToElement(msg, dst []byte) Element {
+	// Compliaint with draft-irtf-cfrg-hash-to-curve.
+	// Appendix B - Hashing to ristretto255
+	// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-14#appendix-B
+	// SuiteID: ristretto255_XMD:SHA-512_R255MAP_RO_
+	var buf [32]byte
 	xmd := expander.NewExpanderMD(crypto.SHA512, dst)
-	data := xmd.Expand(msg, 64)
-	e := g.NewElement()
-	e.(*ristrettoElement).p.Derive(data)
-	return e
+	uniformBytes := xmd.Expand(msg, 64)
+	copy(buf[:], uniformBytes[:32])
+	p0 := new(r255.Point).SetElligator(&buf)
+	copy(buf[:], uniformBytes[32:])
+	p1 := new(r255.Point).SetElligator(&buf)
+	p0.Add(p0, p1)
+
+	return &ristrettoElement{*p0}
 }
 
 func (g ristrettoGroup) HashToScalar(msg, dst []byte) Scalar {
+	// Adapted to be compliant with draft-irtf-cfrg-voprf
+	// Section 4.1.1 - OPRF(ristretto255, SHA-512)
+	// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-voprf-09#section-4.1.1
+	var uniformBytes [64]byte
+	xmd := expander.NewExpanderMD(crypto.SHA512, dst)
+	copy(uniformBytes[:], xmd.Expand(msg, 64))
 	s := g.NewScalar()
-	s.(*ristrettoScalar).s.Derive(msg)
+	s.(*ristrettoScalar).s.SetReduced(&uniformBytes)
 	return s
 }
 

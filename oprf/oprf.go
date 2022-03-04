@@ -90,6 +90,8 @@ type Suite interface {
 }
 
 var (
+	// SuiteRistretto255 represents the OPRF with Ristretto255 and SHA-512.
+	SuiteRistretto255 Suite = params{id: 1, group: group.Ristretto255, hash: crypto.SHA512}
 	// SuiteP256 represents the OPRF with P-256 and SHA-256.
 	SuiteP256 Suite = params{id: 3, group: group.P256, hash: crypto.SHA256}
 	// SuiteP384 represents the OPRF with P-384 and SHA-384.
@@ -100,6 +102,8 @@ var (
 
 func GetSuite(id int) (Suite, error) {
 	switch uint16(id) {
+	case SuiteRistretto255.(params).id:
+		return SuiteRistretto255, nil
 	case SuiteP256.(params).id:
 		return SuiteP256, nil
 	case SuiteP384.(params).id:
