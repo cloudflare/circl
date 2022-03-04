@@ -28,7 +28,7 @@ func (c client) Blind(inputs [][]byte) (*FinalizeData, *EvaluationRequest, error
 		return nil, nil, ErrInvalidInput
 	}
 
-	blinds := make([]blind, len(inputs))
+	blinds := make([]Blind, len(inputs))
 	for i := range inputs {
 		blinds[i] = c.params.g.RandomScalar(rand.Reader)
 	}
@@ -36,7 +36,7 @@ func (c client) Blind(inputs [][]byte) (*FinalizeData, *EvaluationRequest, error
 	return c.blind(inputs, blinds)
 }
 
-func (c client) DeterministicBlind(inputs, blinds [][]byte) (*FinalizeData, *EvaluationRequest, error) {
+func (c client) DeterministicBlind(inputs [][]byte, blinds []Blind) (*FinalizeData, *EvaluationRequest, error) {
 	if len(inputs) == 0 {
 		return nil, nil, ErrInvalidInput
 	}
@@ -44,19 +44,10 @@ func (c client) DeterministicBlind(inputs, blinds [][]byte) (*FinalizeData, *Eva
 		return nil, nil, ErrInvalidInput
 	}
 
-	blindScalars := make([]blind, len(blinds))
-	for i := range blinds {
-		blindScalars[i] = c.params.g.NewScalar()
-		err := blindScalars[i].UnmarshalBinary(blinds[i])
-		if err != nil {
-			return nil, nil, ErrInvalidInput
-		}
-	}
-
-	return c.blind(inputs, blindScalars)
+	return c.blind(inputs, blinds)
 }
 
-func (c client) blind(inputs [][]byte, blinds []blind) (*FinalizeData, *EvaluationRequest, error) {
+func (c client) blind(inputs [][]byte, blinds []Blind) (*FinalizeData, *EvaluationRequest, error) {
 	blindedElements := make([]Blinded, len(inputs))
 	dst := c.params.getDST(hashToGroupDST)
 	for i := range inputs {
@@ -73,7 +64,7 @@ func (c client) blind(inputs [][]byte, blinds []blind) (*FinalizeData, *Evaluati
 	return finData, evalReq, nil
 }
 
-func (c client) unblind(serUnblindeds [][]byte, blindeds []group.Element, blind []blind) error {
+func (c client) unblind(serUnblindeds [][]byte, blindeds []group.Element, blind []Blind) error {
 	var err error
 	invBlind := c.params.g.NewScalar()
 	U := c.params.g.NewElement()
