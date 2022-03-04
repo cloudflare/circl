@@ -3,6 +3,8 @@ package group
 import (
 	"crypto"
 	"crypto/elliptic"
+	_ "crypto/sha256"
+	_ "crypto/sha512"
 	"crypto/subtle"
 	"fmt"
 	"io"

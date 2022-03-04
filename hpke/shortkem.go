@@ -3,8 +3,6 @@ package hpke
 import (
 	"crypto/elliptic"
 	"crypto/rand"
-	_ "crypto/sha256"
-	_ "crypto/sha512"
 	"crypto/subtle"
 	"fmt"
 	"math/big"
