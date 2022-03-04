@@ -270,8 +270,12 @@ type FinalizeData struct {
 
 // CopyBlinds copies the serialized blinds to use when determinstically
 // invoking DeterministicBlind.
-func (d FinalizeData) CopyBlinds() []Blind {
-	return d.blinds
+func (f FinalizeData) CopyBlinds() []Blind {
+	out := make([]Blind, len(f.blinds))
+	for i, b := range f.blinds {
+		out[i] = b.Copy()
+	}
+	return out
 }
 
 // EvaluationRequest contains the blinded elements to be evaluated by the Server.
