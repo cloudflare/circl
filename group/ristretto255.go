@@ -121,6 +121,15 @@ func (e *ristrettoElement) IsEqual(x Element) bool {
 	return e.p.Equals(&x.(*ristrettoElement).p)
 }
 
+func (e *ristrettoElement) Set(x Element) Element {
+	e.p.Set(&x.(*ristrettoElement).p)
+	return e
+}
+
+func (e *ristrettoElement) Copy() Element {
+	return &ristrettoElement{*new(r255.Point).Set(&e.p)}
+}
+
 func (e *ristrettoElement) Add(x Element, y Element) Element {
 	e.p.Add(&x.(*ristrettoElement).p, &y.(*ristrettoElement).p)
 	return e
@@ -162,6 +171,15 @@ func (s *ristrettoScalar) SetUint64(n uint64) { s.s.SetUint64(n) }
 
 func (s *ristrettoScalar) IsEqual(x Scalar) bool {
 	return s.s.Equals(&x.(*ristrettoScalar).s)
+}
+
+func (s *ristrettoScalar) Set(x Scalar) Scalar {
+	s.s.Set(&x.(*ristrettoScalar).s)
+	return s
+}
+
+func (s *ristrettoScalar) Copy() Scalar {
+	return &ristrettoScalar{*new(r255.Scalar).Set(&s.s)}
 }
 
 func (s *ristrettoScalar) Add(x Scalar, y Scalar) Scalar {
