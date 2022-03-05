@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"testing"
 
-	"github.com/cloudflare/circl/internal/ted448"
+	"github.com/cloudflare/circl/ecc/goldilocks/internal/ted448"
 	"github.com/cloudflare/circl/internal/test"
 )
 
@@ -27,13 +27,18 @@ func TestPointAdd(t *testing.T) {
 		Q.Double() // 8P
 		Q.Double() // 16P
 		got := Q
+		got.ToAffine()
+
 		// R = 16P = P+P...+P
 		R := ted448.Identity()
 		for j := 0; j < 16; j++ {
 			R.Add(&P)
 		}
 		want := R
-		if !ted448.IsOnCurve(&got) || !ted448.IsOnCurve(&want) || !got.IsEqual(&want) {
+		want.ToAffine()
+		if !ted448.IsOnCurve(&got) ||
+			!ted448.IsOnCurve(&want) ||
+			got.IsEqual(&want) == 0 {
 			test.ReportError(t, got, want, P)
 		}
 	}
@@ -64,7 +69,7 @@ func TestPointNeg(t *testing.T) {
 		Q.Neg()
 		Q.Add(&P)
 		got := Q.IsIdentity()
-		want := true
+		want := 1
 		if got != want {
 			test.ReportError(t, got, want, P)
 		}
@@ -73,30 +78,33 @@ func TestPointNeg(t *testing.T) {
 
 func TestScalarMult(t *testing.T) {
 	const testTimes = 1 << 8
+	order := ted448.Scalar(ted448.Order())
 
 	t.Run("rG=0", func(t *testing.T) {
 		got := &ted448.Point{}
-		order := ted448.Order()
 		for i := 0; i < testTimes; i++ {
 			ted448.ScalarBaseMult(got, &order)
 			want := ted448.Identity()
 
-			if !ted448.IsOnCurve(got) || !ted448.IsOnCurve(&want) || !got.IsEqual(&want) {
+			if !ted448.IsOnCurve(got) ||
+				!ted448.IsOnCurve(&want) ||
+				got.IsEqual(&want) == 0 {
 				test.ReportError(t, got, want)
 			}
 		}
 	})
 	t.Run("rP=0", func(t *testing.T) {
 		got := &ted448.Point{}
-		order := ted448.Order()
 		for i := 0; i < testTimes; i++ {
 			P := randomPoint()
 
 			ted448.ScalarMult(got, &order, &P)
 			want := ted448.Identity()
 
-			if !ted448.IsOnCurve(got) || !ted448.IsOnCurve(&want) || !got.IsEqual(&want) {
-				test.ReportError(t, got, want, P, order)
+			if !ted448.IsOnCurve(got) ||
+				!ted448.IsOnCurve(&want) ||
+				got.IsEqual(&want) == 0 {
+				test.ReportError(t, got, want, P)
 			}
 		}
 	})
@@ -112,7 +120,9 @@ func TestScalarMult(t *testing.T) {
 			ted448.ScalarBaseMult(got, k)
 			ted448.CombinedMult(want, k, zero, &I) // k*G + 0*I
 
-			if !ted448.IsOnCurve(got) || !ted448.IsOnCurve(want) || !got.IsEqual(want) {
+			if !ted448.IsOnCurve(got) ||
+				!ted448.IsOnCurve(want) ||
+				got.IsEqual(want) == 0 {
 				test.ReportError(t, got, want, k)
 			}
 		}
@@ -129,7 +139,9 @@ func TestScalarMult(t *testing.T) {
 			ted448.ScalarMult(got, k, &P)
 			ted448.CombinedMult(want, zero, k, &P)
 
-			if !ted448.IsOnCurve(got) || !ted448.IsOnCurve(want) || !got.IsEqual(want) {
+			if !ted448.IsOnCurve(got) ||
+				!ted448.IsOnCurve(want) ||
+				got.IsEqual(want) == 0 {
 				test.ReportError(t, got, want, P, k)
 			}
 		}
@@ -152,38 +164,11 @@ func TestScalarMult(t *testing.T) {
 			got := kG
 			ted448.CombinedMult(want, k, l, &P)
 
-			if !ted448.IsOnCurve(got) || !ted448.IsOnCurve(want) || !got.IsEqual(want) {
+			if !ted448.IsOnCurve(got) ||
+				!ted448.IsOnCurve(want) ||
+				got.IsEqual(want) == 0 {
 				test.ReportError(t, got, want, P, k, l)
 			}
-		}
-	})
-}
-
-func BenchmarkCurve(b *testing.B) {
-	var k, l ted448.Scalar
-	_, _ = rand.Read(k[:])
-	_, _ = rand.Read(l[:])
-	P := randomPoint()
-	Q := randomPoint()
-
-	b.Run("Add", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			P.Add(&Q)
-		}
-	})
-	b.Run("ScalarMult", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			ted448.ScalarMult(&P, &k, &P)
-		}
-	})
-	b.Run("ScalarBaseMult", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			ted448.ScalarBaseMult(&P, &k)
-		}
-	})
-	b.Run("CombinedMult", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			ted448.CombinedMult(&P, &k, &l, &P)
 		}
 	})
 }

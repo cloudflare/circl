@@ -15,6 +15,7 @@ var allGroups = []group.Group{
 	group.P384,
 	group.P521,
 	group.Ristretto255,
+	group.Decaf448,
 }
 
 func TestGroup(t *testing.T) {

@@ -66,6 +66,7 @@ func (P *Point) coreAddition(Q *prePointAffine) {
 	// Formula as in Eq.(5) of "Twisted Edwards Curves Revisited" by
 	// Hisil H., Wong K.KH., Carter G., Dawson E. (2008)
 	// https://doi.org/10.1007/978-3-540-89255-7_20
+	// Formula for curves with a=-1.
 	Px, Py, Pz, Pta, Ptb := &P.X, &P.Y, &P.Z, &P.Ta, &P.Tb
 	addYX2, subYX2, dt2 := &Q.addYX, &Q.subYX, &Q.dt2
 	a, b, c, d, e, f, g, h := Px, Py, &fp.Elt{}, Pz, Pta, Px, Py, Ptb
@@ -108,17 +109,17 @@ func (P *Point) mixAdd(Q *prePointProy) {
 	P.coreAddition(&Q.prePointAffine)
 }
 
-// IsIdentity returns True is P is the identity.
-func (P *Point) IsIdentity() bool {
+// IsIdentity returns 1 if P is the identity, otherwise 0.
+func (P *Point) IsIdentity() int {
 	b0 := fp.IsZero(&P.X)
 	b1 := 1 - fp.IsZero(&P.Y)
 	b2 := 1 - fp.IsZero(&P.Z)
 	b3 := fp.IsEqual(&P.Y, &P.Z)
-	return subtle.ConstantTimeEq(int32(8*b3+4*b2+2*b1+b0), 0xF) == 1
+	return subtle.ConstantTimeEq(int32(8*b3+4*b2+2*b1+b0), 0xF)
 }
 
-// IsEqual returns True if P is equivalent to Q.
-func (P *Point) IsEqual(Q *Point) bool {
+// IsEqual returns 1 if P is equivalent to Q, otherwise 0.
+func (P *Point) IsEqual(Q *Point) int {
 	l, r := &fp.Elt{}, &fp.Elt{}
 	fp.Mul(l, &P.X, &Q.Z)
 	fp.Mul(r, &Q.X, &P.Z)
@@ -134,7 +135,7 @@ func (P *Point) IsEqual(Q *Point) bool {
 	fp.Mul(r, r, &P.Z)
 	fp.Sub(l, l, r)
 	b2 := fp.IsZero(l)
-	return subtle.ConstantTimeEq(int32(4*b2+2*b1+b0), 0x7) == 1
+	return subtle.ConstantTimeEq(int32(4*b2+2*b1+b0), 0x7)
 }
 
 // Neg obtains the inverse of P.
@@ -145,6 +146,18 @@ func (P *Point) Add(Q *Point) {
 	preB := &prePointProy{}
 	preB.FromPoint(Q)
 	P.mixAdd(preB)
+}
+
+func (P *Point) ToAffine() {
+	invZ := &fp.Elt{}
+	fp.Inv(invZ, &P.Z)       // 1/z
+	fp.Mul(&P.X, &P.X, invZ) // x/z
+	fp.Mul(&P.Y, &P.Y, invZ) // y/z
+	fp.Modp(&P.X)
+	fp.Modp(&P.Y)
+	P.Ta = P.X
+	P.Tb = P.Y
+	fp.SetOne(&P.Z)
 }
 
 // oddMultiples calculates T[i] = (2*i-1)P for 0 < i < len(T).

@@ -2,6 +2,8 @@ package ted448
 
 import (
 	"encoding/binary"
+	"fmt"
+	"io"
 	"math/bits"
 
 	"github.com/cloudflare/circl/internal/conv"
@@ -17,7 +19,7 @@ const (
 // Scalar represents a positive integer stored in little-endian order.
 type Scalar [ScalarSize]byte
 
-func (z Scalar) String() string { return conv.BytesLe2Hex(z[:]) }
+func (z Scalar) String() string { z.red(); return conv.BytesLe2Hex(z[:]) }
 
 type scalar64 [_N]uint64
 
@@ -181,13 +183,25 @@ func (z *scalar64) modOrder() {
 	}
 }
 
-// FromBytes stores z = x mod order, where x is a number stored in little-endian order.
-func (z *Scalar) FromBytes(x []byte) {
+func invertEndianness(v []byte) {
+	for i := 0; i < len(v)/2; i++ {
+		v[i], v[len(v)-1-i] = v[len(v)-1-i], v[i]
+	}
+}
+
+// FromBytesBE stores z = x mod order, where x is a number stored in big-endian order.
+func (z *Scalar) FromBytesBE(x []byte) {
+	revX := make([]byte, len(x))
+	copy(revX, x)
+	invertEndianness(revX)
+	z.FromBytesLE(revX)
+}
+
+// FromBytesLE stores z = x mod order, where x is a number stored in little-endian order.
+func (z *Scalar) FromBytesLE(x []byte) {
 	n := len(x)
 	nCeil := (n + 7) >> 3
-	for i := range z {
-		z[i] = 0
-	}
+	*z = Scalar{}
 	if nCeil < _N {
 		copy(z[:], x)
 		return
@@ -204,8 +218,47 @@ func (z *Scalar) FromBytes(x []byte) {
 	z64.toScalar(z)
 }
 
-// Red reduces z mod order.
-func (z *Scalar) Red() { var t scalar64; t.fromScalar(z); t.modOrder(); t.toScalar(z) }
+// ToBytesBE returns the scalar byte representation in big-endian order.
+func (z *Scalar) ToBytesBE() []byte { b := z.ToBytesLE(); invertEndianness(b); return b }
+
+// ToBytesLE returns the scalar byte representation in little-endian order.
+func (z *Scalar) ToBytesLE() []byte { z.red(); k := *z; return k[:] }
+
+// MarshalBinary returns the scalar byte representation in big-endian order.
+func (z *Scalar) MarshalBinary() ([]byte, error) { return z.ToBytesBE(), nil }
+
+// UnmarshalBinary recovers the scalar from its byte representation in big-endian order.
+func (z *Scalar) UnmarshalBinary(data []byte) error {
+	if len(data) < ScalarSize {
+		return io.ErrShortBuffer
+	}
+
+	var x Scalar
+	copy(x[:], data[:ScalarSize])
+	invertEndianness(x[:])
+	// Check that input is fully-reduced, i.e., 0 <= data < order.
+	if isLessThan(x[:], order[:]) == 0 {
+		return fmt.Errorf("ted448: unmarshaling a scalar not in range [0, order)")
+	}
+	*z = x
+
+	return nil
+}
+
+// isLessThan returns 1 if 0 <= x < y, and assumes that slices are of the
+// same length and are interpreted in little-endian order.
+func isLessThan(x, y []byte) int {
+	i := len(x) - 1
+	for i > 0 && x[i] == y[i] {
+		i--
+	}
+	xi := int(x[i])
+	yi := int(y[i])
+	return ((xi - yi) >> (bits.UintSize - 1)) & 1
+}
+
+// red reduces z mod order.
+func (z *Scalar) red() { var t scalar64; t.fromScalar(z); t.modOrder(); t.toScalar(z) }
 
 // Neg calculates z = -x mod order.
 func (z *Scalar) Neg(x *Scalar) { z.Sub(&order, x) }
@@ -264,10 +317,10 @@ func (z *Scalar) Inv(x *Scalar) {
 	x11111 := (&scalar64{}).mul(x10, x11101)        // x11111 = x10 + x11101
 	x111110 := (&scalar64{}).mul(x11111, x11111)    // x111110 = 2 * x11111
 	x1111100 := (&scalar64{}).mul(x111110, x111110) // x1111100 = 2 * x111110
-	var i24, i41, i73, i129, t = &scalar64{}, &scalar64{}, &scalar64{},
+	i24, i41, i73, i129, t := &scalar64{}, &scalar64{}, &scalar64{},
 		&scalar64{}, &scalar64{}
-	var x222, i262, i279, i298, i312, i331, i343, i365,
-		i375, i396, i411, i431, i444, i464, i478, i498, iret *scalar64 = t, t,
+	x222, i262, i279, i298, i312, i331, i343, i365,
+		i375, i396, i411, i431, i444, i464, i478, i498, iret := t, t,
 		t, t, t, t, t, t, t, t, t, t, t, t, t, t, t
 
 	i24.sqrnmul(x1111100, 5, x1111100)                                       // i24  = x1111100 << 5 + x1111100

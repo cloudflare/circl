@@ -245,10 +245,10 @@ func signAll(signature []byte, privateKey PrivateKey, message, ctx []byte, preHa
 
 	// 3.  Compute the point [r]B.
 	r := &goldilocks.Scalar{}
-	r.FromBytes(rPM[:])
+	r.FromBytesLE(rPM[:])
 	var R goldilocks.Point
-	var encR [goldilocks.EncodingSize]byte
 	R.ScalarBaseMult(r)
+	var encR [goldilocks.EncodingSize]byte
 	if err := R.Encode(&encR); err != nil {
 		panic(err)
 	}
@@ -263,14 +263,15 @@ func signAll(signature []byte, privateKey PrivateKey, message, ctx []byte, preHa
 
 	// 5.  Compute S = (r + k * s) mod order.
 	k := &goldilocks.Scalar{}
-	k.FromBytes(hRAM[:])
+	k.FromBytesLE(hRAM[:])
 	S := &goldilocks.Scalar{}
 	S.Mul(k, s)
 	S.Add(S, r)
+	encS := S.ToBytesLE()
 
 	// 6.  The signature is the concatenation of R and S.
 	copy(signature[:paramB], encR[:])
-	copy(signature[paramB:], S[:])
+	copy(signature[paramB:], encS[:])
 }
 
 // Sign signs the message with privateKey and returns a signature.
@@ -324,28 +325,28 @@ func verify(public PublicKey, message, signature, ctx []byte, preHash bool) bool
 	}
 
 	var hRAM [hashSize]byte
-	R := signature[:paramB]
+	sigR := signature[:paramB]
 
 	writeDom(&H, ctx, preHash)
 
-	_, _ = H.Write(R)
+	_, _ = H.Write(sigR)
 	_, _ = H.Write(public)
 	_, _ = H.Write(PHM)
 	_, _ = H.Read(hRAM[:])
 
 	k := &goldilocks.Scalar{}
-	k.FromBytes(hRAM[:])
+	k.FromBytesLE(hRAM[:])
 	S := &goldilocks.Scalar{}
-	S.FromBytes(signature[paramB:])
+	S.FromBytesLE(signature[paramB:])
 
 	P.Neg()
-	var Q goldilocks.Point
-	Q.CombinedMult(S, k, P)
+	var R goldilocks.Point
+	R.CombinedMult(S, k, P)
 	var encR [goldilocks.EncodingSize]byte
-	if err = Q.Encode(&encR); err != nil {
+	if err = R.Encode(&encR); err != nil {
 		panic(err)
 	}
-	return bytes.Equal(R, encR[:])
+	return bytes.Equal(sigR, encR[:])
 }
 
 // VerifyAny returns true if the signature is valid. Failure cases are invalid
@@ -395,7 +396,7 @@ func deriveSecretScalar(s *goldilocks.Scalar, h []byte) {
 	h[0] &= 0xFC        // The two least significant bits of the first octet are cleared,
 	h[paramB-1] = 0x00  // all eight bits the last octet are cleared, and
 	h[paramB-2] |= 0x80 // the highest bit of the second to last octet is set.
-	s.FromBytes(h[:paramB])
+	s.FromBytesLE(h[:paramB])
 }
 
 // isLessThanOrder returns true if 0 <= x < order and if the last byte of x is zero.

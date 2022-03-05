@@ -19,8 +19,6 @@
 // References
 //
 // [Ham] Twisting Edwards curves with isogenies, Hamburg. (https://www.shiftleft.org/papers/isogeny)
-//
-// [RFC7748] Elliptic Curves for Security (https://rfc-editor.org/rfc/rfc7748.txt)
 package ted448
 
 import (
@@ -38,11 +36,8 @@ func Identity() Point { return Point{Y: fp.One(), Z: fp.One()} }
 // Generator returns the generator point.
 func Generator() Point { return Point{X: genX, Y: genY, Z: fp.One(), Ta: genX, Tb: genY} }
 
-// Order returns the number of points in the prime subgroup.
-func Order() Scalar { return order }
-
-// ParamD returns the number of points in the prime subgroup.
-func ParamD() fp.Elt { return paramD }
+// Order returns the number of points in the prime subgroup in little-endian order.
+func Order() (r [ScalarSize]byte) { r = order; return r }
 
 // IsOnCurve returns true if the point lies on the curve.
 func IsOnCurve(P *Point) bool {

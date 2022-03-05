@@ -1,7 +1,6 @@
 package ed25519_test
 
 import (
-	"crypto/rand"
 	"testing"
 
 	"github.com/cloudflare/circl/sign/ed25519"
@@ -59,8 +58,9 @@ func TestPublic(t *testing.T) {
 }
 
 func BenchmarkKeyGeneration(b *testing.B) {
+	var zero zeroReader
 	for i := 0; i < b.N; i++ {
-		if _, _, err := ed25519.GenerateKey(rand.Reader); err != nil {
+		if _, _, err := ed25519.GenerateKey(zero); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -75,7 +75,8 @@ func BenchmarkNewKeyFromSeed(b *testing.B) {
 }
 
 func BenchmarkSigning(b *testing.B) {
-	_, priv, err := ed25519.GenerateKey(rand.Reader)
+	var zero zeroReader
+	_, priv, err := ed25519.GenerateKey(zero)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -88,7 +89,8 @@ func BenchmarkSigning(b *testing.B) {
 }
 
 func BenchmarkVerification(b *testing.B) {
-	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	var zero zeroReader
+	pub, priv, err := ed25519.GenerateKey(zero)
 	if err != nil {
 		b.Fatal(err)
 	}
