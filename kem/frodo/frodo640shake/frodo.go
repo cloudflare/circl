@@ -200,8 +200,8 @@ func (pk *PublicKey) EncapsulateTo(ct []byte, ss []byte, seed []byte) {
 	// Bp = Sp*A + Ep
 	// V = Sp*B + Epp
 	shake128.Reset()
-	shake128.Write([]byte{0x96})
-	shake128.Write(G2out[:SharedKeySize])
+	_, _ = shake128.Write([]byte{0x96})
+	_, _ = shake128.Write(G2out[:SharedKeySize])
 	_, _ = shake128.Read(byteSpEpEpp[:])
 	for i := range SpEpEpp {
 		SpEpEpp[i] = uint16(byteSpEpEpp[i*2]) | (uint16(byteSpEpEpp[(i*2)+1]) << 8)
