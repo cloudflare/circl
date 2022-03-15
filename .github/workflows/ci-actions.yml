@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        GOVER: ['1.17', '1.16', '1.15']
+        GOVER: ['1.18', '1.17', '1.16']
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        CFG: [ [arm64,arm64v8,1.17] ]
+        CFG: [ [arm64,arm64v8,1.18] ]
     steps:
       - uses: actions/checkout@v2
       - name: Enabling Docker Experimental
@@ -68,7 +68,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
-          go-version: '1.17'
+          go-version: '1.18'
       - name: Produce Coverage
         run: go test -coverprofile=./coverage.txt ./...
       - name: Upload Codecov
@@ -87,7 +87,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
-          go-version: '1.17'
+          go-version: '1.18'
       - name: Building
         run: go build -v ./...
       - name: Testing

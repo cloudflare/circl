@@ -176,8 +176,8 @@ func TestScalarMult(t *testing.T) {
 			x, _ := rand.Int(rand.Reader, params.P)
 			y, _ := rand.Int(rand.Reader, params.P)
 
-			got := CirclCurve.IsOnCurve(CirclCurve.ScalarMult(x, y, k.Bytes()))
-			want := StdCurve.IsOnCurve(StdCurve.ScalarMult(x, y, k.Bytes()))
+			got := CirclCurve.IsOnCurve(x, y) && CirclCurve.IsOnCurve(CirclCurve.ScalarMult(x, y, k.Bytes()))
+			want := StdCurve.IsOnCurve(x, y) && StdCurve.IsOnCurve(StdCurve.ScalarMult(x, y, k.Bytes()))
 
 			if got != want {
 				test.ReportError(t, got, want, k, x, y)
