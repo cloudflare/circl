@@ -1,12 +1,5 @@
 package frodo640shake
 
-func min(x uint, y uint) uint {
-	if x < y {
-		return x
-	}
-	return y
-}
-
 func add(out *[paramNbar * paramNbar]uint16, lhs *[paramNbar * paramNbar]uint16, rhs *[paramNbar * paramNbar]uint16) {
 	for i := 0; i < len(out); i++ {
 		out[i] = (lhs[i] + rhs[i]) & logQMask
