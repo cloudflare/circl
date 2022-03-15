@@ -20,62 +20,75 @@ func sub(out *[paramNbar * paramNbar]uint16, lhs *[paramNbar * paramNbar]uint16,
 }
 
 func pack(out []byte, in []uint16) {
-	outBitsFree := uint(0)
-	inBitsLeft := uint(0)
-	var inElem uint16
+	logQMask := uint16((1 << 15) - 1)
+	j := 0
+	for i := 0; (i * 8) < len(in); i++ {
+		in0 := in[i*8] & logQMask
+		in1 := in[(i*8)+1] & logQMask
+		in2 := in[(i*8)+2] & logQMask
+		in3 := in[(i*8)+3] & logQMask
+		in4 := in[(i*8)+4] & logQMask
+		in5 := in[(i*8)+5] & logQMask
+		in6 := in[(i*8)+6] & logQMask
+		in7 := in[(i*8)+7] & logQMask
 
-	j := -1
-	for i := 0; i < len(in); {
-		if outBitsFree == 0 {
-			outBitsFree = 8
-			j += 1
-			out[j] = 0
-		}
+		out[j] |= byte(in0 >> 7)
+		out[j+1] = (byte(in0&0x7F) << 1) | byte(in1>>14)
 
-		if inBitsLeft == 0 {
-			inElem = in[i]
-			inBitsLeft = logQ
-			i += 1
-		}
+		out[j+2] = byte(in1 >> 6)
+		out[j+3] = (byte(in1&0x3F) << 2) | byte(in2>>13)
 
-		toCopy := min(outBitsFree, inBitsLeft)
-		outBitsFree -= toCopy
-		inBitsLeft -= toCopy
+		out[j+4] = byte(in2 >> 5)
+		out[j+5] = (byte(in2&0x1F) << 3) | byte(in3>>12)
 
-		var mask uint16 = (1 << toCopy) - 1
+		out[j+6] = byte(in3 >> 4)
+		out[j+7] = (byte(in3&0x0F) << 4) | byte(in4>>11)
 
-		out[j] |= byte((inElem>>inBitsLeft)&mask) << outBitsFree
+		out[j+8] = byte(in4 >> 3)
+		out[j+9] = (byte(in4&0x07) << 5) | byte(in5>>10)
+
+		out[j+10] = byte(in5 >> 2)
+		out[j+11] = (byte(in5&0x03) << 6) | byte(in6>>9)
+
+		out[j+12] = byte(in6 >> 1)
+		out[j+13] = (byte(in6&0x01) << 7) | byte(in7>>8)
+
+		out[j+14] = byte(in7)
+		j += 15
 	}
-
-	out[j+1] = byte(inElem)
 }
 
 func unpack(out []uint16, in []byte) {
-	var outBitsFree uint = 0
-	var inBitsLeft uint = 0
-	var inByte byte
+	j := 0
+	for i := 0; (i * 15) < len(in); i++ {
+		in0 := in[i*15]
+		in1 := in[(i*15)+1]
+		in2 := in[(i*15)+2]
+		in3 := in[(i*15)+3]
+		in4 := in[(i*15)+4]
+		in5 := in[(i*15)+5]
+		in6 := in[(i*15)+6]
+		in7 := in[(i*15)+7]
+		in8 := in[(i*15)+8]
+		in9 := in[(i*15)+9]
+		in10 := in[(i*15)+10]
+		in11 := in[(i*15)+11]
+		in12 := in[(i*15)+12]
+		in13 := in[(i*15)+13]
+		in14 := in[(i*15)+14]
 
-	j := -1
-	for i := 0; i < len(in); {
-		if outBitsFree == 0 {
-			outBitsFree = logQ
-			j += 1
-			out[j] = 0
-		}
+		out[j] = (uint16(in0) << 7) | (uint16(in1&0xFE) >> 1)
+		out[j+1] = (uint16(in1&0x1) << 14) | (uint16(in2) << 6) | (uint16(in3&0xFC) >> 2)
 
-		if inBitsLeft == 0 {
-			inByte = in[i]
-			inBitsLeft = 8
-			i += 1
-		}
+		out[j+2] = (uint16(in3&0x03) << 13) | (uint16(in4) << 5) | (uint16(in5&0xF8) >> 3)
+		out[j+3] = (uint16(in5&0x07) << 12) | (uint16(in6) << 4) | (uint16(in7&0xF0) >> 4)
 
-		toCopy := min(outBitsFree, inBitsLeft)
-		outBitsFree -= toCopy
-		inBitsLeft -= toCopy
+		out[j+4] = (uint16(in7&0x0F) << 11) | (uint16(in8) << 3) | (uint16(in9&0xE0) >> 5)
+		out[j+5] = (uint16(in9&0x1F) << 10) | (uint16(in10) << 2) | (uint16(in11&0xC0) >> 6)
 
-		mask := byte((1 << toCopy) - 1)
-
-		out[j] |= uint16((inByte>>inBitsLeft)&mask) << outBitsFree
+		out[j+6] = (uint16(in11&0x3F) << 9) | (uint16(in12) << 1) | (uint16(in13&0x80) >> 7)
+		out[j+7] = (uint16(in13&0x7F) << 8) | uint16(in14)
+		j += 8
 	}
 }
 
