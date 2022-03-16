@@ -1,4 +1,4 @@
-// +build !go1.18
+// +build go1.18
 
 package p384_test
 
@@ -168,21 +168,6 @@ func TestScalarMult(t *testing.T) {
 			}
 			if gotY.Cmp(wantY) != 0 {
 				test.ReportError(t, gotY, wantY)
-			}
-		}
-	})
-
-	t.Run("wrong P", func(t *testing.T) {
-		for i := 0; i < testTimes; i++ {
-			k, _ := rand.Int(rand.Reader, params.N)
-			x, _ := rand.Int(rand.Reader, params.P)
-			y, _ := rand.Int(rand.Reader, params.P)
-
-			got := CirclCurve.IsOnCurve(CirclCurve.ScalarMult(x, y, k.Bytes()))
-			want := StdCurve.IsOnCurve(StdCurve.ScalarMult(x, y, k.Bytes()))
-
-			if got != want {
-				test.ReportError(t, got, want, k, x, y)
 			}
 		}
 	})
