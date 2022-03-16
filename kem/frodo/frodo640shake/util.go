@@ -1,19 +1,18 @@
 package frodo640shake
 
-func add(out *[paramNbar * paramNbar]uint16, lhs *[paramNbar * paramNbar]uint16, rhs *[paramNbar * paramNbar]uint16) {
+func add(out *nbarByNbarU16, lhs *nbarByNbarU16, rhs *nbarByNbarU16) {
 	for i := 0; i < len(out); i++ {
 		out[i] = (lhs[i] + rhs[i]) & logQMask
 	}
 }
 
-func sub(out *[paramNbar * paramNbar]uint16, lhs *[paramNbar * paramNbar]uint16, rhs *[paramNbar * paramNbar]uint16) {
+func sub(out *nbarByNbarU16, lhs *nbarByNbarU16, rhs *nbarByNbarU16) {
 	for i := 0; i < len(out); i++ {
 		out[i] = (lhs[i] - rhs[i]) & logQMask
 	}
 }
 
 func pack(out []byte, in []uint16) {
-	logQMask := uint16((1 << 15) - 1)
 	j := 0
 	for i := 0; (i * 8) < len(in); i++ {
 		in0 := in[i*8] & logQMask
@@ -85,7 +84,7 @@ func unpack(out []uint16, in []byte) {
 	}
 }
 
-func encodeMessage(out *[paramNbar * paramNbar]uint16, msg *[messageSize]byte) {
+func encodeMessage(out *nbarByNbarU16, msg *[messageSize]byte) {
 	extractedBitsMask := uint16((1 << extractedBits) - 1)
 	outPos := 0
 
@@ -100,7 +99,7 @@ func encodeMessage(out *[paramNbar * paramNbar]uint16, msg *[messageSize]byte) {
 	}
 }
 
-func decodeMessage(out *[messageSize]byte, msg *[paramNbar * paramNbar]uint16) {
+func decodeMessage(out *[messageSize]byte, msg *nbarByNbarU16) {
 	extractedBitsMask := uint16((1 << extractedBits) - 1)
 	msgPos := 0
 
@@ -115,7 +114,7 @@ func decodeMessage(out *[messageSize]byte, msg *[paramNbar * paramNbar]uint16) {
 	}
 }
 
-func mulAddSBPlusE(out *[paramNbar * paramNbar]uint16, s []uint16, b *[paramN * paramNbar]uint16, e []uint16) {
+func mulAddSBPlusE(out *nbarByNbarU16, s []uint16, b *nByNbarU16, e []uint16) {
 	// Multiply by s on the left
 	// Inputs: b (N x N_BAR), s (N_BAR x N), e (N_BAR x N_BAR)
 	// Output: out = s*b + e (N_BAR x N_BAR)
@@ -131,7 +130,7 @@ func mulAddSBPlusE(out *[paramNbar * paramNbar]uint16, s []uint16, b *[paramN * 
 	}
 }
 
-func mulBS(out *[paramNbar * paramNbar]uint16, b *[paramNbar * paramN]uint16, s *[paramN * paramNbar]uint16) {
+func mulBS(out *nbarByNbarU16, b *nbarByNU16, s *nByNbarU16) {
 	for i := 0; i < paramNbar; i++ {
 		for j := 0; j < paramNbar; j++ {
 			out[i*paramNbar+j] = 0
