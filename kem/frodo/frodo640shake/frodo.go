@@ -1,5 +1,4 @@
 // Package frodo640shake implements the variant FrodoKEM-640 with SHAKE.
-// Multi-dimensional arrays are stored in 1-dimensional arrays in row-major order.
 package frodo640shake
 
 import (
@@ -51,6 +50,8 @@ const (
 	PrivateKeySize = 19888
 )
 
+// Multi-dimensional arrays are stored in 1-dimensional arrays in
+// row-major order.
 type (
 	nByNU16       [paramN * paramN]uint16
 	nByNbarU16    [paramN * paramNbar]uint16
