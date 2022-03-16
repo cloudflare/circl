@@ -4,7 +4,7 @@ import (
 	"github.com/cloudflare/circl/internal/sha3"
 )
 
-func expandSeedIntoA(A *[paramN * paramN]uint16, seed *[seedASize]byte, xof *sha3.State) {
+func expandSeedIntoA(A *nByNU16, seed *[seedASize]byte, xof *sha3.State) {
 	var ARow [paramN * 2]byte
 	var seedSeparated [2 + seedASize]byte
 
@@ -26,12 +26,10 @@ func expandSeedIntoA(A *[paramN * paramN]uint16, seed *[seedASize]byte, xof *sha
 	}
 }
 
-func mulAddASPlusE(out *[paramN * paramNbar]uint16, A *[paramN * paramN]uint16, s []uint16, e []uint16) {
-	copy(out[:], e)
-
+func mulAddASPlusE(out *nByNbarU16, A *nByNU16, s *nByNbarU16, e *nByNbarU16) {
 	for i := 0; i < paramN; i++ {
 		for k := 0; k < paramNbar; k++ {
-			sum := uint16(0)
+			sum := e[i*paramNbar+k]
 			for j := 0; j < paramN; j++ {
 				sum += A[i*paramN+j] * s[k*paramN+j]
 			}
@@ -42,12 +40,10 @@ func mulAddASPlusE(out *[paramN * paramNbar]uint16, A *[paramN * paramN]uint16, 
 	}
 }
 
-func mulAddSAPlusE(out *[paramNbar * paramN]uint16, s []uint16, A *[paramN * paramN]uint16, e []uint16) {
-	copy(out[:], e)
-
+func mulAddSAPlusE(out *nbarByNU16, s []uint16, A *nByNU16, e []uint16) {
 	for i := 0; i < paramN; i++ {
 		for k := 0; k < paramNbar; k++ {
-			var sum uint16 = 0
+			sum := e[k*paramN+i]
 			for j := 0; j < paramN; j++ {
 				sum += A[j*paramN+i] * s[k*paramN+j]
 			}

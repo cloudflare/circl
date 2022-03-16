@@ -31,8 +31,9 @@ const (
 )
 
 const (
-	// Size of seed for NewKeyFromSeed
-	KeySeedSize = 2*SharedKeySize + seedASize
+	// Size of seed for NewKeyFromSeed.
+	// = len(s) + len(seedSE) + len(z).
+	KeySeedSize = SharedKeySize + SharedKeySize + 16
 
 	// Size of seed for EncapsulateTo.
 	EncapsulationSeedSize = 16
@@ -50,10 +51,17 @@ const (
 	PrivateKeySize = 19888
 )
 
+type (
+	nByNU16       [paramN * paramN]uint16
+	nByNbarU16    [paramN * paramNbar]uint16
+	nbarByNU16    [paramNbar * paramN]uint16
+	nbarByNbarU16 [paramNbar * paramNbar]uint16
+)
+
 // Type of a FrodoKEM-640-SHAKE public key
 type PublicKey struct {
 	seedA   [seedASize]byte
-	matrixB [paramN * paramNbar]uint16
+	matrixB nByNbarU16
 }
 
 // Type of a FrodoKEM-640-SHAKE private key
@@ -62,7 +70,7 @@ type PrivateKey struct {
 	pk                    *PublicKey
 
 	// matrixS stores transpose(S)
-	matrixS [paramN * paramNbar]uint16
+	matrixS nByNbarU16
 
 	// H(packed(pk))
 	hpk [pkHashSize]byte
@@ -80,10 +88,10 @@ func newKeyFromSeed(seed []byte) (*PublicKey, *PrivateKey) {
 	var sk PrivateKey
 	var pk PublicKey
 
-	var E [paramN * paramNbar]uint16
+	var E nByNbarU16
 	var byteSE [2 * (len(sk.matrixS) + len(E))]byte
 
-	var A [paramN * paramN]uint16
+	var A nByNU16
 
 	// Generate the secret value s, and the seed for S, E, and A. Add seedA to the public key
 	shake128 := sha3.NewShake128()
@@ -109,7 +117,7 @@ func newKeyFromSeed(seed []byte) (*PublicKey, *PrivateKey) {
 	sample(E[:])
 
 	expandSeedIntoA(&A, &pk.seedA, &shake128)
-	mulAddASPlusE(&pk.matrixB, &A, sk.matrixS[:], E[:])
+	mulAddASPlusE(&pk.matrixB, &A, &sk.matrixS, &E)
 
 	// Populate the private key
 	copy(sk.hashInputIfDecapsFail[:], seed[0:SharedKeySize])
@@ -171,12 +179,12 @@ func (pk *PublicKey) EncapsulateTo(ct []byte, ss []byte, seed []byte) {
 	Ep := SpEpEpp[paramN*paramNbar : 2*paramN*paramNbar]
 	Epp := SpEpEpp[2*paramN*paramNbar:]
 
-	var Bp [paramN * paramNbar]uint16
+	var Bp nbarByNU16
 
-	var V [paramNbar * paramNbar]uint16
-	var C [paramNbar * paramNbar]uint16
+	var V nbarByNbarU16
+	var C nbarByNbarU16
 
-	var A [paramN * paramN]uint16
+	var A nByNU16
 
 	var hpk [pkHashSize]byte
 
@@ -241,12 +249,12 @@ func (sk *PrivateKey) DecapsulateTo(ss, ct []byte) {
 		panic("ss must be of length SharedKeySize")
 	}
 
-	var Bp [paramN * paramNbar]uint16
-	var C [paramNbar * paramNbar]uint16
+	var Bp nbarByNU16
+	var C nbarByNbarU16
 
-	var W [paramNbar * paramNbar]uint16
-	var CC [paramNbar * paramNbar]uint16
-	var BBp [paramN * paramNbar]uint16
+	var W nbarByNbarU16
+	var CC nbarByNbarU16
+	var BBp nbarByNU16
 
 	var SpEpEpp [(paramN * paramNbar) + (paramN * paramNbar) + (paramNbar * paramNbar)]uint16
 	var byteSpEpEpp [2 * len(SpEpEpp)]byte
@@ -254,7 +262,7 @@ func (sk *PrivateKey) DecapsulateTo(ss, ct []byte) {
 	Ep := SpEpEpp[paramN*paramNbar : 2*paramN*paramNbar]
 	Epp := SpEpEpp[2*paramN*paramNbar:]
 
-	var A [paramN * paramN]uint16
+	var A nByNU16
 
 	var muprime [messageSize]byte
 	var G2out [2 * SharedKeySize]byte
@@ -486,7 +494,8 @@ func (*scheme) Encapsulate(pk kem.PublicKey) (ct, ss []byte, err error) {
 }
 
 func (*scheme) EncapsulateDeterministically(pk kem.PublicKey, seed []byte) (
-	ct, ss []byte, err error) {
+	ct, ss []byte, err error,
+) {
 	if len(seed) != EncapsulationSeedSize {
 		return nil, nil, kem.ErrSeedSize
 	}
