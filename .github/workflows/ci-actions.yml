@@ -14,10 +14,14 @@ jobs:
       matrix:
         GOVER: ['1.18', '1.17', '1.16']
     steps:
+      - name: Setup Go-${{ matrix.GOVER }}
+        uses: actions/setup-go@v3
+        with:
+          go-version: ${{ matrix.GOVER }}
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Linting
-        uses: golangci/golangci-lint-action@v2
+        uses: golangci/golangci-lint-action@v3
         with:
           version: v1.45
           args: --config=./.etc/golangci.yml ./...
@@ -25,10 +29,6 @@ jobs:
         run: |
          go install golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow@latest
          go vet -vettool=$(which shadow) ./... 2>&1 | awk -f .etc/action.awk
-      - name: Setup Go-${{ matrix.GOVER }}
-        uses: actions/setup-go@v2
-        with:
-          go-version: ${{ matrix.GOVER }}
       - name: Verifying Code
         run: |
          go generate -v ./... && test -z "$(git status --porcelain)"
@@ -44,7 +44,7 @@ jobs:
       matrix:
         CFG: [ [arm64,arm64v8,1.18] ]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Enabling Docker Experimental
         run: |
           echo $'{\n    "experimental": true\n}' | sudo tee /etc/docker/daemon.json
@@ -64,9 +64,9 @@ jobs:
     name: amd64/coverage
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Setup Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
           go-version: '1.18'
       - name: Produce Coverage
@@ -83,9 +83,9 @@ jobs:
         os: [macos-10.15, windows-2019]
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Setup Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
           go-version: '1.18'
       - name: Building
