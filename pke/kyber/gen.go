@@ -27,6 +27,7 @@ type Instance struct {
 func (m Instance) Pkg() string {
 	return strings.ToLower(m.Name)
 }
+
 func (m Instance) Impl() string {
 	return "impl" + m.Name
 }
@@ -87,7 +88,7 @@ func generateParamsFiles() {
 			panic("Missing template warning in params.templ.go")
 		}
 		err = ioutil.WriteFile(mode.Pkg()+"/internal/params.go",
-			[]byte(res[offset:]), 0644)
+			[]byte(res[offset:]), 0o644)
 		if err != nil {
 			panic(err)
 		}
@@ -113,7 +114,7 @@ func generatePackageFiles() {
 		if offset == -1 {
 			panic("Missing template warning in pkg.templ.go")
 		}
-		err = ioutil.WriteFile(mode.Pkg()+"/kyber.go", []byte(res[offset:]), 0644)
+		err = ioutil.WriteFile(mode.Pkg()+"/kyber.go", []byte(res[offset:]), 0o644)
 		if err != nil {
 			panic(err)
 		}
@@ -193,7 +194,7 @@ func generateSourceFiles() {
 				}
 			}
 			fmt.Printf("Updating %s\n", fn)
-			err = ioutil.WriteFile(fn, expected, 0644)
+			err = ioutil.WriteFile(fn, expected, 0o644)
 			if err != nil {
 				panic(err)
 			}

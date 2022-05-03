@@ -4,18 +4,18 @@
 package fourq
 
 func doubleGeneric(P *pointR1) {
-	var Px = &P.X
-	var Py = &P.Y
-	var Pz = &P.Z
-	var Pta = &P.Ta
-	var Ptb = &P.Tb
-	var a = Px
-	var b = Py
-	var c = Pz
-	var d = Pta
-	var e = Ptb
-	var f = b
-	var g = a
+	Px := &P.X
+	Py := &P.Y
+	Pz := &P.Z
+	Pta := &P.Ta
+	Ptb := &P.Tb
+	a := Px
+	b := Py
+	c := Pz
+	d := Pta
+	e := Ptb
+	f := b
+	g := a
 	fqAdd(e, Px, Py)
 	fqSqr(a, Px)
 	fqSqr(b, Py)
@@ -32,23 +32,23 @@ func doubleGeneric(P *pointR1) {
 }
 
 func addGeneric(P *pointR1, Q *pointR2) {
-	var addYX = &Q.addYX
-	var subYX = &Q.subYX
-	var z2 = &Q.z2
-	var dt2 = &Q.dt2
-	var Px = &P.X
-	var Py = &P.Y
-	var Pz = &P.Z
-	var Pta = &P.Ta
-	var Ptb = &P.Tb
-	var a = Px
-	var b = Py
-	var c = &Fq{}
-	var d = b
-	var e = Pta
-	var f = a
-	var g = b
-	var h = Ptb
+	addYX := &Q.addYX
+	subYX := &Q.subYX
+	z2 := &Q.z2
+	dt2 := &Q.dt2
+	Px := &P.X
+	Py := &P.Y
+	Pz := &P.Z
+	Pta := &P.Ta
+	Ptb := &P.Tb
+	a := Px
+	b := Py
+	c := &Fq{}
+	d := b
+	e := Pta
+	f := a
+	g := b
+	h := Ptb
 	fqMul(c, Pta, Ptb)
 	fqSub(h, b, a)
 	fqAdd(b, b, a)
@@ -66,22 +66,22 @@ func addGeneric(P *pointR1, Q *pointR2) {
 }
 
 func mixAddGeneric(P *pointR1, Q *pointR3) {
-	var addYX = &Q.addYX
-	var subYX = &Q.subYX
-	var dt2 = &Q.dt2
-	var Px = &P.X
-	var Py = &P.Y
-	var Pz = &P.Z
-	var Pta = &P.Ta
-	var Ptb = &P.Tb
-	var a = Px
-	var b = Py
-	var c = &Fq{}
-	var d = b
-	var e = Pta
-	var f = a
-	var g = b
-	var h = Ptb
+	addYX := &Q.addYX
+	subYX := &Q.subYX
+	dt2 := &Q.dt2
+	Px := &P.X
+	Py := &P.Y
+	Pz := &P.Z
+	Pta := &P.Ta
+	Ptb := &P.Tb
+	a := Px
+	b := Py
+	c := &Fq{}
+	d := b
+	e := Pta
+	f := a
+	g := b
+	h := Ptb
 	fqMul(c, Pta, Ptb)
 	fqSub(h, b, a)
 	fqAdd(b, b, a)

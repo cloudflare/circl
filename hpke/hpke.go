@@ -216,8 +216,9 @@ func (r *Receiver) SetupPSK(enc, psk, pskID []byte) (Opener, error) {
 // SetupAuthPSK generates a new HPKE context used for Auth-PSK Mode encryption.
 // SetupAuthPSK takes an encapsulated key, a public key, and a pre-shared key;
 // and returns an Opener.
-func (r *Receiver) SetupAuthPSK(enc, psk, pskID []byte, pkS kem.PublicKey) (
-	Opener, error) {
+func (r *Receiver) SetupAuthPSK(
+	enc, psk, pskID []byte, pkS kem.PublicKey,
+) (Opener, error) {
 	if !r.kemID.validatePublicKey(pkS) {
 		return nil, ErrInvalidKEMPublicKey
 	}

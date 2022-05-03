@@ -25,9 +25,9 @@ func toAffine(point *ProjectivePoint) *Fp2 {
 }
 
 func Test_jInvariant(t *testing.T) {
-	var curve = ProjectiveCurveParameters{A: curveA, C: curveC}
-	var jbufRes = make([]byte, params.SharedSecretSize)
-	var jbufExp = make([]byte, params.SharedSecretSize)
+	curve := ProjectiveCurveParameters{A: curveA, C: curveC}
+	jbufRes := make([]byte, params.SharedSecretSize)
+	jbufExp := make([]byte, params.SharedSecretSize)
 	var jInv Fp2
 
 	Jinvariant(&curve, &jInv)
@@ -58,8 +58,8 @@ func TestProjectivePointVartimeEq(t *testing.T) {
 }
 
 func TestPointMulVersusSage(t *testing.T) {
-	var curve = ProjectiveCurveParameters{A: curveA, C: curveC}
-	var cparams = CalcCurveParamsEquiv4(&curve)
+	curve := ProjectiveCurveParameters{A: curveA, C: curveC}
+	cparams := CalcCurveParamsEquiv4(&curve)
 	var xP ProjectivePoint
 
 	// x 2
@@ -80,8 +80,8 @@ func TestPointMulVersusSage(t *testing.T) {
 }
 
 func TestPointMul9VersusSage(t *testing.T) {
-	var curve = ProjectiveCurveParameters{A: curveA, C: curveC}
-	var cparams = CalcCurveParamsEquiv3(&curve)
+	curve := ProjectiveCurveParameters{A: curveA, C: curveC}
+	cparams := CalcCurveParamsEquiv3(&curve)
 	var xP ProjectivePoint
 
 	xP = ProjectivePoint{X: affineXP, Z: params.OneFp2}
@@ -93,7 +93,7 @@ func TestPointMul9VersusSage(t *testing.T) {
 }
 
 func BenchmarkThreePointLadder(b *testing.B) {
-	var curve = ProjectiveCurveParameters{A: curveA, C: curveC}
+	curve := ProjectiveCurveParameters{A: curveA, C: curveC}
 	for n := 0; n < b.N; n++ {
 		ScalarMul3Pt(&curve, &threePointLadderInputs[0], &threePointLadderInputs[1], &threePointLadderInputs[2], uint(len(scalar3Pt)*8), scalar3Pt[:])
 	}

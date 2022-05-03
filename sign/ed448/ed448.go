@@ -139,7 +139,8 @@ func (pub PublicKey) MarshalBinary() (data []byte, err error) {
 func (priv PrivateKey) Sign(
 	rand io.Reader,
 	message []byte,
-	opts crypto.SignerOpts) (signature []byte, err error) {
+	opts crypto.SignerOpts,
+) (signature []byte, err error) {
 	var ctx string
 	var scheme SchemeID
 

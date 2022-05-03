@@ -254,7 +254,7 @@ func ScalarMul3Pt(cparams *ProjectiveCurveParameters, P, Q, PmQ *ProjectivePoint
 		swap := prevBit ^ bit
 		prevBit = bit
 		cswap(&R1.X, &R1.Z, &R2.X, &R2.Z, swap)
-		cmov(&R1.X, &R1.Z, &blind.X, &blind.Z, isZero(&R1.X) | isZero(&R1.Z))
+		cmov(&R1.X, &R1.Z, &blind.X, &blind.Z, isZero(&R1.X)|isZero(&R1.Z))
 		R0, R2 = xDbladd(&R0, &R2, &R1, &aPlus2Over4)
 	}
 	cswap(&R1.X, &R1.Z, &R2.X, &R2.Z, prevBit)
@@ -270,7 +270,7 @@ func ScalarMul3Pt(cparams *ProjectiveCurveParameters, P, Q, PmQ *ProjectivePoint
 func (phi *isogeny3) GenerateCurve(p *ProjectivePoint) CurveCoefficientsEquiv {
 	var t0, t1, t2, t3, t4 Fp2
 	var coefEq CurveCoefficientsEquiv
-	var K1, K2 = &phi.K1, &phi.K2
+	K1, K2 := &phi.K1, &phi.K2
 
 	sub(K1, &p.X, &p.Z)            // K1 = XP3 - ZP3
 	sqr(&t0, K1)                   // t0 = K1^2
@@ -302,8 +302,8 @@ func (phi *isogeny3) GenerateCurve(p *ProjectivePoint) CurveCoefficientsEquiv {
 // parameters are returned by the GenerateCurve function used to construct phi.
 func (phi *isogeny3) EvaluatePoint(p *ProjectivePoint) {
 	var t0, t1, t2 Fp2
-	var K1, K2 = &phi.K1, &phi.K2
-	var px, pz = &p.X, &p.Z
+	K1, K2 := &phi.K1, &phi.K2
+	px, pz := &p.X, &p.Z
 
 	add(&t0, px, pz)   // t0 = XQ + ZQ
 	sub(&t1, px, pz)   // t1 = XQ - ZQ
@@ -325,8 +325,8 @@ func (phi *isogeny3) EvaluatePoint(p *ProjectivePoint) {
 //         * Isogeny phi with constants in F_p^2
 func (phi *isogeny4) GenerateCurve(p *ProjectivePoint) CurveCoefficientsEquiv {
 	var coefEq CurveCoefficientsEquiv
-	var xp4, zp4 = &p.X, &p.Z
-	var K1, K2, K3 = &phi.K1, &phi.K2, &phi.K3
+	xp4, zp4 := &p.X, &p.Z
+	K1, K2, K3 := &phi.K1, &phi.K2, &phi.K3
 
 	sub(K2, xp4, zp4)
 	add(K3, xp4, zp4)
@@ -347,8 +347,8 @@ func (phi *isogeny4) GenerateCurve(p *ProjectivePoint) CurveCoefficientsEquiv {
 // Output: Corresponding point q from E1_A'/C', where E1 is 4-isogenous to E0
 func (phi *isogeny4) EvaluatePoint(p *ProjectivePoint) {
 	var t0, t1 Fp2
-	var xq, zq = &p.X, &p.Z
-	var K1, K2, K3 = &phi.K1, &phi.K2, &phi.K3
+	xq, zq := &p.X, &p.Z
+	K1, K2, K3 := &phi.K1, &phi.K2, &phi.K3
 
 	add(&t0, xq, zq)
 	sub(&t1, xq, zq)

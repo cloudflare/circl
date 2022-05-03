@@ -61,7 +61,7 @@ func generatePackageFiles() {
 		if offset == -1 {
 			panic("Missing template warning in pkg.templ.go")
 		}
-		err = ioutil.WriteFile(mode.Pkg()+"/sike.go", []byte(res[offset:]), 0644)
+		err = ioutil.WriteFile(mode.Pkg()+"/sike.go", []byte(res[offset:]), 0o644)
 		if err != nil {
 			panic(err)
 		}

@@ -8,14 +8,14 @@
 package {{.Pkg}}
 
 import (
-	"github.com/cloudflare/circl/dh/sidh"
-	"github.com/cloudflare/circl/internal/sha3"
-	"github.com/cloudflare/circl/kem"
-
 	"bytes"
 	cryptoRand "crypto/rand"
 	"crypto/subtle"
 	"io"
+
+	"github.com/cloudflare/circl/dh/sidh"
+	"github.com/cloudflare/circl/internal/sha3"
+	"github.com/cloudflare/circl/kem"
 )
 
 type PrivateKey struct {

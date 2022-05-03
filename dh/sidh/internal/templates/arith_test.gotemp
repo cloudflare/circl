@@ -20,11 +20,11 @@ var (
 )
 
 func TestFpCswap(t *testing.T) {
-	var one = common.Fp{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
-	var two = common.Fp{2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2}
+	one := common.Fp{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
+	two := common.Fp{2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2}
 
-	var x = one
-	var y = two
+	x := one
+	y := two
 
 	cswap{{ .FIELD}}(&x, &y, 0)
 	for i := 0; i < FpWords; i++ {
@@ -42,11 +42,11 @@ func TestFpCswap(t *testing.T) {
 }
 
 func TestFpCmov(t *testing.T) {
-	var one = common.Fp{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
-	var two = common.Fp{2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2}
+	one := common.Fp{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
+	two := common.Fp{2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2}
 
-	var x = one
-	var y = two
+	x := one
+	y := two
 
 	cmov{{ .FIELD}}(&x, &y, 0)
 	for i := 0; i < FpWords; i++ {

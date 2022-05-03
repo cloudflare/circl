@@ -107,8 +107,9 @@ func (k kemBase) AuthEncapsulateDeterministically(
 	return k.authEncap(pkr, sks, seed)
 }
 
-func (k kemBase) EncapsulateDeterministically(pkr kem.PublicKey, seed []byte) (
-	ct, ss []byte, err error) {
+func (k kemBase) EncapsulateDeterministically(
+	pkr kem.PublicKey, seed []byte,
+) (ct, ss []byte, err error) {
 	return k.encap(pkr, seed)
 }
 
