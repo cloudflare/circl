@@ -39,7 +39,6 @@ import (
 	"crypto"
 	"crypto/rsa"
 	"errors"
-	"fmt"
 	"hash"
 	"io"
 	"math/big"
@@ -151,20 +150,17 @@ func emsaPSSVerify(mHash, em []byte, emBits, sLen int, hash hash.Hash) error {
 	//
 	// 2.  Let mHash = Hash(M), an octet string of length hLen.
 	if hLen != len(mHash) {
-		fmt.Println("here3", hLen, len(mHash))
 		return ErrVerification
 	}
 
 	// 3.  If emLen < hLen + sLen + 2, output "inconsistent" and stop.
 	if emLen < hLen+sLen+2 {
-		fmt.Println("here2")
 		return ErrVerification
 	}
 
 	// 4.  If the rightmost octet of EM does not have hexadecimal value
 	//     0xbc, output "inconsistent" and stop.
 	if em[emLen-1] != 0xbc {
-		fmt.Println("here")
 		return ErrVerification
 	}
 
@@ -178,7 +174,6 @@ func emsaPSSVerify(mHash, em []byte, emBits, sLen int, hash hash.Hash) error {
 	//     stop.
 	var bitMask byte = 0xff >> (8*emLen - emBits)
 	if em[0] & ^bitMask != 0 {
-		fmt.Println("here4")
 		return ErrVerification
 	}
 
@@ -195,7 +190,6 @@ func emsaPSSVerify(mHash, em []byte, emBits, sLen int, hash hash.Hash) error {
 	if sLen == PSSSaltLengthAuto {
 		psLen := bytes.IndexByte(db, 0x01)
 		if psLen < 0 {
-			fmt.Println("here5")
 			return ErrVerification
 		}
 		sLen = len(db) - psLen - 1
@@ -208,12 +202,10 @@ func emsaPSSVerify(mHash, em []byte, emBits, sLen int, hash hash.Hash) error {
 	psLen := emLen - hLen - sLen - 2
 	for _, e := range db[:psLen] {
 		if e != 0x00 {
-			fmt.Println("here6")
 			return ErrVerification
 		}
 	}
 	if db[psLen] != 0x01 {
-		fmt.Println("here7")
 		return ErrVerification
 	}
 
@@ -235,7 +227,6 @@ func emsaPSSVerify(mHash, em []byte, emBits, sLen int, hash hash.Hash) error {
 
 	// 14. If H = H', output "consistent." Otherwise, output "inconsistent."
 	if !bytes.Equal(h0, h) { // TODO: constant time?
-		fmt.Println("here8")
 		return ErrVerification
 	}
 	return nil
@@ -257,8 +248,7 @@ func signPSSWithSalt(rand io.Reader, priv *rsa.PrivateKey, hash crypto.Hash, has
 		return nil, err
 	}
 	s := make([]byte, priv.Size())
-	copyWithLeftPad(s, c.Bytes())
-	return s, nil
+	return c.FillBytes(s), nil
 }
 
 const (
@@ -308,7 +298,7 @@ func SignPSS(rand io.Reader, priv *rsa.PrivateKey, hash crypto.Hash, digest []by
 	saltLength := opts.saltLength()
 	switch saltLength {
 	case PSSSaltLengthAuto:
-		saltLength = priv.Size() - 2 - hash.Size()
+		saltLength = (priv.N.BitLen()-1+7)/8 - 2 - hash.Size()
 	case PSSSaltLengthEqualsHash:
 		saltLength = hash.Size()
 	}
@@ -326,33 +316,17 @@ func SignPSS(rand io.Reader, priv *rsa.PrivateKey, hash crypto.Hash, digest []by
 // result of hashing the input message using the given hash function. The opts
 // argument may be nil, in which case sensible defaults are used. opts.Hash is
 // ignored.
-func VerifyPSS(pub *rsa.PublicKey, hash hash.Hash, digest []byte, sig []byte, opts *PSSOptions) error {
+func VerifyPSS(pub *rsa.PublicKey, hash crypto.Hash, digest []byte, sig []byte, opts *PSSOptions) error {
 	if len(sig) != pub.Size() {
-		fmt.Println("1")
 		return ErrVerification
 	}
 	s := new(big.Int).SetBytes(sig)
 	m := encrypt(new(big.Int), pub, s)
 	emBits := pub.N.BitLen() - 1
 	emLen := (emBits + 7) / 8
-	emBytes := m.Bytes()
 	if m.BitLen() > emLen*8 {
-		fmt.Println("2")
 		return ErrVerification
 	}
-
-	em := make([]byte, emLen)
-	copyWithLeftPad(em, emBytes)
-
-	return emsaPSSVerify(digest, em, emBits, opts.saltLength(), hash)
-}
-
-// copyWithLeftPad copies src to the end of dest, padding with zero bytes as
-// needed.
-func copyWithLeftPad(dest, src []byte) {
-	numPaddingBytes := len(dest) - len(src)
-	for i := 0; i < numPaddingBytes; i++ {
-		dest[i] = 0
-	}
-	copy(dest[numPaddingBytes:], src)
+	em := m.FillBytes(make([]byte, emLen))
+	return emsaPSSVerify(digest, em, emBits, opts.saltLength(), hash.New())
 }
