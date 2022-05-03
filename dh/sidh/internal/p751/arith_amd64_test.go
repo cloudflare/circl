@@ -63,7 +63,7 @@ func testRedc(t *testing.T, f1, f2 OptimFlag) {
 	doRedcTest := func(aRR common.FpX2) bool {
 		defer resetCpuFeatures()
 		var resRedcF1, resRedcF2 common.Fp
-		var aRRcpy = aRR
+		aRRcpy := aRR
 
 		// Compute redc with first implementation
 		HasBMI2 = (kUse_MULX & f1) == kUse_MULX

@@ -14,8 +14,8 @@ import (
 // Traverses isogeny tree in order to compute xR, xP, xQ and xQmP needed
 // for public key generation.
 func traverseTreePublicKeyA(curve *ProjectiveCurveParameters, xR, phiP, phiQ, phiR *ProjectivePoint) {
-	var points = make([]ProjectivePoint, 0, 8)
-	var indices = make([]int, 0, 8)
+	points := make([]ProjectivePoint, 0, 8)
+	indices := make([]int, 0, 8)
 	var i, sIdx int
 	var phi isogeny4
 
@@ -51,8 +51,8 @@ func traverseTreePublicKeyA(curve *ProjectiveCurveParameters, xR, phiP, phiQ, ph
 // Traverses isogeny tree in order to compute xR needed
 // for public key generation.
 func traverseTreeSharedKeyA(curve *ProjectiveCurveParameters, xR *ProjectivePoint) {
-	var points = make([]ProjectivePoint, 0, 8)
-	var indices = make([]int, 0, 8)
+	points := make([]ProjectivePoint, 0, 8)
+	indices := make([]int, 0, 8)
 	var i, sIdx int
 	var phi isogeny4
 
@@ -85,8 +85,8 @@ func traverseTreeSharedKeyA(curve *ProjectiveCurveParameters, xR *ProjectivePoin
 // Traverses isogeny tree in order to compute xR, xP, xQ and xQmP needed
 // for public key generation.
 func traverseTreePublicKeyB(curve *ProjectiveCurveParameters, xR, phiP, phiQ, phiR *ProjectivePoint) {
-	var points = make([]ProjectivePoint, 0, 8)
-	var indices = make([]int, 0, 8)
+	points := make([]ProjectivePoint, 0, 8)
+	indices := make([]int, 0, 8)
 	var i, sIdx int
 	var phi isogeny3
 
@@ -123,8 +123,8 @@ func traverseTreePublicKeyB(curve *ProjectiveCurveParameters, xR, phiP, phiQ, ph
 // Traverses isogeny tree in order to compute xR, xP, xQ and xQmP needed
 // for public key generation.
 func traverseTreeSharedKeyB(curve *ProjectiveCurveParameters, xR *ProjectivePoint) {
-	var points = make([]ProjectivePoint, 0, 8)
-	var indices = make([]int, 0, 8)
+	points := make([]ProjectivePoint, 0, 8)
+	indices := make([]int, 0, 8)
 	var i, sIdx int
 	var phi isogeny3
 

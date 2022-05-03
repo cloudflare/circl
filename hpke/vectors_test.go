@@ -46,8 +46,9 @@ func (v *vector) verify(t *testing.T) {
 	v.checkExports(t, opener, m)
 }
 
-func (v *vector) getActors(t *testing.T, dhkem kem.Scheme, s Suite) (
-	*Sender, *Receiver) {
+func (v *vector) getActors(
+	t *testing.T, dhkem kem.Scheme, s Suite,
+) (*Sender, *Receiver) {
 	h := s.String() + "\n"
 
 	pkR, err := dhkem.UnmarshalBinaryPublicKey(hexB(t, v.PkRm))

@@ -214,8 +214,9 @@ func (pk *PublicKey) Equal(other crypto.PublicKey) bool {
 // This function is used to make PrivateKey implement the crypto.Signer
 // interface.  The package-level SignTo function might be more convenient
 // to use.
-func (sk *PrivateKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) (
-	signature []byte, err error) {
+func (sk *PrivateKey) Sign(
+	rand io.Reader, msg []byte, opts crypto.SignerOpts,
+) (signature []byte, err error) {
 	var sig [SignatureSize]byte
 
 	if opts.HashFunc() != crypto.Hash(0) {

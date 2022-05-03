@@ -12,14 +12,14 @@
 package {{.Pkg}}
 
 import (
+	"bytes"
+	"crypto/subtle"
+	"io"
+
 	"github.com/cloudflare/circl/internal/sha3"
 	"github.com/cloudflare/circl/kem"
 	cpapke "github.com/cloudflare/circl/pke/kyber/{{.Pkg}}"
-
-	"bytes"
 	cryptoRand "crypto/rand"
-	"crypto/subtle"
-	"io"
 )
 
 const (

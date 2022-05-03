@@ -205,7 +205,6 @@ func invNttAVX2() {
 	// will be clobbered.
 	gsButterfly := func(a1, b1, a2, b2, zeta12l, zeta12h,
 		a3, b3, a4, b4, zeta34l, zeta34h, t1, t2, t3, t4, q Op) {
-
 		// In the generic implementation, a single butterfly is computed as
 		// follows (unfolding the definition of montReduce and recalling
 		// zeta stores -ζ.)
@@ -528,7 +527,6 @@ func nttAVX2() {
 	// will be clobbered.
 	ctButterfly := func(a1, b1, a2, b2, zeta12l, zeta12h,
 		a3, b3, a4, b4, zeta34l, zeta34h, t1, t2, t3, t4, q Op) {
-
 		// In the generic implementation, a single butterfly is computed as
 		// follows (unfolding the definition of montReduce):
 		//

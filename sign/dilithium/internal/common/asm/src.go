@@ -1053,7 +1053,6 @@ func mulBy2toDAVX2() {
 	RET()
 }
 
-
 func main() {
 	ConstraintExpr("amd64")
 

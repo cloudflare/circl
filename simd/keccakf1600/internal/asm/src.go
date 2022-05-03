@@ -67,11 +67,13 @@ func main() {
 
 		// Rotation to use
 		rot := func(i, g int) int {
-			table := [][]int{{0, 24, 18, 6, 12},
+			table := [][]int{
+				{0, 24, 18, 6, 12},
 				{7, 23, 2, 9, 22},
 				{1, 3, 17, 16, 20},
 				{13, 8, 4, 5, 15},
-				{19, 10, 21, 14, 11}}
+				{19, 10, 21, 14, 11},
+			}
 			t := table[g][i]
 			return ((t + 1) * t / 2) % 64 // t'th triangle number
 		}

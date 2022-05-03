@@ -33,9 +33,11 @@ type Mode struct {
 func (m Mode) Pkg() string {
 	return strings.ToLower(m.Mode())
 }
+
 func (m Mode) Impl() string {
 	return "impl" + m.Mode()
 }
+
 func (m Mode) Mode() string {
 	return strings.ReplaceAll(strings.ReplaceAll(m.Name,
 		"Dilithium", "Mode"), "-AES", "AES")
@@ -90,7 +92,8 @@ var (
 			Tau:           49,
 			Gamma1Bits:    19,
 			Gamma2:        (params.Q - 1) / 32,
-		}, {
+		},
+		{
 			Name:          "Dilithium5",
 			UseAES:        false,
 			K:             8,
@@ -101,7 +104,8 @@ var (
 			Tau:           60,
 			Gamma1Bits:    19,
 			Gamma2:        (params.Q - 1) / 32,
-		}, {
+		},
+		{
 			Name:          "Dilithium5-AES",
 			UseAES:        true,
 			K:             8,
@@ -144,7 +148,7 @@ func generateParamsFiles() {
 			panic("Missing template warning in params.templ.go")
 		}
 		err = ioutil.WriteFile(mode.Pkg()+"/internal/params.go",
-			[]byte(res[offset:]), 0644)
+			[]byte(res[offset:]), 0o644)
 		if err != nil {
 			panic(err)
 		}
@@ -170,7 +174,7 @@ func generateModeToplevelFiles() {
 		if offset == -1 {
 			panic("Missing template warning in mode.templ.go")
 		}
-		err = ioutil.WriteFile(mode.Pkg()+".go", []byte(res[offset:]), 0644)
+		err = ioutil.WriteFile(mode.Pkg()+".go", []byte(res[offset:]), 0o644)
 		if err != nil {
 			panic(err)
 		}
@@ -196,7 +200,7 @@ func generateModePackageFiles() {
 		if offset == -1 {
 			panic("Missing template warning in modePkg.templ.go")
 		}
-		err = ioutil.WriteFile(mode.Pkg()+"/dilithium.go", []byte(res[offset:]), 0644)
+		err = ioutil.WriteFile(mode.Pkg()+"/dilithium.go", []byte(res[offset:]), 0o644)
 		if err != nil {
 			panic(err)
 		}
@@ -277,11 +281,10 @@ func generateSourceFiles() {
 				}
 			}
 			fmt.Printf("Updating %s\n", fn)
-			err = ioutil.WriteFile(fn, expected, 0644)
+			err = ioutil.WriteFile(fn, expected, 0o644)
 			if err != nil {
 				panic(err)
 			}
 		}
 	}
-
 }

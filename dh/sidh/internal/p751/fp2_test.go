@@ -87,7 +87,7 @@ func TestOne(t *testing.T) {
 
 func TestFp2ToBytesRoundTrip(t *testing.T) {
 	roundTrips := func(x testParams) bool {
-		var xBytes = make([]byte, 2*params.Bytelen)
+		xBytes := make([]byte, 2*params.Bytelen)
 		var xPrime common.Fp2
 
 		common.Fp2ToBytes(xBytes[:], &x.ExtElem, params.Bytelen)
@@ -173,7 +173,7 @@ func TestFp2Inv(t *testing.T) {
 	}
 
 	// This is more expensive; run fewer tests
-	var fasterCheckConfig = &quick.Config{MaxCount: (1 << 11)}
+	fasterCheckConfig := &quick.Config{MaxCount: (1 << 11)}
 	if err := quick.Check(inverseIsCorrect, fasterCheckConfig); err != nil {
 		t.Error(err)
 	}
@@ -193,7 +193,7 @@ func TestFp2Batch3Inv(t *testing.T) {
 	}
 
 	// This is more expensive; run fewer tests
-	var fasterCheckConfig = &quick.Config{MaxCount: (1 << 8)}
+	fasterCheckConfig := &quick.Config{MaxCount: (1 << 8)}
 	if err := quick.Check(batchInverseIsCorrect, fasterCheckConfig); err != nil {
 		t.Error(err)
 	}

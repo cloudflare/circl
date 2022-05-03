@@ -233,8 +233,9 @@ func (sch *scheme) Encapsulate(pk kem.PublicKey) (ct, ss []byte, err error) {
 	return append(ct1, ct2...), append(ss1, ss2...), nil
 }
 
-func (sch *scheme) EncapsulateDeterministically(pk kem.PublicKey, seed []byte) (
-	ct, ss []byte, err error) {
+func (sch *scheme) EncapsulateDeterministically(
+	pk kem.PublicKey, seed []byte,
+) (ct, ss []byte, err error) {
 	if len(seed) != sch.EncapsulationSeedSize() {
 		return nil, nil, kem.ErrSeedSize
 	}

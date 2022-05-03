@@ -81,8 +81,7 @@ func (s shortKEM) GenerateKeyPair() (kem.PublicKey, kem.PrivateKey, error) {
 	return pub, &shortKEMPrivKey{s, sk, pub}, err
 }
 
-func (s shortKEM) UnmarshalBinaryPrivateKey(data []byte) (
-	kem.PrivateKey, error) {
+func (s shortKEM) UnmarshalBinaryPrivateKey(data []byte) (kem.PrivateKey, error) {
 	l := s.PrivateKeySize()
 	if len(data) < l {
 		return nil, ErrInvalidKEMPrivateKey
