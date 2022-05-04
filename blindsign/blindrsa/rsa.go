@@ -42,10 +42,6 @@ var (
 	bigOne  = big.NewInt(1)
 )
 
-// ErrVerification represents a failure to verify a signature.
-// It is deliberately vague to avoid adaptive attacks.
-var ErrVerification = errors.New("crypto/rsa: verification error")
-
 // incCounter increments a four byte, big-endian counter.
 func incCounter(c *[4]byte) {
 	if c[3]++; c[3] != 0 {
@@ -87,11 +83,16 @@ func encrypt(c *big.Int, pub *rsa.PublicKey, m *big.Int) *big.Int {
 	return c
 }
 
+// decrypt performs an RSA decryption, resulting in a plaintext integer. If a
+// random source is given, RSA blinding is used.
 func decrypt(random io.Reader, priv *rsa.PrivateKey, c *big.Int) (m *big.Int, err error) {
 	// TODO(agl): can we get away with reusing blinds?
 	if c.Cmp(priv.N) > 0 {
 		err = rsa.ErrDecryption
 		return
+	}
+	if priv.N.Sign() == 0 {
+		return nil, rsa.ErrDecryption
 	}
 
 	var ir *big.Int
@@ -102,7 +103,7 @@ func decrypt(random io.Reader, priv *rsa.PrivateKey, c *big.Int) (m *big.Int, er
 		// by multiplying by the multiplicative inverse of r.
 
 		var r *big.Int
-
+		ir = new(big.Int)
 		for {
 			r, err = rand.Int(random, priv.N)
 			if err != nil {
@@ -111,13 +112,13 @@ func decrypt(random io.Reader, priv *rsa.PrivateKey, c *big.Int) (m *big.Int, er
 			if r.Cmp(bigZero) == 0 {
 				r = bigOne
 			}
-			ir = new(big.Int).ModInverse(r, priv.N)
-			if ir != nil {
+			ok := ir.ModInverse(r, priv.N)
+			if ok != nil {
 				break
 			}
 		}
 		bigE := big.NewInt(int64(priv.E))
-		rpowe := new(big.Int).Exp(r, bigE, priv.N)
+		rpowe := new(big.Int).Exp(r, bigE, priv.N) // N != 0
 		cCopy := new(big.Int).Set(c)
 		cCopy.Mul(cCopy, rpowe)
 		cCopy.Mod(cCopy, priv.N)
