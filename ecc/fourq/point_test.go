@@ -125,7 +125,7 @@ func TestScalarMult(t *testing.T) {
 
 func TestScalar(t *testing.T) {
 	const testTimes = 1 << 12
-	var x, xx [5]uint64
+	var xx [5]uint64
 	two256 := big.NewInt(1)
 	two256.Lsh(two256, 256)
 	two64 := big.NewInt(1)
@@ -137,9 +137,7 @@ func TestScalar(t *testing.T) {
 		for i := 0; i < testTimes; i++ {
 			bigX, _ := rand.Int(rand.Reader, two256)
 			conv.BigInt2Uint64Le(xx[:], bigX)
-			for j := range xx {
-				x[j] = xx[j]
-			}
+			x := xx
 			bigY, _ := rand.Int(rand.Reader, two64)
 			y := bigY.Int64()
 			bigY.SetInt64(y)
@@ -160,9 +158,7 @@ func TestScalar(t *testing.T) {
 		for i := 0; i < testTimes; i++ {
 			bigX, _ := rand.Int(rand.Reader, two256)
 			conv.BigInt2Uint64Le(xx[:], bigX)
-			for j := range xx {
-				x[j] = xx[j]
-			}
+			x := xx
 			bigY, _ := rand.Int(rand.Reader, two64)
 			y := bigY.Int64()
 			bigY.SetInt64(y)
@@ -182,9 +178,7 @@ func TestScalar(t *testing.T) {
 		for i := 0; i < testTimes; i++ {
 			bigX, _ := rand.Int(rand.Reader, two256)
 			conv.BigInt2Uint64Le(xx[:], bigX)
-			for j := range xx {
-				x[j] = xx[j]
-			}
+			x := xx
 
 			condAddOrderN(&x)
 			got := conv.Uint64Le2BigInt(x[:])
@@ -219,7 +213,7 @@ func TestScalar(t *testing.T) {
 			}
 
 			if got.Cmp(want) != 0 {
-				test.ReportError(t, got, want, x)
+				test.ReportError(t, got, want, k)
 			}
 		}
 	})
