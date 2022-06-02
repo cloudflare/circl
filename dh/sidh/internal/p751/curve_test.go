@@ -6,8 +6,12 @@ package p751
 import (
 	"bytes"
 	"testing"
-
+	"math/rand" 
+	crand "crypto/rand"
+	"io"
 	. "github.com/cloudflare/circl/dh/sidh/internal/common"
+    "time"
+
 )
 
 func vartimeEqProjFp2(lhs, rhs *ProjectivePoint) bool {
@@ -97,4 +101,208 @@ func BenchmarkThreePointLadder(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		ScalarMul3Pt(&curve, &threePointLadderInputs[0], &threePointLadderInputs[1], &threePointLadderInputs[2], uint(len(scalar3Pt)*8), scalar3Pt[:])
 	}
+}
+
+/* -------------------------------------------------------------------------
+   Generate invalid public key points / ciphertext for test TestKEMInvalidPK
+   -------------------------------------------------------------------------*/
+
+// Given the curve parameters, xP = x(P), computes xP = x([2]P)
+// Safe to overlap xP, x2P.
+func xDbl(xP *ProjectivePoint, params *CurveCoefficientsEquiv) {
+	var t0, t1 Fp2
+
+	x, z := &xP.X, &xP.Z
+	sub(&t0, x, z)           // t0  = Xp - Zp
+	add(&t1, x, z)           // t1  = Xp + Zp
+	sqr(&t0, &t0)            // t0  = t0 ^ 2
+	sqr(&t1, &t1)            // t1  = t1 ^ 2
+	mul(z, &params.C, &t0)   // Z2p = C24 * t0
+	mul(x, z, &t1)           // X2p = Z2p * t1
+	sub(&t1, &t1, &t0)       // t1  = t1 - t0
+	mul(&t0, &params.A, &t1) // t0  = A24+ * t1
+	add(z, z, &t0)           // Z2p = Z2p + t0
+	mul(z, z, &t1)           // Zp  = Z2p * t1
+}
+
+
+
+// Right-to-left Montgomery ladder, Algorithm 4 in Costello-Smith
+// Input: ProjectivePoint P (xP, zP)
+// Output: x([scalar]P), z([scalar]P)
+func montgomeryLadder(cparams *ProjectiveCurveParameters, P *ProjectivePoint, scalar []uint8, random uint) ProjectivePoint {
+	var R0, R2, R1 ProjectivePoint
+    coefEq := CalcCurveParamsEquiv4(cparams) // for xDbl
+	aPlus2Over4 := CalcAplus2Over4(cparams)	 // for xDblAdd
+	R0 = *P					 // RO <- P
+	R1 = *P; xDbl(&R1, &coefEq)		 // R1 <- [2]P
+	R2 = *P					 // R2 = R1-R0 = P
+
+	prevBit := uint8(0)
+	for i := int(random); i >= 0; i-- {
+		bit := (scalar[i>>3] >> (i & 7) & 1)
+		swap := prevBit ^ bit
+		prevBit = bit
+		cswap(&R0.X, &R0.Z, &R1.X, &R1.Z, swap)
+		R0, R1 = xDbladd(&R0, &R1, &R2, &aPlus2Over4)
+	}
+	cswap(&R0.X, &R0.Z, &R1.X, &R1.Z, prevBit)
+	return R0
+}
+
+// P = P + T
+func tauT(P *ProjectivePoint) {
+	P.X, P.Z = P.Z, P.X	// magic!
+}
+
+// Construct Invalid public key tuple (P,Q) such that P and Q are linearly dependent 
+// Simulate section 3.1.1 of paper https://eprint.iacr.org/2022/054.pdf
+// We only construct point P and Q because in the attacks the third point is P-Q by construction 
+// and the countermeasure does not test it
+// Without loss of generality, we assume the curve is the starting curve 
+func InvalidPKNoneLinear(scalar []uint8, pub3Pt *[3]Fp2) {
+	
+	var P, Q ProjectivePoint
+	
+	rand.Seed(time.Now().UnixNano())
+    random_index := rand.Intn(int(params.B.SecretByteLen-1)*8)
+	
+	// Set P as a point of order 3^e3
+    P = ProjectivePoint{X: params.B.AffineP, Z: params.OneFp2}
+
+	// Set Q = [k]P, where k = scalar[:random_index] 
+	Q = montgomeryLadder(&params.InitCurve, &P, scalar, uint(random_index))
+
+	// invQz = 1/Q.Z
+	var invQz Fp2
+	invQz = Q.Z
+	inv(&invQz, &invQz)
+
+	mul(&pub3Pt[0], &P.X, &P.Z)
+	mul(&pub3Pt[1], &Q.X, &invQz)
+	
+
+}
+
+// Construct Invalid public key tuple (P,Q) such that Q = [k]P + T, where k is random and T is the point of order 2. 
+// Simulate Hertzbleed and section 3.1.2 of paper https://eprint.iacr.org/2022/054.pdf
+// We only construct point P and Q because in the attacks the third point is P-Q by construction 
+// and the countermeasure does not test it
+// Without loss of generality, we assume the curve is the starting curve 
+func InvalidPKT(scalar []uint8, pub3Pt *[3]Fp2) {
+	var P, Q ProjectivePoint
+	
+	rand.Seed(time.Now().UnixNano())
+    random_index := rand.Intn(int(params.B.SecretByteLen-1)*8)
+	
+	// Set P as a point of order 3^e3
+    P = ProjectivePoint{X: params.B.AffineP, Z: params.OneFp2}
+
+	// Set Q = [k]P, where k = scalar[:random_index] 
+	Q = montgomeryLadder(&params.InitCurve, &P, scalar, uint(random_index))
+
+	// Q = [k]P + T
+	tauT(&Q)
+
+	var invQz Fp2
+	invQz = Q.Z
+	inv(&invQz, &invQz)
+
+	mul(&pub3Pt[0], &P.X, &P.Z)
+	mul(&pub3Pt[1], &Q.X, &invQz)
+}
+
+
+// Construct Invalid public key tuple (P,Q) such that P and Q are in E[2^e2]
+// Simulate section 3.2 of paper https://eprint.iacr.org/2022/054.pdf
+// We only construct point P and Q because in the attacks the third point is P-Q by construction 
+// and the countermeasure does not test it
+// Without loss of generality, we assume the curve is the starting curve 
+func InvalidPKOrder2(scalar []uint8, pub3Pt *[3]Fp2) {
+	
+	var P, Q ProjectivePoint
+	
+	P = ProjectivePoint{X: params.A.AffineP, Z: params.OneFp2}
+	Q = ProjectivePoint{X: params.A.AffineQ, Z: params.OneFp2}
+
+	rand.Seed(time.Now().UnixNano())
+    random_index_p := rand.Intn(int(params.A.SecretByteLen-1)*8)
+	random_index_q := rand.Intn(int(params.A.SecretByteLen-1)*8)
+
+	P = montgomeryLadder(&params.InitCurve, &P, scalar, uint(random_index_p))
+	Q = montgomeryLadder(&params.InitCurve, &Q, scalar, uint(random_index_q))
+
+	var invQz, invPz Fp2
+	invQz = Q.Z
+	invPz = P.Z
+	inv(&invQz, &invQz)
+	inv(&invPz, &invPz)
+
+	mul(&pub3Pt[0], &P.X, &invPz)
+	mul(&pub3Pt[1], &Q.X, &invQz)
+}
+
+/* -------------------------------------------------------------------------
+   Public key / Ciphertext validation against attacks proposed in paper https://eprint.iacr.org/2022/054.pdf and Hertzbleed
+   -------------------------------------------------------------------------*/
+
+func TestInvalidPK(t *testing.T) {
+
+	// Test (P, Q) are linearly dependent
+	// Generator random scalar as secret
+	secret := make([]byte, params.B.SecretByteLen)
+	_, err := io.ReadFull(crand.Reader, secret)
+	if err != nil{
+		t.Error("Fail read random bytes")
+	}
+
+	var affine3Pt [3]Fp2
+	InvalidPKNoneLinear(secret, &affine3Pt)
+
+	var xP, xQ, xQmP ProjectivePoint
+	xP = ProjectivePoint{X: affine3Pt[0], Z: params.OneFp2}
+	xQ = ProjectivePoint{X: affine3Pt[1], Z: params.OneFp2}
+	xQmP = ProjectivePoint{X: params.OneFp2, Z: params.OneFp2}
+
+	verify := PublicKeyValidation(&params.InitCurve, &xP, &xQ, &xQmP, params.B.SecretBitLen) 
+	if verify!=0{
+		t.Error("\nExpect linearly dependent ciphertext to fail")
+	}
+
+	// Test (P, Q) involves the point T
+	// Generator another random scalar as secret
+	secret = make([]byte, params.B.SecretByteLen)
+	_, err = io.ReadFull(crand.Reader, secret)
+	if err != nil{
+		t.Error("Fail read random bytes")
+	}
+	InvalidPKT(secret, &affine3Pt)
+
+	xP = ProjectivePoint{X: affine3Pt[0], Z: params.OneFp2}
+	xQ = ProjectivePoint{X: affine3Pt[1], Z: params.OneFp2}
+	xQmP = ProjectivePoint{X: params.OneFp2, Z: params.OneFp2}
+
+	verify = PublicKeyValidation(&params.InitCurve, &xP, &xQ, &xQmP, params.B.SecretBitLen) 
+	if verify!=0{
+		t.Error("\nExpect ciphertext involves point T to fail")
+	}
+
+	// Test (P, Q) are in the torsion E[2^e2]
+	// Generator another random scalar as secret
+	secret = make([]byte, params.A.SecretByteLen)
+	_, err = io.ReadFull(crand.Reader, secret)
+	if err != nil{
+		t.Error("Fail read random bytes")
+	}
+	InvalidPKOrder2(secret, &affine3Pt)
+
+	xP = ProjectivePoint{X: affine3Pt[0], Z: params.OneFp2}
+	xQ = ProjectivePoint{X: affine3Pt[1], Z: params.OneFp2}
+	xQmP = ProjectivePoint{X: params.OneFp2, Z: params.OneFp2}
+
+	verify = PublicKeyValidation(&params.InitCurve, &xP, &xQ, &xQmP, params.B.SecretBitLen) 
+	if verify!=0{
+		t.Error("\nExpect ciphertext in incorrect torsion to fail")
+	}
+
 }
