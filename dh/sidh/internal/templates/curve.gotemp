@@ -4,8 +4,7 @@
 package {{ .PACKAGE}}
 
 import (
-	"crypto/rand"
-
+	"math"
 	. "github.com/cloudflare/circl/dh/sidh/internal/common"
 )
 
@@ -128,6 +127,7 @@ func RecoverCurveCoefficients4(cparams *ProjectiveCurveParameters, coefEq *Curve
 	mul(&cparams.C, &cparams.C, &params.HalfFp2)
 }
 
+
 // Combined coordinate doubling and differential addition. Takes projective points
 // P,Q,Q-P and (A+2C)/4C curve E coefficient. Returns 2*P and P+Q calculated on E.
 // Function is used only by RightToLeftLadder. Corresponds to Algorithm 5 of SIKE
@@ -241,12 +241,7 @@ func ScalarMul3Pt(cparams *ProjectiveCurveParameters, P, Q, PmQ *ProjectivePoint
 	R2 = *PmQ
 	R0 = *Q
 
-	var blind ProjectivePoint
-	b := make([]byte, 4*params.Bytelen)
-	_, _ = rand.Read(b)
-	BytesToFp2(&blind.X, b[:2*params.Bytelen], params.Bytelen)
-	BytesToFp2(&blind.Z, b[2*params.Bytelen:], params.Bytelen)
-
+	
 	// Iterate over the bits of the scalar, bottom to top
 	prevBit := uint8(0)
 	for i := uint(0); i < nbits; i++ {
@@ -254,7 +249,6 @@ func ScalarMul3Pt(cparams *ProjectiveCurveParameters, P, Q, PmQ *ProjectivePoint
 		swap := prevBit ^ bit
 		prevBit = bit
 		cswap(&R1.X, &R1.Z, &R2.X, &R2.Z, swap)
-		cmov(&R1.X, &R1.Z, &blind.X, &blind.Z, isZero(&R1.X)|isZero(&R1.Z))
 		R0, R2 = xDbladd(&R0, &R2, &R1, &aPlus2Over4)
 	}
 	cswap(&R1.X, &R1.Z, &R2.X, &R2.Z, prevBit)
@@ -365,3 +359,82 @@ func (phi *isogeny4) EvaluatePoint(p *ProjectivePoint) {
 	mul(xq, xq, &t1)
 	mul(zq, zq, &t0)
 }
+
+// Public key / ciphertext validation CLN test. 
+// CLN test: Check that P and Q are both of order 3^e3 and they generate the torsion E_A[3^e3]
+// A countermeasure for remote timing attacks on SIKE; suggested by https://eprint.iacr.org/2022/054.pdf
+// Any curve E_A (SIKE 434, 503, 751) that passes CLN test is supersingular. 
+// Input: The public key / ciphertext P, Q, PmQ. The projective coordinate A of the curve defined by (P, Q, PmQ)
+// Outputs: Whether (P,Q,PmQ) follows the CLN test
+func PublicKeyValidation(cparams *ProjectiveCurveParameters, P, Q, PmQ *ProjectivePoint, nbits uint) int {
+	
+	var Verify int
+	Verify = 1
+
+	var PmQX, PmQZ Fp2
+	FromMontgomery(&PmQX, &PmQ.X)
+	FromMontgomery(&PmQZ, &PmQ.Z)
+
+	// PmQ is not point T or O
+	if((isZero(&PmQX)==1)||(isZero(&PmQZ)==1)){
+		Verify = 0
+	}
+	
+	cparam := CalcCurveParamsEquiv3(cparams)
+
+    // Compute e_3 = log3(2^(nbits+1))
+	var e3 uint32
+	e3_float := float64(int(nbits)+1)/math.Log2(3)
+	e3 = uint32(e3_float)
+	
+	// Verify that P and Q generate E_A[3^e_3] by checking: [3^(e_3-1)]P != [+-3^(e_3-1)]Q
+	var test_P, test_Q ProjectivePoint
+	test_P = *P
+	test_Q = *Q
+
+	
+	Pow3k(&test_P, &cparam, e3-1)
+	Pow3k(&test_Q, &cparam, e3-1)
+
+    
+	var PZ, QZ Fp2
+	FromMontgomery(&PZ, &test_P.Z)
+	FromMontgomery(&QZ, &test_Q.Z)
+
+	
+	// P, Q are not of full order 3^e_3
+	if((isZero(&PZ)==1)||(isZero(&QZ)==1)){
+		Verify = 0
+	}
+
+	// PX/PZ = affine(PX)
+	// QX/QZ = affine(QX)
+	// If PX/PZ = QX/QZ, we have P=+-Q
+	var PXQZ_PZQX_fromMont, PXQZ_PZQX, PXQZ, PZQX Fp2
+	mul(&PXQZ, &test_P.X, &test_Q.Z)
+	mul(&PZQX, &test_P.Z, &test_Q.X)
+	sub(&PXQZ_PZQX, &PXQZ, &PZQX)
+	FromMontgomery(&PXQZ_PZQX_fromMont, &PXQZ_PZQX)
+
+	// [3^(e_3-1)]P == [+-3^(e_3-1)]Q
+	if(isZero(&PXQZ_PZQX_fromMont)==1){
+		Verify = 0
+	}
+
+	// Check that Ord(P) = Ord(Q) = 3^(e_3)
+	Pow3k(&test_P, &cparam, 1)
+	Pow3k(&test_Q, &cparam, 1)
+
+	FromMontgomery(&PZ, &test_P.Z)
+	FromMontgomery(&QZ, &test_Q.Z)
+	
+	// P, Q are not of correct order 3^e_3
+	if((isZero(&PZ)==0)||(isZero(&QZ)==0)){
+		Verify = 0
+	}
+
+	return Verify
+}
+
+
+

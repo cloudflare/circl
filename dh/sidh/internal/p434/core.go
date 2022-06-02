@@ -274,6 +274,13 @@ func DeriveSecretB(ss, prv []byte, pub3Pt *[3]Fp2) {
 	xP = ProjectivePoint{X: pub3Pt[0], Z: params.OneFp2}
 	xQ = ProjectivePoint{X: pub3Pt[1], Z: params.OneFp2}
 	xQmP = ProjectivePoint{X: pub3Pt[2], Z: params.OneFp2}
+
+	//PUBLIC KEY VALIDATION
+	verify := PublicKeyValidation(&cparam, &xP, &xQ, &xQmP, params.B.SecretBitLen)
+	if(verify == 0){
+		return
+	}
+
 	xR = ScalarMul3Pt(&cparam, &xP, &xQ, &xQmP, params.B.SecretBitLen, prv)
 
 	// Traverse isogeny tree
