@@ -39,6 +39,7 @@ jobs:
         run: go test -v -count=1 ./...
   exotic_job:
     name: Go-${{matrix.CFG[2]}}/${{matrix.CFG[0]}}
+    needs: [ amd64_job ]
     runs-on: ubuntu-20.04
     strategy:
       matrix:
@@ -77,6 +78,7 @@ jobs:
           file: ./coverage.txt
   osCompat:
     runs-on: ${{ matrix.os }}
+    needs: [ amd64_job ]
     name: Running on ${{ matrix.os }}
     strategy:
       matrix:
