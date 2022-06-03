@@ -246,7 +246,6 @@ func testKeyAgreement(t *testing.T, v sidhVec) {
 	dec[0] = ^dec[0]
 	err = alicePublic.Import(dec)
 	CheckNoErr(t, err, "import failed")
-
 	bobPrivate.DeriveSecret(s1, alicePublic)
 	alicePrivate.DeriveSecret(s2, bobPublic)
 	if bytes.Equal(s1[:], s2[:]) {
