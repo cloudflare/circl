@@ -4,6 +4,7 @@
 package p434
 
 import (
+	crand "crypto/rand"
 	. "github.com/cloudflare/circl/dh/sidh/internal/common"
 )
 
@@ -260,7 +261,7 @@ func DeriveSecretA(ss, prv []byte, pub3Pt *[3]Fp2) {
 }
 
 // Establishing shared keys in in 3-torsion group
-func DeriveSecretB(ss, prv []byte, pub3Pt *[3]Fp2) {
+func DeriveSecretB(ss, prv []byte, pub3Pt *[3]Fp2)  {
 	var xP, xQ, xQmP ProjectivePoint
 	var xR ProjectivePoint
 	var phi isogeny3
@@ -274,6 +275,16 @@ func DeriveSecretB(ss, prv []byte, pub3Pt *[3]Fp2) {
 	xP = ProjectivePoint{X: pub3Pt[0], Z: params.OneFp2}
 	xQ = ProjectivePoint{X: pub3Pt[1], Z: params.OneFp2}
 	xQmP = ProjectivePoint{X: pub3Pt[2], Z: params.OneFp2}
+
+	//PUBLIC KEY VALIDATION
+	if err := PublicKeyValidation(&cparam, &xP, &xQ, &xQmP, params.B.SecretBitLen); err != nil {
+		_, err_read := crand.Read(ss)
+		if err_read != nil {
+			panic("core: failed to generate random ss when public key verification fails")
+		}
+		return
+	}	
+
 	xR = ScalarMul3Pt(&cparam, &xP, &xQ, &xQmP, params.B.SecretBitLen, prv)
 
 	// Traverse isogeny tree
@@ -285,4 +296,6 @@ func DeriveSecretB(ss, prv []byte, pub3Pt *[3]Fp2) {
 	Jinvariant(&cparam, &jInv)
 	FromMontgomery(&jInv, &jInv)
 	Fp2ToBytes(ss, &jInv, params.Bytelen)
+	
+	
 }
