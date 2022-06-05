@@ -4,11 +4,11 @@
 
 // Code generated from modePkg.templ.go. DO NOT EDIT.
 
-// {{ .Pkg }} implements the CRYSTALS-Dilithium signature scheme {{ .Name }}
+// {{.Pkg}} implements the CRYSTALS-Dilithium signature scheme {{.Name}}
 // as submitted to round3 of the NIST PQC competition and described in
 //
 // https://pq-crystals.org/dilithium/data/dilithium-specification-round3-20210208.pdf
-package {{ .Pkg }}
+package {{.Pkg}}
 
 import (
 	"crypto"
@@ -16,7 +16,7 @@ import (
 	"io"
 
 	"github.com/cloudflare/circl/sign/dilithium/internal/common"
-	"github.com/cloudflare/circl/sign/dilithium/{{ .Pkg }}/internal"
+	"github.com/cloudflare/circl/sign/dilithium/{{.Pkg}}/internal"
 )
 
 const (
@@ -33,10 +33,10 @@ const (
 	SignatureSize = internal.SignatureSize
 )
 
-// PublicKey is the type of {{ .Name }} public key
+// PublicKey is the type of {{.Name}} public key
 type PublicKey internal.PublicKey
 
-// PrivateKey is the type of {{ .Name }} private key
+// PrivateKey is the type of {{.Name}} private key
 type PrivateKey internal.PrivateKey
 
 // GenerateKey generates a public/private key pair using entropy from rand.
@@ -118,7 +118,7 @@ func (sk *PrivateKey) MarshalBinary() ([]byte, error) {
 // Unpacks the public key from data.
 func (pk *PublicKey) UnmarshalBinary(data []byte) error {
 	if len(data) != PublicKeySize {
-		return errors.New("packed public key must be of {{ .Pkg }}.PublicKeySize bytes")
+		return errors.New("packed public key must be of {{.Pkg}}.PublicKeySize bytes")
 	}
 	var buf [PublicKeySize]byte
 	copy(buf[:], data)
@@ -129,7 +129,7 @@ func (pk *PublicKey) UnmarshalBinary(data []byte) error {
 // Unpacks the private key from data.
 func (sk *PrivateKey) UnmarshalBinary(data []byte) error {
 	if len(data) != PrivateKeySize {
-		return errors.New("packed private key must be of {{ .Pkg }}.PrivateKeySize bytes")
+		return errors.New("packed private key must be of {{.Pkg}}.PrivateKeySize bytes")
 	}
 	var buf [PrivateKeySize]byte
 	copy(buf[:], data)

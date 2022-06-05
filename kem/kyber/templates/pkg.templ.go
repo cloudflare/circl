@@ -271,7 +271,7 @@ var sch kem.Scheme = &scheme{}
 // Scheme returns a KEM interface.
 func Scheme() kem.Scheme { return sch }
 
-func (*scheme) Name() string               { return "{{ .Name }}" }
+func (*scheme) Name() string               { return "{{.Name}}" }
 func (*scheme) PublicKeySize() int         { return PublicKeySize }
 func (*scheme) PrivateKeySize() int        { return PrivateKeySize }
 func (*scheme) SeedSize() int              { return KeySeedSize }

@@ -4,7 +4,7 @@
 //go:build {{if .OPT_ARM}}noasm || (!amd64 && !arm64){{else}}noasm || !amd64{{end}}
 // +build {{if .OPT_ARM}}noasm !amd64,!arm64{{else}}noasm !amd64{{end}}
 
-package {{ .PACKAGE}}
+package {{.PACKAGE}}
 
 import (
 	"math/bits"
@@ -13,30 +13,30 @@ import (
 )
 
 // Compute z = x + y (mod p).
-func add{{ .FIELD }}(z, x, y *common.Fp) {
+func add{{.FIELD}}(z, x, y *common.Fp) {
 	var carry uint64
 
-	// z=x+y % {{ .FIELD }}
+	// z=x+y % {{.FIELD}}
 	for i := 0; i < FpWords; i++ {
 		z[i], carry = bits.Add64(x[i], y[i], carry)
 	}
 
-	// z = z - {{ .FIELD}}x2
+	// z = z - {{.FIELD}}x2
 	carry = 0
 	for i := 0; i < FpWords; i++ {
-		z[i], carry = bits.Sub64(z[i], {{ .FIELD}}x2[i], carry)
+		z[i], carry = bits.Sub64(z[i], {{.FIELD}}x2[i], carry)
 	}
 
-	// if z<0 add {{ .FIELD}}x2 back
+	// if z<0 add {{.FIELD}}x2 back
 	mask := uint64(0 - carry)
 	carry = 0
 	for i := 0; i < FpWords; i++ {
-		z[i], carry = bits.Add64(z[i], {{ .FIELD}}x2[i]&mask, carry)
+		z[i], carry = bits.Add64(z[i], {{.FIELD}}x2[i]&mask, carry)
 	}
 }
 
 // Compute z = x - y (mod p).
-func sub{{ .FIELD }}(z, x, y *common.Fp) {
+func sub{{.FIELD}}(z, x, y *common.Fp) {
 	var borrow uint64
 
 	for i := 0; i < FpWords; i++ {
@@ -47,14 +47,14 @@ func sub{{ .FIELD }}(z, x, y *common.Fp) {
 	borrow = 0
 
 	for i := 0; i < FpWords; i++ {
-		z[i], borrow = bits.Add64(z[i], {{ .FIELD}}x2[i]&mask, borrow)
+		z[i], borrow = bits.Add64(z[i], {{.FIELD}}x2[i]&mask, borrow)
 	}
 }
 
 // If choice = 0, leave x unchanged. If choice = 1, sets x to y.
 // If choice is neither 0 nor 1 then behaviour is undefined.
 // This function executes in constant time.
-func cmov{{ .FIELD }}(x, y *common.Fp, choice uint8) {
+func cmov{{.FIELD}}(x, y *common.Fp, choice uint8) {
 	mask := 0 - uint64(choice)
 	for i := 0; i < FpWords; i++ {
 		x[i] ^= mask & (x[i] ^ y[i])
@@ -66,7 +66,7 @@ func cmov{{ .FIELD }}(x, y *common.Fp, choice uint8) {
 // For details see "Hackers Delight, 2.20"
 //
 // Implementation doesn't actually depend on a prime field.
-func cswap{{ .FIELD }}(x, y *common.Fp, mask uint8) {
+func cswap{{.FIELD}}(x, y *common.Fp, mask uint8) {
 	var tmp, mask64 uint64
 
 	mask64 = 0 - uint64(mask)
@@ -79,17 +79,17 @@ func cswap{{ .FIELD }}(x, y *common.Fp, mask uint8) {
 
 // Perform Montgomery reduction: set z = x R^{-1} (mod 2*p)
 // with R=2^(FpWords*64). Destroys the input value.
-func rdc{{ .FIELD }}(z *common.Fp, x *common.FpX2) {
+func rdc{{.FIELD}}(z *common.Fp, x *common.FpX2) {
 	var carry, t, u, v uint64
 	var hi, lo uint64
 	var count int
 
-	count = {{ .FIELD}}p1Zeros
+	count = {{.FIELD}}p1Zeros
 
 	for i := 0; i < FpWords; i++ {
 		for j := 0; j < i; j++ {
 			if j < (i - count + 1) {
-				hi, lo = bits.Mul64(z[j], {{ .FIELD }}p1[i-j])
+				hi, lo = bits.Mul64(z[j], {{.FIELD}}p1[i-j])
 				v, carry = bits.Add64(lo, v, 0)
 				u, carry = bits.Add64(hi, u, carry)
 				t += carry
@@ -111,7 +111,7 @@ func rdc{{ .FIELD }}(z *common.Fp, x *common.FpX2) {
 		}
 		for j := i - FpWords + 1; j < FpWords; j++ {
 			if j < (FpWords - count) {
-				hi, lo = bits.Mul64(z[j], {{ .FIELD }}p1[i-j])
+				hi, lo = bits.Mul64(z[j], {{.FIELD}}p1[i-j])
 				v, carry = bits.Add64(lo, v, 0)
 				u, carry = bits.Add64(hi, u, carry)
 				t += carry
@@ -131,7 +131,7 @@ func rdc{{ .FIELD }}(z *common.Fp, x *common.FpX2) {
 }
 
 // Compute z = x * y.
-func mul{{ .FIELD }}(z *common.FpX2, x, y *common.Fp) {
+func mul{{.FIELD}}(z *common.FpX2, x, y *common.Fp) {
 	var u, v, t uint64
 	var hi, lo uint64
 	var carry uint64
@@ -165,7 +165,7 @@ func mul{{ .FIELD }}(z *common.FpX2, x, y *common.Fp) {
 }
 
 // Compute z = x + y, without reducing mod p.
-func adl{{ .FIELD }}(z, x, y *common.FpX2) {
+func adl{{.FIELD}}(z, x, y *common.FpX2) {
 	var carry uint64
 	for i := 0; i < 2*FpWords; i++ {
 		z[i], carry = bits.Add64(x[i], y[i], carry)
@@ -173,22 +173,22 @@ func adl{{ .FIELD }}(z, x, y *common.FpX2) {
 }
 
 // Reduce a field element in [0, 2*p) to one in [0,p).
-func mod{{ .FIELD }}(x *common.Fp) {
+func mod{{.FIELD}}(x *common.Fp) {
 	var borrow, mask uint64
 	for i := 0; i < FpWords; i++ {
-		x[i], borrow = bits.Sub64(x[i], {{ .FIELD }}[i], borrow)
+		x[i], borrow = bits.Sub64(x[i], {{.FIELD}}[i], borrow)
 	}
 
 	// Sets all bits if borrow = 1
 	mask = 0 - borrow
 	borrow = 0
 	for i := 0; i < FpWords; i++ {
-		x[i], borrow = bits.Add64(x[i], {{ .FIELD }}[i]&mask, borrow)
+		x[i], borrow = bits.Add64(x[i], {{.FIELD}}[i]&mask, borrow)
 	}
 }
 
 // Compute z = x - y, without reducing mod p.
-func sul{{ .FIELD }}(z, x, y *common.FpX2) {
+func sul{{.FIELD}}(z, x, y *common.FpX2) {
 	var borrow, mask uint64
 	for i := 0; i < 2*FpWords; i++ {
 		z[i], borrow = bits.Sub64(x[i], y[i], borrow)
@@ -198,6 +198,6 @@ func sul{{ .FIELD }}(z, x, y *common.FpX2) {
 	mask = 0 - borrow
 	borrow = 0
 	for i := FpWords; i < 2*FpWords; i++ {
-		z[i], borrow = bits.Add64(z[i], {{ .FIELD }}[i-FpWords]&mask, borrow)
+		z[i], borrow = bits.Add64(z[i], {{.FIELD}}[i-FpWords]&mask, borrow)
 	}
 }
