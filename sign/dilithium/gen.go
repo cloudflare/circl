@@ -8,6 +8,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"go/format"
 	"io/ioutil"
 	"os"
 	"path"
@@ -142,7 +143,13 @@ func generateParamsFiles() {
 			panic(err)
 		}
 
-		res := string(buf.Bytes())
+		// Formating output code
+		code, err := format.Source(buf.Bytes())
+		if err != nil {
+			panic("error formating code")
+		}
+
+		res := string(code)
 		offset := strings.Index(res, TemplateWarning)
 		if offset == -1 {
 			panic("Missing template warning in params.templ.go")
