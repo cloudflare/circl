@@ -8,7 +8,9 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"go/format"
 	"os"
 	"strings"
 	"text/template"
@@ -47,13 +49,6 @@ var opt_arm = map[string]bool{
 // Generates an 'fileNameBase.go' from 'fileNameBase.gotemp' file
 // for a given finite 'field'. Maps placeholders to 'values'.
 func gen(field, fileNameBase string, values interface{}) {
-	// name of the output .go file
-	outFileName := fileNameBase + ".go"
-	out, err := os.Create(outFileName)
-	if err != nil {
-		panic("Cannot open file")
-	}
-
 	// Template files are located in ../templates and have
 	// extension .gotemp
 	templateFile := "../templates/" + fileNameBase + ".gotemp"
@@ -61,8 +56,29 @@ func gen(field, fileNameBase string, values interface{}) {
 	if err != nil {
 		panic(fmt.Sprintf("Cannot open template file %s", templateFile))
 	}
+	var buf bytes.Buffer
+	err = t.Execute(&buf, values)
+	if err != nil {
+		panic("bad template execution")
+	}
 
-	t.Execute(out, values)
+	// Formating output code
+	code, err := format.Source(buf.Bytes())
+	if err != nil {
+		panic("error formating code")
+	}
+
+	// name of the output .go file
+	outFileName := fileNameBase + ".go"
+	out, err := os.Create(outFileName)
+	if err != nil {
+		panic("Cannot open file")
+	}
+	_, err = out.Write(code)
+	if err != nil {
+		panic("error writing code")
+	}
+
 	err = out.Close()
 	if err != nil {
 		panic("Cant close generated file")
