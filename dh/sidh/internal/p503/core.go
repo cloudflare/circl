@@ -261,7 +261,7 @@ func DeriveSecretA(ss, prv []byte, pub3Pt *[3]Fp2) {
 }
 
 // Establishing shared keys in in 3-torsion group
-func DeriveSecretB(ss, prv []byte, pub3Pt *[3]Fp2)  {
+func DeriveSecretB(ss, prv []byte, pub3Pt *[3]Fp2) {
 	var xP, xQ, xQmP ProjectivePoint
 	var xR ProjectivePoint
 	var phi isogeny3
@@ -283,7 +283,7 @@ func DeriveSecretB(ss, prv []byte, pub3Pt *[3]Fp2)  {
 			panic("core: failed to generate random ss when public key verification fails")
 		}
 		return
-	}	
+	}
 
 	xR = ScalarMul3Pt(&cparam, &xP, &xQ, &xQmP, params.B.SecretBitLen, prv)
 
@@ -296,6 +296,5 @@ func DeriveSecretB(ss, prv []byte, pub3Pt *[3]Fp2)  {
 	Jinvariant(&cparam, &jInv)
 	FromMontgomery(&jInv, &jInv)
 	Fp2ToBytes(ss, &jInv, params.Bytelen)
-	
-	
+
 }

@@ -5,13 +5,13 @@ package p434
 
 import (
 	"bytes"
-	"testing"
-	"math"
-	"math/rand" 
 	crand "crypto/rand"
-	"io"
 	. "github.com/cloudflare/circl/dh/sidh/internal/common"
-    "time"
+	"io"
+	"math"
+	"math/rand"
+	"testing"
+	"time"
 )
 
 func vartimeEqProjFp2(lhs, rhs *ProjectivePoint) bool {
@@ -113,11 +113,11 @@ func BenchmarkThreePointLadder(b *testing.B) {
 func montgomeryLadder(cparams *ProjectiveCurveParameters, P *ProjectivePoint, scalar []uint8, random uint) ProjectivePoint {
 	var R0, R2, R1 ProjectivePoint
 	coefEq := CalcCurveParamsEquiv4(cparams) // for xDbl
-	aPlus2Over4 := CalcAplus2Over4(cparams)	 // for xDblAdd
-	R0 = *P					 // RO <- P
+	aPlus2Over4 := CalcAplus2Over4(cparams)  // for xDblAdd
+	R0 = *P                                  // RO <- P
 	R1 = *P
-	Pow2k(&R1, &coefEq, 1)		 // R1 <- [2]P
-	R2 = *P					 // R2 = R1-R0 = P
+	Pow2k(&R1, &coefEq, 1) // R1 <- [2]P
+	R2 = *P                // R2 = R1-R0 = P
 
 	prevBit := uint8(0)
 	for i := int(random); i >= 0; i-- {
@@ -135,40 +135,40 @@ func montgomeryLadder(cparams *ProjectiveCurveParameters, P *ProjectivePoint, sc
 // From paper https://eprint.iacr.org/2017/212.pdf
 // The map tau_T: P->P+T is (X : Z) -> (Z : X) on Montgomery curves
 func tauT(P *ProjectivePoint) {
-	P.X, P.Z = P.Z, P.X	// magic!
+	P.X, P.Z = P.Z, P.X // magic!
 }
 
-// Construct Invalid public key tuple (P,Q) such that P and Q are linearly dependent 
+// Construct Invalid public key tuple (P,Q) such that P and Q are linearly dependent
 // Simulate section 3.1.1 of paper https://eprint.iacr.org/2022/054.pdf
-// We only construct point P and Q because in the attacks the third point is P-Q by construction 
+// We only construct point P and Q because in the attacks the third point is P-Q by construction
 // and the countermeasure does not test it
-// Without loss of generality, we assume the curve is the starting curve 
+// Without loss of generality, we assume the curve is the starting curve
 func testInvalidPKNoneLinear(t *testing.T) {
 
 	// Generate random scalar as secret
 	secret := make([]byte, params.B.SecretByteLen)
 	_, err := io.ReadFull(crand.Reader, secret)
-	if err != nil{
+	if err != nil {
 		t.Error("Fail read random bytes")
 	}
 
 	var P, Q ProjectivePoint
-	
+
 	rand.Seed(time.Now().UnixNano())
-	random_index := rand.Intn(int(params.B.SecretByteLen-1)*8)
-	
+	random_index := rand.Intn(int(params.B.SecretByteLen-1) * 8)
+
 	// Set P as a point of order 3^e3
 	P = ProjectivePoint{X: params.B.AffineP, Z: params.OneFp2}
 
 	// Set Q = [k]P, where k = secret[:random_index]
 	Q = montgomeryLadder(&params.InitCurve, &P, secret, uint(random_index))
 
-	// Make sure Q is of full order 3^e_3, 
+	// Make sure Q is of full order 3^e_3,
 	var test_Q ProjectivePoint
 	test_Q = Q
 
 	var e3 uint32
-	e3_float := float64(int(params.B.SecretBitLen)+1)/math.Log2(3)
+	e3_float := float64(int(params.B.SecretBitLen)+1) / math.Log2(3)
 	e3 = uint32(e3_float)
 	cparam_q := CalcCurveParamsEquiv3(&params.InitCurve)
 	Pow3k(&test_Q, &cparam_q, e3-1)
@@ -177,9 +177,9 @@ func testInvalidPKNoneLinear(t *testing.T) {
 	FromMontgomery(&test_QZ, &test_Q.Z)
 
 	// Q are not of full order 3^e_3
-	for((isZero(&test_QZ)==1)){
+	for isZero(&test_QZ) == 1 {
 		rand.Seed(time.Now().UnixNano())
-    	random_index = rand.Intn(int(params.B.SecretByteLen-1)*8)
+		random_index = rand.Intn(int(params.B.SecretByteLen-1) * 8)
 		Q = montgomeryLadder(&params.InitCurve, &P, secret, uint(random_index))
 		test_Q = Q
 		Pow3k(&test_Q, &cparam_q, e3-1)
@@ -193,42 +193,41 @@ func testInvalidPKNoneLinear(t *testing.T) {
 
 	mul(&P.X, &P.X, &P.Z)
 	mul(&Q.X, &Q.X, &invQz)
-	
+
 	var xP, xQ, xQmP ProjectivePoint
 	xP = ProjectivePoint{X: P.X, Z: params.OneFp2}
 	xQ = ProjectivePoint{X: Q.X, Z: params.OneFp2}
 	xQmP = ProjectivePoint{X: params.OneFp2, Z: params.OneFp2}
 
-	error_verify := PublicKeyValidation(&params.InitCurve, &xP, &xQ, &xQmP, params.B.SecretBitLen) 
-	if error_verify==nil{
+	error_verify := PublicKeyValidation(&params.InitCurve, &xP, &xQ, &xQmP, params.B.SecretBitLen)
+	if error_verify == nil {
 		t.Errorf("\nExpect linearly dependent ciphertext to fail, index: %v  scalar: %v ", random_index, secret)
 	}
 }
 
-// Construct Invalid public key tuple (P,Q) such that Q = [k]P + T, where k is random and T is the point of order 2. 
+// Construct Invalid public key tuple (P,Q) such that Q = [k]P + T, where k is random and T is the point of order 2.
 // Simulate HB and section 3.1.2 of paper https://eprint.iacr.org/2022/054.pdf
-// We only construct point P and Q because in the attacks the third point is P-Q by construction 
+// We only construct point P and Q because in the attacks the third point is P-Q by construction
 // and the countermeasure does not test it
-// Without loss of generality, we assume the curve is the starting curve 
+// Without loss of generality, we assume the curve is the starting curve
 func testInvalidPKT(t *testing.T) {
 
 	// Generate random scalar as secret
 	secret := make([]byte, params.B.SecretByteLen)
 	_, err := io.ReadFull(crand.Reader, secret)
-	if err != nil{
+	if err != nil {
 		t.Error("Fail read random bytes")
 	}
-	
-	
+
 	var P, Q ProjectivePoint
-	
+
 	rand.Seed(time.Now().UnixNano())
-	random_index := rand.Intn(int(params.B.SecretByteLen-1)*8)
-	
+	random_index := rand.Intn(int(params.B.SecretByteLen-1) * 8)
+
 	// Set P as a point of order 3^e3
 	P = ProjectivePoint{X: params.B.AffineP, Z: params.OneFp2}
 
-	// Set Q = [k]P, where k = secret[:random_index] 
+	// Set Q = [k]P, where k = secret[:random_index]
 	Q = montgomeryLadder(&params.InitCurve, &P, secret, uint(random_index))
 	// Q = [k]P + T
 	tauT(&Q)
@@ -239,42 +238,40 @@ func testInvalidPKT(t *testing.T) {
 
 	mul(&P.X, &P.X, &P.Z)
 	mul(&Q.X, &Q.X, &invQz)
-	
+
 	var xP, xQ, xQmP ProjectivePoint
 	xP = ProjectivePoint{X: P.X, Z: params.OneFp2}
 	xQ = ProjectivePoint{X: Q.X, Z: params.OneFp2}
 	xQmP = ProjectivePoint{X: params.OneFp2, Z: params.OneFp2}
 
-	error_verify := PublicKeyValidation(&params.InitCurve, &xP, &xQ, &xQmP, params.B.SecretBitLen) 
-	if error_verify==nil{
+	error_verify := PublicKeyValidation(&params.InitCurve, &xP, &xQ, &xQmP, params.B.SecretBitLen)
+	if error_verify == nil {
 		t.Errorf("\nExpect ciphertext involve point T to fail, index: %v  scalar: %v ", random_index, secret)
 	}
 }
 
-
 // Construct Invalid public key tuple (P,Q) such that P and Q are in E[2^e2]
 // Simulate section 3.2 of paper https://eprint.iacr.org/2022/054.pdf
-// We only construct point P and Q because in the attacks the third point is P-Q by construction 
+// We only construct point P and Q because in the attacks the third point is P-Q by construction
 // and the countermeasure does not test it
-// Without loss of generality, we assume the curve is the starting curve 
+// Without loss of generality, we assume the curve is the starting curve
 func testInvalidPKOrder2(t *testing.T) {
-	
+
 	// Generate random scalar as secret
 	secret := make([]byte, params.B.SecretByteLen)
 	_, err := io.ReadFull(crand.Reader, secret)
-	if err != nil{
+	if err != nil {
 		t.Error("Fail read random bytes")
 	}
-	
-	
+
 	var P, Q ProjectivePoint
-	
+
 	P = ProjectivePoint{X: params.A.AffineP, Z: params.OneFp2}
 	Q = ProjectivePoint{X: params.A.AffineQ, Z: params.OneFp2}
 
 	rand.Seed(time.Now().UnixNano())
-	random_index_p := rand.Intn(int(params.A.SecretByteLen-1)*8)
-	random_index_q := rand.Intn(int(params.A.SecretByteLen-1)*8)
+	random_index_p := rand.Intn(int(params.A.SecretByteLen-1) * 8)
+	random_index_q := rand.Intn(int(params.A.SecretByteLen-1) * 8)
 
 	P = montgomeryLadder(&params.InitCurve, &P, secret, uint(random_index_p))
 	Q = montgomeryLadder(&params.InitCurve, &Q, secret, uint(random_index_q))
@@ -287,34 +284,33 @@ func testInvalidPKOrder2(t *testing.T) {
 
 	mul(&P.X, &P.X, &invPz)
 	mul(&Q.X, &Q.X, &invQz)
-	
+
 	var xP, xQ, xQmP ProjectivePoint
 	xP = ProjectivePoint{X: P.X, Z: params.OneFp2}
 	xQ = ProjectivePoint{X: Q.X, Z: params.OneFp2}
 	xQmP = ProjectivePoint{X: params.OneFp2, Z: params.OneFp2}
 
-	error_verify := PublicKeyValidation(&params.InitCurve, &xP, &xQ, &xQmP, params.B.SecretBitLen) 
-	if error_verify==nil{
+	error_verify := PublicKeyValidation(&params.InitCurve, &xP, &xQ, &xQmP, params.B.SecretBitLen)
+	if error_verify == nil {
 		t.Errorf("\nExpect ciphertext in torsion E[2^e2] to fail, index_p: %v  index_q: %v  scalar: %v ", random_index_p, random_index_q, secret)
 	}
-	
-}
 
+}
 
 // Construct Invalid public key tuple (P,Q) such that P and Q are in E[3^e3] but not of full order 3^e3
 // Simulate section 3.1.1 of paper https://eprint.iacr.org/2022/054.pdf
-// We only construct point P and Q because in the attacks the third point is P-Q by construction 
+// We only construct point P and Q because in the attacks the third point is P-Q by construction
 // and the countermeasure does not test it
-// Without loss of generality, we assume the curve is the starting curve 
+// Without loss of generality, we assume the curve is the starting curve
 func testInvalidPKFullOrder(t *testing.T) {
-	
+
 	var P, Q ProjectivePoint
-	
+
 	P = ProjectivePoint{X: params.B.AffineP, Z: params.OneFp2}
 	Q = ProjectivePoint{X: params.B.AffineQ, Z: params.OneFp2}
 
 	var e3 uint32
-	e3_float := float64(int(params.B.SecretBitLen)+1)/math.Log2(3)
+	e3_float := float64(int(params.B.SecretBitLen)+1) / math.Log2(3)
 	e3 = uint32(e3_float)
 
 	rand.Seed(time.Now().UnixNano())
@@ -325,7 +321,6 @@ func testInvalidPKFullOrder(t *testing.T) {
 	Pow3k(&P, &cparam_q, uint32(random_index_p))
 	Pow3k(&Q, &cparam_q, uint32(random_index_q))
 
-
 	var invQz, invPz Fp2
 	invQz = Q.Z
 	invPz = P.Z
@@ -334,17 +329,17 @@ func testInvalidPKFullOrder(t *testing.T) {
 
 	mul(&P.X, &P.X, &invPz)
 	mul(&Q.X, &Q.X, &invQz)
-	
+
 	var xP, xQ, xQmP ProjectivePoint
 	xP = ProjectivePoint{X: P.X, Z: params.OneFp2}
 	xQ = ProjectivePoint{X: Q.X, Z: params.OneFp2}
 	xQmP = ProjectivePoint{X: params.OneFp2, Z: params.OneFp2}
 
-	error_verify := PublicKeyValidation(&params.InitCurve, &xP, &xQ, &xQmP, params.B.SecretBitLen) 
-	if error_verify==nil{
+	error_verify := PublicKeyValidation(&params.InitCurve, &xP, &xQ, &xQmP, params.B.SecretBitLen)
+	if error_verify == nil {
 		t.Errorf("\nExpect ciphertext not of full order to fail, index_p: %v  index_q: %v  ", random_index_p, random_index_q)
 	}
-	
+
 }
 
 // A trivial test case not covered by paper https://eprint.iacr.org/2022/054.pdf and HB
@@ -358,8 +353,8 @@ func testInvalidPmQ(t *testing.T) {
 	xQ = ProjectivePoint{X: params.A.AffineQ, Z: params.OneFp2}
 	xQmP = ProjectivePoint{X: zero, Z: params.OneFp2}
 
-	error_verify := PublicKeyValidation(&params.InitCurve, &xP, &xQ, &xQmP, params.B.SecretBitLen) 
-	if error_verify==nil{
+	error_verify := PublicKeyValidation(&params.InitCurve, &xP, &xQ, &xQmP, params.B.SecretBitLen)
+	if error_verify == nil {
 		t.Errorf("\nExpect PmQ as T to fail\n")
 	}
 
@@ -374,13 +369,12 @@ func testValidPQ(t *testing.T) {
 	xQ = ProjectivePoint{X: params.B.AffineQ, Z: params.OneFp2}
 	xQmP = ProjectivePoint{X: params.OneFp2, Z: params.OneFp2}
 
-	error_verify := PublicKeyValidation(&params.InitCurve, &xP, &xQ, &xQmP, params.B.SecretBitLen) 
-	if error_verify!=nil{
+	error_verify := PublicKeyValidation(&params.InitCurve, &xP, &xQ, &xQmP, params.B.SecretBitLen)
+	if error_verify != nil {
 		t.Errorf("\nExpect correct ciphertext to not fail\n")
 	}
 
 }
-
 
 /* -------------------------------------------------------------------------
    Public key / Ciphertext validation against attacks proposed in paper https://eprint.iacr.org/2022/054.pdf and HB
