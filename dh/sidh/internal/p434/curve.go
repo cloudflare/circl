@@ -4,9 +4,9 @@
 package p434
 
 import (
-	"math"
 	"errors"
 	. "github.com/cloudflare/circl/dh/sidh/internal/common"
+	"math"
 )
 
 // Stores isogeny 3 curve constants
@@ -128,7 +128,6 @@ func RecoverCurveCoefficients4(cparams *ProjectiveCurveParameters, coefEq *Curve
 	mul(&cparams.C, &cparams.C, &params.HalfFp2)
 }
 
-
 // Combined coordinate doubling and differential addition. Takes projective points
 // P,Q,Q-P and (A+2C)/4C curve E coefficient. Returns 2*P and P+Q calculated on E.
 // Function is used only by RightToLeftLadder. Corresponds to Algorithm 5 of SIKE
@@ -242,7 +241,6 @@ func ScalarMul3Pt(cparams *ProjectiveCurveParameters, P, Q, PmQ *ProjectivePoint
 	R2 = *PmQ
 	R0 = *Q
 
-	
 	// Iterate over the bits of the scalar, bottom to top
 	prevBit := uint8(0)
 	for i := uint(0); i < nbits; i++ {
@@ -361,48 +359,44 @@ func (phi *isogeny4) EvaluatePoint(p *ProjectivePoint) {
 	mul(zq, zq, &t0)
 }
 
-// PublicKeyValidation preforms public key/ciphertext validation using the CLN test. 
+// PublicKeyValidation preforms public key/ciphertext validation using the CLN test.
 // CLN test: Check that P and Q are both of order 3^e3 and they generate the torsion E_A[3^e3]
 // A countermeasure for remote timing attacks on SIKE; suggested by https://eprint.iacr.org/2022/054.pdf
-// Any curve E_A (SIKE 434, 503, 751) that passes CLN test is supersingular. 
+// Any curve E_A (SIKE 434, 503, 751) that passes CLN test is supersingular.
 // Input: The public key / ciphertext P, Q, PmQ. The projective coordinate A of the curve defined by (P, Q, PmQ)
 // Outputs: Whether (P,Q,PmQ) follows the CLN test
 func PublicKeyValidation(cparams *ProjectiveCurveParameters, P, Q, PmQ *ProjectivePoint, nbits uint) error {
-	
 
 	var PmQX, PmQZ Fp2
 	FromMontgomery(&PmQX, &PmQ.X)
 	FromMontgomery(&PmQZ, &PmQ.Z)
 
 	// PmQ is not point T or O
-	if((isZero(&PmQX)==1)||(isZero(&PmQZ)==1)){
+	if (isZero(&PmQX) == 1) || (isZero(&PmQZ) == 1) {
 		return errors.New("curve: PmQ is invalid")
 	}
-	
+
 	cparam := CalcCurveParamsEquiv3(cparams)
 
 	// Compute e_3 = log3(2^(nbits+1))
 	var e3 uint32
-	e3_float := float64(int(nbits)+1)/math.Log2(3)
+	e3_float := float64(int(nbits)+1) / math.Log2(3)
 	e3 = uint32(e3_float)
-	
+
 	// Verify that P and Q generate E_A[3^e_3] by checking: [3^(e_3-1)]P != [+-3^(e_3-1)]Q
 	var test_P, test_Q ProjectivePoint
 	test_P = *P
 	test_Q = *Q
 
-	
 	Pow3k(&test_P, &cparam, e3-1)
 	Pow3k(&test_Q, &cparam, e3-1)
 
-    
 	var PZ, QZ Fp2
 	FromMontgomery(&PZ, &test_P.Z)
 	FromMontgomery(&QZ, &test_Q.Z)
 
-	
 	// P, Q are not of full order 3^e_3
-	if((isZero(&PZ)==1)||(isZero(&QZ)==1)){
+	if (isZero(&PZ) == 1) || (isZero(&QZ) == 1) {
 		return errors.New("curve: ciphertext/public key are not of full order 3^e3")
 	}
 
@@ -416,7 +410,7 @@ func PublicKeyValidation(cparams *ProjectiveCurveParameters, P, Q, PmQ *Projecti
 	FromMontgomery(&PXQZ_PZQX_fromMont, &PXQZ_PZQX)
 
 	// [3^(e_3-1)]P == [+-3^(e_3-1)]Q
-	if(isZero(&PXQZ_PZQX_fromMont)==1){
+	if isZero(&PXQZ_PZQX_fromMont) == 1 {
 		return errors.New("curve: ciphertext/public key are not linearly independent")
 	}
 
@@ -426,13 +420,10 @@ func PublicKeyValidation(cparams *ProjectiveCurveParameters, P, Q, PmQ *Projecti
 
 	FromMontgomery(&PZ, &test_P.Z)
 	FromMontgomery(&QZ, &test_Q.Z)
-	
+
 	// P, Q are not of correct order 3^e_3
-	if((isZero(&PZ)==0)||(isZero(&QZ)==0)){
+	if (isZero(&PZ) == 0) || (isZero(&QZ) == 0) {
 		return errors.New("curve: ciphertext/public key are not of correct order 3^e3")
 	}
 	return nil
 }
-
-
-
