@@ -47,7 +47,7 @@ go get -u github.com/cloudflare/circl
  - [VOPRF](https://datatracker.ietf.org/doc/draft-irtf-cfrg-voprf/): Verifiable Oblivious Pseudorandom function.
 
 #### Post-Quantum Key Encapsulation Methods
- - [SIDH/SIKE](https://sike.org/): Supersingular Key Encapsulation with  rimes p434, p503, p751
+ - [SIDH/SIKE](https://sike.org/): Supersingular Key Encapsulation with primes p434, p503, p751
  - [CSIDH](https://csidh.isogeny.org/): Post-Quantum Commutative Group Action
  - [Kyber](https://pq-crystals.org/kyber/) KEM: modes 512, 768, 1024
  - [FrodoKEM](https://frodokem.org/) KEM: modes 640-SHAKE
@@ -98,7 +98,7 @@ APA Style
 ```
 Faz-Hernández, A. and Kwiatkowski, K. (2019). Introducing CIRCL:
 An Advanced Cryptographic Library. Cloudflare. Available at
-https://github.com/cloudflare/circl. v1.1.0 Accessed Oct 2021.
+https://github.com/cloudflare/circl. v1.2.0 Accessed Jun 2022.
 ```
 
 Bibtex Source
@@ -113,7 +113,7 @@ Bibtex Source
                    of this library is to be used as a tool for experimental
                    deployment of cryptographic algorithms targeting Post-Quantum (PQ)
                    and Elliptic Curve Cryptography (ECC).}},
-  note         = {Available at \url{https://github.com/cloudflare/circl}. v1.1.0 Accessed Oct 2021},
+  note         = {Available at \url{https://github.com/cloudflare/circl}. v1.2.0 Accessed Jun 2022},
   month        = jun,
   year         = {2019}
 }
