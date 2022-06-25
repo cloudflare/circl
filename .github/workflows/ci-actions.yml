@@ -2,10 +2,10 @@ name: CIRCL
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
     branches:
-      - master
+      - main
 jobs:
   amd64_job:
     name: Go-${{matrix.GOVER}}/amd64

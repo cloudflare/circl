@@ -6,7 +6,7 @@
 [![CIRCL](https://github.com/cloudflare/circl/workflows/CIRCL/badge.svg)](https://github.com/cloudflare/circl/actions)
 [![GoDoc](https://godoc.org/github.com/cloudflare/circl?status.svg)](https://pkg.go.dev/github.com/cloudflare/circl?tab=overview)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cloudflare/circl)](https://goreportcard.com/report/github.com/cloudflare/circl)
-[![codecov](https://codecov.io/gh/cloudflare/circl/branch/master/graph/badge.svg)](https://codecov.io/gh/cloudflare/circl)
+[![codecov](https://codecov.io/gh/cloudflare/circl/branch/main/graph/badge.svg)](https://codecov.io/gh/cloudflare/circl)
 
 **CIRCL** (Cloudflare Interoperable, Reusable Cryptographic Library) is a collection
 of cryptographic primitives written in Go. The goal of this library is to be used as a tool for
@@ -91,7 +91,7 @@ CI build.
 
 ## How to Cite
 
-To cite CIRCL, use one of the following formats and update the version and  date you accessed this project.
+To cite CIRCL, use one of the following formats and update the version and date you accessed this project.
 
 APA Style
 
@@ -118,6 +118,10 @@ Bibtex Source
   year         = {2019}
 }
 ```
+
+CFF Style
+
+See attached [CITATION.cff](CITATION.cff) file.
 
 ## License
 

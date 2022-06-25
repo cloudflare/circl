@@ -1,0 +1,30 @@
+---
+cff-version: 1.2.0
+version: 1.2.0
+title: "Introducing CIRCL: An Advanced Cryptographic Library"
+license: BSD-3-Clause
+abstract: >
+   CIRCL (Cloudflare Interoperable, Reusable Cryptographic Library) is
+   a collection of cryptographic primitives written in Go. The goal
+   of this library is to be used as a tool for experimental
+   deployment of cryptographic algorithms targeting Post-Quantum (PQ)
+   and Elliptic Curve Cryptography (ECC).
+authors:
+  - family-names: Faz-Hernández
+    given-names: Armando
+    affiliation: Cloudflare, Inc.
+    orcid: "https://orcid.org/0000-0001-5502-8666"
+  - family-names: Kwiatkowski
+    given-names: Kris
+    orcid: "https://orcid.org/0000-0003-2363-317X"
+date-released: "2019-07-10"
+keywords:
+  - cryptography
+  - crypto
+  - post-quantum
+  - golang
+repository-code: "https://github.com/cloudflare/circl/"
+type: software
+message: "Available at https://github.com/cloudflare/circl. v1.2.0 Accessed Jun 2022"
+contact:
+  - name: "Cloudflare, Inc."
