@@ -62,6 +62,9 @@ func TestApi(t *testing.T) {
 				t.Fatal()
 			}
 
+			_ = scheme.SeedSize()
+			_ = scheme.EncapsulationSeedSize()
+
 			pk, sk, err := scheme.GenerateKeyPair()
 			if err != nil {
 				t.Fatal()
