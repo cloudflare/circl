@@ -235,9 +235,9 @@ func (v *vector) test(t *testing.T) {
 }
 
 func TestVectors(t *testing.T) {
-	// Draft published at https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-voprf-09
+	// Draft published at https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-voprf-10
 	// Test vectors at https://github.com/cfrg/draft-irtf-cfrg-voprf
-	// Version supported: v09
+	// Version supported: v10
 	v := readFile(t, "testdata/allVectors.json")
 
 	for i := range v {
