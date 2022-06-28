@@ -62,7 +62,7 @@ import (
 )
 
 const (
-	version          = "VOPRF09-"
+	version          = "VOPRF10-"
 	finalizeDST      = "Finalize"
 	hashToGroupDST   = "HashToGroup-"
 	hashToScalarDST  = "HashToScalar-"
