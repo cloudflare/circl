@@ -56,18 +56,21 @@ var kyber512X kem.Scheme = &scheme{
 	"Kyber512-X25519",
 	kyber512.Scheme(),
 	hpke.KEM_X25519_HKDF_SHA256.Scheme(),
+	0x01fd,
 }
 
 var kyber768X kem.Scheme = &scheme{
 	"Kyber768-X448",
 	kyber768.Scheme(),
 	hpke.KEM_X448_HKDF_SHA512.Scheme(),
+	0x01fc,
 }
 
 var kyber1024X kem.Scheme = &scheme{
 	"Kyber1024-X448",
 	kyber1024.Scheme(),
 	hpke.KEM_X448_HKDF_SHA512.Scheme(),
+	0x01fb,
 }
 
 // Public key of a hybrid KEM.
@@ -86,12 +89,14 @@ type privateKey struct {
 
 // Scheme for a hybrid KEM.
 type scheme struct {
-	name   string
-	first  kem.Scheme
-	second kem.Scheme
+	name       string
+	first      kem.Scheme
+	second     kem.Scheme
+	tlsCurveID uint
 }
 
-func (sch *scheme) Name() string { return sch.name }
+func (sch *scheme) Name() string     { return sch.name }
+func (sch *scheme) TLSCurveID() uint { return sch.tlsCurveID }
 func (sch *scheme) PublicKeySize() int {
 	return sch.first.PublicKeySize() + sch.second.PublicKeySize()
 }
