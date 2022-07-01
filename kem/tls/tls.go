@@ -1,4 +1,4 @@
-// Package tls adds helpers to integrate the KEMs supported in Circl into TLS.
+// Package tls adds helpers to integrate the KEMs supported in CIRCL into TLS.
 package tls
 
 import (
