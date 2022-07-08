@@ -41,6 +41,7 @@ var allSchemes = [...]kem.Scheme{
 	sikep503.Scheme(),
 	sikep751.Scheme(),
 	hybrid.Kyber512X25519(),
+	hybrid.Kyber768X25519(),
 	hybrid.Kyber768X448(),
 	hybrid.Kyber1024X448(),
 }

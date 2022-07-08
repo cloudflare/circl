@@ -46,8 +46,11 @@ var ErrUninitialized = errors.New("public or private key not initialized")
 // Returns the hybrid KEM of Kyber512 and X25519.
 func Kyber512X25519() kem.Scheme { return kyber512X }
 
+// Returns the hybrid KEM of Kyber768 and X25519.
+func Kyber768X25519() kem.Scheme { return kyber768X }
+
 // Returns the hybrid KEM of Kyber768 and X448.
-func Kyber768X448() kem.Scheme { return kyber768X }
+func Kyber768X448() kem.Scheme { return kyber768X4 }
 
 // Returns the hybrid KEM of Kyber1024 and X448.
 func Kyber1024X448() kem.Scheme { return kyber1024X }
@@ -59,6 +62,12 @@ var kyber512X kem.Scheme = &scheme{
 }
 
 var kyber768X kem.Scheme = &scheme{
+	"Kyber768-X25519",
+	kyber768.Scheme(),
+	hpke.KEM_X25519_HKDF_SHA256.Scheme(),
+}
+
+var kyber768X4 kem.Scheme = &scheme{
 	"Kyber768-X448",
 	kyber768.Scheme(),
 	hpke.KEM_X448_HKDF_SHA512.Scheme(),
