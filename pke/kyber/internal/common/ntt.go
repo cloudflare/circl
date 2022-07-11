@@ -59,7 +59,7 @@ var InvNTTReductions = [...]int{
 // their proper order by calling Detangle().
 func (p *Poly) nttGeneric() {
 	// Note that ℤ_q does not have a primitive 512ᵗʰ root of unity (as 512
-	// does not divide into q) and so we cannot do a regular NTT.  ℤ_q
+	// does not divide into q-1) and so we cannot do a regular NTT.  ℤ_q
 	// does have a primitive 256ᵗʰ root of unity, the smallest of which
 	// is ζ := 17.
 	//
@@ -73,12 +73,12 @@ func (p *Poly) nttGeneric() {
 	//          ⋮
 	//          = (x² - ζ)(x² + ζ)(x² - ζ⁶⁵)(x² + ζ⁶⁵) … (x² + ζ¹²⁷)
 	//
-	// Note that the powers of ζ that appear (from th second line down) are
+	// Note that the powers of ζ that appear (from the second line down) are
 	// in binary
 	//
-	// 010000 110000
-	// 001000 101000 011000 111000
-	// 000100 100100 010100 110100 001100 101100 011100 111100
+	// 0100000 1100000
+	// 0010000 1010000 0110000 1110000
+	// 0001000 1001000 0101000 1101000 0011000 1011000 0111000 1111000
 	//         …
 	//
 	// That is: brv(2), brv(3), brv(4), …, where brv(x) denotes the 7-bit
@@ -89,7 +89,7 @@ func (p *Poly) nttGeneric() {
 	//
 	//  ℤ_q[x]/(x²⁵⁶+1) → ℤ_q[x]/(x²-ζ) x … x  ℤ_q[x]/(x²+ζ¹²⁷)
 	//
-	// given by a ↦ ( a mod x²-z, …, a mod x²+z¹²⁷ )
+	// given by a ↦ ( a mod x²-ζ, …, a mod x²+ζ¹²⁷ )
 	// is an isomorphism, which is the "NTT".  It can be efficiently computed by
 	//
 	//
@@ -105,7 +105,7 @@ func (p *Poly) nttGeneric() {
 	//
 	// Each cross is a Cooley-Tukey butterfly: it's the map
 	//
-	//  (a, b) ↦ (a + ζ, a - ζ)
+	//  (a, b) ↦ (a + ζb, a - ζb)
 	//
 	// for the appropriate power ζ for that column and row group.
 
