@@ -51,6 +51,14 @@ func (p Polynomial) Evaluate(x group.Scalar) group.Scalar {
 	return px
 }
 
+func (p Polynomial) Coefficients() []group.Scalar {
+	c := make([]group.Scalar, len(p.c))
+	for i := range p.c {
+		c[i] = p.c[i].Copy()
+	}
+	return c
+}
+
 // LagrangePolynomial stores a Lagrange polynomial over the set of scalars of a group.
 type LagrangePolynomial struct {
 	// Internal representation is in Lagrange basis:
