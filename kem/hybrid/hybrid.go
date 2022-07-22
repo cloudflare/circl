@@ -33,7 +33,6 @@ package hybrid
 import (
 	"errors"
 
-	"github.com/cloudflare/circl/hpke"
 	"github.com/cloudflare/circl/internal/sha3"
 	"github.com/cloudflare/circl/kem"
 	"github.com/cloudflare/circl/kem/kyber/kyber1024"
@@ -57,26 +56,26 @@ func Kyber1024X448() kem.Scheme { return kyber1024X }
 
 var kyber512X kem.Scheme = &scheme{
 	"Kyber512-X25519",
+	x25519Kem,
 	kyber512.Scheme(),
-	hpke.KEM_X25519_HKDF_SHA256.Scheme(),
 }
 
 var kyber768X kem.Scheme = &scheme{
 	"Kyber768-X25519",
+	x25519Kem,
 	kyber768.Scheme(),
-	hpke.KEM_X25519_HKDF_SHA256.Scheme(),
 }
 
 var kyber768X4 kem.Scheme = &scheme{
 	"Kyber768-X448",
+	x448Kem,
 	kyber768.Scheme(),
-	hpke.KEM_X448_HKDF_SHA512.Scheme(),
 }
 
 var kyber1024X kem.Scheme = &scheme{
 	"Kyber1024-X448",
+	x448Kem,
 	kyber1024.Scheme(),
-	hpke.KEM_X448_HKDF_SHA512.Scheme(),
 }
 
 // Public key of a hybrid KEM.
