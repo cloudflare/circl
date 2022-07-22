@@ -276,28 +276,34 @@ func Example_oprf() {
 }
 
 func BenchmarkAPI(b *testing.B) {
-	suite := SuiteP256
-	key, err := GenerateKey(suite, rand.Reader)
-	test.CheckNoErr(b, err, "failed key generation")
+	for _, suite := range []Suite{
+		SuiteRistretto255,
+		SuiteP256,
+		SuiteP384,
+		SuiteP521,
+	} {
+		key, err := GenerateKey(suite, rand.Reader)
+		test.CheckNoErr(b, err, "failed key generation")
 
-	b.Run("OPRF", func(b *testing.B) {
-		s := NewServer(suite, key)
-		c := NewClient(suite)
-		benchAPI(b, s, c)
-	})
+		b.Run("OPRF/"+suite.Name(), func(b *testing.B) {
+			s := NewServer(suite, key)
+			c := NewClient(suite)
+			benchAPI(b, s, c)
+		})
 
-	b.Run("VOPRF", func(b *testing.B) {
-		s := NewVerifiableServer(suite, key)
-		c := NewVerifiableClient(suite, s.PublicKey())
-		benchAPI(b, s, c)
-	})
+		b.Run("VOPRF/"+suite.Name(), func(b *testing.B) {
+			s := NewVerifiableServer(suite, key)
+			c := NewVerifiableClient(suite, s.PublicKey())
+			benchAPI(b, s, c)
+		})
 
-	b.Run("POPRF", func(b *testing.B) {
-		info := []byte("shared info")
-		s := &s1{NewPartialObliviousServer(suite, key), info}
-		c := &c1{NewPartialObliviousClient(suite, s.PublicKey()), info}
-		benchAPI(b, s, c)
-	})
+		b.Run("POPRF/"+suite.Name(), func(b *testing.B) {
+			info := []byte("shared info")
+			s := &s1{NewPartialObliviousServer(suite, key), info}
+			c := &c1{NewPartialObliviousClient(suite, s.PublicKey()), info}
+			benchAPI(b, s, c)
+		})
+	}
 }
 
 func benchAPI(b *testing.B, server commonServer, client commonClient) {

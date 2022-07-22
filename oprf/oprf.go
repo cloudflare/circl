@@ -86,18 +86,19 @@ type Suite interface {
 	ID() int
 	Group() group.Group
 	Hash() crypto.Hash
+	Name() string
 	cannotBeImplementedExternally()
 }
 
 var (
-	// SuiteRistretto255 represents the OPRF with Ristretto255 and SHA-512.
-	SuiteRistretto255 Suite = params{id: 1, group: group.Ristretto255, hash: crypto.SHA512}
+	// SuiteRistretto255 represents the OPRF with Ristretto255 and SHA-512
+	SuiteRistretto255 Suite = params{id: 1, group: group.Ristretto255, hash: crypto.SHA512, name: "OPRF(ristretto255, SHA-512)"}
 	// SuiteP256 represents the OPRF with P-256 and SHA-256.
-	SuiteP256 Suite = params{id: 3, group: group.P256, hash: crypto.SHA256}
+	SuiteP256 Suite = params{id: 3, group: group.P256, hash: crypto.SHA256, name: "OPRF(P-256, SHA-256)"}
 	// SuiteP384 represents the OPRF with P-384 and SHA-384.
-	SuiteP384 Suite = params{id: 4, group: group.P384, hash: crypto.SHA384}
+	SuiteP384 Suite = params{id: 4, group: group.P384, hash: crypto.SHA384, name: "OPRF(P-384, SHA-384)"}
 	// SuiteP521 represents the OPRF with P-521 and SHA-512.
-	SuiteP521 Suite = params{id: 5, group: group.P521, hash: crypto.SHA512}
+	SuiteP521 Suite = params{id: 5, group: group.P521, hash: crypto.SHA512, name: "OPRF(P-521, SHA-512)"}
 )
 
 func GetSuite(id int) (Suite, error) {
@@ -177,6 +178,7 @@ type params struct {
 	m     Mode
 	group group.Group
 	hash  crypto.Hash
+	name  string
 }
 
 func (p params) cannotBeImplementedExternally() {}
@@ -185,6 +187,7 @@ func (p params) String() string     { return fmt.Sprintf("Suite%v", p.group) }
 func (p params) ID() int            { return int(p.id) }
 func (p params) Group() group.Group { return p.group }
 func (p params) Hash() crypto.Hash  { return p.hash }
+func (p params) Name() string       { return p.name }
 
 func (p params) getDST(name string) []byte {
 	return append(append(append([]byte{},
