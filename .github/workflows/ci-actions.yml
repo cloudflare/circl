@@ -82,7 +82,7 @@ jobs:
     name: Running on ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-10.15, windows-2019]
+        os: [macos-11, windows-2019]
     steps:
       - name: Checkout
         uses: actions/checkout@v3
