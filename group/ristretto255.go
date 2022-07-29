@@ -10,7 +10,7 @@ import (
 	"github.com/cloudflare/circl/expander"
 )
 
-// Ristretto255 is a quotient group generated from edwards25519 curve.
+// Ristretto255 is a quotient group generated from the edwards25519 curve.
 var Ristretto255 Group = ristrettoGroup{}
 
 type ristrettoGroup struct{}
@@ -202,9 +202,9 @@ func (e *ristrettoElement) UnmarshalBinary(data []byte) error {
 	return e.p.UnmarshalBinary(data)
 }
 
-func (s *ristrettoScalar) Group() Group       { return Ristretto255 }
-func (s *ristrettoScalar) String() string     { return fmt.Sprintf("0x%x", s.s.Bytes()) }
-func (s *ristrettoScalar) SetUint64(n uint64) { s.s.SetUint64(n) }
+func (s *ristrettoScalar) Group() Group              { return Ristretto255 }
+func (s *ristrettoScalar) String() string            { return fmt.Sprintf("0x%x", s.s.Bytes()) }
+func (s *ristrettoScalar) SetUint64(n uint64) Scalar { s.s.SetUint64(n); return s }
 
 func (s *ristrettoScalar) IsEqual(x Scalar) bool {
 	return s.s.Equals(&x.(*ristrettoScalar).s)
