@@ -125,6 +125,7 @@ type wElt struct {
 	x, y *big.Int
 }
 
+func (e *wElt) Group() Group     { return e.wG }
 func (e *wElt) String() string   { return fmt.Sprintf("x: 0x%v\ny: 0x%v", e.x.Text(16), e.y.Text(16)) }
 func (e *wElt) IsIdentity() bool { return e.x.Sign() == 0 && e.y.Sign() == 0 }
 func (e *wElt) IsEqual(o Element) bool {
@@ -219,6 +220,7 @@ type wScl struct {
 	k []byte
 }
 
+func (s *wScl) Group() Group       { return s.wG }
 func (s *wScl) String() string     { return fmt.Sprintf("0x%x", s.k) }
 func (s *wScl) SetUint64(n uint64) { s.fromBig(new(big.Int).SetUint64(n)) }
 func (s *wScl) IsEqual(a Scalar) bool {

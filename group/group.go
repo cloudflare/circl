@@ -31,6 +31,7 @@ type Group interface {
 
 // Element represents an abstract element of a prime-order group.
 type Element interface {
+	Group() Group
 	Set(Element) Element
 	Copy() Element
 	IsIdentity() bool
@@ -47,6 +48,7 @@ type Element interface {
 
 // Scalar represents an integer scalar.
 type Scalar interface {
+	Group() Group
 	Set(Scalar) Scalar
 	Copy() Scalar
 	IsEqual(Scalar) bool
