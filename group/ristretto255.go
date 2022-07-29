@@ -126,6 +126,8 @@ func (g ristrettoGroup) HashToScalar(msg, dst []byte) Scalar {
 	return s
 }
 
+func (e *ristrettoElement) Group() Group { return Ristretto255 }
+
 func (e *ristrettoElement) IsIdentity() bool {
 	var zero r255.Point
 	zero.SetZero()
@@ -181,6 +183,7 @@ func (e *ristrettoElement) UnmarshalBinary(data []byte) error {
 	return e.p.UnmarshalBinary(data)
 }
 
+func (s *ristrettoScalar) Group() Group       { return Ristretto255 }
 func (s *ristrettoScalar) String() string     { return fmt.Sprintf("0x%x", s.s.Bytes()) }
 func (s *ristrettoScalar) SetUint64(n uint64) { s.s.SetUint64(n) }
 
