@@ -26,6 +26,8 @@ func TestGroup(t *testing.T) {
 		t.Run(n+"/Neg", func(tt *testing.T) { testNeg(tt, testTimes, g) })
 		t.Run(n+"/Mul", func(tt *testing.T) { testMul(tt, testTimes, g) })
 		t.Run(n+"/MulGen", func(tt *testing.T) { testMulGen(tt, testTimes, g) })
+		t.Run(n+"/CMov", func(tt *testing.T) { testCMov(tt, testTimes, g) })
+		t.Run(n+"/CSelect", func(tt *testing.T) { testCSelect(tt, testTimes, g) })
 		t.Run(n+"/Order", func(tt *testing.T) { testOrder(tt, testTimes, g) })
 		t.Run(n+"/Marshal", func(tt *testing.T) { testMarshal(tt, testTimes, g) })
 		t.Run(n+"/Scalar", func(tt *testing.T) { testScalar(tt, testTimes, g) })
@@ -97,6 +99,66 @@ func testMulGen(t *testing.T, testTimes int, g group.Group) {
 		want := Q
 		if !got.IsEqual(want) {
 			test.ReportError(t, got, want, P, k)
+		}
+	}
+}
+
+func testCMov(t *testing.T, testTimes int, g group.Group) {
+	P := g.RandomElement(rand.Reader)
+	Q := g.RandomElement(rand.Reader)
+
+	err := test.CheckPanic(func() { P.CMov(0, Q) })
+	test.CheckIsErr(t, err, "shouldn't fail with 0")
+	err = test.CheckPanic(func() { P.CMov(1, Q) })
+	test.CheckIsErr(t, err, "shouldn't fail with 1")
+	err = test.CheckPanic(func() { P.CMov(2, Q) })
+	test.CheckNoErr(t, err, "should fail with dif 0,1")
+
+	for i := 0; i < testTimes; i++ {
+		P = g.RandomElement(rand.Reader)
+		Q = g.RandomElement(rand.Reader)
+
+		want := P.Copy()
+		got := P.CMov(0, Q)
+		if !got.IsEqual(want) {
+			test.ReportError(t, got, want)
+		}
+
+		want = Q.Copy()
+		got = P.CMov(1, Q)
+		if !got.IsEqual(want) {
+			test.ReportError(t, got, want)
+		}
+	}
+}
+
+func testCSelect(t *testing.T, testTimes int, g group.Group) {
+	P := g.RandomElement(rand.Reader)
+	Q := g.RandomElement(rand.Reader)
+	R := g.RandomElement(rand.Reader)
+
+	err := test.CheckPanic(func() { P.CSelect(0, Q, R) })
+	test.CheckIsErr(t, err, "shouldn't fail with 0")
+	err = test.CheckPanic(func() { P.CSelect(1, Q, R) })
+	test.CheckIsErr(t, err, "shouldn't fail with 1")
+	err = test.CheckPanic(func() { P.CSelect(2, Q, R) })
+	test.CheckNoErr(t, err, "should fail with dif 0,1")
+
+	for i := 0; i < testTimes; i++ {
+		P := g.RandomElement(rand.Reader)
+		Q := g.RandomElement(rand.Reader)
+		R := g.RandomElement(rand.Reader)
+
+		want := R.Copy()
+		got := P.CSelect(0, Q, R)
+		if !got.IsEqual(want) {
+			test.ReportError(t, got, want)
+		}
+
+		want = Q.Copy()
+		got = P.CSelect(1, Q, R)
+		if !got.IsEqual(want) {
+			test.ReportError(t, got, want)
 		}
 	}
 }
@@ -179,6 +241,8 @@ func testMarshal(t *testing.T, testTimes int, g group.Group) {
 }
 
 func testScalar(t *testing.T, testTimes int, g group.Group) {
+	a := g.RandomScalar(rand.Reader)
+	b := g.RandomScalar(rand.Reader)
 	c := g.NewScalar()
 	d := g.NewScalar()
 	e := g.NewScalar()
@@ -186,9 +250,24 @@ func testScalar(t *testing.T, testTimes int, g group.Group) {
 	one := g.NewScalar()
 	one.SetUint64(1)
 	params := g.Params()
+
+	err := test.CheckPanic(func() { a.CMov(0, b) })
+	test.CheckIsErr(t, err, "shouldn't fail with 0")
+	err = test.CheckPanic(func() { a.CMov(1, b) })
+	test.CheckIsErr(t, err, "shouldn't fail with 1")
+	err = test.CheckPanic(func() { a.CMov(2, b) })
+	test.CheckNoErr(t, err, "should fail with dif 0,1")
+
+	err = test.CheckPanic(func() { a.CSelect(0, b, c) })
+	test.CheckIsErr(t, err, "shouldn't fail with 0")
+	err = test.CheckPanic(func() { a.CSelect(1, b, c) })
+	test.CheckIsErr(t, err, "shouldn't fail with 1")
+	err = test.CheckPanic(func() { a.CSelect(2, b, c) })
+	test.CheckNoErr(t, err, "should fail with dif 0,1")
+
 	for i := 0; i < testTimes; i++ {
-		a := g.RandomScalar(rand.Reader)
-		b := g.RandomScalar(rand.Reader)
+		a = g.RandomScalar(rand.Reader)
+		b = g.RandomScalar(rand.Reader)
 		c.Add(a, b)
 		d.Sub(a, b)
 		e.Mul(c, d)
@@ -207,9 +286,32 @@ func testScalar(t *testing.T, testTimes int, g group.Group) {
 		if l := uint(len(enc1)); l != params.ScalarLength {
 			test.ReportError(t, l, params.ScalarLength)
 		}
+
+		want := c.Copy()
+		got := c.CMov(0, a)
+		if !got.IsEqual(want) {
+			test.ReportError(t, got, want)
+		}
+
+		want = b.Copy()
+		got = d.CMov(1, b)
+		if !got.IsEqual(want) {
+			test.ReportError(t, got, want)
+		}
+
+		want = b.Copy()
+		got = e.CSelect(0, a, b)
+		if !got.IsEqual(want) {
+			test.ReportError(t, got, want)
+		}
+
+		want = a.Copy()
+		got = f.CSelect(1, a, b)
+		if !got.IsEqual(want) {
+			test.ReportError(t, got, want)
+		}
 	}
 
-	a := g.RandomScalar(rand.Reader)
 	c.Inv(a)
 	c.Mul(c, a)
 	if !one.IsEqual(c) {
