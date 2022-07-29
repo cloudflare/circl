@@ -59,16 +59,6 @@ func (g ristrettoGroup) Generator() Element {
 	}
 }
 
-func (g ristrettoGroup) Order() Scalar {
-	q := r255.Scalar{
-		0x5cf5d3ed, 0x5812631a, 0xa2f79cd6, 0x14def9de,
-		0x00000000, 0x00000000, 0x00000000, 0x10000000,
-	}
-	return &ristrettoScalar{
-		s: q,
-	}
-}
-
 func (g ristrettoGroup) RandomElement(r io.Reader) Element {
 	var x r255.Point
 	x.Rand()
