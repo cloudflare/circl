@@ -26,8 +26,6 @@ type Group interface {
 	Identity() Element
 	// Creates an element of the group set to the generator of the group.
 	Generator() Element
-	// Returns a scalar set to the group order.
-	Order() Scalar
 	// RandomElement creates an element chosen at random (using randomness
 	// from rnd) from the set of group elements. Use crypto/rand.Reader as
 	// a cryptographically secure random number generator

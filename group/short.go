@@ -34,7 +34,6 @@ func (g wG) Identity() Element   { return g.zeroElement() }
 func (g wG) zeroScalar() *wScl   { return &wScl{g, make([]byte, (g.c.Params().BitSize+7)/8)} }
 func (g wG) zeroElement() *wElt  { return &wElt{g, new(big.Int), new(big.Int)} }
 func (g wG) Generator() Element  { return &wElt{g, g.c.Params().Gx, g.c.Params().Gy} }
-func (g wG) Order() Scalar       { s := &wScl{g, nil}; s.fromBig(g.c.Params().N); return s }
 func (g wG) RandomElement(rd io.Reader) Element {
 	b := make([]byte, (g.c.Params().BitSize+7)/8)
 	if n, err := io.ReadFull(rd, b); err != nil || n != len(b) {

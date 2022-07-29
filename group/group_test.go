@@ -164,15 +164,17 @@ func testCSelect(t *testing.T, testTimes int, g group.Group) {
 }
 
 func testOrder(t *testing.T, testTimes int, g group.Group) {
+	I := g.Identity()
 	Q := g.NewElement()
-	order := g.Order()
+	minusOne := g.NewScalar().SetUint64(1)
+	minusOne.Neg(minusOne)
 	for i := 0; i < testTimes; i++ {
 		P := g.RandomElement(rand.Reader)
 
-		Q.Mul(P, order)
-		got := Q.IsIdentity()
-		want := true
-		if got != want {
+		Q.Mul(P, minusOne)
+		got := Q.Add(Q, P)
+		want := I
+		if !got.IsEqual(want) {
 			test.ReportError(t, got, want, P)
 		}
 	}
