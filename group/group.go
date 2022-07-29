@@ -36,6 +36,8 @@ type Element interface {
 	Copy() Element
 	IsIdentity() bool
 	IsEqual(Element) bool
+	CMov(int, Element) Element
+	CSelect(int, Element, Element) Element
 	Add(Element, Element) Element
 	Dbl(Element) Element
 	Neg(Element) Element
@@ -53,6 +55,8 @@ type Scalar interface {
 	Copy() Scalar
 	IsEqual(Scalar) bool
 	SetUint64(uint64)
+	CMov(int, Scalar) Scalar
+	CSelect(int, Scalar, Scalar) Scalar
 	Add(Scalar, Scalar) Scalar
 	Sub(Scalar, Scalar) Scalar
 	Mul(Scalar, Scalar) Scalar
@@ -65,4 +69,5 @@ type Scalar interface {
 var (
 	ErrType      = errors.New("type mismatch")
 	ErrUnmarshal = errors.New("error unmarshaling")
+	ErrSelector  = errors.New("group: selector must be 0 or 1")
 )
