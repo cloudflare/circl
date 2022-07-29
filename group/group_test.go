@@ -145,9 +145,9 @@ func testCSelect(t *testing.T, testTimes int, g group.Group) {
 	test.CheckNoErr(t, err, "should fail with dif 0,1")
 
 	for i := 0; i < testTimes; i++ {
-		P := g.RandomElement(rand.Reader)
-		Q := g.RandomElement(rand.Reader)
-		R := g.RandomElement(rand.Reader)
+		P = g.RandomElement(rand.Reader)
+		Q = g.RandomElement(rand.Reader)
+		R = g.RandomElement(rand.Reader)
 
 		want := R.Copy()
 		got := P.CSelect(0, Q, R)
