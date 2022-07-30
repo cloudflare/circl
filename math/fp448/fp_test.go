@@ -196,21 +196,21 @@ func TestModp(t *testing.T) {
 func TestIsZero(t *testing.T) {
 	var x Elt
 	got := IsZero(&x)
-	want := true
+	want := 1
 	if got != want {
 		test.ReportError(t, got, want, x)
 	}
 
 	SetOne(&x)
 	got = IsZero(&x)
-	want = false
+	want = 0
 	if got != want {
 		test.ReportError(t, got, want, x)
 	}
 
 	x = P()
 	got = IsZero(&x)
-	want = true
+	want = 1
 	if got != want {
 		test.ReportError(t, got, want, x)
 	}
@@ -299,7 +299,7 @@ func TestInvSqrt(t *testing.T) {
 	exp := big.NewInt(1)
 	exp.Add(p, exp).Rsh(exp, 2)
 	var frac, root, sqRoot big.Int
-	var wantQR bool
+	var wantQR int
 	var want *big.Int
 	for i := 0; i < numTests; i++ {
 		_, _ = rand.Read(x[:])
@@ -317,13 +317,13 @@ func TestInvSqrt(t *testing.T) {
 
 		if sqRoot.Cmp(&frac) == 0 {
 			want = &root
-			wantQR = true
+			wantQR = 1
 		} else {
 			want = big.NewInt(0)
-			wantQR = false
+			wantQR = 0
 		}
 
-		if wantQR {
+		if wantQR == 1 {
 			if gotQR != wantQR || got.Cmp(want) != 0 {
 				test.ReportError(t, got, want, x, y)
 			}

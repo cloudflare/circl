@@ -28,10 +28,8 @@ import (
 	"crypto"
 	cryptoRand "crypto/rand"
 	"crypto/subtle"
-	"errors"
 	"fmt"
 	"io"
-	"strconv"
 
 	"github.com/cloudflare/circl/ecc/goldilocks"
 	"github.com/cloudflare/circl/internal/sha3"
@@ -66,7 +64,8 @@ type SignerOptions struct {
 	// Its length must be less or equal than 255 bytes.
 	Context string
 
-	// Scheme is an identifier for choosing a signature scheme.
+	// Scheme is an identifier for choosing a signature scheme. The zero value
+	// is ED448.
 	Scheme SchemeID
 }
 
@@ -98,9 +97,9 @@ func (priv PrivateKey) Equal(x crypto.PrivateKey) bool {
 
 // Public returns the PublicKey corresponding to priv.
 func (priv PrivateKey) Public() crypto.PublicKey {
-	publicKey := make([]byte, PublicKeySize)
+	publicKey := make(PublicKey, PublicKeySize)
 	copy(publicKey, priv[SeedSize:])
-	return PublicKey(publicKey)
+	return publicKey
 }
 
 // Seed returns the private key seed corresponding to priv. It is provided for
@@ -155,7 +154,7 @@ func (priv PrivateKey) Sign(
 	case scheme == ED448Ph && opts.HashFunc() == crypto.Hash(0):
 		return SignPh(priv, message, ctx), nil
 	default:
-		return nil, errors.New("ed448: bad hash algorithm")
+		return nil, fmt.Errorf("ed448: bad hash algorithm")
 	}
 }
 
@@ -183,14 +182,14 @@ func GenerateKey(rand io.Reader) (PublicKey, PrivateKey, error) {
 // with RFC 8032. RFC 8032's private keys correspond to seeds in this
 // package.
 func NewKeyFromSeed(seed []byte) PrivateKey {
-	privateKey := make([]byte, PrivateKeySize)
+	privateKey := make(PrivateKey, PrivateKeySize)
 	newKeyFromSeed(privateKey, seed)
 	return privateKey
 }
 
-func newKeyFromSeed(privateKey, seed []byte) {
+func newKeyFromSeed(privateKey PrivateKey, seed []byte) {
 	if l := len(seed); l != SeedSize {
-		panic("ed448: bad seed length: " + strconv.Itoa(l))
+		panic(fmt.Errorf("ed448: bad seed length: %v", l))
 	}
 
 	var h [hashSize]byte
@@ -200,13 +199,20 @@ func newKeyFromSeed(privateKey, seed []byte) {
 	s := &goldilocks.Scalar{}
 	deriveSecretScalar(s, h[:paramB])
 
+	var P goldilocks.Point
+	P.ScalarBaseMult(s)
+	var encP [goldilocks.EncodingSize]byte
+	if err := P.Encode(&encP); err != nil {
+		panic(err)
+	}
+
 	copy(privateKey[:SeedSize], seed)
-	_ = goldilocks.Curve{}.ScalarBaseMult(s).ToBytes(privateKey[SeedSize:])
+	copy(privateKey[SeedSize:], encP[:])
 }
 
 func signAll(signature []byte, privateKey PrivateKey, message, ctx []byte, preHash bool) {
 	if len(ctx) > ContextMaxSize {
-		panic(fmt.Errorf("ed448: bad context length: " + strconv.Itoa(len(ctx))))
+		panic(fmt.Errorf("ed448: bad context length:  %v", len(ctx)))
 	}
 
 	H := sha3.NewShake256()
@@ -232,42 +238,40 @@ func signAll(signature []byte, privateKey PrivateKey, message, ctx []byte, preHa
 
 	// 2.  Compute SHAKE256(dom4(F, C) || prefix || PH(M), 114).
 	var rPM [hashSize]byte
-	H.Reset()
-
 	writeDom(&H, ctx, preHash)
-
 	_, _ = H.Write(prefix)
 	_, _ = H.Write(PHM)
 	_, _ = H.Read(rPM[:])
 
 	// 3.  Compute the point [r]B.
 	r := &goldilocks.Scalar{}
-	r.FromBytes(rPM[:])
-	R := (&[paramB]byte{})[:]
-	if err := (goldilocks.Curve{}.ScalarBaseMult(r).ToBytes(R)); err != nil {
+	r.FromBytesLE(rPM[:])
+	var R goldilocks.Point
+	R.ScalarBaseMult(r)
+	var encR [goldilocks.EncodingSize]byte
+	if err := R.Encode(&encR); err != nil {
 		panic(err)
 	}
+
 	// 4.  Compute SHAKE256(dom4(F, C) || R || A || PH(M), 114)
 	var hRAM [hashSize]byte
-	H.Reset()
-
 	writeDom(&H, ctx, preHash)
-
-	_, _ = H.Write(R)
+	_, _ = H.Write(encR[:])
 	_, _ = H.Write(privateKey[SeedSize:])
 	_, _ = H.Write(PHM)
 	_, _ = H.Read(hRAM[:])
 
 	// 5.  Compute S = (r + k * s) mod order.
 	k := &goldilocks.Scalar{}
-	k.FromBytes(hRAM[:])
+	k.FromBytesLE(hRAM[:])
 	S := &goldilocks.Scalar{}
 	S.Mul(k, s)
 	S.Add(S, r)
+	encS := S.ToBytesLE()
 
 	// 6.  The signature is the concatenation of R and S.
-	copy(signature[:paramB], R[:])
-	copy(signature[paramB:], S[:])
+	copy(signature[:paramB], encR[:])
+	copy(signature[paramB:], encS[:])
 }
 
 // Sign signs the message with privateKey and returns a signature.
@@ -299,7 +303,10 @@ func verify(public PublicKey, message, signature, ctx []byte, preHash bool) bool
 		return false
 	}
 
-	P, err := goldilocks.FromBytes(public)
+	var encPublic [goldilocks.EncodingSize]byte
+	copy(encPublic[:], public)
+	P := &goldilocks.Point{}
+	err := P.Decode(&encPublic)
 	if err != nil {
 		return false
 	}
@@ -318,24 +325,28 @@ func verify(public PublicKey, message, signature, ctx []byte, preHash bool) bool
 	}
 
 	var hRAM [hashSize]byte
-	R := signature[:paramB]
+	sigR := signature[:paramB]
 
 	writeDom(&H, ctx, preHash)
 
-	_, _ = H.Write(R)
+	_, _ = H.Write(sigR)
 	_, _ = H.Write(public)
 	_, _ = H.Write(PHM)
 	_, _ = H.Read(hRAM[:])
 
 	k := &goldilocks.Scalar{}
-	k.FromBytes(hRAM[:])
+	k.FromBytesLE(hRAM[:])
 	S := &goldilocks.Scalar{}
-	S.FromBytes(signature[paramB:])
+	S.FromBytesLE(signature[paramB:])
 
-	encR := (&[paramB]byte{})[:]
 	P.Neg()
-	_ = goldilocks.Curve{}.CombinedMult(S, k, P).ToBytes(encR)
-	return bytes.Equal(R, encR)
+	var R goldilocks.Point
+	R.CombinedMult(S, k, P)
+	var encR [goldilocks.EncodingSize]byte
+	if err = R.Encode(&encR); err != nil {
+		panic(err)
+	}
+	return bytes.Equal(sigR, encR[:])
 }
 
 // VerifyAny returns true if the signature is valid. Failure cases are invalid
@@ -385,12 +396,12 @@ func deriveSecretScalar(s *goldilocks.Scalar, h []byte) {
 	h[0] &= 0xFC        // The two least significant bits of the first octet are cleared,
 	h[paramB-1] = 0x00  // all eight bits the last octet are cleared, and
 	h[paramB-2] |= 0x80 // the highest bit of the second to last octet is set.
-	s.FromBytes(h[:paramB])
+	s.FromBytesLE(h[:paramB])
 }
 
 // isLessThanOrder returns true if 0 <= x < order and if the last byte of x is zero.
 func isLessThanOrder(x []byte) bool {
-	order := goldilocks.Curve{}.Order()
+	order := goldilocks.Order()
 	i := len(order) - 1
 	for i > 0 && x[i] == order[i] {
 		i--
@@ -398,7 +409,8 @@ func isLessThanOrder(x []byte) bool {
 	return x[paramB-1] == 0 && x[i] < order[i]
 }
 
-func writeDom(h io.Writer, ctx []byte, preHash bool) {
+func writeDom(h sha3.ShakeHash, ctx []byte, preHash bool) {
+	h.Reset()
 	dom4 := "SigEd448"
 	_, _ = h.Write([]byte(dom4))
 

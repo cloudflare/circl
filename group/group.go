@@ -63,6 +63,6 @@ type Scalar interface {
 }
 
 var (
-	ErrType      = errors.New("type mismatch")
-	ErrUnmarshal = errors.New("error unmarshaling")
+	ErrType            = errors.New("group: type mismatch")
+	ErrInvalidDecoding = errors.New("group: invalid decoding")
 )

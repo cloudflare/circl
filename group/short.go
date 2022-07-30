@@ -200,17 +200,17 @@ func (e *wElt) UnmarshalBinary(b []byte) error {
 	case l == 1+byteLen && (b[0] == 0x02 || b[0] == 0x03): // compressed
 		x, y := elliptic.UnmarshalCompressed(e.wG.c, b)
 		if x == nil {
-			return ErrUnmarshal
+			return ErrInvalidDecoding
 		}
 		e.x, e.y = x, y
 	case l == 1+2*byteLen && b[0] == 0x04: // uncompressed
 		x, y := elliptic.Unmarshal(e.wG.c, b)
 		if x == nil {
-			return ErrUnmarshal
+			return ErrInvalidDecoding
 		}
 		e.x, e.y = x, y
 	default:
-		return ErrUnmarshal
+		return ErrInvalidDecoding
 	}
 	return nil
 }

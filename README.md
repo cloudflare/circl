@@ -2,7 +2,6 @@
 
 # CIRCL
 
-[![GitHub release](https://img.shields.io/github/release/cloudflare/circl.svg)](https://GitHub.com/cloudflare/circl/releases/)
 [![CIRCL](https://github.com/cloudflare/circl/workflows/CIRCL/badge.svg)](https://github.com/cloudflare/circl/actions)
 [![GoDoc](https://godoc.org/github.com/cloudflare/circl?status.svg)](https://pkg.go.dev/github.com/cloudflare/circl?tab=overview)
 [![Go Report Card](https://goreportcard.com/badge/github.com/cloudflare/circl)](https://goreportcard.com/report/github.com/cloudflare/circl)
@@ -38,7 +37,7 @@ go get -u github.com/cloudflare/circl
 
 #### Groups based on Elliptic Curves
  - P-256, P-384, P-521, [FIPS 186-4](https://doi.org/10.6028/NIST.FIPS.186-4)
- - [Ristretto](https://datatracker.ietf.org/doc/draft-irtf-cfrg-ristretto255-decaf448/01/)
+ - [Ristretto, Decaf](https://datatracker.ietf.org/doc/draft-irtf-cfrg-ristretto255-decaf448/01/)
  - [Hash to Curve](https://datatracker.ietf.org/doc/draft-irtf-cfrg-hash-to-curve/)
 
 #### High-Level Protocols

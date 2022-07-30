@@ -12,15 +12,6 @@ import (
 	"github.com/cloudflare/circl/sign/ed448"
 )
 
-type zeroReader struct{}
-
-func (zeroReader) Read(buf []byte) (int, error) {
-	for i := range buf {
-		buf[i] = 0
-	}
-	return len(buf), nil
-}
-
 func TestEqual(t *testing.T) {
 	public, private, _ := ed448.GenerateKey(rand.Reader)
 
@@ -213,9 +204,8 @@ func TestErrors(t *testing.T) {
 }
 
 func BenchmarkKeyGeneration(b *testing.B) {
-	var zero zeroReader
 	for i := 0; i < b.N; i++ {
-		if _, _, err := ed448.GenerateKey(zero); err != nil {
+		if _, _, err := ed448.GenerateKey(rand.Reader); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -230,8 +220,7 @@ func BenchmarkNewKeyFromSeed(b *testing.B) {
 }
 
 func BenchmarkSigning(b *testing.B) {
-	var zero zeroReader
-	_, priv, err := ed448.GenerateKey(zero)
+	_, priv, err := ed448.GenerateKey(rand.Reader)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -245,8 +234,7 @@ func BenchmarkSigning(b *testing.B) {
 }
 
 func BenchmarkVerification(b *testing.B) {
-	var zero zeroReader
-	pub, priv, err := ed448.GenerateKey(zero)
+	pub, priv, err := ed448.GenerateKey(rand.Reader)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -268,7 +256,7 @@ func BenchmarkEd448Ph(b *testing.B) {
 		ctx := ""
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			_ = ed448.SignPh(key, msg, ctx)
+			ed448.SignPh(key, msg, ctx)
 		}
 	})
 	b.Run("Verify", func(b *testing.B) {
