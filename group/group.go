@@ -101,6 +101,8 @@ type Scalar interface {
 	Set(x Scalar) Scalar
 	// Copy returns a new scalar equal to the receiver.
 	Copy() Scalar
+	// IsZero returns true if the receiver is equal to zero.
+	IsZero() bool
 	// IsEqual returns true if the receiver is equal to x.
 	IsEqual(x Scalar) bool
 	// SetUint64 set the receiver to x, and returns the receiver.

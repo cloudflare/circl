@@ -274,6 +274,10 @@ type wScl struct {
 func (s *wScl) Group() Group              { return s.wG }
 func (s *wScl) String() string            { return fmt.Sprintf("0x%x", s.k) }
 func (s *wScl) SetUint64(n uint64) Scalar { s.fromBig(new(big.Int).SetUint64(n)); return s }
+func (s *wScl) IsZero() bool {
+	return subtle.ConstantTimeCompare(s.k, make([]byte, (s.wG.c.Params().BitSize+7)/8)) == 1
+}
+
 func (s *wScl) IsEqual(a Scalar) bool {
 	aa := s.cvtScl(a)
 	return subtle.ConstantTimeCompare(s.k, aa.k) == 1
