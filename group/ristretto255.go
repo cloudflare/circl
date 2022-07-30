@@ -8,6 +8,7 @@ import (
 
 	r255 "github.com/bwesterb/go-ristretto"
 	"github.com/cloudflare/circl/expander"
+	"github.com/cloudflare/circl/internal/conv"
 )
 
 // Ristretto255 is a quotient group generated from the edwards25519 curve.
@@ -203,9 +204,9 @@ func (e *ristrettoElement) UnmarshalBinary(data []byte) error {
 }
 
 func (s *ristrettoScalar) Group() Group              { return Ristretto255 }
-func (s *ristrettoScalar) String() string            { return fmt.Sprintf("0x%x", s.s.Bytes()) }
+func (s *ristrettoScalar) String() string            { return conv.BytesLe2Hex(s.s.Bytes()) }
 func (s *ristrettoScalar) SetUint64(n uint64) Scalar { s.s.SetUint64(n); return s }
-
+func (s *ristrettoScalar) IsZero() bool              { return s.s.IsNonZeroI() == 0 }
 func (s *ristrettoScalar) IsEqual(x Scalar) bool {
 	return s.s.Equals(&x.(*ristrettoScalar).s)
 }

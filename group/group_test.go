@@ -314,7 +314,8 @@ func testScalar(t *testing.T, testTimes int, g group.Group) {
 
 	c.Inv(a)
 	c.Mul(c, a)
-	if !one.IsEqual(c) {
+	c.Sub(c, one)
+	if !c.IsZero() {
 		test.ReportError(t, c, one, a)
 	}
 }
