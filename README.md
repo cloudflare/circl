@@ -47,10 +47,10 @@ go get -u github.com/cloudflare/circl
  - [VOPRF](https://datatracker.ietf.org/doc/draft-irtf-cfrg-voprf/): Verifiable Oblivious Pseudorandom function.
 
 #### Post-Quantum Key Encapsulation Methods
- - [SIDH/SIKE](https://sike.org/): Supersingular Key Encapsulation with primes p434, p503, p751
  - [CSIDH](https://csidh.isogeny.org/): Post-Quantum Commutative Group Action
  - [Kyber](https://pq-crystals.org/kyber/) KEM: modes 512, 768, 1024
  - [FrodoKEM](https://frodokem.org/) KEM: modes 640-SHAKE
+ - (**insecure, deprecated**) [SIDH/SIKE](https://sike.org/): Supersingular Key Encapsulation with primes p434, p503, p751
 
 #### Post-Quantum Public-Key Encryption
  - [Kyber](https://pq-crystals.org/kyber/) PKE: modes 512, 768, 1024
