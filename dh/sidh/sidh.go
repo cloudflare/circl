@@ -11,6 +11,8 @@ import (
 )
 
 // I keep it bool in order to be able to apply logical NOT.
+//
+// Deprecated: not cryptographically secure.
 type KeyVariant uint
 
 // Base type for public and private key. Used mainly to carry domain
@@ -23,6 +25,8 @@ type key struct {
 }
 
 // Defines operations on public key
+//
+// Deprecated: not cryptographically secure.
 type PublicKey struct {
 	key
 	// x-coordinates of P,Q,P-Q in this exact order
@@ -30,6 +34,8 @@ type PublicKey struct {
 }
 
 // Defines operations on private key
+//
+// Deprecated: not cryptographically secure.
 type PrivateKey struct {
 	key
 	// Secret key
@@ -38,8 +44,7 @@ type PrivateKey struct {
 	S []byte
 }
 
-// Id's correspond to bitlength of the prime field characteristic
-// Currently Fp751 is the only one supported by this implementation
+// Identifiers correspond to the bitlength of the prime field characteristic.
 const (
 	Fp434 = common.Fp434
 	Fp503 = common.Fp503
@@ -65,6 +70,8 @@ func (key *key) Variant() KeyVariant {
 
 // NewPublicKey initializes public key.
 // Usage of this function guarantees that the object is correctly initialized.
+//
+// Deprecated: not cryptographically secure.
 func NewPublicKey(id uint8, v KeyVariant) *PublicKey {
 	return &PublicKey{key: key{params: common.Params(id), keyVariant: v}}
 }
@@ -132,6 +139,8 @@ func (pub *PublicKey) Size() int {
 
 // NewPrivateKey initializes private key.
 // Usage of this function guarantees that the object is correctly initialized.
+//
+// Deprecated: not cryptographically secure.
 func NewPrivateKey(id uint8, v KeyVariant) *PrivateKey {
 	prv := &PrivateKey{key: key{params: common.Params(id), keyVariant: v}}
 	if (v & KeyVariantSidhA) == KeyVariantSidhA {
