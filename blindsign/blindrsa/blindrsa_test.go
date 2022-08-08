@@ -12,8 +12,8 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/big"
+	"os"
 	"testing"
 )
 
@@ -361,7 +361,7 @@ func verifyTestVector(t *testing.T, vector testVector) {
 }
 
 func TestVectors(t *testing.T) {
-	data, err := ioutil.ReadFile("testdata/test_vectors.json")
+	data, err := os.ReadFile("testdata/test_vectors.json")
 	if err != nil {
 		t.Fatal("Failed reading test vectors:", err)
 	}

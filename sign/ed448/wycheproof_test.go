@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
 	"testing"
 
@@ -44,7 +44,10 @@ func (kat *Wycheproof) readFile(t *testing.T, fileName string) {
 		t.Fatalf("File %v can not be opened. Error: %v", fileName, err)
 	}
 	defer jsonFile.Close()
-	input, _ := ioutil.ReadAll(jsonFile)
+	input, err := io.ReadAll(jsonFile)
+	if err != nil {
+		t.Fatalf("File %v can not be read. Error: %v", fileName, err)
+	}
 
 	err = json.Unmarshal(input, &kat)
 	if err != nil {

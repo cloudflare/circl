@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"fmt"
 	"go/format"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -154,7 +153,7 @@ func generateParamsFiles() {
 		if offset == -1 {
 			panic("Missing template warning in params.templ.go")
 		}
-		err = ioutil.WriteFile(mode.Pkg()+"/internal/params.go",
+		err = io.WriteFile(mode.Pkg()+"/internal/params.go",
 			[]byte(res[offset:]), 0o644)
 		if err != nil {
 			panic(err)
@@ -181,7 +180,7 @@ func generateModeToplevelFiles() {
 		if offset == -1 {
 			panic("Missing template warning in mode.templ.go")
 		}
-		err = ioutil.WriteFile(mode.Pkg()+".go", []byte(res[offset:]), 0o644)
+		err = io.WriteFile(mode.Pkg()+".go", []byte(res[offset:]), 0o644)
 		if err != nil {
 			panic(err)
 		}
@@ -207,7 +206,7 @@ func generateModePackageFiles() {
 		if offset == -1 {
 			panic("Missing template warning in modePkg.templ.go")
 		}
-		err = ioutil.WriteFile(mode.Pkg()+"/dilithium.go", []byte(res[offset:]), 0o644)
+		err = io.WriteFile(mode.Pkg()+"/dilithium.go", []byte(res[offset:]), 0o644)
 		if err != nil {
 			panic(err)
 		}
@@ -224,7 +223,7 @@ func generateSourceFiles() {
 			strings.HasSuffix(x, ".swp")
 	}
 
-	fs, err := ioutil.ReadDir("mode3/internal")
+	fs, err := io.ReadDir("mode3/internal")
 	if err != nil {
 		panic(err)
 	}
@@ -235,7 +234,7 @@ func generateSourceFiles() {
 		if ignored(name) {
 			continue
 		}
-		files[name], err = ioutil.ReadFile(path.Join("mode3/internal", name))
+		files[name], err = io.ReadFile(path.Join("mode3/internal", name))
 		if err != nil {
 			panic(err)
 		}
@@ -247,7 +246,7 @@ func generateSourceFiles() {
 			continue
 		}
 
-		fs, err = ioutil.ReadDir(path.Join(mode.Pkg(), "internal"))
+		fs, err = io.ReadDir(path.Join(mode.Pkg(), "internal"))
 		for _, f := range fs {
 			name := f.Name()
 			fn := path.Join(mode.Pkg(), "internal", name)
@@ -281,14 +280,14 @@ func generateSourceFiles() {
 				name,
 				string(expected),
 			))
-			got, err := ioutil.ReadFile(fn)
+			got, err := io.ReadFile(fn)
 			if err == nil {
 				if bytes.Equal(got, expected) {
 					continue
 				}
 			}
 			fmt.Printf("Updating %s\n", fn)
-			err = ioutil.WriteFile(fn, expected, 0o644)
+			err = io.WriteFile(fn, expected, 0o644)
 			if err != nil {
 				panic(err)
 			}
