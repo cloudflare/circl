@@ -9,7 +9,6 @@ import (
 	"bytes"
 	"fmt"
 	"go/format"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -94,7 +93,7 @@ func generateParamsFiles() {
 		if offset == -1 {
 			panic("Missing template warning in params.templ.go")
 		}
-		err = ioutil.WriteFile(mode.Pkg()+"/internal/params.go",
+		err = io.WriteFile(mode.Pkg()+"/internal/params.go",
 			[]byte(res[offset:]), 0o644)
 		if err != nil {
 			panic(err)
@@ -121,7 +120,7 @@ func generatePackageFiles() {
 		if offset == -1 {
 			panic("Missing template warning in pkg.templ.go")
 		}
-		err = ioutil.WriteFile(mode.Pkg()+"/kyber.go", []byte(res[offset:]), 0o644)
+		err = io.WriteFile(mode.Pkg()+"/kyber.go", []byte(res[offset:]), 0o644)
 		if err != nil {
 			panic(err)
 		}
@@ -137,7 +136,7 @@ func generateSourceFiles() {
 		return x == "params.go" || x == "params_test.go"
 	}
 
-	fs, err := ioutil.ReadDir("kyber512/internal")
+	fs, err := io.ReadDir("kyber512/internal")
 	if err != nil {
 		panic(err)
 	}
@@ -148,7 +147,7 @@ func generateSourceFiles() {
 		if ignored(name) {
 			continue
 		}
-		files[name], err = ioutil.ReadFile(path.Join("kyber512/internal", name))
+		files[name], err = io.ReadFile(path.Join("kyber512/internal", name))
 		if err != nil {
 			panic(err)
 		}
@@ -160,7 +159,7 @@ func generateSourceFiles() {
 			continue
 		}
 
-		fs, err = ioutil.ReadDir(path.Join(mode.Pkg(), "internal"))
+		fs, err = io.ReadDir(path.Join(mode.Pkg(), "internal"))
 		for _, f := range fs {
 			name := f.Name()
 			fn := path.Join(mode.Pkg(), "internal", name)
@@ -194,14 +193,14 @@ func generateSourceFiles() {
 				name,
 				string(expected),
 			))
-			got, err := ioutil.ReadFile(fn)
+			got, err := io.ReadFile(fn)
 			if err == nil {
 				if bytes.Equal(got, expected) {
 					continue
 				}
 			}
 			fmt.Printf("Updating %s\n", fn)
-			err = ioutil.WriteFile(fn, expected, 0o644)
+			err = io.WriteFile(fn, expected, 0o644)
 			if err != nil {
 				panic(err)
 			}
