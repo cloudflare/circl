@@ -4,8 +4,6 @@
 // contains an AMD64-optimized implementation. In particular, this package does
 // not implement FourQ's endomorphisms or lattice reduction techniques.
 //
-//
 // References:
-//  - https://eprint.iacr.org/2015/565
-//
+//   - https://eprint.iacr.org/2015/565
 package fourq

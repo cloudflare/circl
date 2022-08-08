@@ -5,7 +5,6 @@
 // for securing systems.
 //
 // References:
-//  - cSIDH:        ia.cr/2018/383
-//  - Faster cSIDH: ia.cr/2018/782
-//
+//   - cSIDH:        ia.cr/2018/383
+//   - Faster cSIDH: ia.cr/2018/782
 package csidh

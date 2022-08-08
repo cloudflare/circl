@@ -2,7 +2,6 @@
 // at the 128-bit security level.
 //
 // References:
-//  - https://eprint.iacr.org/2015/565
-//  - https://tools.ietf.org/html/draft-ladd-cfrg-4q-01
-//
+//   - https://eprint.iacr.org/2015/565
+//   - https://tools.ietf.org/html/draft-ladd-cfrg-4q-01
 package curve4q

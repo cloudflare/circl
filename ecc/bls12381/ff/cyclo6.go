@@ -1,7 +1,6 @@
 package ff
 
 // Cyclo6 represents an element of the 6th cyclotomic group.
-//
 type Cyclo6 Fp12
 
 func (z Cyclo6) String() string           { return (Fp12)(z).String() }

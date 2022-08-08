@@ -3,16 +3,16 @@ package common
 // Zetas lists precomputed powers of the primitive root of unity in
 // Montgomery representation used for the NTT:
 //
-//  Zetas[i] = ζᵇʳᵛ⁽ⁱ⁾ R mod q
+//	Zetas[i] = ζᵇʳᵛ⁽ⁱ⁾ R mod q
 //
 // where ζ = 17, brv(i) is the bitreversal of a 7-bit number and R=2¹⁶ mod q.
 //
 // The following Python code generates the Zetas arrays:
 //
-//    q = 13*2**8 + 1; zeta = 17
-//    R = 2**16 % q # Montgomery const.
-//    def brv(x): return int(''.join(reversed(bin(x)[2:].zfill(7))),2)
-//    print([(pow(zeta, brv(i), q)*R)%q for i in range(128)])
+//	q = 13*2**8 + 1; zeta = 17
+//	R = 2**16 % q # Montgomery const.
+//	def brv(x): return int(''.join(reversed(bin(x)[2:].zfill(7))),2)
+//	print([(pow(zeta, brv(i), q)*R)%q for i in range(128)])
 var Zetas = [128]int16{
 	2285, 2571, 2970, 1812, 1493, 1422, 287, 202, 3158, 622, 1577, 182,
 	962, 2127, 1855, 1468, 573, 2004, 264, 383, 2500, 1458, 1727, 3199,

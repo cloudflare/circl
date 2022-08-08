@@ -6,12 +6,11 @@
 
 // Package {{.Pkg}} is deprecated, it implements the key encapsulation mechanism {{.Name}}.
 //
-// DEPRECATION NOTICE
+// # DEPRECATION NOTICE
 //
 // SIDH and SIKE are deprecated as were shown vulnerable to a key recovery
 // attack by Castryck-Decru's paper (https://eprint.iacr.org/2022/975). New
 // systems should not rely on this package. This package is frozen.
-//
 package {{.Pkg}}
 
 import (

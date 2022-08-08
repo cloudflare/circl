@@ -2,7 +2,9 @@ package csidh
 
 // xAdd implements differential arithmetic in P^1 for Montgomery
 // curves E(x): x^3 + A*x^2 + x by using x-coordinate only arithmetic.
-//    x(PaQ) = x(P) + x(Q) by using x(P-Q)
+//
+//	x(PaQ) = x(P) + x(Q) by using x(P-Q)
+//
 // This algorithms is correctly defined only for cases when
 // P!=inf, Q!=inf, P!=Q and P!=-Q.
 func xAdd(PaQ, P, Q, PdQ *point) {
@@ -23,7 +25,9 @@ func xAdd(PaQ, P, Q, PdQ *point) {
 
 // xDbl implements point doubling on a Montgomery curve
 // E(x): x^3 + A*x^2 + x by using x-coordinate onlyh arithmetic.
-//   x(Q) = [2]*x(P)
+//
+//	x(Q) = [2]*x(P)
+//
 // It is correctly defined for all P != inf.
 func xDbl(Q, P, A *point) {
 	var t0, t1, t2 fp
@@ -45,8 +49,9 @@ func xDbl(Q, P, A *point) {
 // xDblAdd implements combined doubling of point P
 // and addition of points P and Q on a Montgomery curve
 // E(x): x^3 + A*x^2 + x by using x-coordinate onlyh arithmetic.
-//   x(PaP) = x(2*P)
-//   x(PaQ) = x(P+Q)
+//
+//	x(PaP) = x(2*P)
+//	x(PaQ) = x(P+Q)
 func xDblAdd(PaP, PaQ, P, Q, PdQ *point, A24 *coeff) {
 	var t0, t1, t2 fp
 

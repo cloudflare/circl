@@ -423,6 +423,7 @@ func testKAT(t *testing.T, v sikeVec) {
 /* -------------------------------------------------------------------------
    Wrappers for 'testing' SIDH
    -------------------------------------------------------------------------*/
+
 func testSike(t *testing.T, m *map[uint8]sikeVec, f func(*testing.T, sikeVec)) {
 	for i := range *m {
 		v := (*m)[i]

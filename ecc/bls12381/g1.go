@@ -168,7 +168,9 @@ func (g *G1) isRTorsion() bool {
 //
 // This method multiplies g times (1-z) rather than (z-1)^2/3, where z is the
 // BLS12 parameter. This is enough to remove points of order
-//  h \in {3, 11, 10177, 859267, 52437899},
+//
+//	h \in {3, 11, 10177, 859267, 52437899},
+//
 // and because there are no points of order h^2. See Section 5 of Wahby-Boneh
 // "Fast and simple constant-time hashing to the BLS12-381 elliptic curve" at
 // https://eprint.iacr.org/2019/403

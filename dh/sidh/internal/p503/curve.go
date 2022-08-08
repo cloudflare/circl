@@ -258,8 +258,9 @@ func ScalarMul3Pt(cparams *ProjectiveCurveParameters, P, Q, PmQ *ProjectivePoint
 // three-isogeny phi : E_(A:C) -> E_(A:C)/<P_3> = E_(A':C').
 //
 // Input: (XP_3: ZP_3), where P_3 has exact order 3 on E_A/C
-// Output: * Curve coordinates (A' + 2C', A' - 2C') corresponding to E_A'/C' = A_E/C/<P3>
-//         * Isogeny phi with constants in F_p^2
+// Output:
+//   - Curve coordinates (A' + 2C', A' - 2C') corresponding to E_A'/C' = A_E/C/<P3>
+//   - Isogeny phi with constants in F_p^2
 func (phi *isogeny3) GenerateCurve(p *ProjectivePoint) CurveCoefficientsEquiv {
 	var t0, t1, t2, t3, t4 Fp2
 	var coefEq CurveCoefficientsEquiv
@@ -314,8 +315,9 @@ func (phi *isogeny3) EvaluatePoint(p *ProjectivePoint) {
 // four-isogeny phi : E_(A:C) -> E_(A:C)/<P_4> = E_(A':C').
 //
 // Input: (XP_4: ZP_4), where P_4 has exact order 4 on E_A/C
-// Output: * Curve coordinates (A' + 2C', 4C') corresponding to E_A'/C' = A_E/C/<P4>
-//         * Isogeny phi with constants in F_p^2
+// Output:
+//   - Curve coordinates (A' + 2C', 4C') corresponding to E_A'/C' = A_E/C/<P4>
+//   - Isogeny phi with constants in F_p^2
 func (phi *isogeny4) GenerateCurve(p *ProjectivePoint) CurveCoefficientsEquiv {
 	var coefEq CurveCoefficientsEquiv
 	xp4, zp4 := &p.X, &p.Z

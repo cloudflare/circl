@@ -48,7 +48,7 @@ func decompose(a uint32) (a0plusQ, a1 uint32) {
 // we can reconstruct r1 using only r' = r - f, which is done by useHint().
 // To wit:
 //
-//     useHint( r - f, makeHint( r0 - f, r1 ) ) = r1.
+//	useHint( r - f, makeHint( r0 - f, r1 ) ) = r1.
 //
 // Assumes 0 ≤ z0 < Q.
 func makeHint(z0, r1 uint32) uint32 {

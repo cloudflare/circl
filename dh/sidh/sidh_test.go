@@ -15,6 +15,7 @@ import (
 /* -------------------------------------------------------------------------
    Test data
    -------------------------------------------------------------------------*/
+
 type sidhVec struct {
 	id   uint8
 	name string
@@ -361,6 +362,7 @@ func TestKeyAgreementP751_AliceEvenNumber(t *testing.T) {
 /* -------------------------------------------------------------------------
    Wrappers for 'testing' SIDH
    -------------------------------------------------------------------------*/
+
 func testSidhVec(t *testing.T, m *map[uint8]sidhVec, f func(t *testing.T, v sidhVec)) {
 	for i := range *m {
 		v := (*m)[i]
@@ -376,6 +378,7 @@ func TestPrivateKeyBelowMax(t *testing.T) { testSidhVec(t, &tdataSidh, testPriva
 /* -------------------------------------------------------------------------
    Benchmarking
    -------------------------------------------------------------------------*/
+
 func BenchmarkSidhKeyAgreementP751(b *testing.B) {
 	// KeyPairs
 	alicePublic := convToPub(tdataSidh[Fp751].PkA, KeyVariantSidhA, Fp751)

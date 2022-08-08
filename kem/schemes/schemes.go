@@ -1,14 +1,19 @@
 // Package schemes contains a register of KEM schemes.
 //
-// Schemes Implemented
+// # Schemes Implemented
 //
 // Based on standard elliptic curves:
-//  HPKE_KEM_P256_HKDF_SHA256, HPKE_KEM_P384_HKDF_SHA384, HPKE_KEM_P521_HKDF_SHA512
+//
+//	HPKE_KEM_P256_HKDF_SHA256, HPKE_KEM_P384_HKDF_SHA384, HPKE_KEM_P521_HKDF_SHA512
+//
 // Based on standard Diffie-Hellman functions:
-//  HPKE_KEM_X25519_HKDF_SHA256, HPKE_KEM_X448_HKDF_SHA512
+//
+//	HPKE_KEM_X25519_HKDF_SHA256, HPKE_KEM_X448_HKDF_SHA512
+//
 // Post-quantum kems:
-//  FrodoKEM-640-SHAKE
-//  Kyber512, Kyber768, Kyber1024
+//
+//	FrodoKEM-640-SHAKE
+//	Kyber512, Kyber768, Kyber1024
 package schemes
 
 import (
