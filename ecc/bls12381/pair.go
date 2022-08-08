@@ -38,7 +38,8 @@ func miller(f *ff.Fp12, P *G1, Q *G2) {
 
 // line contains the coefficients of a sparse element of Fp12.
 // Evaluating the line on P' = (xP',yP') results in
-//   f = evalLine(P') = l[0]*xP' + l[1]*yP' + l[2] \in Fp12.
+//
+//	f = evalLine(P') = l[0]*xP' + l[1]*yP' + l[2] \in Fp12.
 type line [3]ff.Fp2
 
 // evalLine updates f = f * line(P'), where f lives in Fp12 = Fp6[w]/(w^2-v)

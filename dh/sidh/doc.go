@@ -1,13 +1,13 @@
 // Package sidh is deprecated, it provides SIDH and SIKE key encapsulation
 // mechanisms.
 //
-// DEPRECATION NOTICE
+// # DEPRECATION NOTICE
 //
 // SIDH and SIKE are deprecated as were shown vulnerable to a key recovery
 // attack by Castryck-Decru's paper (https://eprint.iacr.org/2022/975). New
 // systems should not rely on this package. This package is frozen.
 //
-// SIDH and SIKE
+// # SIDH and SIKE
 //
 // This package provides implementation of experimental post-quantum
 // Supersingular Isogeny Diffie-Hellman (SIDH) as well as Supersingular
@@ -38,7 +38,6 @@
 //
 // References:
 //
-//  - [SIDH] https://eprint.iacr.org/2011/506
-//  - [SIKE] http://www.sike.org/files/SIDH-spec.pdf
-//
+//   - [SIDH] https://eprint.iacr.org/2011/506
+//   - [SIKE] http://www.sike.org/files/SIDH-spec.pdf
 package sidh

@@ -6,26 +6,25 @@
 //
 // This package is compatible with the OPRF specification at draft-irtf-cfrg-voprf [1].
 //
-//
-// Protocol Overview
+// # Protocol Overview
 //
 // This diagram shows the steps of the protocol that are common for all operation modes.
 //
-//   Client(info*)                               Server(sk, pk, info*)
-//   =================================================================
-//   finData, evalReq = Blind(input)
+//	Client(info*)                               Server(sk, pk, info*)
+//	=================================================================
+//	finData, evalReq = Blind(input)
 //
-//                               evalReq
-//                             ---------->
+//	                            evalReq
+//	                          ---------->
 //
-//                               evaluation = Evaluate(evalReq, info*)
+//	                            evaluation = Evaluate(evalReq, info*)
 //
-//                              evaluation
-//                             <----------
+//	                           evaluation
+//	                          <----------
 //
-//   output = Finalize(finData, evaluation, info*)
+//	output = Finalize(finData, evaluation, info*)
 //
-// Operation Modes
+// # Operation Modes
 //
 // Each operation mode provides different properties to the PRF.
 //
@@ -42,10 +41,9 @@
 // All three modes can perform batches of PRF evaluations, so passing an array
 // of inputs will produce an array of outputs.
 //
-// References
+// # References
 //
 // [1] draft-irtf-cfrg-voprf: https://datatracker.ietf.org/doc/draft-irtf-cfrg-voprf
-//
 package oprf
 
 import (

@@ -3,8 +3,8 @@
 // KEMs are combined by simple concatenation of shared secrets, cipher texts,
 // public keys, etc, see
 //
-//   https://datatracker.ietf.org/doc/draft-ietf-tls-hybrid-design/
-//   https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Cr2.pdf
+//	https://datatracker.ietf.org/doc/draft-ietf-tls-hybrid-design/
+//	https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Cr2.pdf
 //
 // Note that this is only fine if the shared secret is used in its entirety
 // in a next step, such as being hashed or used as key.

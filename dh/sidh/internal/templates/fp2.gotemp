@@ -147,8 +147,10 @@ func sqr(dest, x *common.Fp2) {
 }
 
 // In case choice == 1, performs following swap in constant time:
-// 	xPx <-> xQx
-//	xPz <-> xQz
+//
+// 	   xPx <-> xQx
+//	   xPz <-> xQz
+//
 // Otherwise returns xPx, xPz, xQx, xQz unchanged
 func cswap(xPx, xPz, xQx, xQz *common.Fp2, choice uint8) {
 	cswap{{.FIELD}}(&xPx.A, &xQx.A, choice)
@@ -158,8 +160,10 @@ func cswap(xPx, xPz, xQx, xQz *common.Fp2, choice uint8) {
 }
 
 // In case choice == 1, performs following moves in constant time:
+//
 //     xPx <- xQx
 //     xPz <- xQz
+//
 // Otherwise returns xPx, xPz, xQx, xQz unchanged
 func cmov(xPx, xPz, xQx, xQz *common.Fp2, choice uint8) {
 	cmov{{.FIELD}}(&xPx.A, &xQx.A, choice)

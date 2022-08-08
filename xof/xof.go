@@ -1,6 +1,6 @@
 // Package xof provides an interface for eXtendable-Output Functions.
 //
-// Available Functions
+// # Available Functions
 //
 // SHAKE functions are defined in FIPS-202, see https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf.
 // BLAKE2Xb and BLAKE2Xs are defined in https://www.blake2.net/blake2x.pdf.

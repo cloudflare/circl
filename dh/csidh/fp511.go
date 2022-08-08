@@ -178,8 +178,10 @@ func modExpRdc64(r, b *fp, e uint64) {
 // isNonQuadRes checks whether value v is quadratic residue.
 // Implementation uses Fermat's little theorem (or
 // Euler's criterion)
-//      a^(p-1) == 1, hence
-//      (a^2) ((p-1)/2) == 1
+//
+//	a^(p-1) == 1, hence
+//	(a^2) ((p-1)/2) == 1
+//
 // Which means v is a quadratic residue iff v^((p-1)/2) == 1.
 // Caller provided v must be in montgomery domain.
 // Returns 0 in case v is quadratic residue or 1 in case
