@@ -153,7 +153,7 @@ func generateParamsFiles() {
 		if offset == -1 {
 			panic("Missing template warning in params.templ.go")
 		}
-		err = io.WriteFile(mode.Pkg()+"/internal/params.go",
+		err = os.WriteFile(mode.Pkg()+"/internal/params.go",
 			[]byte(res[offset:]), 0o644)
 		if err != nil {
 			panic(err)
@@ -180,7 +180,7 @@ func generateModeToplevelFiles() {
 		if offset == -1 {
 			panic("Missing template warning in mode.templ.go")
 		}
-		err = io.WriteFile(mode.Pkg()+".go", []byte(res[offset:]), 0o644)
+		err = os.WriteFile(mode.Pkg()+".go", []byte(res[offset:]), 0o644)
 		if err != nil {
 			panic(err)
 		}
@@ -206,7 +206,7 @@ func generateModePackageFiles() {
 		if offset == -1 {
 			panic("Missing template warning in modePkg.templ.go")
 		}
-		err = io.WriteFile(mode.Pkg()+"/dilithium.go", []byte(res[offset:]), 0o644)
+		err = os.WriteFile(mode.Pkg()+"/dilithium.go", []byte(res[offset:]), 0o644)
 		if err != nil {
 			panic(err)
 		}
@@ -223,7 +223,7 @@ func generateSourceFiles() {
 			strings.HasSuffix(x, ".swp")
 	}
 
-	fs, err := io.ReadDir("mode3/internal")
+	fs, err := os.ReadDir("mode3/internal")
 	if err != nil {
 		panic(err)
 	}
@@ -234,7 +234,7 @@ func generateSourceFiles() {
 		if ignored(name) {
 			continue
 		}
-		files[name], err = io.ReadFile(path.Join("mode3/internal", name))
+		files[name], err = os.ReadFile(path.Join("mode3/internal", name))
 		if err != nil {
 			panic(err)
 		}
@@ -246,7 +246,7 @@ func generateSourceFiles() {
 			continue
 		}
 
-		fs, err = io.ReadDir(path.Join(mode.Pkg(), "internal"))
+		fs, err = os.ReadDir(path.Join(mode.Pkg(), "internal"))
 		for _, f := range fs {
 			name := f.Name()
 			fn := path.Join(mode.Pkg(), "internal", name)
@@ -261,10 +261,10 @@ func generateSourceFiles() {
 					panic(err)
 				}
 			}
-			if f.Mode().IsDir() {
+			if f.IsDir() {
 				panic(fmt.Sprintf("%s: is a directory", fn))
 			}
-			if f.Mode()&os.ModeSymlink != 0 {
+			if f.Type()&os.ModeSymlink != 0 {
 				fmt.Printf("Removing symlink: %s\n", fn)
 				err = os.Remove(fn)
 				if err != nil {
@@ -280,14 +280,14 @@ func generateSourceFiles() {
 				name,
 				string(expected),
 			))
-			got, err := io.ReadFile(fn)
+			got, err := os.ReadFile(fn)
 			if err == nil {
 				if bytes.Equal(got, expected) {
 					continue
 				}
 			}
 			fmt.Printf("Updating %s\n", fn)
-			err = io.WriteFile(fn, expected, 0o644)
+			err = os.WriteFile(fn, expected, 0o644)
 			if err != nil {
 				panic(err)
 			}
