@@ -29,10 +29,13 @@ jobs:
         run: |
          go install golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow@latest
          go vet -vettool=$(which shadow) ./... 2>&1 | awk -f .etc/action.awk
+        shell: bash
       - name: Verifying Code
         run: |
-         go generate -v ./... && test -z "$(git status --porcelain)"
+         go generate -v ./...
+         test -z "$(git status --porcelain)"
          go vet ./...
+        shell: bash
       - name: Building
         run: go build -v ./...
       - name: Testing
