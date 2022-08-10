@@ -1,0 +1,80 @@
+package rsa
+
+import (
+	"crypto/rand"
+	"crypto/rsa"
+	"math/big"
+	"testing"
+)
+
+func marshalTestSignShare(share SignShare, t *testing.T) {
+	marshall, err := share.MarshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	share2 := SignShare{}
+	err = share2.UnmarshalBinary(marshall)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if share.Index != share2.Index {
+		t.Fatalf("Index did not match, expected %d, found %d", share.Index, share2.Index)
+	}
+
+	if share.xi.Cmp(share2.xi) != 0 {
+		t.Fatalf("si did not match, expected %v, found %v", share.xi.Bytes(), share2.xi.Bytes())
+	}
+}
+
+func TestMarshallSignShare(t *testing.T) {
+	marshalTestSignShare(SignShare{
+		xi:    big.NewInt(10),
+		Index: 30,
+	}, t)
+
+	marshalTestSignShare(SignShare{
+		xi:    big.NewInt(0),
+		Index: 0,
+	}, t)
+
+	// | Index: uint8 | xiLen: uint16 | xi: []byte |
+	share := SignShare{}
+	err := share.UnmarshalBinary([]byte{})
+	if err == nil {
+		t.Fatalf("unmarshall succeeded when it shouldn't have")
+	}
+
+	share = SignShare{}
+	err = share.UnmarshalBinary([]byte{1, 0, 1})
+	if err == nil {
+		t.Fatalf("unmarshall succeeded when it shouldn't have")
+	}
+
+}
+
+func TestMarshallFullSignShare(t *testing.T) {
+	const players = 3
+	const threshold = 2
+	const bits = 4096
+
+	key, err := rsa.GenerateKey(rand.Reader, bits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	keys, err := Deal(rand.Reader, players, threshold, key, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, share := range keys {
+		keyshare, err := share.Sign(rand.Reader, players, &key.PublicKey, []byte("Cloudflare!"), true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = keyshare.MarshalBinary()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
