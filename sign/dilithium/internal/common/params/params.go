@@ -9,7 +9,7 @@ const (
 	Q        = 8380417 // 2²³ - 2¹³ + 1
 	QBits    = 23
 	Qinv     = 4236238847 // = -(q^-1) mod 2³²
-	ROver256 = 41978      // = (256)⁻¹ R², where R = q mod 2³²
+	ROver256 = 41978      // = (256)⁻¹ R² mod q, where R=2³²
 	D        = 13
 
 	// Size of T1 packed.  (Note that the formula is not valid in general,
