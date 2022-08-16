@@ -2,7 +2,7 @@ package simplestOT
 
 import (
 	"bytes"
-	"math/rand"
+	"crypto/rand"
 	"testing"
 
 	"github.com/cloudflare/circl/group"
