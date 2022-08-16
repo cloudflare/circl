@@ -15,7 +15,9 @@ type Polynomial struct {
 
 // New creates a new polynomial given its coefficients in ascending order.
 // Thus,
-//     p(x) = \sum_i^k c[i] x^i,
+//
+//	p(x) = \sum_i^k c[i] x^i,
+//
 // where k = len(c)-1 is the degree of the polynomial.
 //
 // The zero polynomial has degree equal to -1 and can be instantiated passing
@@ -64,10 +66,12 @@ type LagrangePolynomial struct {
 
 // NewLagrangePolynomial creates a polynomial in Lagrange basis given a list
 // of nodes (x) and values (y), such that:
-//     p(x) = \sum_i^k y[i] L_j(x), where k is the degree of the polynomial,
-//     L_j(x) = \prod_i^k (x-x[i])/(x[j]-x[i]),
-//     y[i] = p(x[i]), and
-//     all x[i] are different.
+//
+//	p(x) = \sum_i^k y[i] L_j(x), where k is the degree of the polynomial,
+//	L_j(x) = \prod_i^k (x-x[i])/(x[j]-x[i]),
+//	y[i] = p(x[i]), and
+//	all x[i] are different.
+//
 // It panics if one of these conditions does not hold.
 //
 // The zero polynomial has degree equal to -1 and can be instantiated passing

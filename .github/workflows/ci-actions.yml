@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        GOVER: ['1.18', '1.17', '1.16']
+        GOVER: ['1.19', '1.18', '1.17']
     steps:
       - name: Setup Go-${{ matrix.GOVER }}
         uses: actions/setup-go@v3
@@ -23,7 +23,7 @@ jobs:
       - name: Linting
         uses: golangci/golangci-lint-action@v3
         with:
-          version: v1.46
+          version: v1.48
           args: --config=./.etc/golangci.yml ./...
       - name: Check shadowing
         run: |
@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-20.04
     strategy:
       matrix:
-        CFG: [ [arm64,arm64v8,1.18] ]
+        CFG: [ [arm64,arm64v8,1.19] ]
     steps:
       - uses: actions/checkout@v3
       - name: Enabling Docker Experimental
@@ -72,7 +72,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v3
         with:
-          go-version: '1.18'
+          go-version: '1.19'
       - name: Produce Coverage
         run: go test -coverprofile=./coverage.txt ./...
       - name: Upload Codecov
@@ -92,7 +92,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v3
         with:
-          go-version: '1.18'
+          go-version: '1.19'
       - name: Building
         run: go build -v ./...
       - name: Testing
