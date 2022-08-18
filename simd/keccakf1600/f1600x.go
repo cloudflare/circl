@@ -4,7 +4,7 @@
 // Keccak, SHA3 and SHAKE. Running two or four permutations in parallel is
 // useful in some scenarios like in hash-based signatures.
 //
-// Limitations
+// # Limitations
 //
 // Note that not all the architectures support SIMD instructions. This package
 // uses AVX2 instructions that are available in some AMD64 architectures

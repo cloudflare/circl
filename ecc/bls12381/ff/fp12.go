@@ -110,8 +110,9 @@ func (z Fp12) MarshalBinary() (b []byte, e error) {
 }
 
 // frob12W1 is Fp2 = [toMont(frob12W1_0), toMont(frob12W1_1) ], where
-//  frob12W1_0 = 0x1904d3bf02bb0667c231beb4202c0d1f0fd603fd3cbd5f4f7b2443d784bab9c4f67ea53d63e7813d8d0775ed92235fb8
-//  frob12W1_1 = 0xfc3e2b36c4e03288e9e902231f9fb854a14787b6c7b36fec0c8ec971f63c5f282d5ac14d6c7ec22cf78a126ddc4af3
+//
+//	frob12W1_0 = 0x1904d3bf02bb0667c231beb4202c0d1f0fd603fd3cbd5f4f7b2443d784bab9c4f67ea53d63e7813d8d0775ed92235fb8
+//	frob12W1_1 = 0xfc3e2b36c4e03288e9e902231f9fb854a14787b6c7b36fec0c8ec971f63c5f282d5ac14d6c7ec22cf78a126ddc4af3
 var frob12W1 = Fp2{
 	Fp{fpMont{ // (little-endian)
 		0x07089552b319d465, 0xc6695f92b50a8313, 0x97e83cccd117228f,

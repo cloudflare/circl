@@ -12,7 +12,8 @@ type Scalar = ff.Scalar
 const ScalarSize = ff.ScalarSize
 
 // Order returns the order of the pairing groups, returned as a big-endian slice.
-//  Order = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
+//
+//	Order = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
 func Order() []byte { return ff.ScalarOrder() }
 
 var (

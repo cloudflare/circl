@@ -3,7 +3,7 @@ package bls12381
 import (
 	"encoding/hex"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -102,7 +102,7 @@ func readFile(t *testing.T, fileName string) *vectorHash {
 		t.Fatalf("File %v can not be opened. Error: %v", fileName, err)
 	}
 	defer jsonFile.Close()
-	input, err := ioutil.ReadAll(jsonFile)
+	input, err := io.ReadAll(jsonFile)
 	if err != nil {
 		t.Fatalf("File %v can not be loaded. Error: %v", fileName, err)
 	}

@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -40,7 +39,10 @@ func TestRFC7748Kat(t *testing.T) {
 		t.Fatalf("File %v can not be opened. Error: %v", nameFile, err)
 	}
 	defer jsonFile.Close()
-	input, _ := ioutil.ReadAll(jsonFile)
+	input, err := io.ReadAll(jsonFile)
+	if err != nil {
+		t.Fatalf("File %v can not be read. Error: %v", nameFile, err)
+	}
 
 	err = json.Unmarshal(input, &kat)
 	if err != nil {
@@ -70,7 +72,10 @@ func TestRFC7748Times(t *testing.T) {
 		t.Fatalf("File %v can not be opened. Error: %v", nameFile, err)
 	}
 	defer jsonFile.Close()
-	input, _ := ioutil.ReadAll(jsonFile)
+	input, err := io.ReadAll(jsonFile)
+	if err != nil {
+		t.Fatalf("File %v can not be read. Error: %v", nameFile, err)
+	}
 
 	var kat []katTimes
 	err = json.Unmarshal(input, &kat)

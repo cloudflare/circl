@@ -165,7 +165,8 @@ func (g *G2) psi() {
 //
 // The explicit formulas for BLS curves are in Section 4.1 of Budroni-Pintore
 // "Efficient hash maps to G2 on BLS curves" at https://eprint.iacr.org/2017/419
-//  h(a)P = [x^2-x-1]P + [x-1]ψ(P) + ψ^2(2P)
+//
+//	h(a)P = [x^2-x-1]P + [x-1]ψ(P) + ψ^2(2P)
 func (g *G2) clearCofactor() {
 	x := bls12381.minusZ[:]
 	xP, psiP := &G2{}, &G2{}
