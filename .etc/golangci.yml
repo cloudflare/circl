@@ -8,11 +8,15 @@ linters:
     # - interfacer  (deprecated since v1.38.0)
     # - scopelint   (deprecated since v1.39.0)
     # - golint      (deprecated since v1.41.0)
+    # - structcheck (deprecated since v1.49.0)
+    # - varcheck    (deprecated since v1.49.0)
+    # - deadcode    (deprecated since v1.49.0)
     - bodyclose
-    - deadcode
     - depguard
     - dogsled
     - errcheck
+    - exportloopref
+    - forbidigo
     - funlen
     - gci
     - goconst
@@ -27,13 +31,11 @@ linters:
     - misspell
     - nakedret
     - staticcheck
-    - structcheck
     - stylecheck
     - typecheck
     - unconvert
     - unparam
     - unused
-    - varcheck
     - whitespace
 
 linters-settings:
