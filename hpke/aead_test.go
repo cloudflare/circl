@@ -157,7 +157,7 @@ func TestAeadSeqOverflow(t *testing.T) {
 
 	for i := 0; i < numAttempts; i++ {
 		ct, err := sealer.Seal(pt, aad)
-		switch true {
+		switch {
 		case ct != nil && err == nil:
 			gotCorrect++
 		case ct == nil && err != nil:
@@ -167,7 +167,7 @@ func TestAeadSeqOverflow(t *testing.T) {
 		}
 
 		pt2, err := opener.Open(ct, aad)
-		switch true {
+		switch {
 		case pt2 != nil && err == nil:
 			gotCorrect++
 		case pt2 == nil && err != nil:

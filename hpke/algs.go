@@ -5,8 +5,8 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/elliptic"
-	_ "crypto/sha256"
-	_ "crypto/sha512"
+	_ "crypto/sha256" // Linking sha256.
+	_ "crypto/sha512" // Linking sha512.
 	"fmt"
 	"hash"
 	"io"
