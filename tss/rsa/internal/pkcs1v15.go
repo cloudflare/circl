@@ -32,7 +32,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package rsa
+package internal
 
 import (
 	"crypto"
@@ -67,7 +67,7 @@ var hashPrefixes = map[crypto.Hash][]byte{
 	crypto.RIPEMD160: {0x30, 0x20, 0x30, 0x08, 0x06, 0x06, 0x28, 0xcf, 0x06, 0x03, 0x00, 0x31, 0x04, 0x14},
 }
 
-func padPKCS1v15(pub *rsa.PublicKey, hash crypto.Hash, hashed []byte) ([]byte, error) {
+func PadPKCS1v15(pub *rsa.PublicKey, hash crypto.Hash, hashed []byte) ([]byte, error) {
 	hashLen, prefix, err := pkcs1v15HashInfo(hash, len(hashed))
 	if err != nil {
 		return nil, err

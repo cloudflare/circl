@@ -3,7 +3,8 @@ package rsa
 import (
 	"crypto"
 	"crypto/rsa"
-	pss2 "github.com/cloudflare/circl/tss/rsa/pss"
+	"github.com/cloudflare/circl/tss/rsa/internal"
+	pss2 "github.com/cloudflare/circl/tss/rsa/internal/pss"
 	"io"
 )
 
@@ -14,7 +15,7 @@ type Padder interface {
 type PKCS1v15Padder struct{}
 
 func (PKCS1v15Padder) Pad(pub *rsa.PublicKey, hash crypto.Hash, hashed []byte) ([]byte, error) {
-	return padPKCS1v15(pub, hash, hashed)
+	return internal.PadPKCS1v15(pub, hash, hashed)
 }
 
 // PSSPadder is a padder for RSA Probabilistic Padding Scheme (RSA-PSS) used in TLS 1.3

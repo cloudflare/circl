@@ -17,13 +17,21 @@ type KeyShare struct {
 	si *big.Int
 
 	twoDeltaSi *big.Int // optional cached value, this value is used to marginally speed up SignShare generation in Sign. If nil, it will be generated when needed and then cached.
-	Index      uint8    // When KeyShare's are generated they are each assigned an index sequentially
+	Index      uint     // When KeyShare's are generated they are each assigned an index sequentially
 }
 
-// MarshalBinary marshalizes KeyShare into a byte array in a format readable by Unmarshal. The format itself should not be
-// depended on but for now it is | Index: uint8 | siLen: uint16 | si: []byte | twoDeltaSi: []byte | with all values in big endian.
+// MarshalBinary encodes a KeyShare into a byte array in a format readable by UnmarshalBinary.
+// Note: Only Index's up to math.MaxUint16 are supported
 func (kshare *KeyShare) MarshalBinary() ([]byte, error) {
-	// | Index: uint8 | siLen: uint16 | si: []byte | twoDeltaSi: []byte |
+	// The encoding format is
+	// | Index: uint16 | siLen: uint16 | si: []byte | twoDeltaSi: []byte |
+	// with all values in big-endian.
+
+	if kshare.Index > math.MaxUint16 {
+		return nil, fmt.Errorf("rsa_threshold: keyshare marshall: Index is too big to fit in a uint16")
+	}
+
+	index := uint16(kshare.Index)
 
 	var twoDeltaSiBytes []byte
 	if kshare.twoDeltaSi != nil {
@@ -43,57 +51,57 @@ func (kshare *KeyShare) MarshalBinary() ([]byte, error) {
 		siLength = 1
 	}
 
-	blen := 1 + 2 + siLength + len(twoDeltaSiBytes)
+	blen := 2 + 2 + siLength + len(twoDeltaSiBytes)
 	out := make([]byte, blen)
 
-	out[0] = kshare.Index
+	binary.BigEndian.PutUint16(out[0:2], index) // ok because of condition checked above
 
-	binary.BigEndian.PutUint16(out[1:3], uint16(siLength))
+	binary.BigEndian.PutUint16(out[2:4], uint16(siLength))
 
-	copy(out[3:3+siLength], siBytes)
+	copy(out[4:4+siLength], siBytes)
 
-	copy(out[3+siLength:], twoDeltaSiBytes)
+	copy(out[4+siLength:], twoDeltaSiBytes)
 
 	return out, nil
 }
 
-// UnmarshalBinary converts a byte array outputted from Marshall into a KeyShare or returns an error if the value is invalid
+// UnmarshalBinary recovers a KeyShare from a slice of bytes, or returns an error if the encoding is invalid.
 func (kshare *KeyShare) UnmarshalBinary(data []byte) error {
-	// | Index: uint8 | siLen: uint16 | si: []byte | twoDeltaSi: []byte |
-	if len(data) < 1 {
+	// The encoding format is
+	// | Index: uint16 | siLen: uint16 | si: []byte | twoDeltaSi: []byte |
+	// with all values in big-endian.
+	if len(data) < 2 {
 		return fmt.Errorf("rsa_threshold: keyshare unmarshal failed: data length was too short for reading Index")
 	}
-	i := data[0]
 
-	if len(data[1:]) < 2 {
+	i := binary.BigEndian.Uint16(data[0:2])
+
+	if len(data[2:]) < 2 {
 		return fmt.Errorf("rsa_threshold: keyshare unmarshal failed: data length was too short for reading siLen length")
 	}
 
-	siLen := binary.BigEndian.Uint16(data[1:3])
+	siLen := binary.BigEndian.Uint16(data[2:4])
 
 	if siLen == 0 {
 		return fmt.Errorf("rsa_threshold: keyshare unmarshal failed: si is a required field but siLen was 0")
 	}
 
-	if uint16(len(data[3:])) < siLen {
+	if uint16(len(data[4:])) < siLen {
 		return fmt.Errorf("rsa_threshold: keyshare unmarshal failed: data length was too short for reading si, needed: %d found: %d", siLen, len(data[3:]))
 	}
 
-	si := big.Int{}
-	bytes := make([]byte, siLen)
-	copy(bytes, data[3:3+siLen])
-	si.SetBytes(bytes)
+	si := new(big.Int).SetBytes(data[4 : 4+siLen])
 
 	var twoDeltaSi *big.Int
-	if len(data[3+siLen:]) > 0 {
-		tmp := make([]byte, len(data[3+siLen:]))
-		copy(tmp, data[3+siLen:])
+	if len(data[4+siLen:]) > 0 {
+		tmp := make([]byte, len(data[4+siLen:]))
+		copy(tmp, data[4+siLen:])
 		twoDeltaSi = &big.Int{}
 		twoDeltaSi.SetBytes(tmp)
 	}
 
-	kshare.Index = i
-	kshare.si = &si
+	kshare.Index = uint(i)
+	kshare.si = si
 	kshare.twoDeltaSi = twoDeltaSi
 
 	return nil
@@ -121,7 +129,7 @@ func (kshare *KeyShare) get2DeltaSi(players int64) *big.Int {
 // parallel indicates whether the blinding operations should use go routines to operate in parallel.
 // If parallel is false, blinding will take about 2x longer than nonbinding, otherwise it will take about the same time
 // (see benchmarks). If randSource is nil, parallel has no effect. parallel should almost always be set to true.
-func (kshare KeyShare) Sign(randSource io.Reader, players int64, pub *rsa.PublicKey, msg []byte, parallel bool) (SignShare, error) {
+func (kshare *KeyShare) Sign(randSource io.Reader, players int64, pub *rsa.PublicKey, msg []byte, parallel bool) (SignShare, error) {
 	x := &big.Int{}
 	x.SetBytes(msg)
 

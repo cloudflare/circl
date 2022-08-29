@@ -6,6 +6,7 @@ import (
 )
 
 func TestCalculateDelta(t *testing.T) {
+	var ONE = big.NewInt(1)
 	if calculateDelta(0).Cmp(ONE) != 0 {
 		t.Fatal("calculateDelta failed on 0")
 	}

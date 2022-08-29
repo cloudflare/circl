@@ -6,11 +6,25 @@ import (
 	_ "crypto/md5"
 	"crypto/rand"
 	"crypto/rsa"
+	_ "crypto/sha256"
 	"errors"
 	"io"
 	"math/big"
 	"testing"
 )
+
+var ONE = big.NewInt(1)
+
+func createPrivateKey(p, q *big.Int, e int) *rsa.PrivateKey {
+	return &rsa.PrivateKey{
+		PublicKey: rsa.PublicKey{
+			E: e,
+		},
+		D:           nil,
+		Primes:      []*big.Int{p, q},
+		Precomputed: rsa.PrecomputedValues{},
+	}
+}
 
 func TestCalcN(t *testing.T) {
 	var TWO = big.NewInt(2)
@@ -33,7 +47,7 @@ func TestComputePolynomial(t *testing.T) {
 	}
 	// a = {1, 2, 3, 4, 5}
 
-	x := int64(3)
+	x := uint(3)
 	out := computePolynomial(k, a, x, m)
 	// 1 * 3^0 = 1  = 1
 	// 2 * 3^1 = 6  = 6
@@ -57,7 +71,7 @@ func TestComputeLambda(t *testing.T) {
 	// num/dev = 40/4 = 10
 	// ∆ * 10 = 120 * 10 = 1200
 	shares := make([]SignShare, 5)
-	for i := uint8(1); i <= 5; i++ {
+	for i := uint(1); i <= 5; i++ {
 		shares[i-1].Index = i
 	}
 	i := int64(0)
@@ -118,8 +132,8 @@ func TestDeal(t *testing.T) {
 	//
 	//
 	r := bytes.NewReader([]byte{33, 17})
-	players := int64(3)
-	threshold := int64(2)
+	players := uint(3)
+	threshold := uint(2)
 	p := int64(23)
 	q := int64(11)
 	e := 3
@@ -146,7 +160,7 @@ const (
 	PSS     = 1
 )
 
-func testIntegration(t *testing.T, algo crypto.Hash, pub *rsa.PublicKey, players, threshold int, keys []KeyShare, padScheme int) {
+func testIntegration(t *testing.T, algo crypto.Hash, pub *rsa.PublicKey, players, threshold uint, keys []KeyShare, padScheme int) {
 	t.Logf("dealt %d keys", len(keys))
 
 	msg := []byte("hello")
@@ -171,7 +185,7 @@ func testIntegration(t *testing.T, algo crypto.Hash, pub *rsa.PublicKey, players
 
 	signshares := make([]SignShare, threshold)
 
-	for i := 0; i < threshold; i++ {
+	for i := uint(0); i < threshold; i++ {
 		signshares[i], err = keys[i].Sign(rand.Reader, int64(players), pub, msgPH, true)
 		if err != nil {
 			t.Fatal(err)
@@ -180,7 +194,7 @@ func testIntegration(t *testing.T, algo crypto.Hash, pub *rsa.PublicKey, players
 
 	t.Logf("signed with %d keys", len(signshares))
 
-	sig, err := CombineSignShares(int64(players), pub, signshares, msgPH)
+	sig, err := CombineSignShares(players, pub, signshares, msgPH)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,8 +217,6 @@ func testIntegration(t *testing.T, algo crypto.Hash, pub *rsa.PublicKey, players
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	t.Log("verified signature")
 }
 
 func TestIntegrationStdRsaKeyGenerationPKS1v15(t *testing.T) {
@@ -243,7 +255,7 @@ func TestIntegrationStdRsaKeyGenerationPSS(t *testing.T) {
 	testIntegration(t, algo, &pub, players, threshold, keys, PSS)
 }
 
-func benchmarkSignCombineHelper(randSource io.Reader, parallel bool, b *testing.B, players, threshold int64, bits int, algo crypto.Hash, padScheme int) {
+func benchmarkSignCombineHelper(randSource io.Reader, parallel bool, b *testing.B, players, threshold uint, bits int, algo crypto.Hash, padScheme int) {
 	key, err := rsa.GenerateKey(rand.Reader, bits)
 	pub := key.PublicKey
 	if err != nil {
@@ -275,8 +287,8 @@ func benchmarkSignCombineHelper(randSource io.Reader, parallel bool, b *testing.
 	signshares := make([]SignShare, threshold)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		for i := int64(0); i < threshold; i++ {
-			signshares[i], err = keys[i].Sign(randSource, players, &pub, msgPH, parallel)
+		for i := uint(0); i < threshold; i++ {
+			signshares[i], err = keys[i].Sign(randSource, int64(players), &pub, msgPH, parallel)
 			if err != nil {
 				b.Fatal(err)
 			}

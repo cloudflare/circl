@@ -11,11 +11,11 @@ import (
 	"math/big"
 )
 
-// l or `players` - total number of players
-// t - the number of corrupted players
-// k or `threshold` - the number of signature shares needed to obtain a signature (aka the threshold)
+// l or `players`, the total number of players.
+// t, the number of corrupted players.
+// k=t+1 or `threshold`, the number of signature shares needed to obtain a signature.
 
-func validateParams(players, threshold int64) error {
+func validateParams(players, threshold uint) error {
 	if players <= 1 {
 		return errors.New("rsa_threshold: players (l) invalid: should be > 1")
 	}
@@ -26,9 +26,11 @@ func validateParams(players, threshold int64) error {
 }
 
 // Deal takes in an existing RSA private key generated elsewhere. If cache is true, cached values are stored in KeyShare taking up more memory by reducing Sign time.
-// See KeyShare documentation.
-func Deal(randSource io.Reader, players, threshold int64, key *rsa.PrivateKey, cache bool) ([]KeyShare, error) {
+// See KeyShare documentation. Multi-prime RSA keys are unsupported.
+func Deal(randSource io.Reader, players, threshold uint, key *rsa.PrivateKey, cache bool) ([]KeyShare, error) {
 	err := validateParams(players, threshold)
+
+	var ONE = big.NewInt(1)
 
 	if err != nil {
 		return nil, err
@@ -74,7 +76,7 @@ func Deal(randSource io.Reader, players, threshold int64, key *rsa.PrivateKey, c
 	a[0] = &d
 
 	// a_0...a_{k-1} = rand from {0, ..., m - 1}
-	for i := int64(1); i <= threshold-1; i++ {
+	for i := uint(1); i <= threshold-1; i++ {
 		a[i], err = rand.Int(randSource, &m)
 		if err != nil {
 			return nil, errors.New("rsa_threshold: unable to generate an int within [0, m)")
@@ -84,13 +86,13 @@ func Deal(randSource io.Reader, players, threshold int64, key *rsa.PrivateKey, c
 	shares := make([]KeyShare, players)
 
 	// 1 <= i <= l
-	for i := int64(1); i <= players; i++ {
+	for i := uint(1); i <= players; i++ {
 		// Σ^{k-1}_{i=0} | a_i * X^i (mod m)
 		poly := computePolynomial(threshold, a, i, &m)
 		shares[i-1].si = poly
-		shares[i-1].Index = uint8(i)
+		shares[i-1].Index = i
 		if cache {
-			shares[i-1].get2DeltaSi(players)
+			shares[i-1].get2DeltaSi(int64(players))
 		}
 	}
 
@@ -105,11 +107,11 @@ func calcN(p, q *big.Int) big.Int {
 }
 
 // f(X) = Σ^{k-1}_{i=0} | a_i * X^i (mod m)
-func computePolynomial(k int64, a []*big.Int, x int64, m *big.Int) *big.Int {
+func computePolynomial(k uint, a []*big.Int, x uint, m *big.Int) *big.Int {
 	sum := big.NewInt(0)
 
 	//  Σ^{k-1}_{i=0}
-	for i := int64(0); i <= k-1; i++ {
+	for i := uint(0); i <= k-1; i++ {
 		// X^i
 		// TODO optimize: we can compute x^{n+1} from the previous x^n
 		xi := int64(math.Pow(float64(x), float64(i)))
@@ -138,12 +140,12 @@ func PadHash(padder Padder, hash crypto.Hash, pub *rsa.PublicKey, msg []byte) ([
 	return padder.Pad(pub, hash, digest)
 }
 
-type Signature []byte
+type Signature = []byte
 
 // CombineSignShares combines t SignShare's to produce a valid signature
-func CombineSignShares(players int64, pub *rsa.PublicKey, shares []SignShare, msg []byte) (Signature, error) {
+func CombineSignShares(players uint, pub *rsa.PublicKey, shares []SignShare, msg []byte) (Signature, error) {
 	w := big.NewInt(1)
-	delta := calculateDelta(players)
+	delta := calculateDelta(int64(players))
 	// i_1 ... i_k
 	for _, share := range shares {
 		// λ(S, 0, i)
@@ -166,7 +168,7 @@ func CombineSignShares(players int64, pub *rsa.PublicKey, shares []SignShare, ms
 		}
 		// TODO  first compute all the powers for the negative exponents (but don't invert yet); multiply these together and then invert all at once. This is ok since (ab)^-1 = a^-1 b^-1
 
-		w.Mul(w, &tmp)
+		w.Mul(w, &tmp).Mod(w, pub.N)
 	}
 	w.Mod(w, pub.N)
 
