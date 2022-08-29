@@ -1,4 +1,12 @@
 // Package dleq provides zero-knowledge proofs of Discrete-Logarithm Equivalence (DLEQ).
+//
+// This implementation is compatible with the one used for VOPRFs [1].
+// It supports batching proofs to amortize the cost of the proof generation and
+// verification.
+//
+// References:
+//
+//	[1] draft-irtf-cfrg-voprf: https://datatracker.ietf.org/doc/draft-irtf-cfrg-voprf
 package dleq
 
 import (
@@ -23,7 +31,6 @@ type Params struct {
 }
 
 type Proof struct {
-	g    group.Group
 	c, s group.Scalar
 }
 
@@ -84,7 +91,7 @@ func (p Prover) ProveBatchWithRandomness(
 	ss.Mul(cc, k)
 	ss.Sub(rnd, ss)
 
-	return &Proof{p.G, cc, ss}, nil
+	return &Proof{cc, ss}, nil
 }
 
 func (p Params) computeComposites(
@@ -223,7 +230,8 @@ func (v Verifier) VerifyBatch(a, ka group.Element, bi, kbi []group.Element, p *P
 }
 
 func (p *Proof) MarshalBinary() ([]byte, error) {
-	scalarSize := int(p.g.Params().ScalarLength)
+	g := p.c.Group()
+	scalarSize := int(g.Params().ScalarLength)
 	output := make([]byte, 0, 2*scalarSize)
 
 	serC, err := p.c.MarshalBinary()
@@ -242,19 +250,18 @@ func (p *Proof) MarshalBinary() ([]byte, error) {
 }
 
 func (p *Proof) UnmarshalBinary(g group.Group, data []byte) error {
-	p.g = g
-	scalarSize := int(p.g.Params().ScalarLength)
+	scalarSize := int(g.Params().ScalarLength)
 	if len(data) < 2*scalarSize {
 		return io.ErrShortBuffer
 	}
 
-	c := p.g.NewScalar()
+	c := g.NewScalar()
 	err := c.UnmarshalBinary(data[:scalarSize])
 	if err != nil {
 		return err
 	}
 
-	s := p.g.NewScalar()
+	s := g.NewScalar()
 	err = s.UnmarshalBinary(data[scalarSize : 2*scalarSize])
 	if err != nil {
 		return err
@@ -272,6 +279,6 @@ func mustWrite(h io.Writer, bytes []byte) {
 		panic(err)
 	}
 	if len(bytes) != bytesLen {
-		panic("failed to write on hash")
+		panic("dleq: failed to write on hash")
 	}
 }

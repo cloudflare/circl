@@ -56,7 +56,7 @@ import (
 	"math"
 
 	"github.com/cloudflare/circl/group"
-	"github.com/cloudflare/circl/group/dleq"
+	"github.com/cloudflare/circl/zk/dleq"
 )
 
 const (

@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/cloudflare/circl/group"
-	"github.com/cloudflare/circl/group/dleq"
 	"github.com/cloudflare/circl/internal/test"
+	"github.com/cloudflare/circl/zk/dleq"
 )
 
 func TestDLEQ(t *testing.T) {
