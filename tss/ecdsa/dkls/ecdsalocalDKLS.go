@@ -1,13 +1,12 @@
-package ECDSAOT
+package dkls
 
 import (
 	"crypto/rand"
 	"errors"
 
-	"github.com/cloudflare/circl/tss/ecdsa/ot/Fmul"
-	zkRDL "github.com/cloudflare/circl/zk/dl"
-
 	"github.com/cloudflare/circl/group"
+	"github.com/cloudflare/circl/tss/ecdsa/dkls/fmul"
+	zkRDL "github.com/cloudflare/circl/zk/dl"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -54,7 +53,6 @@ func (alice *AlicePre) AliceRound1(myGroup group.Group, DB group.Element, bAs, k
 // Input: aBs, kAInvBs for Fmul of a*b and 1/kA*1/kB
 // Output: e0b, e1b, e0kBInv, e1kBInv, encryption of m0s and m1s for a*b and 1/kA*1/kB
 func (bob *BobPre) BobRound2(V group.Element, r group.Scalar, RPrime group.Element, aBs, kAInvBs []group.Element, aliceLabel, bobLabel []byte) ([][]byte, [][]byte, [][]byte, [][]byte, error) {
-
 	// Generate R and verify proof from alice
 	err := bob.getRandomNonce(V, RPrime, r, aliceLabel, bobLabel)
 	if err != nil {
@@ -73,7 +71,6 @@ func (bob *BobPre) BobRound2(V group.Element, r group.Scalar, RPrime group.Eleme
 // Input: e0b, e1b, e0kBInv, e1kBInv, encryption of m0s and m1s for a*b and 1/kA*1/kB
 // Output: sigmaa, vsa, sigmakAInv, vskAInv, Blinding sigma and Array of v for (a and kAInv)
 func (alice *AlicePre) AliceRound3(e0b, e1b, e0kBInv, e1kBInv [][]byte) (group.Scalar, []group.Scalar, group.Scalar, []group.Scalar, error) {
-
 	sigmaa, vsa, sigmakAInv, vskAInv, errDec := alice.addShareGenRound3(e0b, e1b, e0kBInv, e1kBInv)
 	if errDec != nil {
 		return nil, nil, nil, nil, errDec
@@ -162,7 +159,9 @@ func (alice *AlicePre) initRandomNonce(myGroup group.Group, DB group.Element, al
 	}
 
 	// Construct zero knowledge proof that alice knows kA where R=[kA]DB
-	V, r := zkRDL.ProveGen(myGroup, alice.DB, alice.R, alice.kA, aliceLabel, bobLabel)
+	dst := "zeroknowledge"
+	rnd := rand.Reader
+	V, r := zkRDL.ProveGen(myGroup, alice.DB, alice.R, alice.kA, aliceLabel, bobLabel, []byte(dst), rnd)
 
 	return V, r, alice.RPrime
 }
@@ -172,7 +171,6 @@ func (alice *AlicePre) initRandomNonce(myGroup group.Group, DB group.Element, al
 // Input: RPrime, from alice
 // Input: V, r a proof from alice that she knows kA where R=[kA]DB
 func (bob *BobPre) getRandomNonce(V, RPrime group.Element, r group.Scalar, aliceLabel, bobLabel []byte) error {
-
 	RPrimeByte, errByte := RPrime.MarshalBinary()
 	if errByte != nil {
 		panic(errByte)
@@ -213,7 +211,9 @@ func (bob *BobPre) getRandomNonce(V, RPrime group.Element, r group.Scalar, alice
 	}
 
 	// Verify the proof
-	verify := zkRDL.Verify(bob.myGroup, bob.DB, bob.R, V, r, aliceLabel, bobLabel)
+	dst := "zeroknowledge"
+
+	verify := zkRDL.Verify(bob.myGroup, bob.DB, bob.R, V, r, aliceLabel, bobLabel, []byte(dst))
 	if !verify {
 		return errors.New("zero knowledge proof verification fails")
 	}
@@ -234,7 +234,7 @@ func (bob *BobPre) getRandomNonce(V, RPrime group.Element, r group.Scalar, alice
 func (bob *BobPre) addShareGenInit(myGroup group.Group) ([]group.Element, []group.Element) {
 	bob.b = myGroup.RandomNonZeroScalar(rand.Reader)
 
-	n := Fmul.DecideNumOT(myGroup, 128)
+	n := fmul.DecideNumOT(myGroup, 128)
 	bAs := bob.senderb.SenderInit(myGroup, bob.b, n)
 
 	kBInvAs := bob.senderkBInv.SenderInit(myGroup, bob.kBInv, n)
@@ -251,7 +251,7 @@ func (bob *BobPre) addShareGenInit(myGroup group.Group) ([]group.Element, []grou
 func (alice *AlicePre) addShareGenRound1(myGroup group.Group, bAs, kBInvAs []group.Element) ([]group.Element, []group.Element) {
 	alice.a = myGroup.RandomNonZeroScalar(rand.Reader)
 
-	n := Fmul.DecideNumOT(myGroup, 128)
+	n := fmul.DecideNumOT(myGroup, 128)
 
 	aBs := alice.receivera.ReceiverRound1(myGroup, bAs, alice.a, n)
 	kAInvBs := alice.receiverkAInv.ReceiverRound1(myGroup, kBInvAs, alice.kAInv, n)
@@ -265,8 +265,7 @@ func (alice *AlicePre) addShareGenRound1(myGroup group.Group, bAs, kBInvAs []gro
 // Input: aBs, kAInvBs from alice
 // Output: e0b, e1b, e0kBInv, e1kBInv, encryption of m0s and m1s for a*b and 1/kA*1/kB
 func (bob *BobPre) addShareGenRound2(aBs, kAInvBs []group.Element) ([][]byte, [][]byte, [][]byte, [][]byte) {
-
-	n := Fmul.DecideNumOT(bob.myGroup, 128)
+	n := fmul.DecideNumOT(bob.myGroup, 128)
 	e0b, e1b := bob.senderb.SenderRound2(aBs, n)
 	e0kBInv, e1kBInv := bob.senderkBInv.SenderRound2(kAInvBs, n)
 
@@ -279,8 +278,7 @@ func (bob *BobPre) addShareGenRound2(aBs, kAInvBs []group.Element) ([][]byte, []
 // Input: e0b, e1b, e0kBInv, e1kBInv, encryption of m0s and m1s for a*b and 1/kA*1/kB
 // Output: sigmaa, vsa, sigmakAInv, vskAInv, Blinding sigma and Array of v for (a and kAInv)
 func (alice *AlicePre) addShareGenRound3(e0b, e1b, e0kBInv, e1kBInv [][]byte) (group.Scalar, []group.Scalar, group.Scalar, []group.Scalar, error) {
-
-	n := Fmul.DecideNumOT(alice.myGroup, 128)
+	n := fmul.DecideNumOT(alice.myGroup, 128)
 
 	sigmaa, vsa, errDec := alice.receivera.ReceiverRound3(e0b, e1b, n)
 	if errDec != nil {
@@ -298,8 +296,7 @@ func (alice *AlicePre) addShareGenRound3(e0b, e1b, e0kBInv, e1kBInv [][]byte) (g
 
 // Input: sigmaa, vsa, sigmakAInv, vskAInv, Blinding sigma and Array of v for (a and kAInv), from alice
 func (bob *BobPre) addShareGenRound4(sigmaa, sigmakAInv group.Scalar, vsa, vskAInv []group.Scalar) {
-
-	n := Fmul.DecideNumOT(bob.myGroup, 128)
+	n := fmul.DecideNumOT(bob.myGroup, 128)
 
 	bob.senderb.SenderRound4(vsa, sigmaa, n)
 	bob.senderkBInv.SenderRound4(vskAInv, sigmakAInv, n)

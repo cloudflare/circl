@@ -1,4 +1,4 @@
-package Fmul
+package fmul
 
 import (
 	"crypto/rand"
@@ -6,23 +6,31 @@ import (
 	"sync"
 
 	"github.com/cloudflare/circl/group"
-	"github.com/cloudflare/circl/ot/simplestOT"
+	"github.com/cloudflare/circl/ot/simot"
 	"golang.org/x/sync/errgroup"
 )
+
+// Input: myGroup, the group we operate in
+// Input: securityParameter
+// Output: The number of SimOT needed
+func DecideNumOT(myGroup group.Group, sp int) int {
+	numSimOT := int(myGroup.Params().ScalarLength*8) + sp
+	return numSimOT
+}
 
 // ---- Sender Initialization ----
 
 // Input: myGroup, the group we operate in
 // Input: a, the sender private input
-// Input: n, the total number of BaseOT
-// Output: Array of A=[ai]G for n BaseOT
+// Input: n, the total number of SimOT
+// Output: Array of A=[ai]G for n SimOT
 func (sender *SenderFmul) SenderInit(myGroup group.Group, a group.Scalar, n int) []group.Element {
 	sender.myGroup = myGroup
 	sender.a = a.Copy()
 	sender.deltas = make([]group.Scalar, n)
 	sender.m0s = make([][]byte, n)
 	sender.m1s = make([][]byte, n)
-	sender.baseOTsenders = make([]simplestOT.SenderSimOT, n)
+	sender.simOTsenders = make([]simot.SenderSimOT, n)
 
 	var fmulWait sync.WaitGroup
 	fmulWait.Add(n)
@@ -48,10 +56,10 @@ func (sender *SenderFmul) SenderInit(myGroup group.Group, a group.Scalar, n int)
 			}
 			sender.m1s[index] = m1iByte
 
-			// n Base OT Sender Initialization
-			var BaseOTSender simplestOT.SenderSimOT
-			BaseOTSender.InitSender(myGroup, sender.m0s[index], sender.m1s[index], index)
-			sender.baseOTsenders[index] = BaseOTSender
+			// n Sim OT Sender Initialization
+			var simOTSender simot.SenderSimOT
+			simOTSender.InitSender(myGroup, sender.m0s[index], sender.m1s[index], index)
+			sender.simOTsenders[index] = simOTSender
 		}(i)
 	}
 	fmulWait.Wait()
@@ -61,20 +69,19 @@ func (sender *SenderFmul) SenderInit(myGroup group.Group, a group.Scalar, n int)
 
 	As := make([]group.Element, n)
 	for i := 0; i < n; i++ {
-		As[i] = sender.baseOTsenders[i].A.Copy()
+		As[i] = sender.simOTsenders[i].A.Copy()
 	}
 	return As
-
 }
 
 // ---- Round1: Sender sends As to receiver ----
 
-// Receiver randomly generates n choice bits, either 0 or 1 for BaseOT, either -1(Scalar) or 1(Scalar) for Fmul
+// Receiver randomly generates n choice bits, either 0 or 1 for SimOT, either -1(Scalar) or 1(Scalar) for Fmul
 // Matching 0 or 1 to -1(Scalar) or 1(Scalar) in constant time
 // Input: myGroup, the group we operate in
 // Input: As, the n [ai]G received from sender
 // Input: b, the receiver private input
-// Input: n, the total number of BaseOT
+// Input: n, the total number of SimOT
 // Output: Array of B = [b]G if c == 0, B = A+[b]G if c == 1
 func (receiver *ReceiverFmul) ReceiverRound1(myGroup group.Group, As []group.Element, b group.Scalar, n int) []group.Element {
 	receiver.myGroup = myGroup
@@ -88,7 +95,7 @@ func (receiver *ReceiverFmul) ReceiverRound1(myGroup group.Group, As []group.Ele
 	Scalar1.SetUint64(1)
 	Scalar1.Neg(Scalar1)
 
-	receiver.baseOTreceivers = make([]simplestOT.ReceiverSimOT, n)
+	receiver.simOTreceivers = make([]simot.ReceiverSimOT, n)
 
 	var fmulWait sync.WaitGroup
 	fmulWait.Add(n)
@@ -106,7 +113,7 @@ func (receiver *ReceiverFmul) ReceiverRound1(myGroup group.Group, As []group.Ele
 			receiver.tsScalar[index] = Scalar1.Copy()
 			receiver.tsScalar[index].Sub(receiver.tsScalar[index], currScalar)
 			receiver.zs[index] = myGroup.NewScalar()
-			receiver.baseOTreceivers[index].Round1Receiver(myGroup, receiver.ts[index], index, As[index])
+			receiver.simOTreceivers[index].Round1Receiver(myGroup, receiver.ts[index], index, As[index])
 		}(i)
 	}
 	fmulWait.Wait()
@@ -116,7 +123,7 @@ func (receiver *ReceiverFmul) ReceiverRound1(myGroup group.Group, As []group.Ele
 
 	Bs := make([]group.Element, n)
 	for i := 0; i < n; i++ {
-		Bs[i] = receiver.baseOTreceivers[i].B.Copy()
+		Bs[i] = receiver.simOTreceivers[i].B.Copy()
 	}
 	return Bs
 }
@@ -124,7 +131,7 @@ func (receiver *ReceiverFmul) ReceiverRound1(myGroup group.Group, As []group.Ele
 // ---- Round 2: Receiver sends Bs = [bi]G or Ai+[bi]G to sender ----
 
 // Input: Bs, the n [bi]G or Ai+[bi]G received from receiver
-// Input: n, the total number of BaseOT
+// Input: n, the total number of SimOT
 // Output: Array of m0s encryptions and m1s encryptions
 func (sender *SenderFmul) SenderRound2(Bs []group.Element, n int) ([][]byte, [][]byte) {
 	var fmulWait sync.WaitGroup
@@ -132,7 +139,7 @@ func (sender *SenderFmul) SenderRound2(Bs []group.Element, n int) ([][]byte, [][
 	for i := 0; i < n; i++ {
 		go func(index int) {
 			defer fmulWait.Done()
-			sender.baseOTsenders[index].Round2Sender(Bs[index])
+			sender.simOTsenders[index].Round2Sender(Bs[index])
 		}(i)
 	}
 	fmulWait.Wait()
@@ -140,7 +147,7 @@ func (sender *SenderFmul) SenderRound2(Bs []group.Element, n int) ([][]byte, [][
 	e0s := make([][]byte, n)
 	e1s := make([][]byte, n)
 	for i := 0; i < n; i++ {
-		e0s[i], e1s[i] = sender.baseOTsenders[i].Returne0e1()
+		e0s[i], e1s[i] = sender.simOTsenders[i].Returne0e1()
 	}
 
 	return e0s, e1s
@@ -149,7 +156,7 @@ func (sender *SenderFmul) SenderRound2(Bs []group.Element, n int) ([][]byte, [][
 // ---- Round 3: Sender sends e0s, e1s to receiver ----
 
 // Input: e0s, e1s, the encryptions of m0s and m1s
-// Input: n, the total number of BaseOT
+// Input: n, the total number of SimOT
 // Ouptut: Blinding sigma and Array of v
 func (receiver *ReceiverFmul) ReceiverRound3(e0s, e1s [][]byte, n int) (group.Scalar, []group.Scalar, error) {
 	var errGroup errgroup.Group
@@ -158,11 +165,11 @@ func (receiver *ReceiverFmul) ReceiverRound3(e0s, e1s [][]byte, n int) (group.Sc
 	for i := 0; i < n; i++ {
 		func(index int) {
 			errGroup.Go(func() error {
-				errDec := receiver.baseOTreceivers[index].Round3Receiver(e0s[index], e1s[index], receiver.ts[index])
+				errDec := receiver.simOTreceivers[index].Round3Receiver(e0s[index], e1s[index], receiver.ts[index])
 				if errDec != nil {
 					return errDec
 				}
-				mc := receiver.baseOTreceivers[index].Returnmc()
+				mc := receiver.simOTreceivers[index].Returnmc()
 				errByte := receiver.zs[index].UnmarshalBinary(mc)
 				if errByte != nil {
 					panic(errByte)
@@ -212,7 +219,7 @@ func (receiver *ReceiverFmul) ReceiverRound3(e0s, e1s [][]byte, n int) (group.Sc
 
 // Input: vs, from receiver
 // Input: sigma, blinding from receiver
-// Input: n, the total number of BaseOT
+// Input: n, the total number of SimOT
 func (sender *SenderFmul) SenderRound4(vs []group.Scalar, sigma group.Scalar, n int) {
 	sender.s1.SetUint64(0)
 

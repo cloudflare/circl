@@ -1,4 +1,9 @@
-package Fmul
+// Reference: https://eprint.iacr.org/2021/1373.pdf
+// Sender and receiver has private input a and b
+// Sender and receiver get s1 and s2 such that a*b = s1+s2 from Fmul
+// This scheme based on pure OT but not OT extension
+
+package fmul
 
 import (
 	"crypto/rand"
@@ -8,7 +13,36 @@ import (
 	"github.com/cloudflare/circl/group"
 )
 
-const TestFmulCount = 50
+const testFmulCount = 50
+
+// Input: aInput, bInput, the private input from both sender and receiver
+// Input: myGroup, the group we operate in
+// Input: n, the total number of SimOT
+func fmul(sender *SenderFmul, receiver *ReceiverFmul, aInput, bInput group.Scalar, myGroup group.Group, n int) error {
+	// Sender Initialization
+	As := sender.SenderInit(myGroup, aInput, n)
+
+	// ---- Round1: Sender sends As to receiver ----
+
+	Bs := receiver.ReceiverRound1(myGroup, As, bInput, n)
+
+	// ---- Round 2: Receiver sends Bs = [bi]G or Ai+[bi]G to sender ----
+
+	e0s, e1s := sender.SenderRound2(Bs, n)
+
+	// ---- Round 3: Sender sends e0s, e1s to receiver ----
+
+	sigma, vs, errDec := receiver.ReceiverRound3(e0s, e1s, n)
+	if errDec != nil {
+		return errDec
+	}
+
+	// ---- Round 4: receiver sends sigma as well as vs to sender ----
+
+	sender.SenderRound4(vs, sigma, n)
+
+	return nil
+}
 
 func testFmul(t *testing.T, myGroup group.Group) {
 	n := DecideNumOT(myGroup, 128)
@@ -17,7 +51,7 @@ func testFmul(t *testing.T, myGroup group.Group) {
 	aSender := myGroup.RandomNonZeroScalar(rand.Reader)
 	bReceiver := myGroup.RandomNonZeroScalar(rand.Reader)
 
-	err := Fmul(&sender, &receiver, aSender, bReceiver, myGroup, n)
+	err := fmul(&sender, &receiver, aSender, bReceiver, myGroup, n)
 	if err != nil {
 		t.Error("Fmul decryption fail", err)
 	}
@@ -31,7 +65,6 @@ func testFmul(t *testing.T, myGroup group.Group) {
 	if add.IsEqual(mul) == false {
 		t.Error("Fmul reconstruction failed")
 	}
-
 }
 
 // Note the receiver has no space to cheat in the protocol.
@@ -63,9 +96,7 @@ func testFmulNegative(t *testing.T, myGroup group.Group) {
 	}
 	randomIndex := int(nBig.Int64())
 	savee0 := make([]byte, len(e0s[randomIndex]))
-	for i := 0; i < int(len(e0s[randomIndex])); i++ {
-		savee0[i] = e0s[randomIndex][i]
-	}
+	copy(savee0, e0s[randomIndex])
 	e0s[randomIndex] = e1s[randomIndex]
 	e1s[randomIndex] = savee0
 
@@ -75,7 +106,6 @@ func testFmulNegative(t *testing.T, myGroup group.Group) {
 	if err == nil {
 		t.Error("Fmul decryption should fail", err)
 	}
-
 }
 
 func benchmarFmul(b *testing.B, myGroup group.Group) {
@@ -86,7 +116,7 @@ func benchmarFmul(b *testing.B, myGroup group.Group) {
 		aSender := myGroup.RandomNonZeroScalar(rand.Reader)
 		bReceiver := myGroup.RandomNonZeroScalar(rand.Reader)
 
-		err := Fmul(&sender, &receiver, aSender, bReceiver, myGroup, n)
+		err := fmul(&sender, &receiver, aSender, bReceiver, myGroup, n)
 		if err != nil {
 			b.Error("Fmul reconstruction failed")
 		}
@@ -156,24 +186,21 @@ func benchmarFmulRound(b *testing.B, myGroup group.Group) {
 	if add.IsEqual(mul) == false {
 		b.Error("Fmul reconstruction failed")
 	}
-
 }
 
 func TestFmul(t *testing.T) {
-
-	t.Run("Fmul", func(t *testing.T) {
-		for i := 0; i < TestFmulCount; i++ {
+	t.Run("fmul", func(t *testing.T) {
+		for i := 0; i < testFmulCount; i++ {
 			currGroup := group.P256
 			testFmul(t, currGroup)
 		}
 	})
-	t.Run("FmulNegative", func(t *testing.T) {
-		for i := 0; i < TestFmulCount; i++ {
+	t.Run("fmulNegative", func(t *testing.T) {
+		for i := 0; i < testFmulCount; i++ {
 			currGroup := group.P256
 			testFmulNegative(t, currGroup)
 		}
 	})
-
 }
 
 func BenchmarkFmul(b *testing.B) {

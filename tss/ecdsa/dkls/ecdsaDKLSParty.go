@@ -1,8 +1,8 @@
-package ECDSAOT
+package dkls
 
 import (
 	"github.com/cloudflare/circl/group"
-	"github.com/cloudflare/circl/tss/ecdsa/ot/Fmul"
+	"github.com/cloudflare/circl/tss/ecdsa/dkls/fmul"
 )
 
 // The sender of Fmul
@@ -18,10 +18,10 @@ type AlicePre struct {
 
 	a         group.Scalar      // A random blinding for beaver's triple
 	ta        group.Scalar      // Additive share of a*b
-	receivera Fmul.ReceiverFmul // Receiver of Fmul for a*b
+	receivera fmul.ReceiverFmul // Receiver of Fmul for a*b
 
 	tkA           group.Scalar      // Additive share of 1/kA*1/kB
-	receiverkAInv Fmul.ReceiverFmul // Receiver of Fmul for 1/kA*1/kB
+	receiverkAInv fmul.ReceiverFmul // Receiver of Fmul for 1/kA*1/kB
 	myGroup       group.Group       // The elliptic curve we operate in
 }
 
@@ -37,10 +37,10 @@ type BobPre struct {
 
 	b       group.Scalar    // A random blinding for beaver's triple
 	tb      group.Scalar    // Additive share of a*b
-	senderb Fmul.SenderFmul // Sender of Fmul for a*b
+	senderb fmul.SenderFmul // Sender of Fmul for a*b
 
 	tkB         group.Scalar    // Additive share of 1/kA*1/kB
-	senderkBInv Fmul.SenderFmul // Sender of Fmul for 1/kA*1/kB
+	senderkBInv fmul.SenderFmul // Sender of Fmul for 1/kA*1/kB
 	myGroup     group.Group     // The elliptic curve we operate in
 }
 
@@ -53,7 +53,7 @@ type Alice struct {
 	ta       group.Scalar // Additive share of a*b
 	tkA      group.Scalar // Additive share of 1/kA*1/kB
 	Rx       group.Scalar // x coordinate of point [kA][kB]G
-	beaver   group.Scalar //skA/(kA*a)
+	beaver   group.Scalar // skA/(kA*a)
 }
 
 type Bob struct {
@@ -64,6 +64,5 @@ type Bob struct {
 	tb       group.Scalar // Additive share of a*b
 	tkB      group.Scalar // Additive share of 1/kA*1/kB
 	Rx       group.Scalar // x coordinate of point [kA][kB]G
-	beaver   group.Scalar //skB/(kB*b)
-
+	beaver   group.Scalar // skB/(kB*b)
 }
