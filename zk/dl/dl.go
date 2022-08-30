@@ -1,9 +1,9 @@
 // Reference: https://datatracker.ietf.org/doc/html/rfc8235#page-6
 // Prove the knowledge of [k] given [k]G, G and the curve where the points reside
-package zkRDL
+package dl
 
 import (
-	"crypto/rand"
+	"io"
 
 	"github.com/cloudflare/circl/group"
 )
@@ -12,9 +12,8 @@ import (
 // Input: R = [kA]DB
 // Input: proverLabel, verifierLabel labels of prover and verifier
 // Ouptput: (V,r), the prove such that we know kA without revealing kA
-func ProveGen(myGroup group.Group, DB, R group.Element, kA group.Scalar, proverLabel, verifierLabel []byte) (group.Element, group.Scalar) {
-
-	v := myGroup.RandomNonZeroScalar(rand.Reader)
+func ProveGen(myGroup group.Group, DB, R group.Element, kA group.Scalar, proverLabel, verifierLabel, dst []byte, rnd io.Reader) (group.Element, group.Scalar) {
+	v := myGroup.RandomNonZeroScalar(rnd)
 	V := myGroup.NewElement()
 	V.Mul(DB, v)
 
@@ -38,8 +37,7 @@ func ProveGen(myGroup group.Group, DB, R group.Element, kA group.Scalar, proverL
 	hashByte = append(hashByte, proverLabel...)
 	hashByte = append(hashByte, verifierLabel...)
 
-	dst := "zeroknowledge"
-	c := myGroup.HashToScalar(hashByte, []byte(dst))
+	c := myGroup.HashToScalar(hashByte, dst)
 
 	kAc := myGroup.NewScalar()
 	kAc.Mul(c, kA)
@@ -54,7 +52,7 @@ func ProveGen(myGroup group.Group, DB, R group.Element, kA group.Scalar, proverL
 // Input: (V,r), the prove such that the prover knows kA
 // Input: proverLabel, verifierLabel labels of prover and verifier
 // Output: V ?= [r]D_B +[c]R
-func Verify(myGroup group.Group, DB, R group.Element, V group.Element, r group.Scalar, proverLabel, verifierLabel []byte) bool {
+func Verify(myGroup group.Group, DB, R group.Element, V group.Element, r group.Scalar, proverLabel, verifierLabel, dst []byte) bool {
 	// Hash the transcript (D_B | V | R | proverLabel | verifierLabel) to get the random coin
 	DBByte, errByte := DB.MarshalBinary()
 	if errByte != nil {
@@ -74,8 +72,7 @@ func Verify(myGroup group.Group, DB, R group.Element, V group.Element, r group.S
 	hashByte = append(hashByte, proverLabel...)
 	hashByte = append(hashByte, verifierLabel...)
 
-	dst := "zeroknowledge"
-	c := myGroup.HashToScalar(hashByte, []byte(dst))
+	c := myGroup.HashToScalar(hashByte, dst)
 
 	rDB := myGroup.NewElement()
 	rDB.Mul(DB, r)

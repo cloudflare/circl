@@ -1,4 +1,8 @@
-package simplestOT
+// Reference: https://eprint.iacr.org/2015/267.pdf (1 out of 2 OT case)
+// Sender has 2 messages m0, m1
+// Receiver receives mc based on the choice bit c
+
+package simot
 
 import (
 	"bytes"
@@ -8,15 +12,43 @@ import (
 	"github.com/cloudflare/circl/group"
 )
 
-const TestBaseOTCount = 100
+const testSimOTCount = 100
 
-func testNegativeBaseOT(t *testing.T, myGroup group.Group, choice int) {
+func simOT(myGroup group.Group, sender *SenderSimOT, receiver *ReceiverSimOT, m0, m1 []byte, choice, index int) error {
+	// Initialization
+	A := sender.InitSender(myGroup, m0, m1, index)
+
+	// Round 1
+	// Sender sends A to receiver
+	B := receiver.Round1Receiver(myGroup, choice, index, A)
+
+	// Round 2
+	// Receiver sends B to sender
+	e0, e1 := sender.Round2Sender(B)
+
+	// Round 3
+	// Sender sends e0 e1 to receiver
+	errDec := receiver.Round3Receiver(e0, e1, receiver.c)
+	if errDec != nil {
+		return errDec
+	}
+
+	return nil
+}
+
+func testNegativeSimOT(t *testing.T, myGroup group.Group, choice int) {
 	var sender SenderSimOT
 	var receiver ReceiverSimOT
 	m0 := make([]byte, myGroup.Params().ScalarLength)
 	m1 := make([]byte, myGroup.Params().ScalarLength)
-	rand.Read(m0)
-	rand.Read(m1)
+	_, errRand := rand.Read(m0)
+	if errRand != nil {
+		panic(errRand)
+	}
+	_, errRand = rand.Read(m1)
+	if errRand != nil {
+		panic(errRand)
+	}
 
 	// Initialization
 	A := sender.InitSender(myGroup, m0, m1, 0)
@@ -32,7 +64,7 @@ func testNegativeBaseOT(t *testing.T, myGroup group.Group, choice int) {
 	// The receiver will not learn anything about m_{1-c}
 	errDec := receiver.Round3Receiver(e0, e1, 1-choice)
 	if errDec == nil {
-		t.Error("BaseOT decryption failed", errDec)
+		t.Error("SimOT decryption failed", errDec)
 	}
 
 	if choice == 0 {
@@ -54,23 +86,29 @@ func testNegativeBaseOT(t *testing.T, myGroup group.Group, choice int) {
 			t.Error("Receiver decryption should fail")
 		}
 	}
-
 }
 
 // Input: myGroup, the group we operate in
-func testBaseOT(t *testing.T, myGroup group.Group, choice int) {
+func testSimOT(t *testing.T, myGroup group.Group, choice int) {
 	var sender SenderSimOT
 	var receiver ReceiverSimOT
 
 	m0 := make([]byte, myGroup.Params().ScalarLength)
 	m1 := make([]byte, myGroup.Params().ScalarLength)
-	rand.Read(m0)
-	rand.Read(m1)
-	err := BaseOT(myGroup, &sender, &receiver, m0, m1, choice, 0)
-	if err != nil {
-		t.Error("BaseOT failed", err)
+	_, errRand := rand.Read(m0)
+	if errRand != nil {
+		panic(errRand)
 	}
-	//Confirm
+	_, errRand = rand.Read(m1)
+	if errRand != nil {
+		panic(errRand)
+	}
+
+	errDec := simOT(myGroup, &sender, &receiver, m0, m1, choice, 0)
+	if errDec != nil {
+		t.Error("AES GCM Decryption failed")
+	}
+
 	if choice == 0 {
 		equal0 := bytes.Compare(sender.m0, receiver.mc)
 		if equal0 != 0 {
@@ -84,29 +122,41 @@ func testBaseOT(t *testing.T, myGroup group.Group, choice int) {
 	}
 }
 
-func benchmarBaseOT(b *testing.B, myGroup group.Group) {
+func benchmarSimOT(b *testing.B, myGroup group.Group) {
 	var sender SenderSimOT
 	var receiver ReceiverSimOT
 	m0 := make([]byte, myGroup.Params().ScalarLength)
 	m1 := make([]byte, myGroup.Params().ScalarLength)
-	rand.Read(m0)
-	rand.Read(m1)
+	_, errRand := rand.Read(m0)
+	if errRand != nil {
+		panic(errRand)
+	}
+	_, errRand = rand.Read(m1)
+	if errRand != nil {
+		panic(errRand)
+	}
 
 	for iter := 0; iter < b.N; iter++ {
-		err := BaseOT(myGroup, &sender, &receiver, m0, m1, iter%2, 0)
-		if err != nil {
-			b.Error("BaseOT failed")
+		errDec := simOT(myGroup, &sender, &receiver, m0, m1, iter%2, 0)
+		if errDec != nil {
+			b.Error("AES GCM Decryption failed")
 		}
 	}
 }
 
-func benchmarkBaseOTRound(b *testing.B, myGroup group.Group) {
+func benchmarkSimOTRound(b *testing.B, myGroup group.Group) {
 	var sender SenderSimOT
 	var receiver ReceiverSimOT
 	m0 := make([]byte, myGroup.Params().ScalarLength)
 	m1 := make([]byte, myGroup.Params().ScalarLength)
-	rand.Read(m0)
-	rand.Read(m1)
+	_, errRand := rand.Read(m0)
+	if errRand != nil {
+		panic(errRand)
+	}
+	_, errRand = rand.Read(m1)
+	if errRand != nil {
+		panic(errRand)
+	}
 
 	b.Run("Sender-Initialization", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
@@ -127,7 +177,6 @@ func benchmarkBaseOTRound(b *testing.B, myGroup group.Group) {
 	b.Run("Sender-Round2", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			sender.Round2Sender(B)
-
 		}
 	})
 
@@ -152,34 +201,31 @@ func benchmarkBaseOTRound(b *testing.B, myGroup group.Group) {
 	if equal0 != 0 {
 		b.Error("Receiver decryption failed")
 	}
-
 }
 
-func TestBaseOT(t *testing.T) {
-
-	t.Run("BaseOT", func(t *testing.T) {
-		for i := 0; i < TestBaseOTCount; i++ {
+func TestSimOT(t *testing.T) {
+	t.Run("SimOT", func(t *testing.T) {
+		for i := 0; i < testSimOTCount; i++ {
 			currGroup := group.P256
 			choice := i % 2
-			testBaseOT(t, currGroup, choice)
+			testSimOT(t, currGroup, choice)
 		}
 	})
-	t.Run("BaseOTNegative", func(t *testing.T) {
-		for i := 0; i < TestBaseOTCount; i++ {
+	t.Run("SimOTNegative", func(t *testing.T) {
+		for i := 0; i < testSimOTCount; i++ {
 			currGroup := group.P256
 			choice := i % 2
-			testNegativeBaseOT(t, currGroup, choice)
+			testNegativeSimOT(t, currGroup, choice)
 		}
 	})
-
 }
 
-func BenchmarkBaseOT(b *testing.B) {
+func BenchmarkSimOT(b *testing.B) {
 	currGroup := group.P256
-	benchmarBaseOT(b, currGroup)
+	benchmarSimOT(b, currGroup)
 }
 
-func BenchmarkBaseOTRound(b *testing.B) {
+func BenchmarkSimOTRound(b *testing.B) {
 	currGroup := group.P256
-	benchmarkBaseOTRound(b, currGroup)
+	benchmarkSimOTRound(b, currGroup)
 }

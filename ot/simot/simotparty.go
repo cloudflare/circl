@@ -1,4 +1,4 @@
-package simplestOT
+package simot
 
 import "github.com/cloudflare/circl/group"
 

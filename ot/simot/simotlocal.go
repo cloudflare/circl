@@ -1,4 +1,4 @@
-package simplestOT
+package simot
 
 import (
 	"crypto/aes"
@@ -66,7 +66,7 @@ func aesDecGCM(key, ciphertext []byte) ([]byte, error) {
 
 // Input: myGroup, the group we operate in
 // Input: m0, m1 the 2 message of the sender
-// Input: index, the index of this BaseOT
+// Input: index, the index of this SimOT
 // Output: A = [a]G, a the sender randomness
 func (sender *SenderSimOT) InitSender(myGroup group.Group, m0, m1 []byte, index int) group.Element {
 	sender.a = myGroup.RandomNonZeroScalar(rand.Reader)
@@ -87,7 +87,7 @@ func (sender *SenderSimOT) InitSender(myGroup group.Group, m0, m1 []byte, index 
 
 // Input: myGroup, the group we operate in
 // Input: choice, the receiver choice bit
-// Input: index, the index of this BaseOT
+// Input: index, the index of this SimOT
 // Input: A, from sender
 // Output: B = [b]G if c == 0, B = A+[b]G if c == 1 (Implementation in constant time). b, the receiver randomness
 func (receiver *ReceiverSimOT) Round1Receiver(myGroup group.Group, choice int, index int, A group.Element) group.Element {
