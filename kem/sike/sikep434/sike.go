@@ -1,6 +1,12 @@
 // Code generated from pkg.templ.go. DO NOT EDIT.
 
-// Package sikep434 implements the key encapsulation mechanism SIKEp434.
+// Package sikep434 is deprecated, it implements the key encapsulation mechanism SIKEp434.
+//
+// # DEPRECATION NOTICE
+//
+// SIDH and SIKE are deprecated as were shown vulnerable to a key recovery
+// attack by Castryck-Decru's paper (https://eprint.iacr.org/2022/975). New
+// systems should not rely on this package. This package is frozen.
 package sikep434
 
 import (
@@ -14,11 +20,13 @@ import (
 	"github.com/cloudflare/circl/kem"
 )
 
+// Deprecated: not cryptographically secure.
 type PrivateKey struct {
 	sk *sidh.PrivateKey
 	pk *sidh.PublicKey
 }
 
+// Deprecated: not cryptographically secure.
 type PublicKey sidh.PublicKey
 
 const (
@@ -31,6 +39,8 @@ type scheme struct{}
 var sch kem.Scheme = &scheme{}
 
 // Scheme returns a KEM interface.
+//
+// Deprecated: not cryptographically secure.
 func Scheme() kem.Scheme { return sch }
 
 var params *sidh.KEM
@@ -87,6 +97,7 @@ func (pk *PublicKey) MarshalBinary() ([]byte, error) {
 	return ret, nil
 }
 
+// Deprecated: not cryptographically secure.
 func GenerateKeyPair(rand io.Reader) (kem.PublicKey, kem.PrivateKey, error) {
 	sk := sidh.NewPrivateKey(sidh.Fp434, sidh.KeyVariantSike)
 

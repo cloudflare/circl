@@ -139,9 +139,10 @@ func div2subY(x *[5]uint64, y int64) {
 // mLSBRecoding is the odd-only modified LSB-set.
 //
 // Reference:
-//  "Efficient and secure algorithms for GLV-based scalar multiplication and
-//   their implementation on GLV–GLS curves" by (Faz-Hernandez et al.)
-//   http://doi.org/10.1007/s13389-014-0085-7.
+//
+//	"Efficient and secure algorithms for GLV-based scalar multiplication and
+//	 their implementation on GLV–GLS curves" by (Faz-Hernandez et al.)
+//	 http://doi.org/10.1007/s13389-014-0085-7.
 func mLSBRecoding(L []int8, k []byte) {
 	const e = (fxT + fxW*fxV - 1) / (fxW * fxV)
 	const d = e * fxV

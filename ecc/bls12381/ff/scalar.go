@@ -36,7 +36,8 @@ func (z Scalar) fromMont() (out scRaw)     { fiatScMontMul(&out, &z.i, &scMont{1
 
 // ScalarOrder is the order of the scalar field of the pairing groups, order is
 // returned as a big-endian slice.
-//  ScalarOrder = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
+//
+//	ScalarOrder = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
 func ScalarOrder() []byte { o := scOrder; return o[:] }
 
 // exp calculates z=x^n, where n is in big-endian order.

@@ -1,10 +1,11 @@
 // Package schemes contains a register of signature algorithms.
 //
 // Implemented schemes:
-//  Ed25519
-//  Ed448
-//  Ed25519-Dilithium2
-//  Ed448-Dilithium3
+//
+//	Ed25519
+//	Ed448
+//	Ed25519-Dilithium2
+//	Ed448-Dilithium3
 package schemes
 
 import (

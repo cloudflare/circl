@@ -10,6 +10,8 @@ import (
 )
 
 // SIKE KEM interface.
+//
+// Deprecated: not cryptographically secure.
 type KEM struct {
 	allocated   bool
 	rng         io.Reader
@@ -20,6 +22,8 @@ type KEM struct {
 }
 
 // NewSike434 instantiates SIKE/p434 KEM.
+//
+// Deprecated: not cryptographically secure.
 func NewSike434(rng io.Reader) *KEM {
 	var c KEM
 	c.Allocate(Fp434, rng)
@@ -27,6 +31,8 @@ func NewSike434(rng io.Reader) *KEM {
 }
 
 // NewSike503 instantiates SIKE/p503 KEM.
+//
+// Deprecated: not cryptographically secure.
 func NewSike503(rng io.Reader) *KEM {
 	var c KEM
 	c.Allocate(Fp503, rng)
@@ -34,6 +40,8 @@ func NewSike503(rng io.Reader) *KEM {
 }
 
 // NewSike751 instantiates SIKE/p751 KEM.
+//
+// Deprecated: not cryptographically secure.
 func NewSike751(rng io.Reader) *KEM {
 	var c KEM
 	c.Allocate(Fp751, rng)

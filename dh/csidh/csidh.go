@@ -283,7 +283,9 @@ func GeneratePublicKey(pub *PublicKey, prv *PrivateKey, rng io.Reader) {
 // Validate returns true if 'pub' is a valid cSIDH public key,
 // otherwise false.
 // More precisely, the function verifies that curve
-//            y^2 = x^3 + pub.a * x^2 + x
+//
+//	y^2 = x^3 + pub.a * x^2 + x
+//
 // is supersingular.
 func Validate(pub *PublicKey, rng io.Reader) bool {
 	// Check if in range

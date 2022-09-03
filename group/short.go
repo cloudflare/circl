@@ -141,6 +141,57 @@ func (e *wElt) Set(a Element) Element {
 }
 
 func (e *wElt) Copy() Element { return e.wG.zeroElement().Set(e) }
+
+func (e *wElt) CMov(v int, a Element) Element {
+	if !(v == 0 || v == 1) {
+		panic(ErrSelector)
+	}
+	aa := e.cvtElt(a)
+	l := (e.wG.c.Params().BitSize + 7) / 8
+	bufE := make([]byte, l)
+	bufA := make([]byte, l)
+	e.x.FillBytes(bufE)
+	aa.x.FillBytes(bufA)
+	subtle.ConstantTimeCopy(v, bufE, bufA)
+	e.x.SetBytes(bufE)
+
+	e.y.FillBytes(bufE)
+	aa.y.FillBytes(bufA)
+	subtle.ConstantTimeCopy(v, bufE, bufA)
+	e.y.SetBytes(bufE)
+
+	return e
+}
+
+func (e *wElt) CSelect(v int, a Element, b Element) Element {
+	if !(v == 0 || v == 1) {
+		panic(ErrSelector)
+	}
+	aa, bb := e.cvtElt(a), e.cvtElt(b)
+	l := (e.wG.c.Params().BitSize + 7) / 8
+	bufE := make([]byte, l)
+	bufA := make([]byte, l)
+	bufB := make([]byte, l)
+
+	e.x.FillBytes(bufE)
+	aa.x.FillBytes(bufA)
+	bb.x.FillBytes(bufB)
+	for i := range bufE {
+		bufE[i] = byte(subtle.ConstantTimeSelect(v, int(bufA[i]), int(bufB[i])))
+	}
+	e.x.SetBytes(bufE)
+
+	e.y.FillBytes(bufE)
+	aa.y.FillBytes(bufA)
+	bb.y.FillBytes(bufB)
+	for i := range bufE {
+		bufE[i] = byte(subtle.ConstantTimeSelect(v, int(bufA[i]), int(bufB[i])))
+	}
+	e.y.SetBytes(bufE)
+
+	return e
+}
+
 func (e *wElt) Add(a, b Element) Element {
 	aa, bb := e.cvtElt(a), e.cvtElt(b)
 	e.x, e.y = e.c.Add(aa.x, aa.y, bb.x, bb.y)
@@ -220,9 +271,13 @@ type wScl struct {
 	k []byte
 }
 
-func (s *wScl) Group() Group       { return s.wG }
-func (s *wScl) String() string     { return fmt.Sprintf("0x%x", s.k) }
-func (s *wScl) SetUint64(n uint64) { s.fromBig(new(big.Int).SetUint64(n)) }
+func (s *wScl) Group() Group              { return s.wG }
+func (s *wScl) String() string            { return fmt.Sprintf("0x%x", s.k) }
+func (s *wScl) SetUint64(n uint64) Scalar { s.fromBig(new(big.Int).SetUint64(n)); return s }
+func (s *wScl) IsZero() bool {
+	return subtle.ConstantTimeCompare(s.k, make([]byte, (s.wG.c.Params().BitSize+7)/8)) == 1
+}
+
 func (s *wScl) IsEqual(a Scalar) bool {
 	aa := s.cvtScl(a)
 	return subtle.ConstantTimeCompare(s.k, aa.k) == 1
@@ -244,6 +299,27 @@ func (s *wScl) Set(a Scalar) Scalar {
 }
 
 func (s *wScl) Copy() Scalar { return s.wG.zeroScalar().Set(s) }
+
+func (s *wScl) CMov(v int, a Scalar) Scalar {
+	if !(v == 0 || v == 1) {
+		panic(ErrSelector)
+	}
+	aa := s.cvtScl(a)
+	subtle.ConstantTimeCopy(v, s.k, aa.k)
+	return s
+}
+
+func (s *wScl) CSelect(v int, a Scalar, b Scalar) Scalar {
+	if !(v == 0 || v == 1) {
+		panic(ErrSelector)
+	}
+	aa, bb := s.cvtScl(a), s.cvtScl(b)
+	for i := range s.k {
+		s.k[i] = byte(subtle.ConstantTimeSelect(v, int(aa.k[i]), int(bb.k[i])))
+	}
+	return s
+}
+
 func (s *wScl) Add(a, b Scalar) Scalar {
 	aa, bb := s.cvtScl(a), s.cvtScl(b)
 	r := new(big.Int)

@@ -8,9 +8,10 @@ import (
 
 	r255 "github.com/bwesterb/go-ristretto"
 	"github.com/cloudflare/circl/expander"
+	"github.com/cloudflare/circl/internal/conv"
 )
 
-// Ristretto255 is a quotient group generated from edwards25519 curve.
+// Ristretto255 is a quotient group generated from the edwards25519 curve.
 var Ristretto255 Group = ristrettoGroup{}
 
 type ristrettoGroup struct{}
@@ -128,6 +129,8 @@ func (g ristrettoGroup) HashToScalar(msg, dst []byte) Scalar {
 
 func (e *ristrettoElement) Group() Group { return Ristretto255 }
 
+func (e *ristrettoElement) String() string { return fmt.Sprintf("%x", e.p.Bytes()) }
+
 func (e *ristrettoElement) IsIdentity() bool {
 	var zero r255.Point
 	zero.SetZero()
@@ -145,6 +148,23 @@ func (e *ristrettoElement) Set(x Element) Element {
 
 func (e *ristrettoElement) Copy() Element {
 	return &ristrettoElement{*new(r255.Point).Set(&e.p)}
+}
+
+func (e *ristrettoElement) CMov(v int, x Element) Element {
+	if !(v == 0 || v == 1) {
+		panic(ErrSelector)
+	}
+	e.p.ConditionalSet(&x.(*ristrettoElement).p, int32(v))
+	return e
+}
+
+func (e *ristrettoElement) CSelect(v int, x Element, y Element) Element {
+	if !(v == 0 || v == 1) {
+		panic(ErrSelector)
+	}
+	e.p.ConditionalSet(&x.(*ristrettoElement).p, int32(v))
+	e.p.ConditionalSet(&y.(*ristrettoElement).p, int32(1-v))
+	return e
 }
 
 func (e *ristrettoElement) Add(x Element, y Element) Element {
@@ -183,10 +203,10 @@ func (e *ristrettoElement) UnmarshalBinary(data []byte) error {
 	return e.p.UnmarshalBinary(data)
 }
 
-func (s *ristrettoScalar) Group() Group       { return Ristretto255 }
-func (s *ristrettoScalar) String() string     { return fmt.Sprintf("0x%x", s.s.Bytes()) }
-func (s *ristrettoScalar) SetUint64(n uint64) { s.s.SetUint64(n) }
-
+func (s *ristrettoScalar) Group() Group              { return Ristretto255 }
+func (s *ristrettoScalar) String() string            { return conv.BytesLe2Hex(s.s.Bytes()) }
+func (s *ristrettoScalar) SetUint64(n uint64) Scalar { s.s.SetUint64(n); return s }
+func (s *ristrettoScalar) IsZero() bool              { return s.s.IsNonZeroI() == 0 }
 func (s *ristrettoScalar) IsEqual(x Scalar) bool {
 	return s.s.Equals(&x.(*ristrettoScalar).s)
 }
@@ -198,6 +218,23 @@ func (s *ristrettoScalar) Set(x Scalar) Scalar {
 
 func (s *ristrettoScalar) Copy() Scalar {
 	return &ristrettoScalar{*new(r255.Scalar).Set(&s.s)}
+}
+
+func (s *ristrettoScalar) CMov(v int, x Scalar) Scalar {
+	if !(v == 0 || v == 1) {
+		panic(ErrSelector)
+	}
+	s.s.ConditionalSet(&x.(*ristrettoScalar).s, int32(v))
+	return s
+}
+
+func (s *ristrettoScalar) CSelect(v int, x Scalar, y Scalar) Scalar {
+	if !(v == 0 || v == 1) {
+		panic(ErrSelector)
+	}
+	s.s.ConditionalSet(&x.(*ristrettoScalar).s, int32(v))
+	s.s.ConditionalSet(&y.(*ristrettoScalar).s, int32(1-v))
+	return s
 }
 
 func (s *ristrettoScalar) Add(x Scalar, y Scalar) Scalar {
