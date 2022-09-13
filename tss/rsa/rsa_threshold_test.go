@@ -3,7 +3,6 @@ package rsa
 import (
 	"bytes"
 	"crypto"
-	_ "crypto/md5"
 	"crypto/rand"
 	"crypto/rsa"
 	_ "crypto/sha256"
@@ -27,7 +26,7 @@ func createPrivateKey(p, q *big.Int, e int) *rsa.PrivateKey {
 }
 
 func TestCalcN(t *testing.T) {
-	var TWO = big.NewInt(2)
+	TWO := big.NewInt(2)
 	n := calcN(ONE, TWO)
 	if n.Cmp(TWO) != 0 {
 		t.Fatal("calcN failed: (1, 2)")
@@ -178,7 +177,6 @@ func testIntegration(t *testing.T, algo crypto.Hash, pub *rsa.PublicKey, players
 	}
 
 	msgPH, err := PadHash(padder, algo, pub, msg)
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +205,6 @@ func testIntegration(t *testing.T, algo crypto.Hash, pub *rsa.PublicKey, players
 
 	if padScheme == PKS1v15 {
 		err = rsa.VerifyPKCS1v15(pub, algo, hashed, sig)
-
 	} else if padScheme == PSS {
 		err = rsa.VerifyPSS(pub, algo, hashed, sig, padder.(*PSSPadder).Opts)
 	} else {
@@ -255,6 +252,7 @@ func TestIntegrationStdRsaKeyGenerationPSS(t *testing.T) {
 	testIntegration(t, algo, &pub, players, threshold, keys, PSS)
 }
 
+// nolint: unparam
 func benchmarkSignCombineHelper(randSource io.Reader, parallel bool, b *testing.B, players, threshold uint, bits int, algo crypto.Hash, padScheme int) {
 	key, err := rsa.GenerateKey(rand.Reader, bits)
 	pub := key.PublicKey
@@ -371,14 +369,6 @@ func BenchmarkSignCombine_SHA256_4096_3_2_Scheme_BlindParallel(b *testing.B) {
 	const bits = 4096
 	const algo = crypto.SHA256
 	benchmarkSignCombineHelper(rand.Reader, true, b, players, threshold, bits, algo, PKS1v15)
-}
-
-func BenchmarkSignCombine_MD5_4096_3_2_Scheme(b *testing.B) {
-	const players = 3
-	const threshold = 2
-	const bits = 4096
-	const algo = crypto.MD5
-	benchmarkSignCombineHelper(nil, false, b, players, threshold, bits, algo, PKS1v15)
 }
 
 func BenchmarkSignCombine_SHA256_2048_3_2_Scheme(b *testing.B) {

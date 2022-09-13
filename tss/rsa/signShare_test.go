@@ -51,7 +51,6 @@ func TestMarshallSignShare(t *testing.T) {
 	if err == nil {
 		t.Fatalf("unmarshall succeeded when it shouldn't have")
 	}
-
 }
 
 func TestMarshallFullSignShare(t *testing.T) {

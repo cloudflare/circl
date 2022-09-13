@@ -3,9 +3,10 @@ package rsa
 import (
 	"crypto"
 	"crypto/rsa"
+	"io"
+
 	"github.com/cloudflare/circl/tss/rsa/internal"
 	pss2 "github.com/cloudflare/circl/tss/rsa/internal/pss"
-	"io"
 )
 
 type Padder interface {

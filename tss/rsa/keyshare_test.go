@@ -121,7 +121,6 @@ func TestMarshallKeyShare(t *testing.T) {
 	if err == nil {
 		t.Fatalf("unmarshall succeeded when it shouldn't have")
 	}
-
 }
 
 func TestMarshallKeyShareFull(t *testing.T) {

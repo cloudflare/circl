@@ -30,7 +30,7 @@ func validateParams(players, threshold uint) error {
 func Deal(randSource io.Reader, players, threshold uint, key *rsa.PrivateKey, cache bool) ([]KeyShare, error) {
 	err := validateParams(players, threshold)
 
-	var ONE = big.NewInt(1)
+	ONE := big.NewInt(1)
 
 	if err != nil {
 		return nil, err
@@ -172,7 +172,7 @@ func CombineSignShares(players uint, pub *rsa.PublicKey, shares []SignShare, msg
 	}
 	w.Mod(w, pub.N)
 
-	//e′ = 4∆^2
+	// e′ = 4∆^2
 	eprime := big.Int{}
 	eprime.Mul(delta, delta)     // faster than delta^TWO
 	eprime.Add(&eprime, &eprime) // faster than FOUR * eprime
