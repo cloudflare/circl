@@ -11,16 +11,16 @@ import (
 	"math/big"
 )
 
-// l or `players`, the total number of players.
-// t, the number of corrupted players.
-// k=t+1 or `threshold`, the number of signature shares needed to obtain a signature.
+// l or `Players`, the total number of Players.
+// t, the number of corrupted Players.
+// k=t+1 or `Threshold`, the number of signature shares needed to obtain a signature.
 
 func validateParams(players, threshold uint) error {
 	if players <= 1 {
-		return errors.New("rsa_threshold: players (l) invalid: should be > 1")
+		return errors.New("rsa_threshold: Players (l) invalid: should be > 1")
 	}
 	if threshold < 1 || threshold > players {
-		return fmt.Errorf("rsa_threshold: threshold (k) invalid: %d < 1 || %d > %d", threshold, threshold, players)
+		return fmt.Errorf("rsa_threshold: Threshold (k) invalid: %d < 1 || %d > %d", threshold, threshold, players)
 	}
 	return nil
 }
@@ -87,6 +87,8 @@ func Deal(randSource io.Reader, players, threshold uint, key *rsa.PrivateKey, ca
 
 	// 1 <= i <= l
 	for i := uint(1); i <= players; i++ {
+		shares[i-1].Players = players
+		shares[i-1].Threshold = threshold
 		// Σ^{k-1}_{i=0} | a_i * X^i (mod m)
 		poly := computePolynomial(threshold, a, i, &m)
 		shares[i-1].si = poly
@@ -108,8 +110,8 @@ func calcN(p, q *big.Int) big.Int {
 
 // f(X) = Σ^{k-1}_{i=0} | a_i * X^i (mod m)
 func computePolynomial(k uint, a []*big.Int, x uint, m *big.Int) *big.Int {
+	// TODO: use Horner's method here.
 	sum := big.NewInt(0)
-
 	//  Σ^{k-1}_{i=0}
 	for i := uint(0); i <= k-1; i++ {
 		// X^i
@@ -143,7 +145,23 @@ func PadHash(padder Padder, hash crypto.Hash, pub *rsa.PublicKey, msg []byte) ([
 type Signature = []byte
 
 // CombineSignShares combines t SignShare's to produce a valid signature
-func CombineSignShares(players uint, pub *rsa.PublicKey, shares []SignShare, msg []byte) (Signature, error) {
+func CombineSignShares(pub *rsa.PublicKey, shares []SignShare, msg []byte) (Signature, error) {
+	players := shares[0].Players
+	threshold := shares[0].Threshold
+
+	for i := range shares {
+		if shares[i].Players != players {
+			return nil, errors.New("rsa_threshold: shares didn't have consistent players")
+		}
+		if shares[i].Threshold != threshold {
+			return nil, errors.New("rsa_threshold: shares didn't have consistent threshold")
+		}
+	}
+
+	if uint(len(shares)) < threshold {
+		return nil, errors.New("rsa_threshold: insufficient shares for the threshold")
+	}
+
 	w := big.NewInt(1)
 	delta := calculateDelta(int64(players))
 	// i_1 ... i_k

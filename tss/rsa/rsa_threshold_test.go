@@ -85,8 +85,8 @@ func TestComputeLambda(t *testing.T) {
 }
 
 func TestDeal(t *testing.T) {
-	// players = 3
-	// threshold = 2
+	// Players = 3
+	// Threshold = 2
 	// e = 3
 	// p' = 11
 	// q' = 5
@@ -184,7 +184,7 @@ func testIntegration(t *testing.T, algo crypto.Hash, pub *rsa.PublicKey, players
 	signshares := make([]SignShare, threshold)
 
 	for i := uint(0); i < threshold; i++ {
-		signshares[i], err = keys[i].Sign(rand.Reader, int64(players), pub, msgPH, true)
+		signshares[i], err = keys[i].Sign(rand.Reader, pub, msgPH, true)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -192,7 +192,7 @@ func testIntegration(t *testing.T, algo crypto.Hash, pub *rsa.PublicKey, players
 
 	t.Logf("signed with %d keys", len(signshares))
 
-	sig, err := CombineSignShares(players, pub, signshares, msgPH)
+	sig, err := CombineSignShares(pub, signshares, msgPH)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -286,12 +286,12 @@ func benchmarkSignCombineHelper(randSource io.Reader, parallel bool, b *testing.
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for i := uint(0); i < threshold; i++ {
-			signshares[i], err = keys[i].Sign(randSource, int64(players), &pub, msgPH, parallel)
+			signshares[i], err = keys[i].Sign(randSource, &pub, msgPH, parallel)
 			if err != nil {
 				b.Fatal(err)
 			}
 		}
-		_, err = CombineSignShares(players, &pub, signshares, msgPH)
+		_, err = CombineSignShares(&pub, signshares, msgPH)
 		if err != nil {
 			b.Fatal(err)
 		}

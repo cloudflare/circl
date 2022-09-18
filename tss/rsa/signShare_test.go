@@ -19,6 +19,14 @@ func marshalTestSignShare(share SignShare, t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if share.Players != share2.Players {
+		t.Fatalf("Players did not match, expected %d, found %d", share.Players, share2.Players)
+	}
+
+	if share.Threshold != share2.Threshold {
+		t.Fatalf("Threshold did not match, expected %d, found %d", share.Threshold, share2.Threshold)
+	}
+
 	if share.Index != share2.Index {
 		t.Fatalf("Index did not match, expected %d, found %d", share.Index, share2.Index)
 	}
@@ -30,13 +38,17 @@ func marshalTestSignShare(share SignShare, t *testing.T) {
 
 func TestMarshallSignShare(t *testing.T) {
 	marshalTestSignShare(SignShare{
-		xi:    big.NewInt(10),
-		Index: 30,
+		xi:        big.NewInt(10),
+		Index:     30,
+		Players:   16,
+		Threshold: 18,
 	}, t)
 
 	marshalTestSignShare(SignShare{
-		xi:    big.NewInt(0),
-		Index: 0,
+		xi:        big.NewInt(0),
+		Index:     0,
+		Players:   0,
+		Threshold: 0,
 	}, t)
 
 	// | Index: uint8 | xiLen: uint16 | xi: []byte |
@@ -67,7 +79,7 @@ func TestMarshallFullSignShare(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, share := range keys {
-		keyshare, err := share.Sign(rand.Reader, players, &key.PublicKey, []byte("Cloudflare!"), true)
+		keyshare, err := share.Sign(rand.Reader, &key.PublicKey, []byte("Cloudflare!"), true)
 		if err != nil {
 			t.Fatal(err)
 		}

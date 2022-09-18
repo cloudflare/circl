@@ -10,18 +10,18 @@ import (
 func TestKeyShare_Sign(t *testing.T) {
 	// delta = 3! = 6
 	// n = 253
-	// players = 3
+	// Players = 3
 	// kshare = { si: 15, Index: 1 }
 	// x = { 150 }
 	// x_i = x^{2∆kshare.si} = 150^{2 * 6 * 15} = 150^180 = 243
 
-	players := 3
 	kshare := KeyShare{
-		si:    big.NewInt(15),
-		Index: 1,
+		si:      big.NewInt(15),
+		Index:   1,
+		Players: 3,
 	}
 	pub := rsa.PublicKey{N: big.NewInt(253)}
-	share, err := kshare.Sign(nil, int64(players), &pub, []byte{150}, false)
+	share, err := kshare.Sign(nil, &pub, []byte{150}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,18 +33,18 @@ func TestKeyShare_Sign(t *testing.T) {
 func testSignBlind(parallel bool, t *testing.T) {
 	// delta = 3! = 6
 	// n = 253
-	// players = 3
+	// Players = 3
 	// kshare = { si: 15, i: 1 }
 	// x = { 150 }
 	// x_i = x^{2∆kshare.si} = 150^{2 * 6 * 15} = 150^180 = 243
 
-	players := 3
 	kshare := KeyShare{
-		si:    big.NewInt(15),
-		Index: 1,
+		si:      big.NewInt(15),
+		Index:   1,
+		Players: 3,
 	}
 	pub := rsa.PublicKey{N: big.NewInt(253)}
-	share, err := kshare.Sign(rand.Reader, int64(players), &pub, []byte{150}, parallel)
+	share, err := kshare.Sign(rand.Reader, &pub, []byte{150}, parallel)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,6 +73,14 @@ func marshalTestKeyShare(share KeyShare, t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if share.Players != share2.Players {
+		t.Fatalf("Players did not match, expected %d, found %d", share.Players, share2.Players)
+	}
+
+	if share.Threshold != share2.Threshold {
+		t.Fatalf("Threshold did not match, expected %d, found %d", share.Threshold, share2.Threshold)
+	}
+
 	if share.Index != share2.Index {
 		t.Fatalf("Index did not match, expected %d, found %d", share.Index, share2.Index)
 	}
@@ -95,21 +103,26 @@ func TestMarshallKeyShare(t *testing.T) {
 		si:         big.NewInt(10),
 		twoDeltaSi: big.NewInt(20),
 		Index:      30,
+		Threshold:  10,
+		Players:    2,
 	}, t)
 
 	marshalTestKeyShare(KeyShare{
 		si:         big.NewInt(10),
 		twoDeltaSi: nil,
 		Index:      30,
+		Threshold:  0,
+		Players:    200,
 	}, t)
 
 	marshalTestKeyShare(KeyShare{
 		si:         big.NewInt(0),
 		twoDeltaSi: big.NewInt(0),
 		Index:      0,
+		Threshold:  0,
+		Players:    0,
 	}, t)
 
-	// | Index: uint8 | siLen: uint16 | si: []byte | twoDeltaSi: []byte |
 	share := KeyShare{}
 	err := share.UnmarshalBinary([]byte{})
 	if err == nil {

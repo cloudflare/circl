@@ -18,19 +18,32 @@ type KeyShare struct {
 
 	twoDeltaSi *big.Int // optional cached value, this value is used to marginally speed up SignShare generation in Sign. If nil, it will be generated when needed and then cached.
 	Index      uint     // When KeyShare's are generated they are each assigned an index sequentially
+
+	Players   uint
+	Threshold uint
 }
 
 // MarshalBinary encodes a KeyShare into a byte array in a format readable by UnmarshalBinary.
 // Note: Only Index's up to math.MaxUint16 are supported
 func (kshare *KeyShare) MarshalBinary() ([]byte, error) {
 	// The encoding format is
-	// | Index: uint16 | siLen: uint16 | si: []byte | twoDeltaSi: []byte |
+	// | Players: uint16 | Threshold: uint16 | Index: uint16 | siLen: uint16 | si: []byte | twoDeltaSi: []byte |
 	// with all values in big-endian.
+
+	if kshare.Players > math.MaxUint16 {
+		return nil, fmt.Errorf("rsa_threshold: keyshare marshall: Players is too big to fit in a uint16")
+	}
+
+	if kshare.Threshold > math.MaxUint16 {
+		return nil, fmt.Errorf("rsa_threshold: keyshare marshall: Threhsold is too big to fit in a uint16")
+	}
 
 	if kshare.Index > math.MaxUint16 {
 		return nil, fmt.Errorf("rsa_threshold: keyshare marshall: Index is too big to fit in a uint16")
 	}
 
+	players := uint16(kshare.Players)
+	threshold := uint16(kshare.Threshold)
 	index := uint16(kshare.Index)
 
 	var twoDeltaSiBytes []byte
@@ -51,16 +64,18 @@ func (kshare *KeyShare) MarshalBinary() ([]byte, error) {
 		siLength = 1
 	}
 
-	blen := 2 + 2 + siLength + len(twoDeltaSiBytes)
+	blen := 2 + 2 + 2 + 2 + siLength + len(twoDeltaSiBytes)
 	out := make([]byte, blen)
 
-	binary.BigEndian.PutUint16(out[0:2], index) // ok because of condition checked above
+	binary.BigEndian.PutUint16(out[0:2], players) // ok because of condition checked above
+	binary.BigEndian.PutUint16(out[2:4], threshold)
+	binary.BigEndian.PutUint16(out[4:6], index)
 
-	binary.BigEndian.PutUint16(out[2:4], uint16(siLength))
+	binary.BigEndian.PutUint16(out[6:8], uint16(siLength))
 
-	copy(out[4:4+siLength], siBytes)
+	copy(out[8:8+siLength], siBytes)
 
-	copy(out[4+siLength:], twoDeltaSiBytes)
+	copy(out[8+siLength:], twoDeltaSiBytes)
 
 	return out, nil
 }
@@ -68,39 +83,43 @@ func (kshare *KeyShare) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary recovers a KeyShare from a slice of bytes, or returns an error if the encoding is invalid.
 func (kshare *KeyShare) UnmarshalBinary(data []byte) error {
 	// The encoding format is
-	// | Index: uint16 | siLen: uint16 | si: []byte | twoDeltaSi: []byte |
+	// | Players: uint16 | Threshold: uint16 | Index: uint16 | siLen: uint16 | si: []byte | twoDeltaSi: []byte |
 	// with all values in big-endian.
-	if len(data) < 2 {
-		return fmt.Errorf("rsa_threshold: keyshare unmarshal failed: data length was too short for reading Index")
+	if len(data) < 6 {
+		return fmt.Errorf("rsa_threshold: keyshare unmarshal failed: data length was too short for reading Players, Threashold, Index")
 	}
 
-	i := binary.BigEndian.Uint16(data[0:2])
+	players := binary.BigEndian.Uint16(data[0:2])
+	threshold := binary.BigEndian.Uint16(data[2:4])
+	index := binary.BigEndian.Uint16(data[4:6])
 
-	if len(data[2:]) < 2 {
+	if len(data[6:]) < 2 {
 		return fmt.Errorf("rsa_threshold: keyshare unmarshal failed: data length was too short for reading siLen length")
 	}
 
-	siLen := binary.BigEndian.Uint16(data[2:4])
+	siLen := binary.BigEndian.Uint16(data[6:8])
 
 	if siLen == 0 {
 		return fmt.Errorf("rsa_threshold: keyshare unmarshal failed: si is a required field but siLen was 0")
 	}
 
-	if uint16(len(data[4:])) < siLen {
-		return fmt.Errorf("rsa_threshold: keyshare unmarshal failed: data length was too short for reading si, needed: %d found: %d", siLen, len(data[3:]))
+	if uint16(len(data[8:])) < siLen {
+		return fmt.Errorf("rsa_threshold: keyshare unmarshal failed: data length was too short for reading si, needed: %d found: %d", siLen, len(data[8:]))
 	}
 
-	si := new(big.Int).SetBytes(data[4 : 4+siLen])
+	si := new(big.Int).SetBytes(data[8 : 8+siLen])
 
 	var twoDeltaSi *big.Int
-	if len(data[4+siLen:]) > 0 {
-		tmp := make([]byte, len(data[4+siLen:]))
-		copy(tmp, data[4+siLen:])
+	if len(data[8+siLen:]) > 0 {
+		tmp := make([]byte, len(data[8+siLen:]))
+		copy(tmp, data[8+siLen:])
 		twoDeltaSi = &big.Int{}
 		twoDeltaSi.SetBytes(tmp)
 	}
 
-	kshare.Index = uint(i)
+	kshare.Players = uint(players)
+	kshare.Threshold = uint(threshold)
+	kshare.Index = uint(index)
 	kshare.si = si
 	kshare.twoDeltaSi = twoDeltaSi
 
@@ -129,13 +148,15 @@ func (kshare *KeyShare) get2DeltaSi(players int64) *big.Int {
 // parallel indicates whether the blinding operations should use go routines to operate in parallel.
 // If parallel is false, blinding will take about 2x longer than nonbinding, otherwise it will take about the same time
 // (see benchmarks). If randSource is nil, parallel has no effect. parallel should almost always be set to true.
-func (kshare *KeyShare) Sign(randSource io.Reader, players int64, pub *rsa.PublicKey, msg []byte, parallel bool) (SignShare, error) {
+func (kshare *KeyShare) Sign(randSource io.Reader, pub *rsa.PublicKey, msg []byte, parallel bool) (SignShare, error) {
 	x := &big.Int{}
 	x.SetBytes(msg)
 
-	exp := kshare.get2DeltaSi(players)
+	exp := kshare.get2DeltaSi(int64(kshare.Players))
 
 	var signShare SignShare
+	signShare.Players = kshare.Players
+	signShare.Threshold = kshare.Threshold
 	signShare.Index = kshare.Index
 
 	signShare.xi = &big.Int{}
