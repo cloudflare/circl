@@ -36,6 +36,14 @@ func marshalTestSignShare(share SignShare, t *testing.T) {
 	}
 }
 
+func unmarshalSignShareTest(t *testing.T, input []byte) {
+	share := SignShare{}
+	err := share.UnmarshalBinary(input)
+	if err == nil {
+		t.Fatalf("unmarshall succeeded when it shouldn't have")
+	}
+}
+
 func TestMarshallSignShare(t *testing.T) {
 	marshalTestSignShare(SignShare{
 		xi:        big.NewInt(10),
@@ -51,18 +59,11 @@ func TestMarshallSignShare(t *testing.T) {
 		Threshold: 0,
 	}, t)
 
-	// | Index: uint8 | xiLen: uint16 | xi: []byte |
-	share := SignShare{}
-	err := share.UnmarshalBinary([]byte{})
-	if err == nil {
-		t.Fatalf("unmarshall succeeded when it shouldn't have")
-	}
-
-	share = SignShare{}
-	err = share.UnmarshalBinary([]byte{1, 0, 1})
-	if err == nil {
-		t.Fatalf("unmarshall succeeded when it shouldn't have")
-	}
+	unmarshalSignShareTest(t, []byte{})
+	unmarshalSignShareTest(t, []byte{0, 0, 0})
+	unmarshalSignShareTest(t, []byte{0, 0, 0, 0, 0, 0, 0, 0})
+	unmarshalSignShareTest(t, []byte{0, 0, 0, 0, 0, 0, 0, 1})
+	unmarshalSignShareTest(t, []byte{0, 0, 0, 0, 0, 0, 0, 2, 1})
 }
 
 func TestMarshallFullSignShare(t *testing.T) {

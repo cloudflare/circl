@@ -100,7 +100,7 @@ func (kshare *KeyShare) UnmarshalBinary(data []byte) error {
 	// | Players: uint16 | Threshold: uint16 | Index: uint16 | siLen: uint16 | si: []byte | twoDeltaSiNil: bool | twoDeltaSiLen: uint16 | twoDeltaSi: []byte |
 	// with all values in big-endian.
 	if len(data) < 6 {
-		return fmt.Errorf("rsa_threshold: keyshare unmarshal failed: data length was too short for reading Players, Threashold, Index")
+		return fmt.Errorf("rsa_threshold: keyshare unmarshalKeyShareTest failed: data length was too short for reading Players, Threashold, Index")
 	}
 
 	players := binary.BigEndian.Uint16(data[0:2])
@@ -108,23 +108,23 @@ func (kshare *KeyShare) UnmarshalBinary(data []byte) error {
 	index := binary.BigEndian.Uint16(data[4:6])
 
 	if len(data[6:]) < 2 {
-		return fmt.Errorf("rsa_threshold: keyshare unmarshal failed: data length was too short for reading siLen length")
+		return fmt.Errorf("rsa_threshold: keyshare unmarshalKeyShareTest failed: data length was too short for reading siLen length")
 	}
 
 	siLen := binary.BigEndian.Uint16(data[6:8])
 
 	if siLen == 0 {
-		return fmt.Errorf("rsa_threshold: keyshare unmarshal failed: si is a required field but siLen was 0")
+		return fmt.Errorf("rsa_threshold: keyshare unmarshalKeyShareTest failed: si is a required field but siLen was 0")
 	}
 
 	if uint16(len(data[8:])) < siLen {
-		return fmt.Errorf("rsa_threshold: keyshare unmarshal failed: data length was too short for reading si, needed: %d found: %d", siLen, len(data[8:]))
+		return fmt.Errorf("rsa_threshold: keyshare unmarshalKeyShareTest failed: data length was too short for reading si, needed: %d found: %d", siLen, len(data[8:]))
 	}
 
 	si := new(big.Int).SetBytes(data[8 : 8+siLen])
 
 	if len(data[8+siLen:]) < 1 {
-		return fmt.Errorf("rsa_threshold: keyshare unmarshal failed: data length was too short for reading twoDeltaSiNil")
+		return fmt.Errorf("rsa_threshold: keyshare unmarshalKeyShareTest failed: data length was too short for reading twoDeltaSiNil")
 	}
 
 	isNil := data[8+siLen]
@@ -133,13 +133,13 @@ func (kshare *KeyShare) UnmarshalBinary(data []byte) error {
 
 	if isNil != 0 {
 		if len(data[8+siLen+1:]) < 2 {
-			return fmt.Errorf("rsa_threshold: keyshare unmarshal failed: data length was too short for reading twoDeltaSiLen length")
+			return fmt.Errorf("rsa_threshold: keyshare unmarshalKeyShareTest failed: data length was too short for reading twoDeltaSiLen length")
 		}
 
 		twoDeltaSiLen := binary.BigEndian.Uint16(data[8+siLen+1 : 8+siLen+3])
 
 		if uint16(len(data[8+siLen+3:])) < twoDeltaSiLen {
-			return fmt.Errorf("rsa_threshold: keyshare unmarshal failed: data length was too short for reading twoDeltaSi, needed: %d found: %d", twoDeltaSiLen, len(data[8+siLen+2:]))
+			return fmt.Errorf("rsa_threshold: keyshare unmarshalKeyShareTest failed: data length was too short for reading twoDeltaSi, needed: %d found: %d", twoDeltaSiLen, len(data[8+siLen+2:]))
 		}
 
 		twoDeltaSi = new(big.Int).SetBytes(data[8+siLen+3 : 8+siLen+3+twoDeltaSiLen])

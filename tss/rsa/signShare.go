@@ -39,12 +39,15 @@ func (s *SignShare) MarshalBinary() ([]byte, error) {
 	index := uint16(s.Index)
 
 	xiBytes := s.xi.Bytes()
-	if len(xiBytes) > math.MaxInt16 {
+	xiLen := len(xiBytes)
+
+	if xiLen > math.MaxInt16 {
 		return nil, fmt.Errorf("rsa_threshold: signshare marshall: xiBytes is too big to fit it's length in a uint16")
 	}
-	xiLen := len(xiBytes)
-	if xiLen == 0 { // same as above
+
+	if xiLen == 0 {
 		xiLen = 1
+		xiBytes = []byte{0}
 	}
 
 	blen := 2 + 2 + 2 + 2 + xiLen
@@ -64,26 +67,21 @@ func (s *SignShare) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary converts a byte array outputted from Marshall into a SignShare or returns an error if the value is invalid
 func (s *SignShare) UnmarshalBinary(data []byte) error {
 	// | Players: uint16 | Threshold: uint16 | Index: uint16 | xiLen: uint16 | xi: []byte |
-	if len(data) < 6 {
-		return fmt.Errorf("rsa_threshold: signshare unmarshal failed: data length was too short for reading Players, Threshold, and Index")
+	if len(data) < 8 {
+		return fmt.Errorf("rsa_threshold: signshare unmarshalKeyShareTest failed: data length was too short for reading Players, Threshold, Index, and xiLen")
 	}
 
 	players := binary.BigEndian.Uint16(data[0:2])
 	threshold := binary.BigEndian.Uint16(data[2:4])
 	index := binary.BigEndian.Uint16(data[4:6])
-
-	if len(data[6:]) < 2 {
-		return fmt.Errorf("rsa_threshold: signshare unmarshal failed: data length was too short for reading xiLen length")
-	}
-
 	xiLen := binary.BigEndian.Uint16(data[6:8])
 
 	if xiLen == 0 {
-		return fmt.Errorf("rsa_threshold: signshare unmarshal failed: xi is a required field but xiLen was 0")
+		return fmt.Errorf("rsa_threshold: signshare unmarshalKeyShareTest failed: xi is a required field but xiLen was 0")
 	}
 
 	if uint16(len(data[8:])) < xiLen {
-		return fmt.Errorf("rsa_threshold: signshare unmarshal failed: data length was too short for reading xi, needed: %d found: %d", xiLen, len(data[6:]))
+		return fmt.Errorf("rsa_threshold: signshare unmarshalKeyShareTest failed: data length was too short for reading xi, needed: %d found: %d", xiLen, len(data[6:]))
 	}
 
 	xi := big.Int{}
