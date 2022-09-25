@@ -27,7 +27,7 @@ type KeyShare struct {
 // Note: Only Index's up to math.MaxUint16 are supported
 func (kshare *KeyShare) MarshalBinary() ([]byte, error) {
 	// The encoding format is
-	// | Players: uint16 | Threshold: uint16 | Index: uint16 | siLen: uint16 | si: []byte | twoDeltaSi: []byte |
+	// | Players: uint16 | Threshold: uint16 | Index: uint16 | siLen: uint16 | si: []byte | twoDeltaSiNil: bool | twoDeltaSiLen: uint16 | twoDeltaSi: []byte |
 	// with all values in big-endian.
 
 	if kshare.Players > math.MaxUint16 {
@@ -46,36 +46,50 @@ func (kshare *KeyShare) MarshalBinary() ([]byte, error) {
 	threshold := uint16(kshare.Threshold)
 	index := uint16(kshare.Index)
 
-	var twoDeltaSiBytes []byte
+	twoDeltaSiBytes := []byte(nil)
 	if kshare.twoDeltaSi != nil {
 		twoDeltaSiBytes = kshare.twoDeltaSi.Bytes()
-		if len(twoDeltaSiBytes) == 0 { // if twoDeltaSiBytes has a value of 0, then len(.Bytes) returns 0
-			// but we actually want to store this so lets use a byte
-			twoDeltaSiBytes = []byte{0}
-		}
+	}
+
+	twoDeltaSiLen := len(twoDeltaSiBytes)
+
+	if twoDeltaSiLen > math.MaxInt16 {
+		return nil, fmt.Errorf("rsa_threshold: keyshare marshall: twoDeltaSiBytes is too big to fit it's length in a uint16")
 	}
 
 	siBytes := kshare.si.Bytes()
-	if len(siBytes) > math.MaxInt16 {
+
+	siLength := len(siBytes)
+
+	if siLength == 0 {
+		siLength = 1
+		siBytes = []byte{0}
+	}
+
+	if siLength > math.MaxInt16 {
 		return nil, fmt.Errorf("rsa_threshold: keyshare marshall: siBytes is too big to fit it's length in a uint16")
 	}
-	siLength := len(siBytes)
-	if siLength == 0 { // same as above
-		siLength = 1
-	}
 
-	blen := 2 + 2 + 2 + 2 + siLength + len(twoDeltaSiBytes)
+	blen := 2 + 2 + 2 + 2 + 2 + 1 + siLength + twoDeltaSiLen
 	out := make([]byte, blen)
 
-	binary.BigEndian.PutUint16(out[0:2], players) // ok because of condition checked above
+	binary.BigEndian.PutUint16(out[0:2], players)
 	binary.BigEndian.PutUint16(out[2:4], threshold)
 	binary.BigEndian.PutUint16(out[4:6], index)
 
-	binary.BigEndian.PutUint16(out[6:8], uint16(siLength))
+	binary.BigEndian.PutUint16(out[6:8], uint16(siLength)) // okay because of conditions checked above
 
 	copy(out[8:8+siLength], siBytes)
 
-	copy(out[8+siLength:], twoDeltaSiBytes)
+	if twoDeltaSiBytes != nil {
+		out[8+siLength] = 1 // twoDeltaSiNil
+	}
+
+	binary.BigEndian.PutUint16(out[8+siLength+1:8+siLength+3], uint16(twoDeltaSiLen))
+
+	if twoDeltaSiBytes != nil {
+		copy(out[8+siLength+3:8+siLength+3+twoDeltaSiLen], twoDeltaSiBytes)
+	}
 
 	return out, nil
 }
@@ -83,7 +97,7 @@ func (kshare *KeyShare) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary recovers a KeyShare from a slice of bytes, or returns an error if the encoding is invalid.
 func (kshare *KeyShare) UnmarshalBinary(data []byte) error {
 	// The encoding format is
-	// | Players: uint16 | Threshold: uint16 | Index: uint16 | siLen: uint16 | si: []byte | twoDeltaSi: []byte |
+	// | Players: uint16 | Threshold: uint16 | Index: uint16 | siLen: uint16 | si: []byte | twoDeltaSiNil: bool | twoDeltaSiLen: uint16 | twoDeltaSi: []byte |
 	// with all values in big-endian.
 	if len(data) < 6 {
 		return fmt.Errorf("rsa_threshold: keyshare unmarshal failed: data length was too short for reading Players, Threashold, Index")
@@ -109,12 +123,26 @@ func (kshare *KeyShare) UnmarshalBinary(data []byte) error {
 
 	si := new(big.Int).SetBytes(data[8 : 8+siLen])
 
+	if len(data[8+siLen:]) < 1 {
+		return fmt.Errorf("rsa_threshold: keyshare unmarshal failed: data length was too short for reading twoDeltaSiNil")
+	}
+
+	isNil := data[8+siLen]
+
 	var twoDeltaSi *big.Int
-	if len(data[8+siLen:]) > 0 {
-		tmp := make([]byte, len(data[8+siLen:]))
-		copy(tmp, data[8+siLen:])
-		twoDeltaSi = &big.Int{}
-		twoDeltaSi.SetBytes(tmp)
+
+	if isNil != 0 {
+		if len(data[8+siLen+1:]) < 2 {
+			return fmt.Errorf("rsa_threshold: keyshare unmarshal failed: data length was too short for reading twoDeltaSiLen length")
+		}
+
+		twoDeltaSiLen := binary.BigEndian.Uint16(data[8+siLen+1 : 8+siLen+3])
+
+		if uint16(len(data[8+siLen+3:])) < twoDeltaSiLen {
+			return fmt.Errorf("rsa_threshold: keyshare unmarshal failed: data length was too short for reading twoDeltaSi, needed: %d found: %d", twoDeltaSiLen, len(data[8+siLen+2:]))
+		}
+
+		twoDeltaSi = new(big.Int).SetBytes(data[8+siLen+3 : 8+siLen+3+twoDeltaSiLen])
 	}
 
 	kshare.Players = uint(players)

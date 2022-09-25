@@ -98,6 +98,14 @@ func marshalTestKeyShare(share KeyShare, t *testing.T) {
 	}
 }
 
+func unmarshal(t *testing.T, input []byte) {
+	share := KeyShare{}
+	err := share.UnmarshalBinary([]byte{})
+	if err == nil {
+		t.Fatalf("unmarshall succeeded when it shouldn't have")
+	}
+}
+
 func TestMarshallKeyShare(t *testing.T) {
 	marshalTestKeyShare(KeyShare{
 		si:         big.NewInt(10),
@@ -123,17 +131,16 @@ func TestMarshallKeyShare(t *testing.T) {
 		Players:    0,
 	}, t)
 
-	share := KeyShare{}
-	err := share.UnmarshalBinary([]byte{})
-	if err == nil {
-		t.Fatalf("unmarshall succeeded when it shouldn't have")
-	}
-
-	share = KeyShare{}
-	err = share.UnmarshalBinary([]byte{1, 0, 1})
-	if err == nil {
-		t.Fatalf("unmarshall succeeded when it shouldn't have")
-	}
+	unmarshal(t, []byte{})
+	unmarshal(t, []byte{1, 0, 1})
+	unmarshal(t, []byte{1, 0, 1})
+	unmarshal(t, []byte{0, 1, 0, 1, 0, 1})
+	unmarshal(t, []byte{0, 1, 0, 1, 0, 1, 0, 1})
+	unmarshal(t, []byte{0, 1, 0, 1, 0, 1, 0})
+	unmarshal(t, []byte{0, 1, 0, 1, 0, 1, 0, 2, 1})
+	unmarshal(t, []byte{0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0})
+	unmarshal(t, []byte{0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 0, 1})
+	unmarshal(t, []byte{0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 0, 2, 1})
 }
 
 func TestMarshallKeyShareFull(t *testing.T) {
