@@ -159,7 +159,7 @@ const (
 	PSS     = 1
 )
 
-func testIntegration(t *testing.T, algo crypto.Hash, pub *rsa.PublicKey, players, threshold uint, keys []KeyShare, padScheme int) {
+func testIntegration(t *testing.T, algo crypto.Hash, pub *rsa.PublicKey, threshold uint, keys []KeyShare, padScheme int) {
 	t.Logf("dealt %d keys", len(keys))
 
 	msg := []byte("hello")
@@ -231,7 +231,7 @@ func TestIntegrationStdRsaKeyGenerationPKS1v15(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	testIntegration(t, algo, &pub, players, threshold, keys, PKS1v15)
+	testIntegration(t, algo, &pub, threshold, keys, PKS1v15)
 }
 
 func TestIntegrationStdRsaKeyGenerationPSS(t *testing.T) {
@@ -249,7 +249,7 @@ func TestIntegrationStdRsaKeyGenerationPSS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	testIntegration(t, algo, &pub, players, threshold, keys, PSS)
+	testIntegration(t, algo, &pub, threshold, keys, PSS)
 }
 
 // nolint: unparam
