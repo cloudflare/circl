@@ -176,9 +176,9 @@ func (kshare *KeyShare) get2DeltaSi(players int64) *big.Int {
 // parallel indicates whether the blinding operations should use go routines to operate in parallel.
 // If parallel is false, blinding will take about 2x longer than nonbinding, otherwise it will take about the same time
 // (see benchmarks). If randSource is nil, parallel has no effect. parallel should almost always be set to true.
-func (kshare *KeyShare) Sign(randSource io.Reader, pub *rsa.PublicKey, msg []byte, parallel bool) (SignShare, error) {
+func (kshare *KeyShare) Sign(randSource io.Reader, pub *rsa.PublicKey, digest []byte, parallel bool) (SignShare, error) {
 	x := &big.Int{}
-	x.SetBytes(msg)
+	x.SetBytes(digest)
 
 	exp := kshare.get2DeltaSi(int64(kshare.Players))
 
