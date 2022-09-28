@@ -5,6 +5,7 @@ import (
 	_ "crypto/sha512"
 	"fmt"
 	"io"
+	"math/big"
 
 	r255 "github.com/bwesterb/go-ristretto"
 	"github.com/cloudflare/circl/expander"
@@ -203,10 +204,11 @@ func (e *ristrettoElement) UnmarshalBinary(data []byte) error {
 	return e.p.UnmarshalBinary(data)
 }
 
-func (s *ristrettoScalar) Group() Group              { return Ristretto255 }
-func (s *ristrettoScalar) String() string            { return conv.BytesLe2Hex(s.s.Bytes()) }
-func (s *ristrettoScalar) SetUint64(n uint64) Scalar { s.s.SetUint64(n); return s }
-func (s *ristrettoScalar) IsZero() bool              { return s.s.IsNonZeroI() == 0 }
+func (s *ristrettoScalar) Group() Group                { return Ristretto255 }
+func (s *ristrettoScalar) String() string              { return conv.BytesLe2Hex(s.s.Bytes()) }
+func (s *ristrettoScalar) SetUint64(n uint64) Scalar   { s.s.SetUint64(n); return s }
+func (s *ristrettoScalar) SetBigInt(x *big.Int) Scalar { s.s.SetBigInt(x); return s }
+func (s *ristrettoScalar) IsZero() bool                { return s.s.IsNonZeroI() == 0 }
 func (s *ristrettoScalar) IsEqual(x Scalar) bool {
 	return s.s.Equals(&x.(*ristrettoScalar).s)
 }
