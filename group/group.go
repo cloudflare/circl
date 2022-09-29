@@ -109,6 +109,8 @@ type Scalar interface {
 	// SetUint64 sets the receiver to x, and returns the receiver.
 	SetUint64(x uint64) Scalar
 	// SetBigInt sets the receiver to x, and returns the receiver.
+	// Warning: operations on big.Int are not constant time. Do not use them
+	// for cryptography unless you're sure it's safe in your use-case.
 	SetBigInt(b *big.Int) Scalar
 	// CMov sets the receiver to x if b=1; the receiver is unmodified if b=0;
 	// otherwise panics if b is not 0 or 1. In all the cases, it returns the
