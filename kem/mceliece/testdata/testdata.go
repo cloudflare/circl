@@ -2,8 +2,8 @@ package testdata
 
 import (
 	"bufio"
+	"encoding/base64"
 	"encoding/binary"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -52,7 +52,7 @@ func FindTestDataByte(searchKey, path string) ([]byte, error) {
 			continue
 		}
 
-		data, err := hex.DecodeString(value)
+		data, err := base64.RawStdEncoding.DecodeString(value)
 		return data, err
 	}
 }
