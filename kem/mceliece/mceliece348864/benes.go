@@ -2,6 +2,7 @@
 
 package mceliece348864
 
+// Layers of the Beneš network. The required size of `data` and `bits` depends on the value `lgs`.
 func layer(data, bits []uint64, lgs int) {
 	index := 0
 	s := 1 << lgs
@@ -16,6 +17,11 @@ func layer(data, bits []uint64, lgs int) {
 	}
 }
 
+// Apply Beneš network in-place to array `r` based on configuration `bits`.
+// Here, `r` is a sequence of bits to be permuted.
+// `bits` defines the condition bits configuring the Beneš network and
+// Note that this differs from the C implementation, missing the `rev` parameter.
+// This is because `rev` is not used throughout the entire codebase.
 func applyBenes(r *[512]byte, bits *[condBytes]byte) {
 	bs := [64]uint64{}
 	cond := [64]uint64{}

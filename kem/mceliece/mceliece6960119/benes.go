@@ -2,6 +2,7 @@
 
 package mceliece6960119
 
+// Layers of the Beneš network. The required size of `data` and `bits` depends on the value `lgs`.
 func layerIn(data *[2][64]uint64, bits *[64]uint64, lgs int) {
 	s := 1 << lgs
 	index := 0
@@ -22,6 +23,12 @@ func layerIn(data *[2][64]uint64, bits *[64]uint64, lgs int) {
 	}
 }
 
+// Exterior layers of the Beneš network. The length of `bits` depends on the value of `lgs`.
+// Note that this implementation is quite different from the C implementation.
+// However, it does make sense. Whereas the C implementation uses pointer arithmetic to access
+// the entire array `data`, this implementation always considers `data` as two-dimensional array.
+// The C implementation uses 128 as upper bound (because the array contains 128 elements),
+// but this implementation has 64 elements per subarray and needs case distinctions at different places.
 func layerEx(data *[2][64]uint64, bits *[64]uint64, lgs int) {
 	data0Idx := 0
 	data1Idx := 32
@@ -56,6 +63,11 @@ func layerEx(data *[2][64]uint64, bits *[64]uint64, lgs int) {
 	}
 }
 
+// Apply Beneš network in-place to array `r` based on configuration `bits`.
+// Here, `r` is a sequence of bits to be permuted.
+// `bits` defines the condition bits configuring the Beneš network and
+// Note that this differs from the C implementation, missing the `rev` parameter.
+// This is because `rev` is not used throughout the entire codebase.
 func applyBenes(r *[1024]byte, bits *[condBytes]byte) {
 	rIntV := [2][64]uint64{}
 	rIntH := [2][64]uint64{}

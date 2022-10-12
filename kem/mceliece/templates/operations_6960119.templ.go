@@ -8,6 +8,7 @@ package {{.Pkg}}
 
 import "fmt"
 
+// This function determines (in a constant-time manner) whether the padding bits of `pk` are all zero.
 func checkPkPadding(pk *[PublicKeySize]byte) byte {
 	b := byte(0)
 	for i := 0; i < pkNRows; i++ {
@@ -19,6 +20,7 @@ func checkPkPadding(pk *[PublicKeySize]byte) byte {
 	return b - 1
 }
 
+// This function determines (in a constant-time manner) whether the padding bits of `c` are all zero.
 func checkCPadding(c []byte) byte {
 	b := c[syndBytes-1] >> (pkNRows % 8)
 	b -= 1
@@ -26,8 +28,8 @@ func checkCPadding(c []byte) byte {
 	return b - 1
 }
 
-/* input: public key pk, error vector e */
-/* output: syndrome s */
+// input: public key pk, error vector e
+// output: syndrome s
 func syndrome(s []byte, pk []byte, e []byte) {
 	row := [sysN / 8]byte{}
 	pkSegment := pk
@@ -63,6 +65,11 @@ func syndrome(s []byte, pk []byte, e []byte) {
 	}
 }
 
+// KEM Encapsulation.
+//
+// Given a public key `pk`, sample a shared key.
+// This shared key is returned through parameter `key` whereas
+// the ciphertext (meant to be used for decapsulation) is returned as `c`.
 func kemEncapsulate(c *[CiphertextSize]byte, key *[SharedKeySize]byte, pk *[PublicKeySize]byte, rand randFunc) error {
 	twoE := [1 + sysN/8]byte{2}
 	oneEC := [1 + sysN/8 + (syndBytes + 32)]byte{1}
@@ -96,6 +103,11 @@ func kemEncapsulate(c *[CiphertextSize]byte, key *[SharedKeySize]byte, pk *[Publ
 	return fmt.Errorf("public key padding error %d", paddingOk)
 }
 
+// KEM Encapsulation.
+//
+// Given a public key `pk`, sample a shared key.
+// This shared key is returned through parameter `key` whereas
+// the ciphertext (meant to be used for decapsulation) is returned as `c`.
 func kemDecapsulate(key *[SharedKeySize]byte, c *[CiphertextSize]byte, sk *[PrivateKeySize]byte) error {
 	conf := [32]byte{}
 	twoE := [1 + sysN/8]byte{2}

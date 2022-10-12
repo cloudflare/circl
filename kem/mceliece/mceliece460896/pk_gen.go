@@ -8,6 +8,12 @@ import (
 )
 
 // nolint:unparam
+// Public key generation. Generate the public key `pk`,
+// permutation `pi` and pivot element `pivots` based on the
+// secret key `sk` and permutation `perm` provided.
+// `pk` has `max(1 << GFBITS, SYS_N)` elements which is
+// 4096 for mceliece348864 and 8192 for mceliece8192128.
+// `sk` has `2 * SYS_T` elements and perm `1 << GFBITS`.
 func pkGen(pk *[pkNRows * pkRowBytes]byte, sk []byte, perm *[1 << gfBits]uint32, pi *[1 << gfBits]int16, pivots *uint64) bool {
 	buf := [1 << gfBits]uint64{}
 	mat := [pkNRows][sysN / 8]byte{}

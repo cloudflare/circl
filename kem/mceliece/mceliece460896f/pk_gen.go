@@ -7,6 +7,7 @@ import (
 	"github.com/cloudflare/circl/math/gf8192"
 )
 
+// Return number of trailing zeros of the non-zero input `input`
 func ctz(in uint64) int {
 	m := 0
 	r := 0
@@ -18,6 +19,7 @@ func ctz(in uint64) int {
 	return r
 }
 
+// Takes two 16-bit integers and determines whether they are equal (all bits set) or different (0)
 func sameMask64(x, y uint16) uint64 {
 	mask := uint64(x ^ y)
 	mask -= 1
@@ -26,6 +28,7 @@ func sameMask64(x, y uint16) uint64 {
 	return mask
 }
 
+// Move columns in matrix `mat`
 func movColumns(mat *[pkNRows][sysN / 8]byte, pi []int16, pivots *uint64) bool {
 	buf := [64]uint64{}
 	ctzList := [32]uint64{}
@@ -99,6 +102,12 @@ func movColumns(mat *[pkNRows][sysN / 8]byte, pi []int16, pivots *uint64) bool {
 }
 
 // nolint:unparam
+// Public key generation. Generate the public key `pk`,
+// permutation `pi` and pivot element `pivots` based on the
+// secret key `sk` and permutation `perm` provided.
+// `pk` has `max(1 << GFBITS, SYS_N)` elements which is
+// 4096 for mceliece348864 and 8192 for mceliece8192128.
+// `sk` has `2 * SYS_T` elements and perm `1 << GFBITS`.
 func pkGen(pk *[pkNRows * pkRowBytes]byte, sk []byte, perm *[1 << gfBits]uint32, pi *[1 << gfBits]int16, pivots *uint64) bool {
 	buf := [1 << gfBits]uint64{}
 	mat := [pkNRows][sysN / 8]byte{}
