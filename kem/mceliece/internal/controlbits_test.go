@@ -8,7 +8,7 @@ import (
 	"github.com/cloudflare/circl/kem/mceliece/testdata"
 )
 
-const testPath = "../testdata/testdata.txt"
+const testPath = "../testdata/testdata.txt.bz2"
 
 func TestLayer1(t *testing.T) {
 	N := 4

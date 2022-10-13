@@ -9,7 +9,7 @@ import (
 	"github.com/cloudflare/circl/kem/mceliece/testdata"
 )
 
-const testPath = "../testdata/testdata.txt"
+const testPath = "../testdata/testdata.txt.bz2"
 
 func TestLayer(t *testing.T) {
 	data := [64]uint64{}

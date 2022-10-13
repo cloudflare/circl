@@ -2,6 +2,7 @@ package testdata
 
 import (
 	"bufio"
+	"compress/bzip2"
 	"encoding/base64"
 	"encoding/binary"
 	"errors"
@@ -17,7 +18,7 @@ func FindTestDataByte(searchKey, path string) ([]byte, error) {
 		return nil, err
 	}
 
-	reader := bufio.NewReader(file)
+	reader := bufio.NewReader(bzip2.NewReader(file))
 	for {
 		line, err := reader.ReadString('\n')
 		if err == io.EOF {

@@ -9,7 +9,7 @@ import (
 	"github.com/cloudflare/circl/kem/mceliece/testdata"
 )
 
-const testPath = "../testdata/testdata.txt"
+const testPath = "../testdata/testdata.txt.bz2"
 
 func TestLayerIn(t *testing.T) {
 	data0, err := testdata.FindTestDataU64("mceliece460896_benes_layer_in_data0_before", testPath)
