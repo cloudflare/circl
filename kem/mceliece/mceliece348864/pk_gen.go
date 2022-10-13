@@ -7,6 +7,7 @@ import (
 	"github.com/cloudflare/circl/math/gf4096"
 )
 
+// TODO: Optimize the Gaussian Elimination loop, possibly by porting the `vec` Reference Implementation?
 // nolint:unparam
 // Public key generation. Generate the public key `pk`,
 // permutation `pi` and pivot element `pivots` based on the

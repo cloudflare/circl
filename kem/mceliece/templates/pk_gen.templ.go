@@ -143,6 +143,8 @@ func movColumns(mat *[pkNRows][sysN / 8]byte, pi []int16, pivots *uint64) bool {
 }
 {{end}}
 
+
+// TODO: Optimize the Gaussian Elimination loop, possibly by porting the `vec` Reference Implementation?
 // nolint:unparam
 // Public key generation. Generate the public key `pk`,
 // permutation `pi` and pivot element `pivots` based on the

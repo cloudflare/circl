@@ -1,5 +1,16 @@
 // Code generated from mceliece.templ.go. DO NOT EDIT.
 
+// Package mceliece6688128 implements the IND-CCA2 secure key encapsulation mechanism
+// mceliece6688128 as submitted to round 3 of the NIST PQC competition and
+// described in
+//
+// https://classic.mceliece.org/nist/mceliece-20201010.pdf
+//
+// The following code is translated from the C reference implementation, and
+// from a Rust implementation by Bernhard Berg, Lukas Prokop, Daniel Kales
+// where direct translation from C is not applicable.
+//
+// https://github.com/Colfenor/classic-mceliece-rust
 package mceliece6688128
 
 import (
