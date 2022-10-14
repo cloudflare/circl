@@ -1,9 +1,13 @@
+// +build ignore
+// The previous line (and this one up to the warning below) is removed by the
+// template generator.
+
 // Code generated from fft_348864.templ.go. DO NOT EDIT.
 
 // The following code is translated from the C `vec` Additional Implementation
 // from the NIST round 3 submission package.
 
-package mceliece348864
+package {{.Pkg}}
 
 import "github.com/cloudflare/circl/kem/mceliece/internal"
 

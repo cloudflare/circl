@@ -3,7 +3,7 @@
 // The following code is translated from the C `vec` Additional Implementation
 // from the NIST round 3 submission package.
 
-package mceliece348864
+package mceliece348864f
 
 import "github.com/cloudflare/circl/kem/mceliece/internal"
 

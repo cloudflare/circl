@@ -86,7 +86,6 @@ func pkGen(pk *[pkNRows * pkRowBytes]byte, irr []byte, perm *[1 << gfBits]uint32
 		blockIdx = nblocksI
 	)
 	mat := [pkNRows][nblocksH]uint64{}
-	ops := [pkNRows][nblocksI]uint64{}
 	var mask uint64
 
 	irrInt := [gfBits]uint64{}
@@ -96,6 +95,8 @@ func pkGen(pk *[pkNRows * pkRowBytes]byte, irr []byte, perm *[1 << gfBits]uint32
 	prod := [exponent][gfBits]uint64{}
 	tmp := [gfBits]uint64{}
 	list := [1 << gfBits]uint64{}
+
+	ops := [pkNRows][nblocksI]uint64{}
 
 	oneRow := [exponent]uint64{}
 
@@ -174,6 +175,7 @@ func pkGen(pk *[pkNRows * pkRowBytes]byte, irr []byte, perm *[1 << gfBits]uint32
 				mat[row][c] ^= mat[k][c] & mask
 				ops[row][c] ^= ops[k][c] & mask
 			}
+
 		}
 		// return if not systematic
 		if ((mat[row][i] >> j) & 1) == 0 {
@@ -187,10 +189,14 @@ func pkGen(pk *[pkNRows * pkRowBytes]byte, irr []byte, perm *[1 << gfBits]uint32
 
 			for c := 0; c < nblocksI; c++ {
 				mat[k][c] ^= mat[row][c] & mask
+
 				ops[k][c] ^= ops[row][c] & mask
+
 			}
 		}
 	}
+
+	pkp := pk[:]
 
 	// computing the lineaer map required to obatin the systematic form
 
@@ -221,8 +227,6 @@ func pkGen(pk *[pkNRows * pkRowBytes]byte, irr []byte, perm *[1 << gfBits]uint32
 			}
 		}
 	}
-
-	pkp := pk[:]
 
 	for row := 0; row < pkNRows; row++ {
 		for k := 0; k < nblocksH; k++ {

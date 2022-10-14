@@ -130,6 +130,126 @@ func irrLoad(out *[2][gfBits]uint64, in []byte) {
 }
 {{end}}
 
+
+{{if .IsSemiSystematic}}
+// Return number of trailing zeros of the non-zero input `input`
+func ctz(in uint64) int {
+	m := 0
+	r := 0
+	for i := 0; i < 64; i++ {
+		b := int((in >> i) & 1)
+		m |= b
+		r += (m ^ 1) & (b ^ 1)
+	}
+	return r
+}
+
+// Takes two 16-bit integers and determines whether they are equal (all bits set) or different (0)
+func sameMask64(x, y uint16) uint64 {
+	mask := uint64(x ^ y)
+	mask -= 1
+	mask >>= 63
+	mask = -mask
+	return mask
+}
+
+// Move columns in matrix `mat`
+func movColumns(mat *[pkNRows][(sysN + 63) / 64]uint64, pi []int16, pivots *uint64) bool {
+	buf := [64]uint64{}
+	ctzList := [32]uint64{}
+	row := pkNRows - 32
+	blockIdx := row / 64
+
+	// extract the 32x64 matrix
+	{{if .Is6960119}}
+	tail := row % 64
+	for i := 0; i < 32; i++ {
+		buf[i] = (mat[row+i][blockIdx+0] >> tail) | (mat[row+i][blockIdx+1] << (64-tail))
+	}
+	{{else}}
+	for i := 0; i < 32; i++ {
+		{{if or .Is8192128 .Is6688128 .Is348864}}
+		buf[i] = (mat[row+i][blockIdx+0] >> 32) | (mat[row+i][blockIdx+1] << 32)
+		{{else}}
+		buf[i] = mat[row+i][blockIdx]
+		{{end}}
+	}
+	{{end}}
+
+	// compute the column indices of pivots by Gaussian elimination.
+	// the indices are stored in ctz_list
+
+	*pivots = 0
+
+	for i := 0; i < 32; i++ {
+		t := buf[i]
+		for j := i + 1; j < 32; j++ {
+			t |= buf[j]
+		}
+		if t == 0 {
+			return false // return if buf is not full rank
+		}
+		s := ctz(t)
+		ctzList[i] = uint64(s)
+		*pivots |= 1 << s
+
+		for j := i + 1; j < 32; j++ {
+			mask := (buf[i] >> s) & 1
+			mask -= 1
+			buf[i] ^= buf[j] & mask
+		}
+		for j := i + 1; j < 32; j++ {
+			mask := (buf[j] >> s) & 1
+			mask = -mask
+			buf[j] ^= buf[i] & mask
+		}
+	}
+
+	// updating permutation
+	for j := 0; j < 32; j++ {
+		for k := j + 1; k < 64; k++ {
+			d := uint64(pi[row+j] ^ pi[row+k])
+			d &= sameMask64(uint16(k), uint16(ctzList[j])) {{ if .Is348864 }} & 0xFFFF {{ end }}
+			pi[row+j] ^= int16(d)
+			pi[row+k] ^= int16(d)
+		}
+	}
+
+	// moving columns of mat according to the column indices of pivots
+	for i := 0; i < pkNRows; i++ {
+		{{if .Is6960119}}
+		t := (mat[i][blockIdx+0] >> tail) | (mat[i][blockIdx+1] << (64-tail))
+		{{else if or .Is8192128 .Is6688128 .Is348864}}
+		t := (mat[i][blockIdx+0] >> 32) | (mat[i][blockIdx+1] << 32)
+		{{else}}
+		t := mat[i][blockIdx]
+		{{end}}
+
+		for j := 0; j < 32; j++ {
+			d := t >> j
+			d ^= t >> ctzList[j]
+			d &= 1
+
+			t ^= d << ctzList[j]
+			t ^= d << j
+		}
+
+		{{if or .Is8192128 .Is6688128 .Is348864}}
+		mat[i][blockIdx+0] = (mat[i][blockIdx+0] << 32 >> 32) | (t << 32)
+		mat[i][blockIdx+1] = (mat[i][blockIdx+1] >> 32 << 32) | (t >> 32)
+		{{else if .Is6960119}}
+		mat[i][blockIdx+0] = (mat[i][blockIdx+0] & ((0xffffffffffffffff) >> (64-tail))) | (t << tail);
+		mat[i][blockIdx+1] = (mat[i][blockIdx+1] & ((0xffffffffffffffff) << tail)) | (t >> (64-tail));
+		{{else}}
+		mat[i][blockIdx] = t
+		{{end}}
+	}
+
+	return true
+}
+{{end}}
+
+
 // nolint:unparam
 // Public key generation. Generate the public key `pk`,
 // permutation `pi` and pivot element `pivots` based on the
@@ -149,7 +269,6 @@ func pkGen(pk *[pkNRows * pkRowBytes]byte, irr []byte, perm *[1 << gfBits]uint32
 		{{ end }}
 	)
 	mat := [pkNRows][nblocksH]uint64{}
-	ops := [pkNRows][nblocksI]uint64{}
 	var mask uint64
 	{{ if .Is348864 }}
 	irrInt := [gfBits]uint64{}
@@ -161,10 +280,13 @@ func pkGen(pk *[pkNRows * pkRowBytes]byte, irr []byte, perm *[1 << gfBits]uint32
 	prod := [exponent][gfBits]uint64{}
 	tmp := [gfBits]uint64{}
 	list := [1 << gfBits]uint64{}
+	{{if not .IsSemiSystematic}}
+	ops := [pkNRows][nblocksI]uint64{}
 	{{ if .Is8192128 }}
 	oneRow := [pkNCols / 64]uint64{}
 	{{ else }}
 	oneRow := [exponent]uint64{}
+	{{ end }}
 	{{ end }}
 
 	// compute the inverses
@@ -201,14 +323,14 @@ func pkGen(pk *[pkNRows * pkRowBytes]byte, irr []byte, perm *[1 << gfBits]uint32
 		pi[i] = int16(list[i] & gfMask)
 	}
 
-	for j := 0; j < nblocksI; j++ {
+	for j := 0; j < {{if .IsSemiSystematic}} nblocksH {{else}} nblocksI {{end}}; j++ {
 		for k := 0; k < gfBits; k++ {
 			mat[k][j] = prod[j][k]
 		}
 	}
 
 	for i := 1; i < sysT; i++ {
-		for j := 0; j < nblocksI; j++ {
+		for j := 0; j < {{if .IsSemiSystematic}} nblocksH {{else}} nblocksI {{end}}; j++ {
 			vecMul(&prod[j], &prod[j], &consts[j])
 			for k := 0; k < gfBits; k++ {
 				mat[i*gfBits+k][j] = prod[j][k]
@@ -216,6 +338,9 @@ func pkGen(pk *[pkNRows * pkRowBytes]byte, irr []byte, perm *[1 << gfBits]uint32
 		}
 	}
 
+	{{if .IsSemiSystematic}}
+	// gaussian elimination
+	{{else}}
 	// gaussian elimination to obtain an upper triangular matrix
 	// and keep track of the operations in ops
 	{{ if .Is8192128 }}
@@ -252,6 +377,7 @@ func pkGen(pk *[pkNRows * pkRowBytes]byte, irr []byte, perm *[1 << gfBits]uint32
 	}
 	{{ end }}
 	{{ end }}
+	{{ end }}
 
 
 	{{ if .Is8192128 }}
@@ -264,29 +390,58 @@ func pkGen(pk *[pkNRows * pkRowBytes]byte, irr []byte, perm *[1 << gfBits]uint32
 		j := row & 63
 		{{ end }}
 
+		{{if .IsSemiSystematic}}
+		if row == pkNRows-32 {
+			if !movColumns(&mat, pi[:], pivots) {
+				return false
+			}
+		}
+		{{end}}
+
 		for k := row + 1; k < pkNRows; k++ {
 			mask = mat[row][i] >> j
 			mask &= 1
 			mask -= 1
 
+
+			{{if .IsSemiSystematic}}
+			for c := 0; c < nblocksH; c++ {
+				mat[row][c] ^= mat[k][c] & mask
+			}
+			{{else}}
 			for c := 0; c < nblocksI; c++ {
 				mat[row][c] ^= mat[k][c] & mask
 				ops[row][c] ^= ops[k][c] & mask
 			}
+			{{end}}
 		}
 		// return if not systematic
 		if ((mat[row][i] >> j) & 1) == 0 {
 			return false
 		}
 
+		{{if .IsSemiSystematic}}
+		for k := 0; k < row; k++ {
+			mask = mat[k][i] >> j
+			mask &= 1
+			mask = -mask
+
+			for c := 0; c < nblocksH; c++ {
+				mat[k][c] ^= mat[row][c] & mask
+			}
+		}
+		{{end}}
+
 		for k := row + 1; k < pkNRows; k++ {
 			mask = mat[k][i] >> j
 			mask &= 1
 			mask = -mask
 
-			for c := 0; c < nblocksI; c++ {
+			for c := 0; c < {{if .IsSemiSystematic}}nblocksH {{else}} nblocksI {{end}}; c++ {
 				mat[k][c] ^= mat[row][c] & mask
+				{{if not .IsSemiSystematic}}
 				ops[k][c] ^= ops[row][c] & mask
+				{{end}}
 			}
 		}
 	}
@@ -295,6 +450,44 @@ func pkGen(pk *[pkNRows * pkRowBytes]byte, irr []byte, perm *[1 << gfBits]uint32
 	{{ end }}
 
 
+	pkp := pk[:]
+	{{if .IsSemiSystematic}}
+	for i := 0; i < pkNRows; i++ {
+		{{ if .Is460896 }}
+		storeI(pkp, mat[i][nblocksI-1]>>tail, (64-tail)/8)
+		pkp = pkp[(64-tail)/8:]
+		for j := nblocksI; j < nblocksH; j++ {
+			store8(pkp, mat[i][j])
+			pkp = pkp[8:]
+		}
+		{{ else if or .Is348864 .Is6688128 }}
+		var j int
+		for j = nblocksI; j < nblocksH-1; j++ {
+			store8(pkp, mat[i][j])
+			pkp = pkp[8:]
+		}
+		storeI(pkp, mat[i][j], pkRowBytes%8)
+		pkp = pkp[pkRowBytes%8:]
+		{{ else if .Is6960119 }}
+		row := i
+		var k int
+		for k = blockIdx; k < nblocksH-1; k++ {
+			mat[row][k] = (mat[row][k] >> tail) | (mat[row][k+1] << (64-tail))
+			store8(pkp, mat[row][k])
+			pkp = pkp[8:]
+		}
+		mat[row][k] >>= tail
+		storeI(pkp, mat[row][k], pkRowBytes%8)
+		pkp[(pkRowBytes%8)-1] &= (1 << (pkNCols % 8)) - 1 // removing redundant bits
+		pkp = pkp[pkRowBytes%8:]
+		{{ else if .Is8192128 }}
+		for j := nblocksI; j < nblocksH; j++ {
+			store8(pkp, mat[i][j])
+			pkp = pkp[8:]
+		}
+		{{ end }}
+	}
+	{{else}}
 	// computing the lineaer map required to obatin the systematic form
 	{{ if .Is8192128 }}
 		for i := pkNRows/64 - 1; i >= 0; i-- {
@@ -340,8 +533,6 @@ func pkGen(pk *[pkNRows * pkRowBytes]byte, irr []byte, perm *[1 << gfBits]uint32
 			}
 		}
 	}
-
-	pkp := pk[:]
 
 	{{ if .Is8192128 }}
 	for i := 0; i < pkNRows/64; i++ {
@@ -411,6 +602,7 @@ func pkGen(pk *[pkNRows * pkRowBytes]byte, irr []byte, perm *[1 << gfBits]uint32
 
 		pkp = pkp[pkRowBytes%8:]
 	}
+	{{ end }}
 	{{ end }}
 	return true
 }
