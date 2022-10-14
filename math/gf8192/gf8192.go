@@ -17,16 +17,27 @@ func Add(a, b Gf) Gf {
 
 // Mul calculate the product of two Gf elements.
 func Mul(a, b Gf) Gf {
-	a64 := uint64(a)
-	b64 := uint64(b)
-
-	// if the LSB of b is 1, set tmp to a64, and 0 otherwise
-	tmp := a64 & -(b64 & 1)
-
-	// check if i-th bit of b64 is set, add a64 shifted by i bits if so
-	for i := 1; i < GfBits; i++ {
-		tmp ^= a64 * (b64 & (1 << i))
-	}
+	// carry-less multiplication by adding "holes"
+	// see https://www.bearssl.org/constanttime.html#ghash-for-gcm
+	x := uint64(a)
+	y := uint64(b)
+	x0 := x & 0x1111111111111
+	x1 := x & 0x2222222222222
+	x2 := x & 0x4444444444444
+	x3 := x & 0x8888888888888
+	y0 := y & 0x1111111111111
+	y1 := y & 0x2222222222222
+	y2 := y & 0x4444444444444
+	y3 := y & 0x8888888888888
+	z0 := (x0 * y0) ^ (x1 * y3) ^ (x2 * y2) ^ (x3 * y1)
+	z1 := (x0 * y1) ^ (x1 * y0) ^ (x2 * y3) ^ (x3 * y2)
+	z2 := (x0 * y2) ^ (x1 * y1) ^ (x2 * y0) ^ (x3 * y3)
+	z3 := (x0 * y3) ^ (x1 * y2) ^ (x2 * y1) ^ (x3 * y0)
+	z0 &= 0x1111111111111
+	z1 &= 0x2222222222222
+	z2 &= 0x4444444444444
+	z3 &= 0x8888888888888
+	tmp := z0 | z1 | z2 | z3
 
 	// polynomial reduction
 	t := tmp & 0x1FF0000
