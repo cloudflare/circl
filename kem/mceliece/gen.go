@@ -55,6 +55,10 @@ func (m Instance) Is8192128() bool {
 	return strings.Contains(m.Name, "8192128")
 }
 
+func IsSystematic(m Instance) bool {
+	return !m.IsSemiSystematic()
+}
+
 var (
 	McElieceParam348864 = Param{
 		Gf:             "gf4096",
@@ -118,6 +122,11 @@ func main() {
 	generateTemplateFilesIf("templates/operations_6960119.templ.go", "operations", func(m Instance) bool { return m.Is6960119() })
 	generateTemplateFiles("templates/mceliece.templ.go", "mceliece")
 	generateTemplateFiles("templates/pk_gen.templ.go", "pk_gen")
+	generateTemplateFilesIf("templates/pk_gen_vec.templ.go", "pk_gen", IsSystematic)
+	generateTemplateFilesIf("templates/vec.templ.go", "vec", IsSystematic)
+	generateTemplateFilesIf("templates/fft_other.templ.go", "fft", func(m Instance) bool {
+		return IsSystematic(m) && !m.Is348864()
+	})
 }
 
 func generateTemplateFiles(templatePath, outputName string) {
