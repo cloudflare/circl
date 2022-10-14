@@ -1,8 +1,11 @@
 // Code generated from vec.templ.go. DO NOT EDIT.
 
+// The following code is translated from the C `vec` Additional Implementation
+// from the NIST round 3 submission package.
+
 package mceliece348864
 
-func vecMul(h, f, g []uint64) {
+func vecMul(h, f, g *[gfBits]uint64) {
 	buf := [2*gfBits - 1]uint64{}
 
 	for i := 0; i < 2*gfBits-1; i++ {
@@ -27,8 +30,8 @@ func vecMul(h, f, g []uint64) {
 	}
 }
 
-/* bitsliced field squarings */
-func vecSq(out, in []uint64) {
+// bitsliced field squarings
+func vecSq(out, in *[gfBits]uint64) {
 	result := [gfBits]uint64{}
 
 	result[0] = in[0] ^ in[6]
@@ -49,29 +52,29 @@ func vecSq(out, in []uint64) {
 	}
 }
 
-/* bitsliced field inverses */
-func vecInv(out, in []uint64) {
+// bitsliced field inverses
+func vecInv(out, in *[gfBits]uint64) {
 	tmp11 := [gfBits]uint64{}
 	tmp1111 := [gfBits]uint64{}
 
 	vecCopy(out, in)
 
 	vecSq(out, out)
-	vecMul(tmp11[:], out, in) // ^11
+	vecMul(&tmp11, out, in) // ^11
 
-	vecSq(out, tmp11[:])
+	vecSq(out, &tmp11)
 	vecSq(out, out)
-	vecMul(tmp1111[:], out, tmp11[:]) // ^1111
+	vecMul(&tmp1111, out, &tmp11) // ^1111
 
-	vecSq(out, tmp1111[:])
+	vecSq(out, &tmp1111)
 	vecSq(out, out)
 	vecSq(out, out)
 	vecSq(out, out)
-	vecMul(out, out, tmp1111[:]) // ^11111111
+	vecMul(out, out, &tmp1111) // ^11111111
 
 	vecSq(out, out)
 	vecSq(out, out)
-	vecMul(out, out, tmp11[:]) // 1111111111
+	vecMul(out, out, &tmp11) // 1111111111
 
 	vecSq(out, out)
 	vecMul(out, out, in) // 11111111111
@@ -92,13 +95,13 @@ func vecSet116b(v uint16) uint64 {
 	return ret
 }
 
-func vecCopy(out, in []uint64) {
+func vecCopy(out, in *[gfBits]uint64) {
 	for i := 0; i < gfBits; i++ {
 		out[i] = in[i]
 	}
 }
 
-func vecOrReduce(a []uint64) uint64 {
+func vecOrReduce(a *[gfBits]uint64) uint64 {
 	ret := a[0]
 	for i := 1; i < gfBits; i++ {
 		ret |= a[i]

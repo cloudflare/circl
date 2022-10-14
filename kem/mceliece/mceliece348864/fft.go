@@ -1,13 +1,16 @@
 package mceliece348864
 
+// The following code is translated from the C `vec` Additional Implementation
+// from the NIST round 3 submission package.
+
 import "github.com/cloudflare/circl/kem/mceliece/internal"
 
-func fft(out [][gfBits]uint64, in []uint64) {
+func fft(out *[exponent][gfBits]uint64, in *[gfBits]uint64) {
 	radixConversions(in)
 	butterflies(out, in)
 }
 
-func radixConversions(in []uint64) {
+func radixConversions(in *[gfBits]uint64) {
 	for j := 0; j <= 4; j++ {
 		for i := 0; i < gfBits; i++ {
 			for k := 4; k >= j; k-- {
@@ -16,11 +19,11 @@ func radixConversions(in []uint64) {
 			}
 		}
 
-		vecMul(in, in, internal.RadixConversionsS4096[j][:]) // scaling
+		vecMul(in, in, &internal.RadixConversionsS4096[j]) // scaling
 	}
 }
 
-func butterflies(out [][gfBits]uint64, in []uint64) {
+func butterflies(out *[exponent][gfBits]uint64, in *[gfBits]uint64) {
 	tmp := [gfBits]uint64{}
 	var constsPtr int
 	// broadcast
@@ -37,7 +40,7 @@ func butterflies(out [][gfBits]uint64, in []uint64) {
 
 		for j := 0; j < 64; j += 2 * s {
 			for k := j; k < j+s; k++ {
-				vecMul(tmp[:], out[k+s][:], internal.ButterfliesConsts4096[constsPtr+(k-j)][:])
+				vecMul(&tmp, &out[k+s], &internal.ButterfliesConsts4096[constsPtr+(k-j)])
 
 				for b := 0; b < gfBits; b++ {
 					out[k][b] ^= tmp[b]

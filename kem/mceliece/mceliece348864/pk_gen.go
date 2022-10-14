@@ -1,5 +1,8 @@
 // Code generated from pk_gen_vec.templ.go. DO NOT EDIT.
 
+// The following code is translated from the C `vec` Additional Implementation
+// from the NIST round 3 submission package.
+
 package mceliece348864
 
 import (
@@ -14,7 +17,7 @@ func storeI(out []byte, in uint64, i int) {
 	}
 }
 
-func deBitSlicing(out []uint64, in [][gfBits]uint64) {
+func deBitSlicing(out *[1 << gfBits]uint64, in *[exponent][gfBits]uint64) {
 	for i := 0; i < (1 << gfBits); i++ {
 		out[i] = 0
 	}
@@ -29,7 +32,7 @@ func deBitSlicing(out []uint64, in [][gfBits]uint64) {
 	}
 }
 
-func toBitslicing2x(out0 [][gfBits]uint64, out1 [][gfBits]uint64, in []uint64) {
+func toBitslicing2x(out0 *[exponent][gfBits]uint64, out1 *[exponent][gfBits]uint64, in *[1 << gfBits]uint64) {
 	for i := 0; i < exponent; i++ {
 		for j := gfBits - 1; j >= 0; j-- {
 			for r := 63; r >= 0; r-- {
@@ -47,7 +50,7 @@ func toBitslicing2x(out0 [][gfBits]uint64, out1 [][gfBits]uint64, in []uint64) {
 	}
 }
 
-func irrLoad(out []uint64, in []byte) {
+func irrLoad(out *[gfBits]uint64, in []byte) {
 	irr := [sysT + 1]uint16{}
 
 	for i := 0; i < sysT; i++ {
@@ -97,21 +100,21 @@ func pkGen(pk *[pkNRows * pkRowBytes]byte, irr []byte, perm *[1 << gfBits]uint32
 	oneRow := [exponent]uint64{}
 
 	// compute the inverses
-	irrLoad(irrInt[:], irr)
-	fft(eval[:], irrInt[:])
-	vecCopy(prod[0][:], eval[0][:])
+	irrLoad(&irrInt, irr)
+	fft(&eval, &irrInt)
+	vecCopy(&prod[0], &eval[0])
 	for i := 1; i < exponent; i++ {
-		vecMul(prod[i][:], prod[i-1][:], eval[i][:])
+		vecMul(&prod[i], &prod[i-1], &eval[i])
 	}
-	vecInv(tmp[:], prod[exponent-1][:])
+	vecInv(&tmp, &prod[exponent-1])
 	for i := exponent - 2; i >= 0; i-- {
-		vecMul(prod[i+1][:], prod[i][:], tmp[:])
-		vecMul(tmp[:], tmp[:], eval[i+1][:])
+		vecMul(&prod[i+1], &prod[i], &tmp)
+		vecMul(&tmp, &tmp, &eval[i+1])
 	}
-	vecCopy(prod[0][:], tmp[:])
+	vecCopy(&prod[0], &tmp)
 
 	// fill matrix
-	deBitSlicing(list[:], prod[:])
+	deBitSlicing(&list, &prod)
 	for i := uint64(0); i < (1 << gfBits); i++ {
 		list[i] <<= gfBits
 		list[i] |= i
@@ -124,7 +127,7 @@ func pkGen(pk *[pkNRows * pkRowBytes]byte, irr []byte, perm *[1 << gfBits]uint32
 			return false
 		}
 	}
-	toBitslicing2x(consts[:], prod[:], list[:])
+	toBitslicing2x(&consts, &prod, &list)
 
 	for i := 0; i < (1 << gfBits); i++ {
 		pi[i] = int16(list[i] & gfMask)
@@ -138,7 +141,7 @@ func pkGen(pk *[pkNRows * pkRowBytes]byte, irr []byte, perm *[1 << gfBits]uint32
 
 	for i := 1; i < sysT; i++ {
 		for j := 0; j < nblocksI; j++ {
-			vecMul(prod[j][:], prod[j][:], consts[j][:])
+			vecMul(&prod[j], &prod[j], &consts[j])
 			for k := 0; k < gfBits; k++ {
 				mat[i*gfBits+k][j] = prod[j][k]
 			}
@@ -212,7 +215,7 @@ func pkGen(pk *[pkNRows * pkRowBytes]byte, irr []byte, perm *[1 << gfBits]uint32
 
 	for i := 1; i < sysT; i++ {
 		for j := nblocksI; j < nblocksH; j++ {
-			vecMul(prod[j][:], prod[j][:], consts[j][:])
+			vecMul(&prod[j], &prod[j], &consts[j])
 			for k := 0; k < gfBits; k++ {
 				mat[i*gfBits+k][j] = prod[j][k]
 			}

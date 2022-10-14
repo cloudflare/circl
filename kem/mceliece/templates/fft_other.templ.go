@@ -4,16 +4,19 @@
 
 // Code generated from fft_other.templ.go. DO NOT EDIT.
 
+// The following code is translated from the C `vec` Additional Implementation
+// from the NIST round 3 submission package.
+
 package {{.Pkg}}
 
 import "github.com/cloudflare/circl/kem/mceliece/internal"
 
-func fft(out [][gfBits]uint64, in [][gfBits]uint64) {
+func fft(out *[exponent][gfBits]uint64, in *[2][gfBits]uint64) {
 	radixConversions(in)
 	butterflies(out, in)
 }
 
-func radixConversions(in [][gfBits]uint64) {
+func radixConversions(in *[2][gfBits]uint64) {
 	for j := 0; j <= 5; j++ {
 		for i := 0; i < gfBits; i++ {
 			in[1][i] ^= in[1][i] >> 32
@@ -30,13 +33,13 @@ func radixConversions(in [][gfBits]uint64) {
 		}
 
 		if j < 5 {
-			vecMul(in[0][:], in[0][:], internal.RadixConversionsS[j][0][:])
-			vecMul(in[1][:], in[1][:], internal.RadixConversionsS[j][1][:])
+			vecMul(&in[0], &in[0], &internal.RadixConversionsS[j][0])
+			vecMul(&in[1], &in[1], &internal.RadixConversionsS[j][1])
 		}
 	}
 }
 
-func butterflies(out [][gfBits]uint64, in [][gfBits]uint64) {
+func butterflies(out *[exponent][gfBits]uint64, in *[2][gfBits]uint64) {
 	tmp := [gfBits]uint64{}
 	pre := [8][gfBits]uint64{}
 	buf := [128]uint64{}
@@ -47,7 +50,7 @@ func butterflies(out [][gfBits]uint64, in [][gfBits]uint64) {
 			pre[i][j] = -pre[i][j]
 		}
 
-		vecMul(pre[i][:], in[1][:], pre[i][:])
+		vecMul(&pre[i], &in[1], &pre[i])
 	}
 	for i := 0; i < gfBits; i++ {
 		buf[0] = in[0][i]
@@ -193,7 +196,7 @@ func butterflies(out [][gfBits]uint64, in [][gfBits]uint64) {
 
 		for j := 0; j < 128; j += 2 * s {
 			for k := j; k < j+s; k++ {
-				vecMul(tmp[:], out[k+s][:], internal.ButterfliesConst[constsPtr+(k-j)][:])
+				vecMul(&tmp, &out[k+s], &internal.ButterfliesConst[constsPtr+(k-j)])
 
 				for b := 0; b < gfBits; b++ {
 					out[k][b] ^= tmp[b]
