@@ -7,11 +7,17 @@
 // input during the BlindSign step.
 package blindsign
 
+import "io"
+
 // A Verifier represents a specific instance of a blind signature verifier.
 type Verifier interface {
 	// Blind produces an encoded protocol message and VerifierState based on
 	// the input message and Signer's public key.
-	Blind(message []byte) ([]byte, VerifierState, error)
+	Blind(random io.Reader, message []byte) ([]byte, VerifierState, error)
+
+	// Verify verifies a (message, signature) pair over and produces an error
+	// if the signature is invalid.
+	Verify(message, signature []byte) error
 }
 
 // A VerifierState represents the protocol state used to run and complete a

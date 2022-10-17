@@ -5,7 +5,6 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha512"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
@@ -15,6 +14,8 @@ import (
 	"math/big"
 	"os"
 	"testing"
+
+	"github.com/cloudflare/circl/blindsign"
 )
 
 // 4096-bit RSA private key
@@ -85,7 +86,7 @@ func loadPrivateKey(t *testing.T) *rsa.PrivateKey {
 	return privateKey
 }
 
-func runSignatureProtocol(signer RSASigner, verifier RSAVerifier, message []byte, random io.Reader) ([]byte, error) {
+func runSignatureProtocol(signer RSASigner, verifier blindsign.Verifier, message []byte, random io.Reader) ([]byte, error) {
 	blindedMsg, state, err := verifier.Blind(random, message)
 	if err != nil {
 		return nil, err
@@ -110,13 +111,7 @@ func runSignatureProtocol(signer RSASigner, verifier RSAVerifier, message []byte
 		return nil, err
 	}
 
-	hash := sha512.New()
-	hash.Write(message)
-	digest := hash.Sum(nil)
-	err = rsa.VerifyPSS(verifier.pk, crypto.SHA512, digest, sig, &rsa.PSSOptions{
-		Hash:       crypto.SHA512,
-		SaltLength: crypto.SHA512.Size(),
-	})
+	err = verifier.Verify(message, sig)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +123,7 @@ func TestRoundTrip(t *testing.T) {
 	message := []byte("hello world")
 	key := loadPrivateKey(t)
 
-	verifier := NewRSAVerifier(&key.PublicKey, sha512.New())
+	verifier := NewRSAVerifier(&key.PublicKey, crypto.SHA512)
 	signer := NewRSASigner(key)
 
 	sig, err := runSignatureProtocol(signer, verifier, message, rand.Reader)
@@ -140,11 +135,27 @@ func TestRoundTrip(t *testing.T) {
 	}
 }
 
-func TestDeterministicSignFail(t *testing.T) {
+func TestDeterministicRoundTrip(t *testing.T) {
 	message := []byte("hello world")
 	key := loadPrivateKey(t)
 
-	verifier := NewRSAVerifier(&key.PublicKey, sha512.New())
+	verifier := NewDeterministicRSAVerifier(&key.PublicKey, crypto.SHA512)
+	signer := NewRSASigner(key)
+
+	sig, err := runSignatureProtocol(signer, verifier, message, rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sig == nil {
+		t.Fatal("nil signature output")
+	}
+}
+
+func TestDeterministicBlindFailure(t *testing.T) {
+	message := []byte("hello world")
+	key := loadPrivateKey(t)
+
+	verifier := NewDeterministicRSAVerifier(&key.PublicKey, crypto.SHA512)
 	signer := NewRSASigner(key)
 
 	_, err := runSignatureProtocol(signer, verifier, message, nil)
@@ -157,7 +168,7 @@ func TestRandomSignVerify(t *testing.T) {
 	message := []byte("hello world")
 	key := loadPrivateKey(t)
 
-	verifier := NewRSAVerifier(&key.PublicKey, sha512.New())
+	verifier := NewRSAVerifier(&key.PublicKey, crypto.SHA512)
 	signer := NewRSASigner(key)
 
 	sig1, err := runSignatureProtocol(signer, verifier, message, rand.Reader)
@@ -193,7 +204,7 @@ func TestFixedRandomSignVerify(t *testing.T) {
 	message := []byte("hello world")
 	key := loadPrivateKey(t)
 
-	verifier := NewRSAVerifier(&key.PublicKey, sha512.New())
+	verifier := NewRSAVerifier(&key.PublicKey, crypto.SHA512)
 	signer := NewRSASigner(key)
 
 	mockRand := &mockRandom{0}
@@ -334,9 +345,9 @@ func verifyTestVector(t *testing.T, vector testVector) {
 	}
 
 	signer := NewRSASigner(key)
-	verifier := NewRSAVerifier(&key.PublicKey, sha512.New384())
+	verifier := NewRSAVerifier(&key.PublicKey, crypto.SHA384)
 
-	blindedMsg, state, err := verifier.fixedBlind(vector.msg, vector.salt, r, rInv)
+	blindedMsg, state, err := fixedBlind(vector.msg, vector.salt, r, rInv, verifier.pk, verifier.hash)
 	if err != nil {
 		t.Fatal(err)
 	}
