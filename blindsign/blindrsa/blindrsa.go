@@ -18,9 +18,7 @@ import (
 	"github.com/cloudflare/circl/blindsign"
 )
 
-var (
-	errUnsupportedHashFunction = errors.New("unsupported hash function")
-)
+var errUnsupportedHashFunction = errors.New("unsupported hash function")
 
 // An RSAVerifier represents a Verifier in the RSA blind signature protocol.
 // It carries state needed to produce and validate an RSA blind signature.
