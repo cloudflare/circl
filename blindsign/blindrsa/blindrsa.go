@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	errUnsupportedHashFunction = errors.New("Unsupported hash function")
+	errUnsupportedHashFunction = errors.New("unsupported hash function")
 )
 
 // An RSAVerifier represents a Verifier in the RSA blind signature protocol.
