@@ -23,6 +23,8 @@ ifeq ($(V),1)
 	OPTS += -v              # Be verbose
 endif
 
+all: build
+
 lint:
 	$(GOLANGCILINT) run --config $(ETC_DIR)/golangci.yml ./...
 
