@@ -20,6 +20,7 @@ package {{.Pkg}}
 import (
 	"bytes"
 	cryptoRand "crypto/rand"
+	{{if .Is6960119}} "fmt" {{end}}
 	"io"
 
 	"github.com/cloudflare/circl/internal/nist"
@@ -141,7 +142,7 @@ func deriveKeyPair(entropy []byte) (*PublicKey, *PrivateKey) {
 
 // Encryption routine.
 // Takes a public key `pk` to compute error vector `e` and syndrome `s`.
-func encrypt(s, pk, e []byte, rand randFunc) error {
+func encrypt(s *[CiphertextSize]byte, pk *[PublicKeySize]byte, e *[sysN / 8]byte, rand randFunc) error {
 	err := genE(e, rand)
 	if err != nil {
 		return err
@@ -150,31 +151,46 @@ func encrypt(s, pk, e []byte, rand randFunc) error {
 	return nil
 }
 
-{{if not .Is6960119}}
 // KEM Encapsulation.
 //
 // Given a public key `pk`, sample a shared key.
 // This shared key is returned through parameter `key` whereas
 // the ciphertext (meant to be used for decapsulation) is returned as `c`.
 func kemEncapsulate(c *[CiphertextSize]byte, key *[SharedKeySize]byte, pk *[PublicKeySize]byte, rand randFunc) error {
-	twoE := [1 + sysN/8]byte{2}
-	e := twoE[1:]
-	oneEC := [1 + sysN/8 + (syndBytes + 32)]byte{1}
-	err := encrypt(c[:], pk[:], e, rand)
+	e := [sysN / 8]byte{}
+	oneEC := [1 + sysN/8 + syndBytes]byte{1}
+
+	{{if .Is6960119}}
+	paddingOk := checkPkPadding(pk)
+	{{end}}
+
+	err := encrypt(c, pk, &e, rand)
 	if err != nil {
 		return err
 	}
-	err = shake256(c[syndBytes:syndBytes+32], twoE[:])
-	if err != nil {
-		return err
-	}
-	copy(oneEC[1:1+sysN/8], twoE[1:1+sysN/8])
-	copy(oneEC[1+sysN/8:1+sysN/8+syndBytes+32], c[0:syndBytes+32])
+	copy(oneEC[1:1+sysN/8], e[:sysN/8])
+	copy(oneEC[1+sysN/8:1+sysN/8+syndBytes], c[:syndBytes])
 	err = shake256(key[0:32], oneEC[:])
 	if err != nil {
 		return err
 	}
+
+	{{if not .Is6960119}}
 	return nil
+	{{else}}
+	mask := paddingOk ^ 0xFF
+	for i := 0; i < syndBytes; i++ {
+		c[i] &= mask
+	}
+	for i := 0; i < 32; i++ {
+		key[i] &= mask
+	}
+
+	if paddingOk == 0 {
+		return nil
+	}
+	return fmt.Errorf("public key padding error %d", paddingOk)
+	{{end}}
 }
 
 // KEM Decapsulation.
@@ -182,24 +198,16 @@ func kemEncapsulate(c *[CiphertextSize]byte, key *[SharedKeySize]byte, pk *[Publ
 // Given a secret key `sk` and a ciphertext `c`,
 // determine the shared text `key` negotiated by both parties.
 func kemDecapsulate(key *[SharedKeySize]byte, c *[CiphertextSize]byte, sk *[PrivateKeySize]byte) error {
-	conf := [32]byte{}
-	twoE := [1 + sysN/8]byte{2}
-	e := twoE[1:]
-	preimage := [1 + sysN/8 + (syndBytes + 32)]byte{}
+	e := [sysN / 8]byte{}
+	preimage := [1 + sysN/8 + syndBytes]byte{}
 	s := sk[40+irrBytes+condBytes:]
 
+	{{if .Is6960119}}
+	paddingOk := checkCPadding(c)
+	{{end}}
+
 	retDecrypt := decrypt((*[sysN / 8]byte)(e[:sysN/8]), sk[40:], (*[syndBytes]byte)(c[:syndBytes]))
-	err := shake256(conf[0:32], twoE[:])
-	if err != nil {
-		return err
-	}
-
-	var retConfirm byte
-	for i := 0; i < 32; i++ {
-		retConfirm |= conf[i] ^ c[syndBytes+i]
-	}
-
-	m := retDecrypt | uint16(retConfirm)
+	m := retDecrypt
 	m -= 1
 	m >>= 8
 
@@ -208,13 +216,32 @@ func kemDecapsulate(key *[SharedKeySize]byte, c *[CiphertextSize]byte, sk *[Priv
 		preimage[1+i] = (byte(^m) & s[i]) | (byte(m) & e[i])
 	}
 
-	copy(preimage[1+sysN/8:][:syndBytes+32], c[0:syndBytes+32])
-	return shake256(key[0:32], preimage[:])
+	copy(preimage[1+sysN/8:][:syndBytes], c[0:syndBytes])
+	err := shake256(key[0:32], preimage[:])
+	if err != nil {
+		return err
+	}
+
+	{{if not .Is6960119}}
+	return nil
+	{{else}}
+	// clear outputs (set to all 1's) if padding bits are not all zero
+	mask := paddingOk
+	for i := 0; i < 32; i++ {
+		key[i] |= mask
+	}
+
+	if paddingOk == 0 {
+		return nil
+	}
+	return fmt.Errorf("public key padding error %d", paddingOk)
+	{{end}}
 }
 
+{{if not .Is6960119}}
 // input: public key pk, error vector e
 // output: syndrome s
-func syndrome(s []byte, pk []byte, e []byte) {
+func syndrome(s *[CiphertextSize]byte, pk *[PublicKeySize]byte, e *[sysN / 8]byte) {
 	row := [sysN / 8]byte{}
 	var b byte
 
@@ -228,7 +255,7 @@ func syndrome(s []byte, pk []byte, e []byte) {
 		}
 
 		for j := 0; j < pkRowBytes; j++ {
-			row[sysN/8-pkRowBytes+j] = pk[j]
+			row[sysN/8-pkRowBytes+j] = pk[i*pkRowBytes+j]
 		}
 
 		row[i/8] |= 1 << (i % 8)
@@ -244,8 +271,6 @@ func syndrome(s []byte, pk []byte, e []byte) {
 		b &= 1
 
 		s[i/8] |= b << (i % 8)
-
-		pk = pk[pkRowBytes:]
 	}
 }
 {{end}}
@@ -253,7 +278,7 @@ func syndrome(s []byte, pk []byte, e []byte) {
 {{if .Is8192128}}
 // Generates `e`, a random error vector of weight `t`.
 // If generation of pseudo-random numbers fails, an error is returned
-func genE(e []byte, rand randFunc) error {
+func genE(e *[sysN / 8]byte, rand randFunc) error {
 	ind := [sysT]uint16{}
 	val := [sysT]byte{}
 	bytes := [sysT * 2]byte{}
@@ -292,7 +317,7 @@ func genE(e []byte, rand randFunc) error {
 {{else}}
 // Generates `e`, a random error vector of weight `t`.
 // If generation of pseudo-random numbers fails, an error is returned
-func genE(e []byte, rand randFunc) error {
+func genE(e *[sysN / 8]byte, rand randFunc) error {
 	ind := [sysT]uint16{}
 	val := [sysT]byte{}
 	for {

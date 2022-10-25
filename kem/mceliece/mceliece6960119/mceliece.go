@@ -16,6 +16,7 @@ package mceliece6960119
 import (
 	"bytes"
 	cryptoRand "crypto/rand"
+	"fmt"
 	"io"
 
 	"github.com/cloudflare/circl/internal/nist"
@@ -39,7 +40,7 @@ const (
 	syndBytes             = (pkNRows + 7) / 8
 	PublicKeySize         = 1047319
 	PrivateKeySize        = 13948
-	CiphertextSize        = 226
+	CiphertextSize        = 194
 	SharedKeySize         = 32
 	seedSize              = 32
 	encapsulationSeedSize = 48
@@ -137,7 +138,7 @@ func deriveKeyPair(entropy []byte) (*PublicKey, *PrivateKey) {
 
 // Encryption routine.
 // Takes a public key `pk` to compute error vector `e` and syndrome `s`.
-func encrypt(s, pk, e []byte, rand randFunc) error {
+func encrypt(s *[CiphertextSize]byte, pk *[PublicKeySize]byte, e *[sysN / 8]byte, rand randFunc) error {
 	err := genE(e, rand)
 	if err != nil {
 		return err
@@ -146,9 +147,84 @@ func encrypt(s, pk, e []byte, rand randFunc) error {
 	return nil
 }
 
+// KEM Encapsulation.
+//
+// Given a public key `pk`, sample a shared key.
+// This shared key is returned through parameter `key` whereas
+// the ciphertext (meant to be used for decapsulation) is returned as `c`.
+func kemEncapsulate(c *[CiphertextSize]byte, key *[SharedKeySize]byte, pk *[PublicKeySize]byte, rand randFunc) error {
+	e := [sysN / 8]byte{}
+	oneEC := [1 + sysN/8 + syndBytes]byte{1}
+
+	paddingOk := checkPkPadding(pk)
+
+	err := encrypt(c, pk, &e, rand)
+	if err != nil {
+		return err
+	}
+	copy(oneEC[1:1+sysN/8], e[:sysN/8])
+	copy(oneEC[1+sysN/8:1+sysN/8+syndBytes], c[:syndBytes])
+	err = shake256(key[0:32], oneEC[:])
+	if err != nil {
+		return err
+	}
+
+	mask := paddingOk ^ 0xFF
+	for i := 0; i < syndBytes; i++ {
+		c[i] &= mask
+	}
+	for i := 0; i < 32; i++ {
+		key[i] &= mask
+	}
+
+	if paddingOk == 0 {
+		return nil
+	}
+	return fmt.Errorf("public key padding error %d", paddingOk)
+}
+
+// KEM Decapsulation.
+//
+// Given a secret key `sk` and a ciphertext `c`,
+// determine the shared text `key` negotiated by both parties.
+func kemDecapsulate(key *[SharedKeySize]byte, c *[CiphertextSize]byte, sk *[PrivateKeySize]byte) error {
+	e := [sysN / 8]byte{}
+	preimage := [1 + sysN/8 + syndBytes]byte{}
+	s := sk[40+irrBytes+condBytes:]
+
+	paddingOk := checkCPadding(c)
+
+	retDecrypt := decrypt((*[sysN / 8]byte)(e[:sysN/8]), sk[40:], (*[syndBytes]byte)(c[:syndBytes]))
+	m := retDecrypt
+	m -= 1
+	m >>= 8
+
+	preimage[0] = byte(m & 1)
+	for i := 0; i < sysN/8; i++ {
+		preimage[1+i] = (byte(^m) & s[i]) | (byte(m) & e[i])
+	}
+
+	copy(preimage[1+sysN/8:][:syndBytes], c[0:syndBytes])
+	err := shake256(key[0:32], preimage[:])
+	if err != nil {
+		return err
+	}
+
+	// clear outputs (set to all 1's) if padding bits are not all zero
+	mask := paddingOk
+	for i := 0; i < 32; i++ {
+		key[i] |= mask
+	}
+
+	if paddingOk == 0 {
+		return nil
+	}
+	return fmt.Errorf("public key padding error %d", paddingOk)
+}
+
 // Generates `e`, a random error vector of weight `t`.
 // If generation of pseudo-random numbers fails, an error is returned
-func genE(e []byte, rand randFunc) error {
+func genE(e *[sysN / 8]byte, rand randFunc) error {
 	ind := [sysT]uint16{}
 	val := [sysT]byte{}
 	for {

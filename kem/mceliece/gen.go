@@ -60,7 +60,7 @@ var (
 		Gf:             "gf4096",
 		PublicKeySize:  261120,
 		PrivateKeySize: 6492,
-		CiphertextSize: 128,
+		CiphertextSize: 96,
 		SysN:           3488,
 		SysT:           64,
 	}
@@ -68,7 +68,7 @@ var (
 		Gf:             "gf8192",
 		PublicKeySize:  524160,
 		PrivateKeySize: 13608,
-		CiphertextSize: 188,
+		CiphertextSize: 156,
 		SysN:           4608,
 		SysT:           96,
 	}
@@ -76,7 +76,7 @@ var (
 		Gf:             "gf8192",
 		PublicKeySize:  1044992,
 		PrivateKeySize: 13932,
-		CiphertextSize: 240,
+		CiphertextSize: 208,
 		SysN:           6688,
 		SysT:           128,
 	}
@@ -84,7 +84,7 @@ var (
 		Gf:             "gf8192",
 		PublicKeySize:  1047319,
 		PrivateKeySize: 13948,
-		CiphertextSize: 226,
+		CiphertextSize: 194,
 		SysN:           6960,
 		SysT:           119,
 	}
@@ -92,7 +92,7 @@ var (
 		Gf:             "gf8192",
 		PublicKeySize:  1357824,
 		PrivateKeySize: 14120,
-		CiphertextSize: 240,
+		CiphertextSize: 208,
 		SysN:           8192,
 		SysT:           128,
 	}
