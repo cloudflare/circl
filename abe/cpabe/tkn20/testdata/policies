@@ -1,0 +1,26 @@
+region: US
+"fail": true, "attributes": {"region": "EU"}
+
+not region: US
+"fail": false, "attributes": {"region": "EU"}
+
+region: US or region: EU or tier: 1 or tier: 2 or tier: 3 and owner: cloudflare
+"fail": false, "attributes": {"region": "AZ", "tier": "2", "owner": "cloudflare"}
+
+(region: US or region: EU) or (tier: 1 or tier: 2 or tier: 3) and (owner: cloudflare)
+"fail": false, "attributes": {"region": "AZ", "tier": "1", "owner": "cloudflare"}
+
+((region: US or region: EU) and (not (tier: 3)))
+"fail": false, "attributes": {"region": "EU", "tier": "2", "owner": "cloudflare"}
+
+not (region: US or region: EU)
+"fail": true, "attributes": {"region": "EU"}
+
+not not region: US
+"fail": true, "attributes": {"region": "EU"}
+
+region: US or region: US
+"fail": true, "attributes": {"region": "AZ"}
+
+region: US and region: EU or region: ASIA
+"fail": true, "attributes": {"region": "US"}
