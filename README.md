@@ -42,9 +42,10 @@ go get -u github.com/cloudflare/circl
  - [Hash to Curve](https://datatracker.ietf.org/doc/draft-irtf-cfrg-hash-to-curve/)
 
 #### High-Level Protocols
- - Bilinear pairings with [BLS12-381](https://electriccoin.co/blog/new-snark-curve/).
  - [HPKE](https://datatracker.ietf.org/doc/draft-irtf-cfrg-hpke/): Hybrid Public-Key Encryption
- - [VOPRF](https://datatracker.ietf.org/doc/draft-irtf-cfrg-voprf/): Verifiable Oblivious Pseudorandom function.
+ - [VOPRF](https://datatracker.ietf.org/doc/draft-irtf-cfrg-voprf/): Verifiable Oblivious Pseudorandom function: OPRF, VOPRF and POPRF modes.
+ - [BlindRSA](https://datatracker.ietf.org/doc/draft-irtf-cfrg-rsa-blind-signatures/): Blind RSA signatures.
+ - [CPABE](./abe/cpabe): Ciphertext-policy Attribute-based Encryption.
 
 #### Post-Quantum Key Encapsulation Methods
  - [CSIDH](https://csidh.isogeny.org/): Post-Quantum Commutative Group Action
@@ -65,6 +66,7 @@ go get -u github.com/cloudflare/circl
  - P-384 Curve
  - [FourQ](https://eprint.iacr.org/2015/565)
  - [Goldilocks](https://eprint.iacr.org/2015/625)
+ - [BLS12-381](https://electriccoin.co/blog/new-snark-curve/): Bilinear pairings, hash to G1 and G2.
 
 #### Parallel SIMD
  - [Keccak](https://keccak.team/keccak_specs_summary.html) f1600 Permutation
@@ -72,6 +74,10 @@ go get -u github.com/cloudflare/circl
 #### XOF: eXtendable Output Functions
  - [FIPS 202](https://doi.org/10.6028/NIST.FIPS.202): SHAKE128 and SHAKE256
  - [BLAKE2X](https://www.blake2.net/blake2x.pdf): BLAKE2XB and BLAKE2XS
+
+#### Zero-knowledge Proofs
+ - [Schnorr](./zk/dl): Prove knowledge of the Discrete Logarithm.
+ - [DLEQ](./zk/dleq): Prove knowledge of the Discrete Logarithm Equality.
 
 ## Testing and Benchmarking
 
@@ -98,7 +104,7 @@ APA Style
 ```
 Faz-Hernández, A. and Kwiatkowski, K. (2019). Introducing CIRCL:
 An Advanced Cryptographic Library. Cloudflare. Available at
-https://github.com/cloudflare/circl. v1.2.0 Accessed Jun 2022.
+https://github.com/cloudflare/circl. v1.3.0 Accessed Nov, 2022.
 ```
 
 Bibtex Source
@@ -113,7 +119,7 @@ Bibtex Source
                    of this library is to be used as a tool for experimental
                    deployment of cryptographic algorithms targeting Post-Quantum (PQ)
                    and Elliptic Curve Cryptography (ECC).}},
-  note         = {Available at \url{https://github.com/cloudflare/circl}. v1.2.0 Accessed Jun 2022},
+  note         = {Available at \url{https://github.com/cloudflare/circl}. v1.3.0 Accessed Nov, 2022},
   month        = jun,
   year         = {2019}
 }
