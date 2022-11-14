@@ -88,19 +88,19 @@ func TestMarshalAttributesKey(t *testing.T) {
 	}
 	attrs := &Attributes{
 		"d": {
-			wild:  false,
+			Wild:  false,
 			Value: ToScalar(4),
 		},
 		"c": {
-			wild:  true,
+			Wild:  true,
 			Value: ToScalar(3),
 		},
 		"b": {
-			wild:  false,
+			Wild:  false,
 			Value: ToScalar(2),
 		},
 		"a": {
-			wild:  true,
+			Wild:  true,
 			Value: ToScalar(2),
 		},
 	}
@@ -124,7 +124,7 @@ func TestMarshalAttributesKey(t *testing.T) {
 	// ensure we can deserialize into non-empty struct
 	cAttrs := &Attributes{
 		"evil": {
-			wild:  false,
+			Wild:  false,
 			Value: ToScalar(0),
 		},
 	}
@@ -148,7 +148,7 @@ func TestEqualAttributesKey(t *testing.T) {
 	}
 	attrs := &Attributes{
 		"d": {
-			wild:  false,
+			Wild:  false,
 			Value: ToScalar(4),
 		},
 	}
@@ -163,7 +163,7 @@ func TestEqualAttributesKey(t *testing.T) {
 	}
 	attrs2 := &Attributes{
 		"k": {
-			wild:  false,
+			Wild:  false,
 			Value: ToScalar(4),
 		},
 	}

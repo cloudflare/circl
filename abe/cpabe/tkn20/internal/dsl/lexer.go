@@ -44,6 +44,8 @@ func (l *Lexer) scanTokens() error {
 			l.addToken(RightParen)
 		case ':':
 			l.addToken(Colon)
+		case '*':
+			l.addToken(Asterix)
 		case ' ', '\r', '\t':
 		case '\n':
 			l.line++

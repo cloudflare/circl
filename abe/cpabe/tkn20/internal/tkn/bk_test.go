@@ -17,7 +17,7 @@ var encTestCases = []TestCase{
 		},
 		&Attributes{
 			"a": {
-				wild:  false,
+				Wild:  false,
 				Value: ToScalar(0),
 			},
 		},
@@ -38,19 +38,19 @@ var encTestCases = []TestCase{
 		},
 		&Attributes{
 			"d": {
-				wild:  false,
+				Wild:  false,
 				Value: ToScalar(4),
 			},
 			"c": {
-				wild:  false,
+				Wild:  false,
 				Value: ToScalar(3),
 			},
 			"b": {
-				wild:  false,
+				Wild:  false,
 				Value: ToScalar(2),
 			},
 			"a": {
-				wild:  false,
+				Wild:  false,
 				Value: ToScalar(1),
 			},
 		},
@@ -71,19 +71,19 @@ var encTestCases = []TestCase{
 		},
 		&Attributes{
 			"d": {
-				wild:  false,
+				Wild:  false,
 				Value: ToScalar(4),
 			},
 			"c": {
-				wild:  false,
+				Wild:  false,
 				Value: ToScalar(3),
 			},
 			"b": {
-				wild:  false,
+				Wild:  false,
 				Value: ToScalar(2),
 			},
 			"a": {
-				wild:  false,
+				Wild:  false,
 				Value: ToScalar(2),
 			},
 		},
@@ -102,19 +102,19 @@ var encTestCases = []TestCase{
 		},
 		&Attributes{
 			"d": {
-				wild:  false,
+				Wild:  false,
 				Value: ToScalar(4),
 			},
 			"c": {
-				wild:  true,
+				Wild:  true,
 				Value: ToScalar(3),
 			},
 			"b": {
-				wild:  false,
+				Wild:  false,
 				Value: ToScalar(2),
 			},
 			"a": {
-				wild:  true,
+				Wild:  true,
 				Value: ToScalar(2),
 			},
 		},
@@ -135,19 +135,19 @@ var encTestCases = []TestCase{
 		},
 		&Attributes{
 			"d": {
-				wild:  false,
+				Wild:  false,
 				Value: ToScalar(4),
 			},
 			"c": {
-				wild:  false,
+				Wild:  false,
 				Value: ToScalar(3),
 			},
 			"b": {
-				wild:  false,
+				Wild:  false,
 				Value: ToScalar(2),
 			},
 			"a": {
-				wild:  false,
+				Wild:  false,
 				Value: ToScalar(1),
 			},
 		},
@@ -170,19 +170,19 @@ var encTestCases = []TestCase{
 		},
 		&Attributes{
 			"blocked": {
-				wild:  false,
+				Wild:  false,
 				Value: ToScalar(0),
 			},
 			"secure": {
-				wild:  false,
+				Wild:  false,
 				Value: ToScalar(1),
 			},
 			"us": {
-				wild:  false,
+				Wild:  false,
 				Value: ToScalar(1),
 			},
 			"irrelevantAttr": {
-				wild:  false,
+				Wild:  false,
 				Value: ToScalar(1),
 			},
 		},
@@ -272,19 +272,19 @@ var benchPolicy = &Policy{
 
 var benchAttrs = &Attributes{
 	"blocked": {
-		wild:  false,
+		Wild:  false,
 		Value: ToScalar(0),
 	},
 	"secure": {
-		wild:  false,
+		Wild:  false,
 		Value: ToScalar(1),
 	},
 	"us": {
-		wild:  false,
+		Wild:  false,
 		Value: ToScalar(1),
 	},
 	"irrelevantAttr": {
-		wild:  false,
+		Wild:  false,
 		Value: ToScalar(1),
 	},
 }

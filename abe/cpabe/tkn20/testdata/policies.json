@@ -1,0 +1,148 @@
+[
+  {
+    "policy": "region: US",
+    "success": false,
+    "attributes": [
+      {
+        "key": "region",
+        "value": "EU"
+      }
+    ]
+  },
+  {
+    "policy": "not region: US",
+    "success": true,
+    "attributes": [
+      {
+        "key": "region",
+        "value": "EU"
+      }
+    ]
+  },
+  {
+    "policy": "region: US or region: EU or tier: 1 or tier: 2 or tier: 3 and owner: cloudflare",
+    "success": true,
+    "attributes": [
+      {
+        "key": "region",
+        "value": "AZ"
+      },
+      {
+        "key": "tier",
+        "value": "2"
+      },
+      {
+        "key": "owner",
+        "value": "cloudflare"
+      }
+    ]
+  },
+  {
+    "policy": "(region: US or region: EU) or (tier: 1 or tier: 2 or tier: 3) and (owner: cloudflare)",
+    "success": true,
+    "attributes": [
+      {
+        "key": "region",
+        "value": "AZ"
+      },
+      {
+        "key": "tier",
+        "value": "1"
+      },
+      {
+        "key": "owner",
+        "value": "cloudflare"
+      }
+    ]
+  },
+  {
+    "policy": "((region: US or region: EU) and (not (tier: 3)))",
+    "success": true,
+    "attributes": [
+      {
+        "key": "region",
+        "value": "EU"
+      },
+      {
+        "key": "tier",
+        "value": "2"
+      },
+      {
+        "key": "owner",
+        "value": "cloudflare"
+      }
+    ]
+  },
+  {
+    "policy": "not (region: US or region: EU)",
+    "success": false,
+    "attributes": [
+      {
+        "key": "region",
+        "value": "EU"
+      }
+    ]
+  },
+  {
+    "policy": "not not region: US",
+    "success": false,
+    "attributes": [
+      {
+        "key": "region",
+        "value": "EU"
+      }
+    ]
+  },
+  {
+    "policy": "region: US or region: US",
+    "success": false,
+    "attributes": [
+      {
+        "key": "region",
+        "value": "AZ"
+      }
+    ]
+  },
+  {
+    "policy": "region: US and region: EU or region: ASIA",
+    "success": false,
+    "attributes": [
+      {
+        "key": "region",
+        "value": "US"
+      }
+    ]
+  },
+  {
+    "policy": "country: * and (not region: *) and (not security: *)",
+    "success": true,
+    "attributes": [
+      {
+        "key": "country",
+        "value": "US",
+        "supportWildcard": true
+      },
+      {
+        "key": "region",
+        "value": "NAMER",
+        "supportWildcard": true
+      },
+      {
+        "key": "security",
+        "value": "high",
+        "supportWildcard": false
+      }
+    ]
+  },
+  {
+    "policy": "not country: *",
+    "success": false,
+    "attributes": [
+      {
+        "key": "region",
+        "value": "NAMER",
+        "supportWildcard": false
+      }
+    ]
+  }
+]

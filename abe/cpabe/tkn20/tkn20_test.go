@@ -1,67 +1,36 @@
 package tkn20
 
 import (
-	"bufio"
 	"bytes"
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
-
-	"github.com/cloudflare/circl/abe/cpabe/tkn20/internal/dsl"
-	"github.com/cloudflare/circl/abe/cpabe/tkn20/internal/tkn"
 )
 
-type TestAttribute struct {
-	Fail  bool              // if this test case should fail
-	Attrs map[string]string `json:"attributes"`
-}
-
-func loadTestCases(t *testing.T) ([]Policy, []TestAttribute, []Attributes) {
-	testFile, err := os.Open("testdata/policies")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer testFile.Close()
-
-	scanner := bufio.NewScanner(testFile)
-	var policies []Policy
-	var testAttrs []TestAttribute
-	i := 0
-	for scanner.Scan() {
-		if i%3 == 0 {
-			p := Policy{}
-			err := p.FromString(scanner.Text())
-			if err != nil {
-				t.Fatal(err)
-			}
-			policies = append(policies, p)
-		} else if i%3 == 1 {
-			testAttrs = append(testAttrs, parseTestAttr(t, scanner.Text()))
-		}
-		i++
-	}
-
-	attrs := make([]Attributes, len(testAttrs))
-	for i, testAttr := range testAttrs {
-		currAttrMap := make(map[string]tkn.Attribute, len(testAttr.Attrs))
-		for k, v := range testAttr.Attrs {
-			currAttrMap[k] = tkn.Attribute{
-				Value: tkn.HashStringToScalar(dsl.AttrHashKey, v),
-			}
-		}
-		attrs[i] = Attributes{currAttrMap}
-	}
-	return policies, testAttrs, attrs
+type TestCase struct {
+	Policy  string
+	Success bool
+	Attrs   []Attribute `json:"attributes"`
 }
 
 func TestConcurrentDecryption(t *testing.T) {
-	policies, testAttrs, attrs := loadTestCases(t)
+	var tests []TestCase
+	buf, _ := os.ReadFile("testdata/policies.json")
+	err := json.Unmarshal(buf, &tests)
+	if err != nil {
+		t.Fatal(err)
+	}
 	msg := []byte("must have the precious")
-	for i, policy := range policies {
+	for i, test := range tests {
 		t.Run(fmt.Sprintf("TestConcurrentDecryption:#%d", i), func(t *testing.T) {
 			pk, msk, err := Setup(rand.Reader)
+			if err != nil {
+				t.Fatal(err)
+			}
+			policy := Policy{}
+			err = policy.FromString(test.Policy)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -69,13 +38,13 @@ func TestConcurrentDecryption(t *testing.T) {
 			if err != nil {
 				t.Fatalf("encryption failed: %s", err)
 			}
-			sk, err := msk.KeyGen(rand.Reader, attrs[i])
+			sk, err := msk.KeyGen(rand.Reader, NewAttributes(test.Attrs))
 			if err != nil {
 				t.Fatalf("key generation failed: %s", err)
 			}
 			checkResults := func(ct []byte, sk AttributeKey, i int) {
 				pt, err := sk.Decrypt(ct)
-				if !testAttrs[i].Fail {
+				if tests[i].Success {
 					if err != nil {
 						t.Errorf("decryption failed: %s", err)
 					}
@@ -95,11 +64,21 @@ func TestConcurrentDecryption(t *testing.T) {
 }
 
 func TestEndToEndEncryption(t *testing.T) {
-	policies, testAttrs, attrs := loadTestCases(t)
+	var tests []TestCase
+	buf, _ := os.ReadFile("testdata/policies.json")
+	err := json.Unmarshal(buf, &tests)
+	if err != nil {
+		t.Fatal(err)
+	}
 	msg := []byte("must have the precious")
-	for i, policy := range policies {
+	for i, test := range tests {
 		t.Run(fmt.Sprintf("TestEndToEndEncryption:#%d", i), func(t *testing.T) {
 			pk, msk, err := Setup(rand.Reader)
+			if err != nil {
+				t.Fatal(err)
+			}
+			policy := Policy{}
+			err = policy.FromString(test.Policy)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -107,7 +86,8 @@ func TestEndToEndEncryption(t *testing.T) {
 			if err != nil {
 				t.Fatalf("encryption failed: %s", err)
 			}
-			sk, err := msk.KeyGen(rand.Reader, attrs[i])
+			attrs := NewAttributes(test.Attrs)
+			sk, err := msk.KeyGen(rand.Reader, attrs)
 			if err != nil {
 				t.Fatalf("key generation failed: %s", err)
 			}
@@ -120,16 +100,16 @@ func TestEndToEndEncryption(t *testing.T) {
 			if err = npol2.FromString(strpol); err != nil {
 				t.Fatalf("string %s didn't parse: %s", strpol, err)
 			}
-			sat := policy.Satisfaction(attrs[i])
-			if sat != npol.Satisfaction(attrs[i]) {
+			sat := policy.Satisfaction(attrs)
+			if sat != npol.Satisfaction(attrs) {
 				t.Fatalf("extracted policy doesn't match original")
 			}
-			if sat != npol2.Satisfaction(attrs[i]) {
+			if sat != npol2.Satisfaction(attrs) {
 				t.Fatalf("round triped policy doesn't match original")
 			}
-			ctSat := attrs[i].CouldDecrypt(ct)
+			ctSat := attrs.CouldDecrypt(ct)
 			pt, err := sk.Decrypt(ct)
-			if !testAttrs[i].Fail {
+			if test.Success {
 				// test case should succeed
 				if !sat {
 					t.Fatalf("satisfaction failed")
@@ -191,8 +171,11 @@ func TestMarshal(t *testing.T) {
 		t.Fatal("MasterSecretKey: failure to roundtrip")
 	}
 
-	attrs := Attributes{}
-	attrs.FromMap(map[string]string{"occupation": "doctor", "country": "US", "age": "16"})
+	attrs := NewAttributes([]Attribute{
+		{"occupation", "doctor", false},
+		{"country", "US", true},
+		{"age", "16", true},
+	})
 	sk, err := msk.KeyGen(rand.Reader, attrs)
 	if err != nil {
 		t.Fatal(err)
@@ -213,14 +196,14 @@ func TestMarshal(t *testing.T) {
 }
 
 func TestPolicyMethods(t *testing.T) {
-	policyStr := "(season: fall or season: winter) or (region: alaska and season: summer)"
+	policyStr := "(season: fall or season: winter) or (region: alaska and season: summer or season: *)"
 	policy := Policy{}
 	err := policy.FromString(policyStr)
 	if err != nil {
 		t.Fatal(err)
 	}
 	expected := map[string][]string{
-		"season": {"fall", "winter", "summer"},
+		"season": {"fall", "winter", "summer", "*"},
 		"region": {"alaska"},
 	}
 	received := policy.ExtractAttributeValuePairs()
@@ -249,13 +232,4 @@ func TestPolicyMethods(t *testing.T) {
 			}
 		}
 	}
-}
-
-func parseTestAttr(t *testing.T, buf string) TestAttribute {
-	var testAttr TestAttribute
-	err := json.Unmarshal([]byte("{"+buf+"}"), &testAttr)
-	if err != nil {
-		t.Fatalf("invalid attributes %s, parse error: %s\n", buf, err)
-	}
-	return testAttr
 }

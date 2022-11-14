@@ -1,14 +1,15 @@
 package main
 
 import (
+	"crypto/rand"
 	"log"
 	"os"
 
-	"code.cfops.it/crypto/cpabe"
+	cpabe "github.com/cloudflare/circl/abe/cpabe/tkn20"
 )
 
 func main() {
-	publicParams, secretParams, err := cpabe.Setup()
+	publicParams, secretParams, err := cpabe.Setup(rand.Reader)
 	ppData, err := publicParams.MarshalBinary()
 	if err != nil {
 		log.Fatal(err)
@@ -25,15 +26,18 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	attrs := cpabe.Attributes{}
-	attrs.FromMap(map[string]string{"country": "NL", "EU": "true"})
+	attrs := cpabe.NewAttributes([]cpabe.Attribute{
+		{"country", "NL", true},
+		{"region", "EU", false},
+	})
 
 	policy := cpabe.Policy{}
-	err = policy.FromString("EU: true")
+	err = policy.FromString("region: EU")
 	if err != nil {
 		log.Fatal(err)
 	}
-	ciphertext, err := publicParams.Encrypt(policy, []byte("Be sure to drink your ovaltine!"))
+
+	ciphertext, err := publicParams.Encrypt(rand.Reader, policy, []byte("Be sure to drink your ovaltine!"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -41,7 +45,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	key, err := secretParams.KeyGen(attrs)
+	key, err := secretParams.KeyGen(rand.Reader, attrs)
 	if err != nil {
 		log.Fatal(err)
 	}

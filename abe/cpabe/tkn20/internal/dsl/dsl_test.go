@@ -6,6 +6,7 @@ import (
 
 	"github.com/cloudflare/circl/abe/cpabe/tkn20/internal/dsl"
 	"github.com/cloudflare/circl/abe/cpabe/tkn20/internal/tkn"
+	pairing "github.com/cloudflare/circl/ecc/bls12381"
 )
 
 var testCases = []struct {
@@ -40,6 +41,14 @@ var testCases = []struct {
 	{
 		input: "ocean: indian and ship: rms titanic",
 		err:   errors.New("unexpected token titanic, expected logical operator \"and\" or \"or\""),
+	},
+	{
+		input: "country: **",
+		err:   errors.New("unexpected token *, expected logical operator \"and\" or \"or\""),
+	},
+	{
+		input: "*: US",
+		err:   errors.New("expected parentheses or literal"),
 	},
 	{
 		input: "not (spice: saffron and region: persia)",
@@ -114,6 +123,20 @@ var testCases = []struct {
 				Gates: []tkn.Gate{
 					{Class: tkn.Orgate, In0: 0, In1: 1, Out: 3},
 					{Class: tkn.Andgate, In0: 3, In1: 2, Out: 4},
+				},
+			},
+		},
+	},
+	{
+		input: "country: * or clearance: *",
+		output: &tkn.Policy{
+			Inputs: []tkn.Wire{
+				{Label: "country", RawValue: "*", Value: &pairing.Scalar{}, Positive: true},
+				{Label: "clearance", RawValue: "*", Value: &pairing.Scalar{}, Positive: true},
+			},
+			F: tkn.Formula{
+				Gates: []tkn.Gate{
+					{Class: tkn.Orgate, In0: 0, In1: 1, Out: 2},
 				},
 			},
 		},

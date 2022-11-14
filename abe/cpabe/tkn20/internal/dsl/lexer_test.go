@@ -18,13 +18,13 @@ func TestLexerErr(t *testing.T) {
 }
 
 func TestLexer(t *testing.T) {
-	l := newLexer("(sleep \n: \nnice\n)")
+	l := newLexer("(sleep \n: \nnice\n) and region: * or country: *")
 	err := l.scanTokens()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	types := []string{LeftParen, Identifier, Colon, Identifier, RightParen, EOF}
+	types := []string{LeftParen, Identifier, Colon, Identifier, RightParen, And, Identifier, Colon, Asterix, Or, Identifier, Colon, Asterix, EOF}
 
 	if len(l.tokens) != len(types) {
 		t.Fatalf("expected %d tokens, received: %v", len(types), len(l.tokens))

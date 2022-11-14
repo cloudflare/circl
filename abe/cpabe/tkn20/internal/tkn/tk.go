@@ -643,8 +643,8 @@ func deriveAttributeKeys(rand io.Reader, sp *SecretParams, attrs *Attributes) (*
 	k3 := make(map[string]*matrixG1)
 	k3wild := make(map[string]*matrixG1)
 	for label, attr := range *attrs {
-		if attr.wild {
-			// For wild k3 is y term, k3wild is constant term
+		if attr.Wild {
+			// For Wild k3 is y term, k3wild is constant term
 			U0, U1 := oracle([]byte(label))
 			V0, V1, err := prf(sp.prfKey, []byte(label))
 			if err != nil {
@@ -745,7 +745,7 @@ func decapsulate(header *ciphertextHeader, key *AttributesKey) (*pairing.Gt, err
 		if header.p.Inputs[match.wire].Positive {
 			p1[j].add(p1[j], header.c3[match.wire])
 
-			if (*key.a)[match.label].wild {
+			if (*key.a)[match.label].Wild {
 				if key.k3wild[match.label] == nil {
 					return nil, fmt.Errorf("missing wildcard data for Label %s", match.label)
 				}
@@ -761,7 +761,7 @@ func decapsulate(header *ciphertextHeader, key *AttributesKey) (*pairing.Gt, err
 			keymat := newMatrixG1(0, 0)
 			y := &pairing.Scalar{}
 
-			if (*key.a)[match.label].wild {
+			if (*key.a)[match.label].Wild {
 				y.Add(header.p.Inputs[match.wire].Value, ToScalar(1))
 				keymat.scalarMult(y, key.k3[match.label])
 				keymat.add(keymat, key.k3wild[match.label])

@@ -4,6 +4,7 @@ const (
 	LeftParen  = "("
 	RightParen = ")"
 	Colon      = ":"
+	Asterix    = "*"
 	And        = "and"
 	Or         = "or"
 	Not        = "not"

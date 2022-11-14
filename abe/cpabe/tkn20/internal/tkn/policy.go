@@ -32,13 +32,13 @@ type Policy struct {
 }
 
 type Attribute struct {
-	wild  bool // false if tame
+	Wild  bool // false if tame
 	Value *pairing.Scalar
 }
 
 func (a *Attribute) marshalBinary() ([]byte, error) {
 	ret := make([]byte, 1)
-	if a.wild {
+	if a.Wild {
 		ret[0] = 1
 	}
 	aBytes, err := a.Value.MarshalBinary()
@@ -55,9 +55,9 @@ func (a *Attribute) unmarshalBinary(data []byte) error {
 			attributeSize,
 			len(data))
 	}
-	a.wild = false
+	a.Wild = false
 	if data[0] == 1 {
-		a.wild = true
+		a.Wild = true
 	}
 	a.Value = &pairing.Scalar{}
 	err := a.Value.UnmarshalBinary(data[1:])
@@ -68,7 +68,7 @@ func (a *Attribute) unmarshalBinary(data []byte) error {
 }
 
 func (a *Attribute) Equal(b *Attribute) bool {
-	return a.wild == b.wild && a.Value.IsEqual(b.Value) == 1
+	return a.Wild == b.Wild && a.Value.IsEqual(b.Value) == 1
 }
 
 type Attributes map[string]Attribute
@@ -325,11 +325,11 @@ func (p *Policy) Satisfaction(attr *Attributes) (*Satisfaction, error) {
 			continue // missing Attribute might not be needed
 		}
 		if wire.Positive {
-			if (wire.Value.IsEqual(at.Value) == 1) || at.wild {
+			if (wire.Value.IsEqual(at.Value) == 1) || at.Wild {
 				matches = append(matches, match{i, wire.Label})
 			}
 		} else {
-			if (wire.Value.IsEqual(at.Value) == 0) || at.wild {
+			if (wire.Value.IsEqual(at.Value) == 0) || at.Wild {
 				matches = append(matches, match{i, wire.Label})
 			}
 		}
@@ -365,7 +365,7 @@ func transformAttrsBK(attr *Attributes) *Attributes {
 		ret[name] = val
 	}
 	ret[bkAttribute] = Attribute{
-		wild:  true,
+		Wild:  true,
 		Value: &pairing.Scalar{},
 	}
 	return (*Attributes)(&ret)

@@ -12,16 +12,17 @@ import (
 
 func checkPolicy(in map[string][]string) bool {
 	possiblePairs := map[string][]string{
-		"occupation": {"wizard", "doctor", "ghost"},
-		"country":    {"US", "croatia"},
-		"age":        {},
+		"Occupation":             {"Wizard", "Doctor", "Ghost"},
+		"SecurityClearanceLevel": {"low", "medium", "high", "*"},
+		"Country":                {"US", "Croatia"},
+		"Age":                    {},
 	}
 	isValid := func(key string, value string) bool {
 		vs, ok := possiblePairs[key]
 		if !ok {
 			return false
 		}
-		if key == "age" {
+		if key == "Age" {
 			age, err := strconv.Atoi(value)
 			if err != nil {
 				return false
@@ -49,17 +50,15 @@ func checkPolicy(in map[string][]string) bool {
 }
 
 func Example() {
-	policyStr := `(occupation: doctor) and (country: US)`
-	invalidPolicyStr := `(ocupation: doctor) and (country: pacific)`
+	policyStr := `(Occupation: Doctor) and (Country: US)`
+	policyWithWildcardsStr := `(Occupation: Doctor) or (SecurityClearanceLevel: *)`
+	invalidPolicyStr := `(Occupation: Doctor) and (Country: Pacific)`
 	msgStr := `must have the precious 🎃`
-	wrongAttrsMap := map[string]string{"occupation": "doctor", "country": "croatia"}
-	rightAttrsMap := map[string]string{"occupation": "doctor", "country": "US", "age": "16"}
 
 	publicKey, systemSecretKey, err := cpabe.Setup(rand.Reader)
 	if err != nil {
 		log.Fatalf("%s", err)
 	}
-
 	policy := cpabe.Policy{}
 	err = policy.FromString(policyStr)
 	if err != nil {
@@ -70,6 +69,16 @@ func Example() {
 	}
 
 	fmt.Println(policy.String())
+	wildPolicy := cpabe.Policy{}
+	err = wildPolicy.FromString(policyWithWildcardsStr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if !checkPolicy(wildPolicy.ExtractAttributeValuePairs()) {
+		log.Fatalf("policy check failed for valid policy")
+	}
+
 	invalidPolicy := cpabe.Policy{}
 	err = invalidPolicy.FromString(invalidPolicyStr)
 	if err != nil {
@@ -85,14 +94,29 @@ func Example() {
 		log.Fatalf("%s", err)
 	}
 
+	ctWild, err := publicKey.Encrypt(rand.Reader, wildPolicy, []byte(msgStr))
+	if err != nil {
+		log.Fatalf("%s", err)
+	}
+
 	// generate secret key for certain set of attributes
-	wrongAttrs := cpabe.Attributes{}
-	wrongAttrs.FromMap(wrongAttrsMap)
-	rightAttrs := cpabe.Attributes{}
-	rightAttrs.FromMap(rightAttrsMap)
+	wrongAttrs := cpabe.NewAttributes([]cpabe.Attribute{
+		{"Occupation", "Doctor", false},
+		{"Country", "Croatia", false},
+	})
+	rightAttrs := cpabe.NewAttributes([]cpabe.Attribute{
+		{"Occupation", "Doctor", false},
+		{"Country", "US", false},
+		{"Age", "16", false},
+	})
+	wildAttrs := cpabe.NewAttributes([]cpabe.Attribute{
+		{"SecurityClearanceLevel", "high", true},
+		{"Occupation", "President", false},
+	})
 
 	wrongSecretKey, _ := systemSecretKey.KeyGen(rand.Reader, wrongAttrs)
 	rightSecretKey, _ := systemSecretKey.KeyGen(rand.Reader, rightAttrs)
+	wildSecretKey, _ := systemSecretKey.KeyGen(rand.Reader, wildAttrs)
 
 	wrongSat := policy.Satisfaction(wrongAttrs)
 	if wrongSat {
@@ -101,6 +125,10 @@ func Example() {
 	rightSat := policy.Satisfaction(rightAttrs)
 	if !rightSat {
 		log.Fatalf("right attributes should satisfy policy")
+	}
+	wildSat := wildPolicy.Satisfaction(wildAttrs)
+	if !wildSat {
+		log.Fatalf("attributes should satisfy policy")
 	}
 
 	// wrong attrs should not satisfy ciphertext
@@ -111,6 +139,10 @@ func Example() {
 	rightCtSat := rightAttrs.CouldDecrypt(ct)
 	if rightCtSat == false {
 		log.Fatalf("right attrs should satisfy ciphertext")
+	}
+	wildCtSat := wildAttrs.CouldDecrypt(ctWild)
+	if !wildCtSat {
+		log.Fatalf("attrs should satisfy ciphertext")
 	}
 
 	// attempt to decrypt with wrong attributes should fail
@@ -126,7 +158,16 @@ func Example() {
 	if !bytes.Equal(pt, []byte(msgStr)) {
 		log.Fatalf("recoverd plaintext: %s is not equal to original msg: %s", pt, msgStr)
 	}
+
+	ptWild, err := wildSecretKey.Decrypt(ctWild)
+	if err != nil {
+		log.Fatalf("decryption should have succeeded")
+	}
+	if !bytes.Equal(ptWild, []byte(msgStr)) {
+		log.Fatalf("recoverd plaintext: %s is not equal to original msg: %s", ptWild, msgStr)
+	}
+
 	fmt.Println("Successfully recovered plaintext")
-	// Output: (occupation:doctor and country:US)
+	// Output: (Occupation:Doctor and Country:US)
 	// Successfully recovered plaintext
 }

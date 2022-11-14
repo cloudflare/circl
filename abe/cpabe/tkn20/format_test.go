@@ -46,12 +46,12 @@ func TestCiphertext(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unable to read ciphertext data")
 	}
-	policyKey, err := os.ReadFile("testdata/attributeKey")
+	attributeKey, err := os.ReadFile("testdata/attributeKey")
 	if err != nil {
 		t.Fatalf("Unable to read secret key")
 	}
 	sk := AttributeKey{}
-	err = sk.UnmarshalBinary(policyKey)
+	err = sk.UnmarshalBinary(attributeKey)
 	if err != nil {
 		t.Fatalf("unable to parse secret key")
 	}

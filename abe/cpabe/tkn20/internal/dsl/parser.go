@@ -162,10 +162,11 @@ func (p *Parser) primary() (Expr, error) {
 
 	if p.tokens[p.curr].Type == Identifier {
 		if p.tokens[p.curr+1].Type == Colon {
-			if p.tokens[p.curr+2].Type == Identifier {
+			if p.tokens[p.curr+2].Type == Identifier || p.tokens[p.curr+2].Type == Asterix {
 				nextToken := p.tokens[p.curr+3].Type
 				if (nextToken == Identifier) ||
 					(nextToken == Colon) ||
+					(nextToken == Asterix) ||
 					(nextToken == LeftParen) ||
 					(nextToken == Not) {
 					return nil, fmt.Errorf(
@@ -181,6 +182,9 @@ func (p *Parser) primary() (Expr, error) {
 				attrVal := attrValue{
 					value:    value.Lexeme,
 					positive: true,
+				}
+				if p.tokens[p.curr+2].Type == Asterix {
+					attrVal.wild = true
 				}
 				p.wires[currAttr] = attrVal
 				p.curr += 3

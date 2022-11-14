@@ -121,26 +121,53 @@ func (p *Policy) Satisfaction(a Attributes) bool {
 	return err == nil
 }
 
+// An Attribute is some characteristic associated with an entity.
+// For example, a user can have an Attribute with Key `country` and Value `US`.
+// An Attribute can also support wildcards. This means that if a Policy has a term
+// where the attribute's value is a wildcard, such as `country: *`, this user will
+// be able to satisfy it as long as it has an Attribute with Key `country`, irrespective of the Value.
+// SupportWildcard set to false (as is the default) will not allow this user to satisfy
+// a Policy such as `country: *`.
+//
+// Attribute is not used directly for any purposes such as generating keys.
+// Users must use the function [NewAttributes] to first construct the struct Attributes,
+// which can then be used for various purposes.
+type Attribute struct {
+	Key             string
+	Value           string
+	SupportWildcard bool
+}
+
+// Attributes correspond to a set of Attributes(s) associated with some entity.
+// Attributes can be used for various purposes, such as generating an AttributeKey corresponding to
+// this set of attributes.
 type Attributes struct {
 	attrs tkn.Attributes
 }
 
+// Equal checks equality of two sets of Attributes.
 func (a *Attributes) Equal(a2 *Attributes) bool {
 	return a.attrs.Equal(&a2.attrs)
 }
 
+// CouldDecrypt checks if a given set of attributes are capable of decrypting a ciphertext
+// encrypted under some policy. This method can be helpful for determining satisfaction when the Policy
+// and/or AttributeKey is unknown, such as when a user without the relevant attributes is trying to determine
+// who possess access of a given resource.
 func (a *Attributes) CouldDecrypt(ciphertext []byte) bool {
 	return tkn.CouldDecrypt(ciphertext, &a.attrs)
 }
 
-func (a *Attributes) FromMap(in map[string]string) {
+// NewAttributes takes as input a list of Attribute(s) that are associated with some entity, and returns Attributes.
+func NewAttributes(in []Attribute) Attributes {
 	attrs := make(map[string]tkn.Attribute, len(in))
-	for k, v := range in {
-		attrs[k] = tkn.Attribute{
-			Value: tkn.HashStringToScalar(dsl.AttrHashKey, v),
+	for _, attr := range in {
+		attrs[attr.Key] = tkn.Attribute{
+			Wild:  attr.SupportWildcard,
+			Value: tkn.HashStringToScalar(dsl.AttrHashKey, attr.Value),
 		}
 	}
-	a.attrs = attrs
+	return Attributes{attrs: attrs}
 }
 
 func Setup(rand io.Reader) (PublicKey, SystemSecretKey, error) {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cloudflare/circl/abe/cpabe/tkn20/internal/tkn"
+	pairing "github.com/cloudflare/circl/ecc/bls12381"
 )
 
 var operators = map[string]int{
@@ -14,6 +15,7 @@ var operators = map[string]int{
 type attrValue struct {
 	value    string
 	positive bool
+	wild     bool
 }
 
 type attr struct {
@@ -53,17 +55,21 @@ func (t *Ast) RunPasses() (*tkn.Policy, error) {
 func (t *Ast) hashAttrValues() ([]tkn.Wire, error) {
 	wires := make([]tkn.Wire, len(t.wires))
 	for k, v := range t.wires {
+		wire := tkn.Wire{
+			Label:    k.key,
+			RawValue: v.value,
+			Positive: v.positive,
+		}
+		wires[k.id] = wire
+		if v.wild {
+			wires[k.id].Value = &pairing.Scalar{}
+			continue
+		}
 		value := tkn.HashStringToScalar(AttrHashKey, v.value)
 		if value == nil {
 			return nil, fmt.Errorf("error on hashing")
 		}
-		wire := tkn.Wire{
-			Label:    k.key,
-			RawValue: v.value,
-			Value:    value,
-			Positive: v.positive,
-		}
-		wires[k.id] = wire
+		wires[k.id].Value = value
 	}
 	return wires, nil
 }
