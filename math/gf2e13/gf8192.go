@@ -1,22 +1,22 @@
-// Package gf8192 provides finite field arithmetic over GF(2^13).
-package gf8192
+// Package gf2e13 provides finite field arithmetic over GF(2^13).
+package gf2e13
 
-// Gf is a field element of characteristic 2 modulo z^13 + z^4 + z^3 + z + 1
-type Gf = uint16
+// Elt is a field element of characteristic 2 modulo z^13 + z^4 + z^3 + z + 1
+type Elt = uint16
 
 const (
-	GfBits = 13
-	GfMask = (1 << GfBits) - 1
+	Bits = 13
+	Mask = (1 << Bits) - 1
 )
 
-// Add two Gf elements together. Since an addition in Gf(2) is the same as XOR,
+// Add two Elt elements together. Since an addition in Elt(2) is the same as XOR,
 // this implementation uses a simple XOR for addition.
-func Add(a, b Gf) Gf {
+func Add(a, b Elt) Elt {
 	return a ^ b
 }
 
-// Mul calculate the product of two Gf elements.
-func Mul(a, b Gf) Gf {
+// Mul calculate the product of two Elt elements.
+func Mul(a, b Elt) Elt {
 	a64 := uint64(a)
 	b64 := uint64(b)
 
@@ -24,7 +24,7 @@ func Mul(a, b Gf) Gf {
 	tmp := a64 & -(b64 & 1)
 
 	// check if i-th bit of b64 is set, add a64 shifted by i bits if so
-	for i := 1; i < GfBits; i++ {
+	for i := 1; i < Bits; i++ {
 		tmp ^= a64 * (b64 & (1 << i))
 	}
 
@@ -35,11 +35,11 @@ func Mul(a, b Gf) Gf {
 	t = tmp & 0x000E000
 	tmp ^= (t >> 9) ^ (t >> 10) ^ (t >> 12) ^ (t >> 13)
 
-	return uint16(tmp & GfMask)
+	return uint16(tmp & Mask)
 }
 
 // sqr2 calculates a^4
-func sqr2(a Gf) Gf {
+func sqr2(a Elt) Elt {
 	a64 := uint64(a)
 	a64 = (a64 | (a64 << 24)) & 0x000000FF000000FF
 	a64 = (a64 | (a64 << 12)) & 0x000F000F000F000F
@@ -55,11 +55,11 @@ func sqr2(a Gf) Gf {
 	t = a64 & 0x00000000003FE000
 	a64 ^= (t >> 9) ^ (t >> 10) ^ (t >> 12) ^ (t >> 13)
 
-	return uint16(a64 & GfMask)
+	return uint16(a64 & Mask)
 }
 
 // sqrMul calculates the product of a^2 and b
-func sqrMul(a, b Gf) Gf {
+func sqrMul(a, b Elt) Elt {
 	a64 := uint64(a)
 	b64 := uint64(b)
 
@@ -79,11 +79,11 @@ func sqrMul(a, b Gf) Gf {
 	t = x & 0x000000000007E000
 	x ^= (t >> 9) ^ (t >> 10) ^ (t >> 12) ^ (t >> 13)
 
-	return uint16(x & GfMask)
+	return uint16(x & Mask)
 }
 
 // sqr2Mul calculates the product of a^4 and b
-func sqr2Mul(a, b Gf) Gf {
+func sqr2Mul(a, b Elt) Elt {
 	a64 := uint64(a)
 	b64 := uint64(b)
 
@@ -109,16 +109,16 @@ func sqr2Mul(a, b Gf) Gf {
 	t = x & 0x000000000001E000
 	x ^= (t >> 9) ^ (t >> 10) ^ (t >> 12) ^ (t >> 13)
 
-	return uint16(x & GfMask)
+	return uint16(x & Mask)
 }
 
-// Inv calculates the multiplicative inverse of Gf element a
-func Inv(a Gf) Gf {
+// Inv calculates the multiplicative inverse of Elt element a
+func Inv(a Elt) Elt {
 	return Div(1, a)
 }
 
 // Div calculates a / b
-func Div(a, b Gf) Gf {
+func Div(a, b Elt) Elt {
 	tmp3 := sqrMul(b, b)         // b^3
 	tmp15 := sqr2Mul(tmp3, tmp3) // b^15 = b^(3*2*2+3)
 	out := sqr2(tmp15)

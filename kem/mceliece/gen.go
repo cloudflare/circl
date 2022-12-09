@@ -57,7 +57,7 @@ func (m Instance) Is8192128() bool {
 
 var (
 	McElieceParam348864 = Param{
-		Gf:             "gf4096",
+		Gf:             "gf2e12",
 		PublicKeySize:  261120,
 		PrivateKeySize: 6492,
 		CiphertextSize: 96,
@@ -65,7 +65,7 @@ var (
 		SysT:           64,
 	}
 	McElieceParam460896 = Param{
-		Gf:             "gf8192",
+		Gf:             "gf2e13",
 		PublicKeySize:  524160,
 		PrivateKeySize: 13608,
 		CiphertextSize: 156,
@@ -73,7 +73,7 @@ var (
 		SysT:           96,
 	}
 	McElieceParam6688128 = Param{
-		Gf:             "gf8192",
+		Gf:             "gf2e13",
 		PublicKeySize:  1044992,
 		PrivateKeySize: 13932,
 		CiphertextSize: 208,
@@ -81,7 +81,7 @@ var (
 		SysT:           128,
 	}
 	McElieceParam6960119 = Param{
-		Gf:             "gf8192",
+		Gf:             "gf2e13",
 		PublicKeySize:  1047319,
 		PrivateKeySize: 13948,
 		CiphertextSize: 194,
@@ -89,7 +89,7 @@ var (
 		SysT:           119,
 	}
 	McElieceParam8192128 = Param{
-		Gf:             "gf8192",
+		Gf:             "gf2e13",
 		PublicKeySize:  1357824,
 		PrivateKeySize: 14120,
 		CiphertextSize: 208,

@@ -1,8 +1,8 @@
 package internal
 
 import (
-	"github.com/cloudflare/circl/math/gf4096"
-	"github.com/cloudflare/circl/math/gf8192"
+	"github.com/cloudflare/circl/math/gf2e12"
+	"github.com/cloudflare/circl/math/gf2e13"
 )
 
 var ButterfliesReversal4096 = [64]byte{
@@ -45,7 +45,7 @@ var RadixConversionsMask = [5][2]uint64{
 	{0xFFFF000000000000, 0x0000FFFF00000000},
 }
 
-var ButterfliesConst = [128][gf8192.GfBits]uint64{
+var ButterfliesConst = [128][gf2e13.Bits]uint64{
 	{
 		0x6969969669699696,
 		0x9966669966999966,
@@ -1968,7 +1968,7 @@ var ButterfliesConst = [128][gf8192.GfBits]uint64{
 	},
 }
 
-var RadixConversionsS = [5][2][gf8192.GfBits]uint64{
+var RadixConversionsS = [5][2][gf2e13.Bits]uint64{
 	{
 		{
 			0x3C3CF30C0000C003,
@@ -2131,7 +2131,7 @@ var RadixConversionsS = [5][2][gf8192.GfBits]uint64{
 	},
 }
 
-var RadixConversionsS4096 = [5][gf4096.GfBits]uint64{
+var RadixConversionsS4096 = [5][gf2e12.Bits]uint64{
 	{
 		0xF3CFC030FC30F003,
 		0x3FCF0F003C00C00C,
@@ -2204,7 +2204,7 @@ var RadixConversionsS4096 = [5][gf4096.GfBits]uint64{
 	},
 }
 
-var ButterfliesConsts4096 = [63][gf4096.GfBits]uint64{
+var ButterfliesConsts4096 = [63][gf2e12.Bits]uint64{
 	// 64
 	{
 		0xF00F0FF0F00F0FF0,

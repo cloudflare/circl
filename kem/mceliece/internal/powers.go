@@ -1,11 +1,11 @@
 package internal
 
 import (
-	"github.com/cloudflare/circl/math/gf4096"
-	"github.com/cloudflare/circl/math/gf8192"
+	"github.com/cloudflare/circl/math/gf2e12"
+	"github.com/cloudflare/circl/math/gf2e13"
 )
 
-var Powers4096 = [64][gf4096.GfBits]uint64{
+var Powers4096 = [64][gf2e12.Bits]uint64{
 	{
 		0x0F0F0F0FF0F0F0F0,
 		0xFFFF0000FFFF0000,
@@ -904,7 +904,7 @@ var Powers4096 = [64][gf4096.GfBits]uint64{
 	},
 }
 
-var Powers8192 = [128][gf8192.GfBits]uint64{
+var Powers8192 = [128][gf2e13.Bits]uint64{
 	{
 		0x5AA55AA5A55AA55A,
 		0x3CC33CC3C33CC33C,

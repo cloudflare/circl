@@ -1,4 +1,4 @@
-package gf8192
+package gf2e13
 
 import (
 	"testing"
@@ -7,16 +7,17 @@ import (
 )
 
 type (
-	tadd     func(x, y Gf) Gf
-	tmul     func(x, y Gf) Gf
-	tsqr2    func(x Gf) Gf
-	tsqrmul  func(x, y Gf) Gf
-	tsqr2mul func(x, y Gf) Gf
-	tinv     func(x Gf) Gf
-	tdiv     func(x, y Gf) Gf
+	tadd     func(x, y Elt) Elt
+	tmul     func(x, y Elt) Elt
+	tsqr2    func(x Elt) Elt
+	tsqrmul  func(x, y Elt) Elt
+	tsqr2mul func(x, y Elt) Elt
+	tinv     func(x Elt) Elt
+	tdiv     func(x, y Elt) Elt
 )
 
-func assertEq(t *testing.T, a, b Gf) {
+func assertEq(t *testing.T, a, b Elt) {
+	t.Helper()
 	if a != b {
 		test.ReportError(t, b, a)
 	}
@@ -96,8 +97,6 @@ func testInv(t *testing.T, inv tinv) {
 	assertEq(t, inv(4095), 4657)
 	assertEq(t, inv(4096), 911)
 	assertEq(t, inv(8191), 5953)
-	assertEq(t, inv(8192), 0)
-	assertEq(t, inv(0xFFFF), 4378)
 }
 
 func testSqr2(t *testing.T, sqr2 tsqr2) {
@@ -109,8 +108,6 @@ func testSqr2(t *testing.T, sqr2 tsqr2) {
 	assertEq(t, sqr2(4095), 2883)
 	assertEq(t, sqr2(4096), 7941)
 	assertEq(t, sqr2(8191), 5190)
-	assertEq(t, sqr2(8192), 0)
-	assertEq(t, sqr2(0xFFFF), 5190)
 }
 
 func testMul(t *testing.T, mul tmul) {

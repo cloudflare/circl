@@ -1,22 +1,22 @@
-// Package gf4096 provides finite field arithmetic over GF(2^12).
-package gf4096
+// Package gf2e12 provides finite field arithmetic over GF(2^12).
+package gf2e12
 
-// Gf is a field element of characteristic 2 modulo z^12 + z^3 + 1
-type Gf = uint16
+// Elt is a field element of characteristic 2 modulo z^12 + z^3 + 1
+type Elt = uint16
 
 const (
-	GfBits = 12
-	GfMask = (1 << GfBits) - 1
+	Bits = 12
+	Mask = (1 << Bits) - 1
 )
 
-// Add two Gf elements together. Since an addition in Gf(2) is the same as XOR,
+// Add two Elt elements together. Since an addition in Elt(2) is the same as XOR,
 // this implementation uses a simple XOR for addition.
-func Add(a, b Gf) Gf {
+func Add(a, b Elt) Elt {
 	return a ^ b
 }
 
-// Mul calculate the product of two Gf elements.
-func Mul(a, b Gf) Gf {
+// Mul calculate the product of two Elt elements.
+func Mul(a, b Elt) Elt {
 	a64 := uint64(a)
 	b64 := uint64(b)
 
@@ -24,7 +24,7 @@ func Mul(a, b Gf) Gf {
 	tmp := a64 & -(b64 & 1)
 
 	// check if i-th bit of b64 is set, add a64 shifted by i bits if so
-	for i := 1; i < GfBits; i++ {
+	for i := 1; i < Bits; i++ {
 		tmp ^= a64 * (b64 & (1 << i))
 	}
 
@@ -37,11 +37,11 @@ func Mul(a, b Gf) Gf {
 	tmp ^= t >> 9
 	tmp ^= t >> 12
 
-	return uint16(tmp & GfMask)
+	return Elt(tmp & Mask)
 }
 
-// sqr calculates the square of Gf element a
-func sqr(a Gf) Gf {
+// sqr calculates the square of Elt element a
+func sqr(a Elt) Elt {
 	a32 := uint32(a)
 	a32 = (a32 | (a32 << 8)) & 0x00FF00FF
 	a32 = (a32 | (a32 << 4)) & 0x0F0F0F0F
@@ -56,11 +56,11 @@ func sqr(a Gf) Gf {
 	a32 ^= t >> 9
 	a32 ^= t >> 12
 
-	return uint16(a32 & GfMask)
+	return uint16(a32 & Mask)
 }
 
-// Inv calculates the multiplicative inverse of Gf element a
-func Inv(a Gf) Gf {
+// Inv calculates the multiplicative inverse of Elt element a
+func Inv(a Elt) Elt {
 	out := sqr(a)
 	tmp3 := Mul(out, a) // a^3
 
@@ -78,6 +78,6 @@ func Inv(a Gf) Gf {
 }
 
 // Div calculates a / b
-func Div(a, b Gf) Gf {
+func Div(a, b Elt) Elt {
 	return Mul(Inv(b), a)
 }

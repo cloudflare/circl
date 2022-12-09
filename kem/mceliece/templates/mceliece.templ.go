@@ -32,8 +32,8 @@ import (
 
 const (
 	sysT                  = {{.Param.SysT}}// F(y) is 64 degree
-	gfBits                = {{.Param.Gf}}.GfBits
-	gfMask                = {{.Param.Gf}}.GfMask
+	gfBits                = {{.Param.Gf}}.Bits
+	gfMask                = {{.Param.Gf}}.Mask
 	unusedBits            = 16 - gfBits
 	sysN                  = {{.Param.SysN}}
 	condBytes             = (1 << (gfBits - 4)) * (2*gfBits - 1)
@@ -59,7 +59,7 @@ type PrivateKey struct {
 }
 
 type (
-	gf       = {{.Param.Gf}}.Gf
+	gf       = {{.Param.Gf}}.Elt
 	randFunc = func(pool []byte) error
 )
 

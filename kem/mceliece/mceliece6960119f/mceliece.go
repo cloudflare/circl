@@ -23,13 +23,13 @@ import (
 	"github.com/cloudflare/circl/internal/sha3"
 	"github.com/cloudflare/circl/kem"
 	"github.com/cloudflare/circl/kem/mceliece/internal"
-	"github.com/cloudflare/circl/math/gf8192"
+	"github.com/cloudflare/circl/math/gf2e13"
 )
 
 const (
 	sysT                  = 119 // F(y) is 64 degree
-	gfBits                = gf8192.GfBits
-	gfMask                = gf8192.GfMask
+	gfBits                = gf2e13.Bits
+	gfMask                = gf2e13.Mask
 	unusedBits            = 16 - gfBits
 	sysN                  = 6960
 	condBytes             = (1 << (gfBits - 4)) * (2*gfBits - 1)
@@ -55,7 +55,7 @@ type PrivateKey struct {
 }
 
 type (
-	gf       = gf8192.Gf
+	gf       = gf2e13.Elt
 	randFunc = func(pool []byte) error
 )
 
@@ -322,10 +322,10 @@ func synd(out *[sysT * 2]gf, f *[sysT + 1]gf, L *[sysN]gf, r *[sysN / 8]byte) {
 	for i := 0; i < sysN; i++ {
 		c := uint16(r[i/8]>>(i%8)) & 1
 		e := eval(f, L[i])
-		eInv := gf8192.Inv(gf8192.Mul(e, e))
+		eInv := gf2e13.Inv(gf2e13.Mul(e, e))
 		for j := 0; j < 2*sysT; j++ {
-			out[j] = gf8192.Add(out[j], gf8192.Mul(eInv, c))
-			eInv = gf8192.Mul(eInv, L[i])
+			out[j] = gf2e13.Add(out[j], gf2e13.Mul(eInv, c))
+			eInv = gf2e13.Mul(eInv, L[i])
 		}
 	}
 }
@@ -352,7 +352,7 @@ func bm(out *[sysT + 1]gf, s *[2 * sysT]gf) {
 	for N := 0; N < 2*sysT; N++ {
 		d = 0
 		for i := 0; i <= min(N, sysT); i++ {
-			d ^= gf8192.Mul(C[i], s[N-i])
+			d ^= gf2e13.Mul(C[i], s[N-i])
 		}
 		mne = d
 		mne -= 1
@@ -366,9 +366,9 @@ func bm(out *[sysT + 1]gf, s *[2 * sysT]gf) {
 		for i := 0; i <= sysT; i++ {
 			T[i] = C[i]
 		}
-		f = gf8192.Div(d, b)
+		f = gf2e13.Div(d, b)
 		for i := 0; i <= sysT; i++ {
-			C[i] ^= gf8192.Mul(f, B[i]) & mne
+			C[i] ^= gf2e13.Mul(f, B[i]) & mne
 		}
 		L = (L & ^mle) | ((uint16(N) + 1 - L) & mle)
 
@@ -478,16 +478,16 @@ func minimalPolynomial(out *[sysT]gf, f *[sysT]gf) bool {
 			return false
 		}
 
-		inv := gf8192.Inv(mat[j][j])
+		inv := gf2e13.Inv(mat[j][j])
 		for c := 0; c <= sysT; c++ {
-			mat[c][j] = gf8192.Mul(mat[c][j], inv)
+			mat[c][j] = gf2e13.Mul(mat[c][j], inv)
 		}
 
 		for k := 0; k < sysT; k++ {
 			if k != j {
 				t := mat[j][k]
 				for c := 0; c <= sysT; c++ {
-					mat[c][k] ^= gf8192.Mul(mat[c][j], t)
+					mat[c][k] ^= gf2e13.Mul(mat[c][j], t)
 				}
 			}
 		}
@@ -505,7 +505,7 @@ func polyMul(out *[sysT]gf, a *[sysT]gf, b *[sysT]gf) {
 	product := [sysT*2 - 1]gf{}
 	for i := 0; i < sysT; i++ {
 		for j := 0; j < sysT; j++ {
-			product[i+j] ^= gf8192.Mul(a[i], b[j])
+			product[i+j] ^= gf2e13.Mul(a[i], b[j])
 		}
 	}
 
@@ -552,8 +552,8 @@ func transpose64x64(out, in *[64]uint64) {
 func eval(f *[sysT + 1]gf, a gf) gf {
 	r := f[sysT]
 	for i := sysT - 1; i >= 0; i-- {
-		r = gf8192.Mul(r, a)
-		r = gf8192.Add(r, f[i])
+		r = gf2e13.Mul(r, a)
+		r = gf2e13.Add(r, f[i])
 	}
 	return r
 }
