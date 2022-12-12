@@ -14,6 +14,9 @@
 //
 //	FrodoKEM-640-SHAKE
 //	Kyber512, Kyber768, Kyber1024
+//	Kyber512, Kyber768, Kyber1024
+//	SNTRUP653, SNTRUP761, SNTRUP857, SNTRUP953, SNTRUP1013, SNTRUP1277
+
 package schemes
 
 import (
@@ -26,6 +29,12 @@ import (
 	"github.com/cloudflare/circl/kem/kyber/kyber1024"
 	"github.com/cloudflare/circl/kem/kyber/kyber512"
 	"github.com/cloudflare/circl/kem/kyber/kyber768"
+	"github.com/cloudflare/circl/kem/ntruprime/ntrulpr1013"
+	"github.com/cloudflare/circl/kem/ntruprime/ntrulpr1277"
+	"github.com/cloudflare/circl/kem/ntruprime/ntrulpr653"
+	"github.com/cloudflare/circl/kem/ntruprime/ntrulpr761"
+	"github.com/cloudflare/circl/kem/ntruprime/ntrulpr857"
+	"github.com/cloudflare/circl/kem/ntruprime/ntrulpr953"
 )
 
 var allSchemes = [...]kem.Scheme{
@@ -43,6 +52,12 @@ var allSchemes = [...]kem.Scheme{
 	hybrid.Kyber768X448(),
 	hybrid.Kyber1024X448(),
 	hybrid.P256Kyber768Draft00(),
+	ntrulpr1013.Scheme(),
+	ntrulpr1277.Scheme(),
+	ntrulpr653.Scheme(),
+	ntrulpr761.Scheme(),
+	ntrulpr857.Scheme(),
+	ntrulpr953.Scheme(),
 }
 
 var allSchemeNames map[string]kem.Scheme
