@@ -108,8 +108,7 @@ func right(T int8) Fq {
 // Polynomials mod q
 
 // h = f*g in the ring Rq */
-func rqMultSmall(f []Fq, g []small) (h []Fq) {
-	h = make([]Fq, p)
+func rqMultSmall(h []Fq, f []Fq, g []small) {
 	fg := make([]Fq, p+p-1)
 	var result Fq
 
@@ -138,17 +137,14 @@ func rqMultSmall(f []Fq, g []small) (h []Fq) {
 	for i := 0; i < p; i++ {
 		h[i] = fg[i]
 	}
-	return h
 }
 
 // Rounding all coefficients of a polynomial to the nearest multiple of 3
 // Rounded polynomials mod q
-func round(a []Fq) []Fq {
-	out := make([]Fq, p)
+func round(out []Fq, a []Fq) {
 	for i := 0; i < p; i++ {
 		out[i] = a[i] - Fq(f3Freeze(int16(a[i])))
 	}
-	return out
 }
 
 // Returns (min(x, y), max(x, y)), executes in constant time
@@ -193,8 +189,7 @@ func cryptoSortUint32(x []uint32, n int) {
 }
 
 // Sorting to generate short polynomial
-func shortFromList(in []int32) []small {
-	out := make([]small, p)
+func shortFromList(out []small, in []int32) {
 	L := make([]uint32, p)
 
 	var neg2, neg3 int = -2, -3
@@ -212,7 +207,6 @@ func shortFromList(in []int32) []small {
 	for i := 0; i < p; i++ {
 		out[i] = small((L[i] & 3) - 1)
 	}
-	return out
 }
 
 // Underlying hash function
@@ -223,14 +217,14 @@ func shortFromList(in []int32) []small {
 // e.g., b = 0 means out = Hash0(in)
 func hashPrefix(out []byte, b int, in []byte, inlen int) {
 	x := make([]byte, inlen+1)
-	h := make([]byte, 64)
+	// h := make([]byte, 64)
 
 	x[0] = byte(b)
 	copy(x[1:], in)
 
 	hash := sha512.New()
 	hash.Write([]byte(x))
-	h = hash.Sum(nil)
+	h := hash.Sum(nil)
 
 	copy(out, h[:32])
 
@@ -240,26 +234,17 @@ func hashPrefix(out []byte, b int, in []byte, inlen int) {
 // Returns a random unsigned integer
 // generator can be passed for deterministic number generation
 func urandom32(seed []byte) uint32 {
-
-	c := make([]byte, 4)
 	var out [4]uint32
 
-	if seed != nil {
-		copy(c, seed)
-	} else {
-		cryptoRand.Read(c)
-
-	}
-
-	out[0] = uint32(c[0])
-	out[1] = uint32(c[1]) << 8
-	out[2] = uint32(c[2]) << 16
-	out[3] = uint32(c[3]) << 24
+	out[0] = uint32(seed[0])
+	out[1] = uint32(seed[1]) << 8
+	out[2] = uint32(seed[2]) << 16
+	out[3] = uint32(seed[3]) << 24
 	return out[0] + out[1] + out[2] + out[3]
 }
 
 // Generates a random short polynomial
-func shortRandom(seed []byte) []small {
+func shortRandom(out []small, seed []byte) {
 
 	L := make([]uint32, p)
 
@@ -278,42 +263,40 @@ func shortRandom(seed []byte) []small {
 	for i := 0; i < len(L); i++ {
 		L_int32[i] = int32(L[i])
 	}
-	out := shortFromList(L_int32)
-
-	return out
-
+	shortFromList(out, L_int32)
 }
 
 // NTRU LPRime Core
 
 // (G,A),a = keyGen(G); leaves G unchanged
 func keyGen(A []Fq, a []small, G []Fq, seed []byte) {
-
-	copy(a, shortRandom(seed))
-	aG := rqMultSmall(G, a)
-	copy(A, round(aG))
+	aG := make([]Fq, p)
+	shortRandom(a, seed)
+	rqMultSmall(aG, G, a)
+	round(A, aG)
 }
 
 // B,T = encrypt(r,(G,A),b)
-func encrypt(r []int8, G []Fq, A []Fq, b []small) ([]Fq, []int8) {
-	T := make([]int8, I)
-	bG := rqMultSmall(G, b)
-	B := round(bG)
-	bA := rqMultSmall(A, b)
+func encrypt(B []Fq, T []int8, r []int8, G []Fq, A []Fq, b []small) {
+	bG := make([]Fq, p)
+	bA := make([]Fq, p)
+
+	rqMultSmall(bG, G, b)
+	round(B, bG)
+	rqMultSmall(bA, A, b)
 
 	for i := 0; i < I; i++ {
 		T[i] = top(fqFreeze(int32(bA[i]) + int32(r[i])*q12))
 	}
-
-	return B, T
 }
 
 // r = decrypt((B,T),a)
 func decrypt(B []Fq, T []int8, a []small) []int8 {
+	aB := make([]Fq, p)
 
 	r := make([]int8, I)
 
-	aB := rqMultSmall(B, a)
+	rqMultSmall(aB, B, a)
 
 	for i := 0; i < I; i++ {
 		r[i] = int8(-internal.Int16_negative_mask(int16(fqFreeze(int32(right(T[i])) - int32(aB[i]) + 4*w + 1))))
@@ -336,18 +319,17 @@ func inputsEncode(s []byte, r Inputs) {
 // Expand
 
 func expand(L []uint32, k []byte) {
-	temp := make([]byte, len(L))             // plaintext to be encrypted. Should be of the same size as L (4*P)
-	aes_nonce := make([]byte, aes.BlockSize) // IV
+	temp := make([]byte, len(L)) // plaintext to be encrypted. Should be of the same size as L (4*P)
+	ciphertext := make([]byte, aes.BlockSize+len(temp))
 
 	block, err := aes.NewCipher(k[:32])
 	if err != nil {
 		panic(err)
 	}
 
-	ciphertext := make([]byte, len(temp)) // same length as plaintext
-
-	stream := cipher.NewCTR(block, aes_nonce)
-	stream.XORKeyStream(ciphertext, temp)
+	stream := cipher.NewCTR(block, ciphertext[:aes.BlockSize])
+	stream.XORKeyStream(ciphertext[aes.BlockSize:], temp)
+	ciphertext = ciphertext[aes.BlockSize:]
 
 	// convert byte to uint32
 	for i := 0; i < len(temp); i++ {
@@ -365,18 +347,16 @@ func expand(L []uint32, k []byte) {
 
 // generator, hashShort
 // G = generator(k)
-func generator(k []byte) (G []Fq) {
-	G = make([]Fq, p)
+func generator(G []Fq, k []byte) {
 	L := make([]uint32, 4*p)
 	expand(L, k)
 	for i := 0; i < p; i++ {
 		G[i] = Fq(internal.Uint32_mod_uint14(L[i], q) - q12)
 	}
-	return G
 }
 
 // out = hashShort(r)
-func hashShort(r Inputs) (out []small) {
+func hashShort(out []small, r Inputs) {
 	s := make([]byte, inputsBytes)
 	inputsEncode(s, r)
 	h := make([]byte, hashBytes)
@@ -391,8 +371,7 @@ func hashShort(r Inputs) (out []small) {
 	for i := 0; i < p; i++ {
 		L_int32[i] = int32(L[i])
 	}
-	out = shortFromList(L_int32)
-	return out
+	shortFromList(out, L_int32)
 }
 
 // NTRU LPRime expand
@@ -400,21 +379,21 @@ func hashShort(r Inputs) (out []small) {
 // (S,A),a = xKeyGen()
 func xKeyGen(S []byte, A []Fq, a []small, seed []byte) {
 
-	if seed == nil {
-		cryptoRand.Read(S)
-	} else {
-		copy(S, seed[:seedBytes])
-		seed = seed[seedBytes:]
-	}
+	copy(S, seed[:seedBytes])
+	seed = seed[seedBytes:]
+	G := make([]Fq, p)
 
-	G := generator(S)
+	generator(G, S)
 
 	keyGen(A, a, G, seed)
 }
 
 // B,T = xEncrypt(r,(S,A))
-func xEncrypt(r []int8, S []byte, A []Fq) (B []Fq, T []int8) {
-	G := generator(S)
+func xEncrypt(B []Fq, T []int8, r []int8, S []byte, A []Fq) {
+	G := make([]Fq, p)
+
+	generator(G, S)
+	b := make([]small, p)
 
 	// convert []int8 to Inputs
 	var r_inputs Inputs
@@ -422,9 +401,9 @@ func xEncrypt(r []int8, S []byte, A []Fq) (B []Fq, T []int8) {
 		r_inputs[i] = r[i]
 	}
 
-	b := hashShort(r_inputs)
+	hashShort(b, r_inputs)
 
-	return encrypt(r, G, A, b)
+	encrypt(B, T, r, G, A, b)
 }
 
 // Encoding small polynomials (including short polynomials)
@@ -510,13 +489,11 @@ func roundedDecode(r []Fq, s []byte) {
 
 // Encoding top polynomials
 
-func topEncode(T []int8) (s []byte) {
-	s = make([]byte, topBytes)
+func topEncode(s []byte, T []int8) {
 	for i := 0; i < topBytes; i++ {
 		s[i] = byte(T[2*i] + (T[2*i+1] << 4))
 
 	}
-	return s
 }
 
 func topDecode(s []byte) (T []int8) {
@@ -533,19 +510,9 @@ func topDecode(s []byte) (T []int8) {
 // Streamlined NTRU Prime Core plus encoding
 
 func inputsRandom(seed []byte) (r Inputs) {
-
-	s := make([]byte, inputsBytes)
-
-	if seed != nil {
-		copy(s, seed)
-	} else {
-		cryptoRand.Read(s)
-	}
-
 	for i := 0; i < I; i++ {
-		r[i] = int8(1 & (s[i>>3] >> (i & 7)))
+		r[i] = int8(1 & (seed[i>>3] >> (i & 7)))
 	}
-
 	return r
 }
 
@@ -566,13 +533,15 @@ func zKeyGen(pk []byte, sk []byte, seed []byte) {
 // c = zEncrypt(r,pk)
 func zEncrypt(c []byte, r Inputs, pk []byte) {
 	A := make([]Fq, p)
+	B := make([]Fq, p)
+	T := make([]int8, I)
 
 	roundedDecode(A, pk[seedBytes:])
-	B, T := xEncrypt(r[:], pk[:seedBytes], A)
+	xEncrypt(B, T, r[:], pk[:seedBytes], A)
 	roundedEncode(c, B)
 	c = c[roundedBytes:]
 
-	copy(c, topEncode(T))
+	topEncode(c, T)
 }
 
 // r = zDecrypt(C,sk)
@@ -632,12 +601,8 @@ func kemKeyGen(pk []byte, sk []byte, seed []byte) {
 	copy(sk, pk)
 	sk = sk[publicKeysBytes:]
 
-	if seed != nil {
-		copy(sk[:inputsBytes], seed)
+	copy(sk[:inputsBytes], seed)
 
-	} else {
-		cryptoRand.Read(sk[:inputsBytes])
-	}
 	sk = sk[inputsBytes:]
 	hashPrefix(sk, 4, pk, publicKeysBytes)
 
@@ -658,7 +623,12 @@ func hide(c []byte, r_enc []byte, r Inputs, pk []byte, cache []byte) {
 // c,k = encap(pk)
 func (pk PublicKey) EncapsulateTo(c []byte, k []byte, seed []byte) {
 
-	if seed != nil && len(seed) != EncapsulationSeedSize {
+	if seed == nil {
+		seed = make([]byte, EncapsulationSeedSize)
+		cryptoRand.Read(seed)
+	}
+
+	if len(seed) != EncapsulationSeedSize {
 		panic("seed must be of length EncapsulationSeedSize")
 	}
 	if len(c) != CiphertextSize {

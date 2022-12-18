@@ -15,20 +15,21 @@ func TestPQCgenStreamlinedKATKem(t *testing.T) {
 	kats := []struct {
 		name string
 		want string
+		p    int
 	}{
 		// Computed from reference implementation
-		{"sntrup653", "82249a46c1bc538e980a2335764c81f70701e6374eed3e1d0457e18c57ec2cee64280dcc75504c2648eb3e37ab3eee37955c1114d851f755a28cc997aba781c8"},
-		{"sntrup761", "1a687f42261c47fe4421b35c5d9faf035433fcb2101458680c66c8d54caafec5fb767ea7725d6681ab100912ef06c38d88862a5d2d86786af2989b7dad33813a"},
-		{"sntrup857", "79473d6c709dbbc99528886bf2c1d033c409dab1755299154f33232bc57ba1fbe91322fcb741df5252d575a77aa5ca000d52a44c17f1ab64a299884d0f101519"},
-		{"sntrup953", "6fe0cf3b8cb62a3011c1870ec9eb3cd8825c06993a213e01ecd0f21f5dee670838fe1c89dd120086a09e8227496a00e22188c8f947618a35764c5a24726ce16c"},
-		{"sntrup1013", "195a38eb843fdda53241f65b641ab925f61fb1cf5b0fffcb5891115da121a85174a796d69c75b86c4e92193453155aef9d27ce53aa268076617be55ee6f5da4f"},
-		{"sntrup1277", "ada8a0cbe6b077dc563874fd372f60779bbee1524f576c2931cf9c804163b9632163610d6e380f889170cdf4d9928de0782368a43413f2b6976897ba0e19a828"},
+		{"sntrup653", "82249a46c1bc538e980a2335764c81f70701e6374eed3e1d0457e18c57ec2cee64280dcc75504c2648eb3e37ab3eee37955c1114d851f755a28cc997aba781c8", 653},
+		{"sntrup761", "1a687f42261c47fe4421b35c5d9faf035433fcb2101458680c66c8d54caafec5fb767ea7725d6681ab100912ef06c38d88862a5d2d86786af2989b7dad33813a", 761},
+		{"sntrup857", "79473d6c709dbbc99528886bf2c1d033c409dab1755299154f33232bc57ba1fbe91322fcb741df5252d575a77aa5ca000d52a44c17f1ab64a299884d0f101519", 857},
+		{"sntrup953", "6fe0cf3b8cb62a3011c1870ec9eb3cd8825c06993a213e01ecd0f21f5dee670838fe1c89dd120086a09e8227496a00e22188c8f947618a35764c5a24726ce16c", 953},
+		{"sntrup1013", "195a38eb843fdda53241f65b641ab925f61fb1cf5b0fffcb5891115da121a85174a796d69c75b86c4e92193453155aef9d27ce53aa268076617be55ee6f5da4f", 1013},
+		{"sntrup1277", "ada8a0cbe6b077dc563874fd372f60779bbee1524f576c2931cf9c804163b9632163610d6e380f889170cdf4d9928de0782368a43413f2b6976897ba0e19a828", 1277},
 	}
 
 	for _, kat := range kats {
 		kat := kat
 		t.Run(kat.name, func(t *testing.T) {
-			testPQCgenStreamlinedKATKem(t, kat.name, kat.want)
+			testPQCgenStreamlinedKATKem(t, kat.name, kat.want, kat.p)
 		})
 	}
 }
@@ -115,13 +116,14 @@ func testPQCgenLPRKATKem(t *testing.T, name, expected string, p int) {
 	}
 }
 
-func testPQCgenStreamlinedKATKem(t *testing.T, name, expected string) {
+func testPQCgenStreamlinedKATKem(t *testing.T, name, expected string, p int) {
 	scheme := sntrupSchemes.ByName(name)
 	if scheme == nil {
 		t.Fatal()
 	}
 
 	var seed [48]byte
+	eseed := make([]byte, scheme.EncapsulationSeedSize())
 
 	for i := 0; i < 48; i++ {
 		seed[i] = byte(i)
@@ -143,7 +145,11 @@ func testPQCgenStreamlinedKATKem(t *testing.T, name, expected string) {
 		ppk, _ := pk.MarshalBinary()
 		psk, _ := sk.MarshalBinary()
 
-		ct, ss1, _ := scheme.EncapsulateDeterministicallyFromGen(pk, &g2)
+		for i := 0; i < p; i++ {
+			g2.Fill(eseed[4*i : 4*i+4])
+		}
+		ct, ss1, _ := scheme.EncapsulateDeterministically(pk, eseed)
+
 		ss2, _ := scheme.Decapsulate(sk, ct)
 		if !bytes.Equal(ss1, ss2) {
 			t.Fatal()

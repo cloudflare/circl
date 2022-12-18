@@ -70,10 +70,13 @@ type Scheme interface {
 	DeriveKeyPairFromGen(gen *nist.DRBG) (PublicKey, PrivateKey)
 
 	// EncapsulateDeterministically generates a shared key ss for the public
-	// key deterministically from the given nist DRBG and encapsulates it into
+	// key deterministically from the given seed and encapsulates it into
 	// a ciphertext ct. If unsure, you're better off using Encapsulate().
-	EncapsulateDeterministicallyFromGen(pk PublicKey, gen *nist.DRBG) (
+	EncapsulateDeterministically(pk PublicKey, seed []byte) (
 		ct, ss []byte, err error)
+
+	// Size of seed used in EncapsulateDeterministically().
+	EncapsulationSeedSize() int
 }
 
 var (

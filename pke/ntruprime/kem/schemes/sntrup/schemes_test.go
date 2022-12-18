@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cloudflare/circl/kem/schemes"
+	schemes "github.com/cloudflare/circl/pke/ntruprime/kem/schemes/sntrup"
 )
 
 func TestCaseSensitivity(t *testing.T) {
-	if schemes.ByName("kyber512") != schemes.ByName("Kyber512") {
+	if schemes.ByName("sntrup1277") != schemes.ByName("SNTRUP1277") {
 		t.Fatal()
 	}
 }
@@ -61,9 +61,6 @@ func TestApi(t *testing.T) {
 			if scheme == nil {
 				t.Fatal()
 			}
-
-			_ = scheme.SeedSize()
-			_ = scheme.EncapsulationSeedSize()
 
 			pk, sk, err := scheme.GenerateKeyPair()
 			if err != nil {
@@ -140,31 +137,16 @@ func TestApi(t *testing.T) {
 }
 
 func Example_schemes() {
-	// import "github.com/cloudflare/circl/kem/schemes"
+	// import "github.com/cloudflare/circl/pke/ntruprime/kem/schemes/sntrup"
 
 	for _, sch := range schemes.All() {
 		fmt.Println(sch.Name())
 	}
 	// Output:
-	// HPKE_KEM_P256_HKDF_SHA256
-	// HPKE_KEM_P384_HKDF_SHA384
-	// HPKE_KEM_P521_HKDF_SHA512
-	// HPKE_KEM_X25519_HKDF_SHA256
-	// HPKE_KEM_X448_HKDF_SHA512
-	// FrodoKEM-640-SHAKE
-	// Kyber512
-	// Kyber768
-	// Kyber1024
-	// Kyber512-X25519
-	// Kyber768-X25519
-	// Kyber768-X448
-	// Kyber1024-X448
-	// P256Kyber768Draft00
-	// ntrulpr1013
-	// ntrulpr1277
-	// ntrulpr653
-	// ntrulpr761
-	// ntrulpr857
-	// ntrulpr953
-
+	// sntrup653
+	// sntrup761
+	// sntrup857
+	// sntrup953
+	// sntrup1013
+	// sntrup1277
 }

@@ -45,6 +45,9 @@ const (
 )
 
 const (
+	// Size of seed for EncapsulateTo.
+	EncapsulationSeedSize = 4 * p
+
 	// Size of the established shared key.
 	SharedKeySize = ntrup.SharedKeySize
 
@@ -153,8 +156,8 @@ func r3Mult(f []small, g []small) (h []small) {
 
 // Calculates the reciprocal of R3 polynomials
 // Returns 0 if recip succeeded; else -1
-func r3Recip(in []small) ([]small, int) {
-	out := make([]small, p)
+func r3Recip(out []small, in []small) int {
+	// out := make([]small, p)
 	f := make([]small, p+1)
 	g := make([]small, p+1)
 	v := make([]small, p+1)
@@ -217,15 +220,14 @@ func r3Recip(in []small) ([]small, int) {
 		out[i] = small(sign * int(v[p-1-i]))
 	}
 
-	return out, internal.Int16_nonzero_mask(int16(delta))
+	return internal.Int16_nonzero_mask(int16(delta))
 
 }
 
 // Polynomials mod q
 
 // h = f*g in the ring Rq */
-func rqMultSmall(f []Fq, g []small) (h []Fq) {
-	h = make([]Fq, p)
+func rqMultSmall(h []Fq, f []Fq, g []small) {
 	fg := make([]Fq, p+p-1)
 	var result Fq
 
@@ -254,7 +256,6 @@ func rqMultSmall(f []Fq, g []small) (h []Fq) {
 	for i := 0; i < p; i++ {
 		h[i] = fg[i]
 	}
-	return h
 }
 
 // h = 3f in Rq
@@ -386,8 +387,7 @@ func cryptoSortUint32(x []uint32, n int) {
 }
 
 // Sorting to generate short polynomial
-func shortFromList(in []int32) []small {
-	out := make([]small, p)
+func shortFromList(out []small, in []int32) {
 	L := make([]uint32, p)
 
 	var neg2, neg3 int = -2, -3
@@ -405,7 +405,6 @@ func shortFromList(in []int32) []small {
 	for i := 0; i < p; i++ {
 		out[i] = small((L[i] & 3) - 1)
 	}
-	return out
 }
 
 //  Underlying hash function
@@ -431,33 +430,23 @@ func hashPrefix(out []byte, b int, in []byte, inlen int) {
 
 // Higher level randomness
 // Returns a random unsigned integer
-// A generator can be passed for deterministic number generation
-func urandom32(gen *nist.DRBG) uint32 {
-
-	c := make([]byte, 4)
+func urandom32(seed []byte) uint32 {
 	var out [4]uint32
 
-	if gen != nil {
-		gen.Fill(c)
-	} else {
-		cryptoRand.Read(c)
-
-	}
-
-	out[0] = uint32(c[0])
-	out[1] = uint32(c[1]) << 8
-	out[2] = uint32(c[2]) << 16
-	out[3] = uint32(c[3]) << 24
+	out[0] = uint32(seed[0])
+	out[1] = uint32(seed[1]) << 8
+	out[2] = uint32(seed[2]) << 16
+	out[3] = uint32(seed[3]) << 24
 	return out[0] + out[1] + out[2] + out[3]
 }
 
 // Generates a random short polynomial
-func shortRandom(gen *nist.DRBG) []small {
+func shortRandom(out []small, seed []byte) {
 
 	L := make([]uint32, p)
 
 	for i := 0; i < p; i++ {
-		L[i] = urandom32(gen)
+		L[i] = urandom32(seed[4*i : 4*i+4])
 	}
 
 	// Converts uint32 array to int32 array
@@ -465,52 +454,58 @@ func shortRandom(gen *nist.DRBG) []small {
 	for i := 0; i < len(L); i++ {
 		L_int32[i] = int32(L[i])
 	}
-	out := shortFromList(L_int32)
-
-	return out
-
+	shortFromList(out, L_int32)
 }
 
 // Generates a random list of small
-func smallRandom(gen *nist.DRBG) []small {
-
-	out := make([]small, p)
+func smallRandom(out []small, seed []byte) {
 	for i := 0; i < p; i++ {
-		out[i] = small(((urandom32(gen)&0x3fffffff)*3)>>30) - 1
+		out[i] = small(((urandom32(seed[4*i:4*i+4])&0x3fffffff)*3)>>30) - 1
 	}
-	return out
 }
 
 // Streamlined NTRU Prime Core
 
 // h,(f,ginv) = keyGen()
-func keyGen(gen *nist.DRBG) (h []Fq, f []small, ginv []small) {
+func keyGen(h []Fq, f []small, ginv []small, gen *nist.DRBG) {
 	g := make([]small, p)
-	var err int
-	for {
-		g = smallRandom(gen)
-		ginv, err = r3Recip(g)
-		if err == 0 {
-			break
+	seed := make([]byte, 4*p+4*p)
+
+	if gen == nil {
+		for {
+			cryptoRand.Read(seed[:4*p])
+			smallRandom(g, seed[:4*p])
+			if r3Recip(ginv, g) == 0 {
+				break
+			}
 		}
-
+		cryptoRand.Read(seed[4*p:])
+	} else {
+		for {
+			for i := 0; i < p; i++ {
+				gen.Fill(seed[4*i : 4*i+4])
+			}
+			smallRandom(g, seed[:4*p])
+			if r3Recip(ginv, g) == 0 {
+				break
+			}
+		}
+		for i := 0; i < p; i++ {
+			gen.Fill(seed[4*p+4*i : 4*p+4*i+4])
+		}
 	}
-
-	f = shortRandom(gen)
+	shortRandom(f, seed[4*p:])
 
 	finv, _ := rqRecip3(f) /* always works */
-	h = rqMultSmall(finv, g)
-	return h, f, ginv
+	rqMultSmall(h, finv, g)
 }
 
 // c = encrypt(r,h)
 func encrypt(r []small, h []Fq) []Fq {
-
-	hr := rqMultSmall(h, r)
+	hr := make([]Fq, p)
+	rqMultSmall(hr, h, r)
 	c := round(hr)
-
 	return c
-
 }
 
 // r = decrypt(c,(f,ginv))
@@ -518,7 +513,7 @@ func decrypt(c []Fq, f []small, ginv []small) []small {
 	r := make([]small, p)
 	cf := make([]Fq, p)
 
-	cf = rqMultSmall(c, f)
+	rqMultSmall(cf, c, f)
 	cf3 := rqMult3(cf)
 	e := r3FromRq(cf3)
 	ev := r3Mult(e, ginv)
@@ -651,7 +646,10 @@ func roundedDecode(r []Fq, s []byte) {
 // pk,sk = zKeyGen()
 func zKeyGen(pk []byte, sk []byte, gen *nist.DRBG) {
 
-	h, f, v := keyGen(gen)
+	h := make([]Fq, p)
+	f := make([]small, p)
+	v := make([]small, p)
+	keyGen(h, f, v, gen)
 
 	rqEncode(pk, h)
 	smallEncode(sk, f)
@@ -743,7 +741,14 @@ func hide(c []byte, r_enc []byte, r Inputs, pk []byte, cache []byte) {
 // Takes as input a public key
 // Returns ciphertext and shared key
 // c,k = encap(pk)
-func (pub PublicKey) EncapsulateTo(c []byte, k []byte, gen *nist.DRBG) {
+func (pub PublicKey) EncapsulateTo(c []byte, k []byte, seed []byte) {
+	if seed == nil {
+		seed = make([]byte, 4*p)
+		cryptoRand.Read(seed)
+	}
+	if len(seed) != 4*p {
+		panic("seed must be of length EncapsulationSeedSize")
+	}
 	if len(c) != CiphertextSize {
 		panic("ct must be of length CiphertextSize")
 	}
@@ -758,7 +763,7 @@ func (pub PublicKey) EncapsulateTo(c []byte, k []byte, gen *nist.DRBG) {
 	cache := make([]byte, hashBytes)
 
 	hashPrefix(cache, 4, pk, publicKeysBytes)
-	copy(r[:], shortRandom(gen))
+	shortRandom(r[:], seed)
 	hide(c, r_enc, r, pk, cache)
 	hashSession(k, 1, r_enc, c)
 
@@ -824,11 +829,12 @@ var sch kem.Scheme = &scheme{}
 // Scheme returns a KEM interface.
 func Scheme() kem.Scheme { return sch }
 
-func (*scheme) Name() string        { return "sntrup761" }
-func (*scheme) PublicKeySize() int  { return PublicKeySize }
-func (*scheme) PrivateKeySize() int { return PrivateKeySize }
-func (*scheme) SharedKeySize() int  { return SharedKeySize }
-func (*scheme) CiphertextSize() int { return CiphertextSize }
+func (*scheme) Name() string               { return "sntrup761" }
+func (*scheme) PublicKeySize() int         { return PublicKeySize }
+func (*scheme) PrivateKeySize() int        { return PrivateKeySize }
+func (*scheme) SharedKeySize() int         { return SharedKeySize }
+func (*scheme) CiphertextSize() int        { return CiphertextSize }
+func (*scheme) EncapsulationSeedSize() int { return EncapsulationSeedSize }
 
 func (sk *PrivateKey) Scheme() kem.Scheme { return sch }
 func (pk *PublicKey) Scheme() kem.Scheme  { return sch }
@@ -879,6 +885,11 @@ func (*scheme) GenerateKeyPair() (kem.PublicKey, kem.PrivateKey, error) {
 }
 
 func (*scheme) DeriveKeyPairFromGen(gen *nist.DRBG) (kem.PublicKey, kem.PrivateKey) {
+
+	if gen == nil {
+		panic("A nist DRBG must be provided")
+	}
+
 	var pk [PublicKeySize]byte
 	var sk [PrivateKeySize]byte
 
@@ -902,11 +913,7 @@ func (*scheme) Encapsulate(pk kem.PublicKey) (ct, ss []byte, err error) {
 
 }
 
-func (*scheme) EncapsulateDeterministicallyFromGen(pk kem.PublicKey, gen *nist.DRBG) (ct, ss []byte, err error) {
-
-	if gen == nil {
-		panic("A nist DRBG must be provided")
-	}
+func (*scheme) EncapsulateDeterministically(pk kem.PublicKey, seed []byte) (ct, ss []byte, err error) {
 
 	ct = make([]byte, CiphertextSize)
 	ss = make([]byte, SharedKeySize)
@@ -916,7 +923,7 @@ func (*scheme) EncapsulateDeterministicallyFromGen(pk kem.PublicKey, gen *nist.D
 		return nil, nil, kem.ErrTypeMismatch
 	}
 
-	pub.EncapsulateTo(ct, ss, gen)
+	pub.EncapsulateTo(ct, ss, seed)
 
 	return ct, ss, nil
 }
