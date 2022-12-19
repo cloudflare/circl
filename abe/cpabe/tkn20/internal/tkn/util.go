@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"sort"
 
 	pairing "github.com/cloudflare/circl/ecc/bls12381"
 	"golang.org/x/crypto/blake2b"
@@ -58,6 +59,49 @@ func removeLenPrefixed(data []byte) (next []byte, remainder []byte, err error) {
 		return nil, nil, fmt.Errorf("data too short")
 	}
 	return data[2 : 2+itemLen], data[2+itemLen:], nil
+}
+
+func marshalBinarySortedMapMatrixG1(m map[string]*matrixG1) ([]byte, error) {
+	sortedKeys := make([]string, 0, len(m))
+	for key := range m {
+		sortedKeys = append(sortedKeys, key)
+	}
+	sort.Strings(sortedKeys)
+
+	ret := []byte{}
+	for _, key := range sortedKeys {
+		b, err := m[key].marshalBinary()
+		if err != nil {
+			return nil, err
+		}
+
+		ret = appendLenPrefixed(ret, []byte(key))
+		ret = appendLenPrefixed(ret, b)
+	}
+
+	return ret, nil
+}
+
+func marshalBinarySortedMapAttribute(m map[string]Attribute) ([]byte, error) {
+	sortedKeys := make([]string, 0, len(m))
+	for key := range m {
+		sortedKeys = append(sortedKeys, key)
+	}
+	sort.Strings(sortedKeys)
+
+	ret := []byte{}
+	for _, key := range sortedKeys {
+		a := m[key]
+		b, err := a.marshalBinary()
+		if err != nil {
+			return nil, err
+		}
+
+		ret = appendLenPrefixed(ret, []byte(key))
+		ret = append(ret, b...)
+	}
+
+	return ret, nil
 }
 
 var (

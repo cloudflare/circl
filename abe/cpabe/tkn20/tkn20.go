@@ -1,3 +1,5 @@
+//go:generate go run gen_testdata.go
+
 // Package tkn20 implements a ciphertext-policy ABE by Tomida, Kawahara, Nishimaki.
 //
 // This is an implementation of an IND-CCA2 secure variant of the Ciphertext-Policy

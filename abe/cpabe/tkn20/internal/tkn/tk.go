@@ -210,24 +210,20 @@ func (a *AttributesKey) MarshalBinary() ([]byte, error) {
 	ret = appendLenPrefixed(ret, k2Bytes)
 	ret = append(ret, 0, 0)
 	binary.LittleEndian.PutUint16(ret[len(ret)-2:], uint16(len(a.k3)))
-	for s, m := range a.k3 {
-		ret = appendLenPrefixed(ret, []byte(s))
-		g1Bytes, err := m.marshalBinary()
-		if err != nil {
-			return nil, fmt.Errorf("AttributesKey serializing failed: %w", err)
-		}
-		ret = appendLenPrefixed(ret, g1Bytes)
+	k3Bytes, err := marshalBinarySortedMapMatrixG1(a.k3)
+	if err != nil {
+		return nil, fmt.Errorf("AttributesKey serializing failed: %w", err)
 	}
+	ret = append(ret, k3Bytes...)
+
 	ret = append(ret, 0, 0)
 	binary.LittleEndian.PutUint16(ret[len(ret)-2:], uint16(len(a.k3wild)))
-	for s, m := range a.k3wild {
-		ret = appendLenPrefixed(ret, []byte(s))
-		g1Bytes, err := m.marshalBinary()
-		if err != nil {
-			return nil, fmt.Errorf("AttributesKey serializing failed: %w", err)
-		}
-		ret = appendLenPrefixed(ret, g1Bytes)
+	k3wildBytes, err := marshalBinarySortedMapMatrixG1(a.k3wild)
+	if err != nil {
+		return nil, fmt.Errorf("AttributesKey serializing failed: %w", err)
 	}
+	ret = append(ret, k3wildBytes...)
+
 	return ret, nil
 }
 

@@ -76,14 +76,13 @@ type Attributes map[string]Attribute
 func (a *Attributes) marshalBinary() ([]byte, error) {
 	ret := make([]byte, 2)
 	binary.LittleEndian.PutUint16(ret[0:], uint16(len(*a)))
-	for label, attr := range *a {
-		ret = appendLenPrefixed(ret, []byte(label))
-		attrBytes, err := attr.marshalBinary()
-		if err != nil {
-			return nil, fmt.Errorf("marshalling Attributes failed: %w", err)
-		}
-		ret = append(ret, attrBytes...)
+
+	aBytes, err := marshalBinarySortedMapAttribute(*a)
+	if err != nil {
+		return nil, fmt.Errorf("marshalling Attributes failed: %w", err)
 	}
+	ret = append(ret, aBytes...)
+
 	return ret, nil
 }
 
