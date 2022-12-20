@@ -50,7 +50,6 @@ import (
 	"crypto"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"hash"
 	"io"
 	"math"
@@ -60,7 +59,7 @@ import (
 )
 
 const (
-	version          = "VOPRF10-"
+	version          = "OPRFV1-"
 	finalizeDST      = "Finalize"
 	hashToGroupDST   = "HashToGroup-"
 	hashToScalarDST  = "HashToScalar-"
@@ -81,37 +80,30 @@ func isValidMode(m Mode) bool {
 }
 
 type Suite interface {
-	ID() int
+	Identifier() string
 	Group() group.Group
 	Hash() crypto.Hash
-	Name() string
 	cannotBeImplementedExternally()
 }
 
 var (
 	// SuiteRistretto255 represents the OPRF with Ristretto255 and SHA-512
-	SuiteRistretto255 Suite = params{id: 1, group: group.Ristretto255, hash: crypto.SHA512, name: "OPRF(ristretto255, SHA-512)"}
+	SuiteRistretto255 Suite = params{identifier: "ristretto255-SHA512", group: group.Ristretto255, hash: crypto.SHA512}
 	// SuiteP256 represents the OPRF with P-256 and SHA-256.
-	SuiteP256 Suite = params{id: 3, group: group.P256, hash: crypto.SHA256, name: "OPRF(P-256, SHA-256)"}
+	SuiteP256 Suite = params{identifier: "P256-SHA256", group: group.P256, hash: crypto.SHA256}
 	// SuiteP384 represents the OPRF with P-384 and SHA-384.
-	SuiteP384 Suite = params{id: 4, group: group.P384, hash: crypto.SHA384, name: "OPRF(P-384, SHA-384)"}
+	SuiteP384 Suite = params{identifier: "P384-SHA384", group: group.P384, hash: crypto.SHA384}
 	// SuiteP521 represents the OPRF with P-521 and SHA-512.
-	SuiteP521 Suite = params{id: 5, group: group.P521, hash: crypto.SHA512, name: "OPRF(P-521, SHA-512)"}
+	SuiteP521 Suite = params{identifier: "P521-SHA512", group: group.P521, hash: crypto.SHA512}
 )
 
-func GetSuite(id int) (Suite, error) {
-	switch uint16(id) {
-	case SuiteRistretto255.(params).id:
-		return SuiteRistretto255, nil
-	case SuiteP256.(params).id:
-		return SuiteP256, nil
-	case SuiteP384.(params).id:
-		return SuiteP384, nil
-	case SuiteP521.(params).id:
-		return SuiteP521, nil
-	default:
-		return nil, ErrInvalidSuite
+func GetSuite(identifier string) (Suite, error) {
+	for _, suite := range []Suite{SuiteRistretto255, SuiteP256, SuiteP384, SuiteP521} {
+		if suite.Identifier() == identifier {
+			return suite, nil
+		}
 	}
+	return nil, ErrInvalidSuite
 }
 
 func NewClient(s Suite) Client {
@@ -172,26 +164,26 @@ func NewPartialObliviousServer(s Suite, key *PrivateKey) PartialObliviousServer 
 }
 
 type params struct {
-	id    uint16
-	m     Mode
-	group group.Group
-	hash  crypto.Hash
-	name  string
+	m          Mode
+	group      group.Group
+	hash       crypto.Hash
+	identifier string
 }
 
 func (p params) cannotBeImplementedExternally() {}
 
-func (p params) String() string     { return fmt.Sprintf("Suite%v", p.group) }
-func (p params) ID() int            { return int(p.id) }
+func (p params) String() string     { return p.Identifier() }
 func (p params) Group() group.Group { return p.group }
 func (p params) Hash() crypto.Hash  { return p.hash }
-func (p params) Name() string       { return p.name }
+func (p params) Identifier() string { return p.identifier }
 
 func (p params) getDST(name string) []byte {
-	return append(append(append([]byte{},
+	return append(append(append(append(
+		[]byte{},
 		[]byte(name)...),
 		[]byte(version)...),
-		[]byte{p.m, 0, byte(p.id)}...)
+		[]byte{p.m, byte('-')}...),
+		[]byte(p.identifier)...)
 }
 
 func (p params) scalarFromInfo(info []byte) (group.Scalar, error) {
