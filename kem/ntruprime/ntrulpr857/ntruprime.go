@@ -82,7 +82,7 @@ type (
 
 // x must not be close to top int16
 func f3Freeze(x int16) small {
-	return small(internal.Int32_mod_uint14(int32(x)+1, 3)) - 1
+	return small(internal.Int32ModUint14(int32(x)+1, 3)) - 1
 }
 
 /* ----- arithmetic mod q */
@@ -94,7 +94,7 @@ func f3Freeze(x int16) small {
 
 /* x must not be close to top int32 */
 func fqFreeze(x int32) Fq {
-	return Fq(internal.Int32_mod_uint14(x+q12, q) - q12)
+	return Fq(internal.Int32ModUint14(x+q12, q) - q12)
 }
 
 func top(C Fq) int8 {
@@ -291,18 +291,15 @@ func encrypt(B []Fq, T []int8, r []int8, G []Fq, A []Fq, b []small) {
 }
 
 // r = decrypt((B,T),a)
-func decrypt(B []Fq, T []int8, a []small) []int8 {
+func decrypt(r []int8, B []Fq, T []int8, a []small) {
 	aB := make([]Fq, p)
-
-	r := make([]int8, I)
 
 	rqMultSmall(aB, B, a)
 
 	for i := 0; i < I; i++ {
-		r[i] = int8(-internal.Int16_negative_mask(int16(fqFreeze(int32(right(T[i])) - int32(aB[i]) + 4*w + 1))))
+		r[i] = int8(-internal.Int16NegativeMask(int16(fqFreeze(int32(right(T[i])) - int32(aB[i]) + 4*w + 1))))
 	}
 
-	return r
 }
 
 // Encoding I-bit inputs
@@ -351,7 +348,7 @@ func generator(G []Fq, k []byte) {
 	L := make([]uint32, 4*p)
 	expand(L, k)
 	for i := 0; i < p; i++ {
-		G[i] = Fq(internal.Uint32_mod_uint14(L[i], q) - q12)
+		G[i] = Fq(internal.Uint32ModUint14(L[i], q) - q12)
 	}
 }
 
@@ -496,24 +493,20 @@ func topEncode(s []byte, T []int8) {
 	}
 }
 
-func topDecode(s []byte) (T []int8) {
-
-	T = make([]int8, 2*topBytes+1)
+func topDecode(T []int8, s []byte) {
 
 	for i := 0; i < topBytes; i++ {
 		T[2*i] = int8(s[i] & 15)
 		T[2*i+1] = int8(s[i] >> 4)
 	}
-	return T
 }
 
 // Streamlined NTRU Prime Core plus encoding
 
-func inputsRandom(seed []byte) (r Inputs) {
+func inputsRandom(r *Inputs, seed []byte) {
 	for i := 0; i < I; i++ {
 		r[i] = int8(1 & (seed[i>>3] >> (i & 7)))
 	}
-	return r
 }
 
 // Generates public key and private key
@@ -548,11 +541,12 @@ func zEncrypt(c []byte, r Inputs, pk []byte) {
 func zDecrypt(r *Inputs, c []byte, sk []byte) {
 	a := make([]small, p)
 	B := make([]Fq, p)
+	T := make([]int8, I)
 
 	smallDecode(a, sk)
 	roundedDecode(B, c)
-	T := topDecode(c[roundedBytes:])
-	copy(r[:], decrypt(B, T, a))
+	topDecode(T, c[roundedBytes:])
+	decrypt(r[:], B, T, a)
 }
 
 // Confirmation hash
@@ -640,9 +634,10 @@ func (pk PublicKey) EncapsulateTo(c []byte, k []byte, seed []byte) {
 
 	r_enc := make([]byte, inputsBytes)
 	cache := make([]byte, hashBytes)
+	var r Inputs
 
 	hashPrefix(cache, 4, pk.pk[:], publicKeysBytes)
-	r := inputsRandom(seed)
+	inputsRandom(&r, seed)
 	hide(c, r_enc, r, pk.pk[:], cache)
 	hashSession(k, 1, r_enc, c)
 }

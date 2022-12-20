@@ -8,7 +8,7 @@ package ntruprime
 const (
 	P             = {{.P}}
 	Q             = {{.Q}}
-	RoundedBytes = {{.Rounded_bytes}}
+	RoundedBytes = {{.RoundedBytes}}
 
 	W    = {{.W}} 
 	Tau0 = {{.Tau0}}

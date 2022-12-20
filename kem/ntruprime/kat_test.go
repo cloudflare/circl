@@ -158,7 +158,6 @@ func testPQCgenStreamlinedKATKem(t *testing.T, name, expected string, p int) {
 		fmt.Fprintf(f, "sk = %X\n", psk)
 		fmt.Fprintf(f, "ct = %X\n", ct)
 		fmt.Fprintf(f, "ss = %X\n\n", ss1)
-
 	}
 	if fmt.Sprintf("%x", f.Sum(nil)) != expected {
 		t.Fatal()

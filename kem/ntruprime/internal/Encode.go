@@ -1,5 +1,6 @@
 package internal
 
+// TO DO: Optimize the Encode function
 /* 0 <= R[i] < M[i] < 16384 */
 func Encode(out []uint8, R []uint16, M []uint16, len int) {
 	if len == 1 {
@@ -15,7 +16,7 @@ func Encode(out []uint8, R []uint16, M []uint16, len int) {
 	if len > 1 {
 		R2 := make([]uint16, (len+1)/2)
 		M2 := make([]uint16, (len+1)/2)
-		var i int = 0
+		var i int
 
 		for i = 0; i < len-1; i += 2 {
 			m0 := uint32(M[i])

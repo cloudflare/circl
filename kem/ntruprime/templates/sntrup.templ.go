@@ -36,7 +36,7 @@ const (
 	rqBytes      = ntrup.RqBytes
 	w             = ntrup.W
 
-	
+
 	hashBytes = 32
 
 	smallBytes = ((p + 3) / 4)
@@ -55,13 +55,13 @@ const (
 
 		// Size of the established shared key.
 		SharedKeySize = ntrup.SharedKeySize
-	
+
 		// Size of the encapsulated shared key.
 		CiphertextSize = ntrup.CiphertextSize
-	
+
 		// Size of a packed public key.
 		PublicKeySize = ntrup.PublicKeySize
-	
+
 		// Size of a packed private key.
 		PrivateKeySize = ntrup.PrivateKeySize
 )
@@ -74,7 +74,7 @@ const (
 
 // x must not be close to top int16
 func f3Freeze(x int16) small {
-	return small(internal.Int32_mod_uint14(int32(x)+1, 3)) - 1
+	return small(internal.Int32ModUint14(int32(x)+1, 3)) - 1
 }
 
 // Arithmetic operations over GF(q)
@@ -84,7 +84,7 @@ func f3Freeze(x int16) small {
 
 /* x must not be close to top int32 */
 func fqFreeze(x int32) Fq {
-	return Fq(internal.Int32_mod_uint14(x+q12, q) - q12)
+	return Fq(internal.Int32ModUint14(x+q12, q) - q12)
 }
 
 // Calculates reciprocal of Fq
@@ -111,22 +111,19 @@ func weightwMask(r []small) int {
 
 	// returns -1 if non zero
 	// otherwise returns 0 if weight==w
-	return internal.Int16_nonzero_mask(int16(weight - w))
+	return internal.Int16NonzeroMask(int16(weight - w))
 
 }
 
 /* R3_fromR(R_fromRq(r)) */
-func r3FromRq(r []Fq) []small {
-	out := make([]small, p)
+func r3FromRq(out []small, r []Fq) {
 	for i := 0; i < p; i++ {
 		out[i] = small(f3Freeze(int16(r[i])))
 	}
-	return out
 }
 
 // h = f*g in the ring R3
-func r3Mult(f []small, g []small) (h []small) {
-	h = make([]small, p)
+func r3Mult(h []small, f []small, g []small) {
 	fg := make([]small, p+p-1)
 	var result small
 	var i, j int
@@ -155,9 +152,6 @@ func r3Mult(f []small, g []small) (h []small) {
 	for i = 0; i < p; i++ {
 		h[i] = fg[i]
 	}
-
-	return h
-
 }
 
 // Calculates the reciprocal of R3 polynomials
@@ -192,7 +186,7 @@ func r3Recip(out []small, in []small) int {
 		v[0] = 0
 
 		sign = int(-g[0] * f[0])
-		var swap int = int(internal.Int16_negative_mask(int16(-delta)) & internal.Int16_nonzero_mask(int16(g[0])))
+		var swap int = int(internal.Int16NegativeMask(int16(-delta)) & internal.Int16NonzeroMask(int16(g[0])))
 		delta ^= swap & int(delta^-delta)
 		delta += 1
 
@@ -226,7 +220,7 @@ func r3Recip(out []small, in []small) int {
 		out[i] = small(sign * int(v[p-1-i]))
 	}
 
-	return internal.Int16_nonzero_mask(int16(delta))
+	return internal.Int16NonzeroMask(int16(delta))
 
 }
 
@@ -265,18 +259,15 @@ func rqMultSmall(h []Fq, f []Fq, g []small) {
 }
 
 // h = 3f in Rq
-func rqMult3(f []Fq) (h []Fq) {
-	h = make([]Fq, p)
+func rqMult3(h []Fq, f []Fq) {
 	for i := 0; i < p; i++ {
 		h[i] = fqFreeze(int32(3 * f[i]))
 	}
-	return h
 }
 
 // Returns 0 if recip succeeded; else -1
-// out = 1/(3*in) in Rq 
-func rqRecip3(in []small) ([]Fq, int) {
-	out := make([]Fq, p)
+// out = 1/(3*in) in Rq
+func rqRecip3(out []Fq, in []small) int {
 	f := make([]Fq, p+1)
 	g := make([]Fq, p+1)
 	v := make([]Fq, p+1)
@@ -303,7 +294,7 @@ func rqRecip3(in []small) ([]Fq, int) {
 		}
 		v[0] = 0
 
-		swap = internal.Int16_negative_mask(int16(-delta)) & internal.Int16_nonzero_mask(int16(g[0]))
+		swap = internal.Int16NegativeMask(int16(-delta)) & internal.Int16NonzeroMask(int16(g[0]))
 		delta ^= swap & (delta ^ -delta)
 		delta += 1
 
@@ -337,18 +328,16 @@ func rqRecip3(in []small) ([]Fq, int) {
 		out[i] = fqFreeze(int32(scale) * (int32)(v[p-1-i]))
 	}
 
-	return out, internal.Int16_nonzero_mask(int16(delta))
+	return internal.Int16NonzeroMask(int16(delta))
 
 }
 
 // Rounding all coefficients of a polynomial to the nearest multiple of 3
 // Rounded polynomials mod q
-func round(a []Fq) []Fq {
-	out := make([]Fq, p)
+func round(out []Fq, a []Fq) {
 	for i := 0; i < p; i++ {
 		out[i] = a[i] - Fq(f3Freeze(int16(a[i])))
 	}
-	return out
 }
 
 
@@ -473,7 +462,7 @@ func smallRandom(out []small, seed []byte){
 
 // Streamlined NTRU Prime Core
 
-//  h,(f,ginv) = keyGen() 
+//  h,(f,ginv) = keyGen()
 func keyGen(h []Fq, f []small, ginv []small, gen *nist.DRBG) {
 	g := make([]small, p)
 	seed := make([]byte, 4*p+4*p)
@@ -503,27 +492,31 @@ func keyGen(h []Fq, f []small, ginv []small, gen *nist.DRBG) {
 	}
 	shortRandom(f, seed[4*p:])
 
-	finv, _ := rqRecip3(f) /* always works */
+	finv := make([]Fq, p)
+
+	rqRecip3(finv, f) /* always works */
 	rqMultSmall(h, finv, g)
 }
 
 // c = encrypt(r,h)
-func encrypt(r []small, h []Fq) []Fq {
+func encrypt(c []Fq, r []small, h []Fq) {
 	hr := make([]Fq, p)
+
 	rqMultSmall(hr, h, r)
-	c := round(hr)
-	return c
+	round(c, hr)
 }
 
 // r = decrypt(c,(f,ginv))
-func decrypt(c []Fq, f []small, ginv []small) []small {
-	r := make([]small, p)
+func decrypt(r []small, c []Fq, f []small, ginv []small) {
 	cf := make([]Fq, p)
+	cf3 := make([]Fq, p)
+	e := make([]small, p)
+	ev := make([]small, p)
 
 	rqMultSmall(cf, c, f)
-	cf3 := rqMult3(cf)
-	e := r3FromRq(cf3)
-	ev := r3Mult(e, ginv)
+	rqMult3(cf3, cf)
+	r3FromRq(e, cf3)
+	r3Mult(ev, e, ginv)
 
 	mask := weightwMask(ev) /* 0 if weight w, else -1 */
 	for i := 0; i < w; i++ {
@@ -533,8 +526,6 @@ func decrypt(c []Fq, f []small, ginv []small) []small {
 	for i := w; i < p; i++ {
 		r[i] = ev[i] & small(^mask)
 	}
-	return r
-
 }
 
 // Encoding small polynomials (including short polynomials)
@@ -563,7 +554,7 @@ func smallEncode(s []byte, f []small) {
 	s[0] = byte(x)
 }
 
-// Transform bytes into polynomial in R 
+// Transform bytes into polynomial in R
 func smallDecode(f []small, s []byte) {
 	var index int = 0
 	var x byte
@@ -669,8 +660,9 @@ func zKeyGen(pk []byte, sk []byte, gen *nist.DRBG) {
 // C = zEncrypt(r,pk)
 func zEncrypt(C []byte, r Inputs, pk []byte) {
 	h := make([]Fq, p)
+	c := make([]Fq, p)
 	rqDecode(h, pk)
-	c := encrypt(r[:], h)
+	encrypt(c, r[:], h)
 	roundedEncode(C, c)
 }
 
@@ -685,7 +677,7 @@ func zDecrypt(r *Inputs, C []byte, sk []byte) {
 	smallDecode(v, sk)
 	roundedDecode(c, C)
 
-	copy(r[:], decrypt(c, f, v))
+	decrypt(r[:], c, f, v)
 }
 
 // Confirmation hash
@@ -709,7 +701,7 @@ func hashSession(k []byte, b int, y []byte, z []byte) {
 	x := make([]byte, hashBytes+ciphertextsBytes+confirmBytes)
 
 	hashPrefix(x, 3, y, inputsBytes)
-	
+
 	copy(x[hashBytes:],z[:ciphertextsBytes+confirmBytes])
 
 	hashPrefix(k, b, x, len(x))
@@ -746,10 +738,10 @@ func hide(c []byte, r_enc []byte, r Inputs, pk []byte, cache []byte) {
 
 }
 
-// Takes as input a public key 
+// Takes as input a public key
 // Returns ciphertext and shared key
-// c,k = encap(pk) 
-func (pub PublicKey) EncapsulateTo(c []byte, k []byte, seed []byte) {	
+// c,k = encap(pk)
+func (pub PublicKey) EncapsulateTo(c []byte, k []byte, seed []byte) {
 	if seed == nil {
 		seed = make([]byte, 4*p)
 		cryptoRand.Read(seed)
@@ -876,7 +868,7 @@ func (sk *PrivateKey) Public() kem.PublicKey {
 	skey, _ := sk.MarshalBinary()
 	ppk := skey[secretKeysBytes : secretKeysBytes+publicKeysBytes]
 	copy(pk[:], ppk[:])
-	return &PublicKey{pk: pk}	
+	return &PublicKey{pk: pk}
 }
 
 func (pk *PublicKey) MarshalBinary() ([]byte, error) {

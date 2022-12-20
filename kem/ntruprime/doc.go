@@ -5,4 +5,6 @@
 // competition and described in
 //
 //	https://ntruprime.cr.yp.to/nist/ntruprime-20201007.pdf
+//
+// The code is translated from the C reference implementation.
 package ntruprime

@@ -131,7 +131,7 @@ func generateKAT() {
 		if offset == -1 {
 			panic("Missing template warning in pkg.templ.go")
 		}
-		err = ioutil.WriteFile(mode.Pkg()+"/kat_test.go", []byte(res[offset:]), 0o644)
+		err = ioutil.WriteFile(mode.Pkg()+"/kat_test.go", []byte(res[offset:]), 0o600)
 		if err != nil {
 			panic(err)
 		}

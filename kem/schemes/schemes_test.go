@@ -166,5 +166,4 @@ func Example_schemes() {
 	// ntrulpr761
 	// ntrulpr857
 	// ntrulpr953
-
 }
