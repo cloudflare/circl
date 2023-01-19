@@ -18,16 +18,15 @@ import (
 )
 
 type vector struct {
-	ID       int    `json:"suiteID"`
-	Name     string `json:"suiteName"`
-	Mode     Mode   `json:"mode"`
-	Hash     string `json:"hash"`
-	PkSm     string `json:"pkSm"`
-	SkSm     string `json:"skSm"`
-	Seed     string `json:"seed"`
-	KeyInfo  string `json:"keyInfo"`
-	GroupDST string `json:"groupDST"`
-	Vectors  []struct {
+	Identifier string `json:"identifier"`
+	Mode       Mode   `json:"mode"`
+	Hash       string `json:"hash"`
+	PkSm       string `json:"pkSm"`
+	SkSm       string `json:"skSm"`
+	Seed       string `json:"seed"`
+	KeyInfo    string `json:"keyInfo"`
+	GroupDST   string `json:"groupDST"`
+	Vectors    []struct {
 		Batch             int    `json:"Batch"`
 		Blind             string `json:"Blind"`
 		Info              string `json:"Info"`
@@ -105,7 +104,7 @@ func readFile(t *testing.T, fileName string) []vector {
 }
 
 func (v *vector) SetUpParties(t *testing.T) (id params, s commonServer, c commonClient) {
-	suite, err := GetSuite(v.ID)
+	suite, err := GetSuite(v.Identifier)
 	test.CheckNoErr(t, err, "suite id")
 	seed := toBytes(t, v.Seed, "seed for key derivation")
 	keyInfo := toBytes(t, v.KeyInfo, "info for key derivation")
@@ -137,7 +136,7 @@ func (v *vector) compareLists(t *testing.T, got, want [][]byte) {
 	t.Helper()
 	for i := range got {
 		if !bytes.Equal(got[i], want[i]) {
-			test.ReportError(t, got[i], want[i], v.Name, v.Mode, i)
+			test.ReportError(t, got[i], want[i], v.Identifier, v.Mode, i)
 		}
 	}
 }
@@ -145,7 +144,7 @@ func (v *vector) compareLists(t *testing.T, got, want [][]byte) {
 func (v *vector) compareBytes(t *testing.T, got, want []byte) {
 	t.Helper()
 	if !bytes.Equal(got, want) {
-		test.ReportError(t, got, want, v.Name, v.Mode)
+		test.ReportError(t, got, want, v.Identifier, v.Mode)
 	}
 }
 
@@ -229,7 +228,7 @@ func (v *vector) test(t *testing.T) {
 			got := output
 			want := expectedOutputs[j]
 			if !bytes.Equal(got, want) {
-				test.ReportError(t, got, want, v.Name, v.Mode, i, j)
+				test.ReportError(t, got, want, v.Identifier, v.Mode, i, j)
 			}
 
 			test.CheckOk(server.VerifyFinalize(inputs[j], output), "verify finalize", t)
@@ -244,9 +243,9 @@ func TestVectors(t *testing.T) {
 	v := readFile(t, "testdata/allVectors.json")
 
 	for i := range v {
-		suite, err := GetSuite(v[i].ID)
+		suite, err := GetSuite(v[i].Identifier)
 		if err != nil {
-			t.Logf(v[i].Name + " not supported yet")
+			t.Logf(v[i].Identifier + " not supported yet")
 			continue
 		}
 		t.Run(fmt.Sprintf("%v/Mode%v", suite, v[i].Mode), v[i].test)

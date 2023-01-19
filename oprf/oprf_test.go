@@ -285,19 +285,19 @@ func BenchmarkAPI(b *testing.B) {
 		key, err := GenerateKey(suite, rand.Reader)
 		test.CheckNoErr(b, err, "failed key generation")
 
-		b.Run("OPRF/"+suite.Name(), func(b *testing.B) {
+		b.Run("OPRF/"+suite.Identifier(), func(b *testing.B) {
 			s := NewServer(suite, key)
 			c := NewClient(suite)
 			benchAPI(b, s, c)
 		})
 
-		b.Run("VOPRF/"+suite.Name(), func(b *testing.B) {
+		b.Run("VOPRF/"+suite.Identifier(), func(b *testing.B) {
 			s := NewVerifiableServer(suite, key)
 			c := NewVerifiableClient(suite, s.PublicKey())
 			benchAPI(b, s, c)
 		})
 
-		b.Run("POPRF/"+suite.Name(), func(b *testing.B) {
+		b.Run("POPRF/"+suite.Identifier(), func(b *testing.B) {
 			info := []byte("shared info")
 			s := &s1{NewPartialObliviousServer(suite, key), info}
 			c := &c1{NewPartialObliviousClient(suite, s.PublicKey()), info}
