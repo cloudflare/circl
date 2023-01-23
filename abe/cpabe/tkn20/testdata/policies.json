@@ -1,0 +1,71 @@
+[
+  {
+    "policy": "region: US",
+    "success": false,
+    "attributes": {
+      "region": "EU"
+    }
+  },
+  {
+    "policy": "not region: US",
+    "success": true,
+    "attributes": {
+      "region": "EU"
+    }
+  },
+  {
+    "policy": "region: US or region: EU or tier: 1 or tier: 2 or tier: 3 and owner: cloudflare",
+    "success": true,
+    "attributes": {
+      "region": "AZ",
+      "tier": "2",
+      "owner": "cloudflare"
+    }
+  },
+  {
+    "policy": "(region: US or region: EU) or (tier: 1 or tier: 2 or tier: 3) and (owner: cloudflare)",
+    "success": true,
+    "attributes": {
+      "region": "AZ",
+      "tier": "1",
+      "owner": "cloudflare"
+    }
+  },
+  {
+    "policy": "((region: US or region: EU) and (not (tier: 3)))",
+    "success": true,
+    "attributes": {
+      "region": "EU",
+      "tier": "2",
+      "owner": "cloudflare"
+    }
+  },
+  {
+    "policy": "not (region: US or region: EU)",
+    "success": false,
+    "attributes": {
+      "region": "EU"
+    }
+  },
+  {
+    "policy": "not not region: US",
+    "success": false,
+    "attributes": {
+      "region": "EU"
+    }
+  },
+  {
+    "policy": "region: US or region: US",
+    "success": false,
+    "attributes": {
+      "region": "AZ"
+    }
+  },
+  {
+    "policy": "region: US and region: EU or region: ASIA",
+    "success": false,
+    "attributes": {
+      "region": "US"
+    }
+  }
+]
