@@ -13,6 +13,13 @@ import (
 // https://www.iacr.org/archive/pkc2011/65710074/65710074.pdf that
 // apply the Boneh-Katz transform to Attribute based encryption.
 
+// Seed size is chosen based on the proof for BK transform
+// (https://eprint.iacr.org/2004/261.pdf - page 12, theorem 2) to maintain the
+// statistical hiding property. Their input is 448 bits -> 128 bits,
+// whereas we require a seed size of 576 bits to ensure a 2^(-65) statistical difference
+// for our output size of 256 bits.
+const macKeySeedSize = 72
+
 func blakeEncrypt(key []byte, msg []byte) ([]byte, error) {
 	xof, err := blake2b.NewXOF(blake2b.OutputLengthUnknown, key)
 	if err != nil {
@@ -70,7 +77,7 @@ func DeriveAttributeKeysCCA(rand io.Reader, sp *SecretParams, attrs *Attributes)
 }
 
 func EncryptCCA(rand io.Reader, public *PublicParams, policy *Policy, msg []byte) ([]byte, error) {
-	seed := make([]byte, 16)
+	seed := make([]byte, macKeySeedSize)
 	_, err := rand.Read(seed)
 	if err != nil {
 		return nil, err
@@ -173,12 +180,12 @@ func DecryptCCA(ciphertext []byte, key *AttributesKey) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(decEnv) < 16 {
+	if len(decEnv) < macKeySeedSize {
 		return nil, fmt.Errorf("envelope too short")
 	}
 
-	seed := decEnv[0:16]
-	ptx := make([]byte, len(decEnv)-16)
+	seed := decEnv[0:macKeySeedSize]
+	ptx := make([]byte, len(decEnv)-macKeySeedSize)
 	compID, macKey, err := expandSeed(seed)
 	if err != nil {
 		return nil, err
@@ -194,7 +201,7 @@ func DecryptCCA(ciphertext []byte, key *AttributesKey) ([]byte, error) {
 	idMatch := subtle.ConstantTimeCompare(compID, id)
 	check := tagMatch & idMatch
 	if check == 1 {
-		copy(ptx, decEnv[16:])
+		copy(ptx, decEnv[macKeySeedSize:])
 		return ptx, nil
 	}
 	return nil, fmt.Errorf("failure of decryption")
