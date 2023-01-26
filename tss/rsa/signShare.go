@@ -17,6 +17,11 @@ type SignShare struct {
 	Threshold uint
 }
 
+func (s SignShare) String() string {
+	return fmt.Sprintf("(t,n): (%v,%v) index: %v xi: 0x%v",
+		s.Threshold, s.Players, s.Index, s.xi.Text(16))
+}
+
 // MarshalBinary encodes SignShare into a byte array in a format readable by UnmarshalBinary.
 // Note: Only Index's up to math.MaxUint16 are supported
 func (s *SignShare) MarshalBinary() ([]byte, error) {

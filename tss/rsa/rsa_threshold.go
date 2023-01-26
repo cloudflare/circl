@@ -199,22 +199,34 @@ func CombineSignShares(pub *rsa.PublicKey, shares []SignShare, msg []byte) (Sign
 	// e′a + eb = 1
 	a := big.Int{}
 	b := big.Int{}
+	e := big.NewInt(int64(pub.E))
 	tmp := big.Int{}
-	tmp.GCD(&a, &b, &eprime, big.NewInt(int64(pub.E)))
+	tmp.GCD(&a, &b, &eprime, e)
 
 	// TODO You can compute a earlier and multiply a into the exponents used when computing w.
 	// w^a
 	wa := big.Int{}
 	wa.Exp(w, &a, pub.N) // TODO justification
 	// x^b
+	x := big.Int{}
+	x.SetBytes(msg)
 	xb := big.Int{}
-	xb.SetBytes(msg)
-	xb.Exp(&xb, &b, pub.N) // TODO justification
+	xb.Exp(&x, &b, pub.N) // TODO justification
 	// y = w^a * x^b
 	y := big.Int{}
 	y.Mul(&wa, &xb).Mod(&y, pub.N)
 
-	return y.Bytes(), nil
+	// verify that signature is valid by checking x == y^e.
+	ye := big.Int{}
+	ye.Exp(&y, e, pub.N)
+	if ye.Cmp(&x) != 0 {
+		return nil, errors.New("rsa: internal error")
+	}
+
+	// ensure signature has the right size.
+	sig := y.FillBytes(make([]byte, pub.Size()))
+
+	return sig, nil
 }
 
 // computes lagrange Interpolation for the shares

@@ -23,6 +23,11 @@ type KeyShare struct {
 	Threshold uint
 }
 
+func (kshare KeyShare) String() string {
+	return fmt.Sprintf("(t,n): (%v,%v) index: %v si: 0x%v",
+		kshare.Threshold, kshare.Players, kshare.Index, kshare.si.Text(16))
+}
+
 // MarshalBinary encodes a KeyShare into a byte array in a format readable by UnmarshalBinary.
 // Note: Only Index's up to math.MaxUint16 are supported
 func (kshare *KeyShare) MarshalBinary() ([]byte, error) {

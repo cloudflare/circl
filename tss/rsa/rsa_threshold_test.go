@@ -159,10 +159,9 @@ const (
 	PSS     = 1
 )
 
-func testIntegration(t *testing.T, algo crypto.Hash, pub *rsa.PublicKey, threshold uint, keys []KeyShare, padScheme int) {
-	t.Logf("dealt %d keys", len(keys))
-
+func testIntegration(t *testing.T, algo crypto.Hash, priv *rsa.PrivateKey, threshold uint, keys []KeyShare, padScheme int) {
 	msg := []byte("hello")
+	pub := &priv.PublicKey
 
 	var padder Padder
 	if padScheme == PKS1v15 {
@@ -190,14 +189,13 @@ func testIntegration(t *testing.T, algo crypto.Hash, pub *rsa.PublicKey, thresho
 		}
 	}
 
-	t.Logf("signed with %d keys", len(signshares))
-
 	sig, err := CombineSignShares(pub, signshares, msgPH)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	t.Log("combined sign shares")
+	if len(sig) != pub.Size() {
+		t.Fatal("bad signature size")
+	}
 
 	h := algo.New()
 	h.Write(msg)
@@ -212,6 +210,14 @@ func testIntegration(t *testing.T, algo crypto.Hash, pub *rsa.PublicKey, thresho
 	}
 
 	if err != nil {
+		t.Logf("d: %v p: %v q: %v\n", priv.D.Text(16), priv.Primes[0].Text(16), priv.Primes[1].Text(16))
+		for i, k := range keys {
+			t.Logf("keys[%v]: %v\n", i, k)
+		}
+		for i, s := range signshares {
+			t.Logf("signShares[%v]: %v\n", i, s)
+		}
+		t.Logf("sig: %x\n", sig)
 		t.Fatal(err)
 	}
 }
@@ -223,7 +229,6 @@ func TestIntegrationStdRsaKeyGenerationPKS1v15(t *testing.T) {
 	const algo = crypto.SHA256
 
 	key, err := rsa.GenerateKey(rand.Reader, bits)
-	pub := key.PublicKey
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -231,7 +236,7 @@ func TestIntegrationStdRsaKeyGenerationPKS1v15(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	testIntegration(t, algo, &pub, threshold, keys, PKS1v15)
+	testIntegration(t, algo, key, threshold, keys, PKS1v15)
 }
 
 func TestIntegrationStdRsaKeyGenerationPSS(t *testing.T) {
@@ -241,7 +246,6 @@ func TestIntegrationStdRsaKeyGenerationPSS(t *testing.T) {
 	const algo = crypto.SHA256
 
 	key, err := rsa.GenerateKey(rand.Reader, bits)
-	pub := key.PublicKey
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -249,7 +253,7 @@ func TestIntegrationStdRsaKeyGenerationPSS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	testIntegration(t, algo, &pub, threshold, keys, PSS)
+	testIntegration(t, algo, key, threshold, keys, PSS)
 }
 
 // nolint: unparam
