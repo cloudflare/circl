@@ -1,13 +1,14 @@
-package dl
+package dl_test
 
 import (
 	"crypto/rand"
 	"testing"
 
 	"github.com/cloudflare/circl/group"
+	"github.com/cloudflare/circl/zk/dl"
 )
 
-const testzkDLCount = 10
+const testzkDLCount = 1 << 8
 
 func testzkDL(t *testing.T, myGroup group.Group) {
 	kA := myGroup.RandomNonZeroScalar(rand.Reader)
@@ -18,11 +19,11 @@ func testzkDL(t *testing.T, myGroup group.Group) {
 
 	dst := "zeroknowledge"
 	rnd := rand.Reader
-	V, r := ProveGen(myGroup, DB, R, kA, []byte("Prover"), []byte("Verifier"), []byte(dst), rnd)
+	proof := dl.Prove(myGroup, DB, R, kA, []byte("Prover"), []byte(dst), rnd)
 
-	verify := Verify(myGroup, DB, R, V, r, []byte("Prover"), []byte("Verifier"), []byte(dst))
+	verify := dl.Verify(myGroup, DB, R, proof, []byte("Prover"), []byte(dst))
 	if verify == false {
-		t.Error("zkRDL verification failed")
+		t.Error("zk/dl verification failed")
 	}
 }
 
@@ -34,11 +35,11 @@ func testzkDLNegative(t *testing.T, myGroup group.Group) {
 
 	dst := "zeroknowledge"
 	rnd := rand.Reader
-	V, r := ProveGen(myGroup, DB, R, kA, []byte("Prover"), []byte("Verifier"), []byte(dst), rnd)
+	proof := dl.Prove(myGroup, DB, R, kA, []byte("Prover"), []byte(dst), rnd)
 
-	verify := Verify(myGroup, DB, R, V, r, []byte("Prover"), []byte("Verifier"), []byte(dst))
+	verify := dl.Verify(myGroup, DB, R, proof, []byte("Prover"), []byte(dst))
 	if verify == true {
-		t.Error("zkRDL verification should fail")
+		t.Error("zk/dl verification should fail")
 	}
 }
 
