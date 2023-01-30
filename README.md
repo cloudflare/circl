@@ -104,7 +104,7 @@ APA Style
 ```
 Faz-Hernández, A. and Kwiatkowski, K. (2019). Introducing CIRCL:
 An Advanced Cryptographic Library. Cloudflare. Available at
-https://github.com/cloudflare/circl. v1.3.0 Accessed Nov, 2022.
+https://github.com/cloudflare/circl. v1.3.2 Accessed Jan, 2023.
 ```
 
 Bibtex Source
@@ -119,7 +119,7 @@ Bibtex Source
                    of this library is to be used as a tool for experimental
                    deployment of cryptographic algorithms targeting Post-Quantum (PQ)
                    and Elliptic Curve Cryptography (ECC).}},
-  note         = {Available at \url{https://github.com/cloudflare/circl}. v1.3.0 Accessed Nov, 2022},
+  note         = {Available at \url{https://github.com/cloudflare/circl}. v1.3.2 Accessed Jan, 2023},
   month        = jun,
   year         = {2019}
 }
