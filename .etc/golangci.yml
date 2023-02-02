@@ -5,6 +5,7 @@ linters:
     # - lll
     # - gocritic
     # - gocognit
+    # - gci         (deprecated since v1.30.0)
     # - interfacer  (deprecated since v1.38.0)
     # - scopelint   (deprecated since v1.39.0)
     # - golint      (deprecated since v1.41.0)
@@ -18,7 +19,6 @@ linters:
     - exportloopref
     - forbidigo
     - funlen
-    - gci
     - goconst
     - gocyclo
     - gofmt
