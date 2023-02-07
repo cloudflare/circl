@@ -35,6 +35,8 @@ package blindrsa
 // This file implements the RSASSA-PSS signature scheme according to RFC 8017.
 
 import (
+	"bytes"
+	"crypto/rsa"
 	"errors"
 	"hash"
 )
@@ -125,4 +127,104 @@ func emsaPSSEncode(mHash []byte, emBits int, salt []byte, hash hash.Hash) ([]byt
 
 	// 13. Output EM.
 	return em, nil
+}
+
+func emsaPSSVerify(mHash, em []byte, emBits, sLen int, hash hash.Hash) error {
+	// See RFC 8017, Section 9.1.2.
+
+	hLen := hash.Size()
+	if sLen == rsa.PSSSaltLengthEqualsHash {
+		sLen = hLen
+	}
+	emLen := (emBits + 7) / 8
+	if emLen != len(em) {
+		return errors.New("rsa: internal error: inconsistent length")
+	}
+
+	// 1.  If the length of M is greater than the input limitation for the
+	//     hash function (2^61 - 1 octets for SHA-1), output "inconsistent"
+	//     and stop.
+	//
+	// 2.  Let mHash = Hash(M), an octet string of length hLen.
+	if hLen != len(mHash) {
+		return rsa.ErrVerification
+	}
+
+	// 3.  If emLen < hLen + sLen + 2, output "inconsistent" and stop.
+	if emLen < hLen+sLen+2 {
+		return rsa.ErrVerification
+	}
+
+	// 4.  If the rightmost octet of EM does not have hexadecimal value
+	//     0xbc, output "inconsistent" and stop.
+	if em[emLen-1] != 0xbc {
+		return rsa.ErrVerification
+	}
+
+	// 5.  Let maskedDB be the leftmost emLen - hLen - 1 octets of EM, and
+	//     let H be the next hLen octets.
+	db := em[:emLen-hLen-1]
+	h := em[emLen-hLen-1 : emLen-1]
+
+	// 6.  If the leftmost 8 * emLen - emBits bits of the leftmost octet in
+	//     maskedDB are not all equal to zero, output "inconsistent" and
+	//     stop.
+	var bitMask byte = 0xff >> (8*emLen - emBits)
+	if em[0] & ^bitMask != 0 {
+		return rsa.ErrVerification
+	}
+
+	// 7.  Let dbMask = MGF(H, emLen - hLen - 1).
+	//
+	// 8.  Let DB = maskedDB \xor dbMask.
+	mgf1XOR(db, hash, h)
+
+	// 9.  Set the leftmost 8 * emLen - emBits bits of the leftmost octet in DB
+	//     to zero.
+	db[0] &= bitMask
+
+	// If we don't know the salt length, look for the 0x01 delimiter.
+	if sLen == rsa.PSSSaltLengthAuto {
+		psLen := bytes.IndexByte(db, 0x01)
+		if psLen < 0 {
+			return rsa.ErrVerification
+		}
+		sLen = len(db) - psLen - 1
+	}
+
+	// 10. If the emLen - hLen - sLen - 2 leftmost octets of DB are not zero
+	//     or if the octet at position emLen - hLen - sLen - 1 (the leftmost
+	//     position is "position 1") does not have hexadecimal value 0x01,
+	//     output "inconsistent" and stop.
+	psLen := emLen - hLen - sLen - 2
+	for _, e := range db[:psLen] {
+		if e != 0x00 {
+			return rsa.ErrVerification
+		}
+	}
+	if db[psLen] != 0x01 {
+		return rsa.ErrVerification
+	}
+
+	// 11.  Let salt be the last sLen octets of DB.
+	salt := db[len(db)-sLen:]
+
+	// 12.  Let
+	//          M' = (0x)00 00 00 00 00 00 00 00 || mHash || salt ;
+	//     M' is an octet string of length 8 + hLen + sLen with eight
+	//     initial zero octets.
+	//
+	// 13. Let H' = Hash(M'), an octet string of length hLen.
+	var prefix [8]byte
+	hash.Write(prefix[:])
+	hash.Write(mHash)
+	hash.Write(salt)
+
+	h0 := hash.Sum(nil)
+
+	// 14. If H = H', output "consistent." Otherwise, output "inconsistent."
+	if !bytes.Equal(h0, h) { // TODO: constant time?
+		return rsa.ErrVerification
+	}
+	return nil
 }
