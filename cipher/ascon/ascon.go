@@ -44,9 +44,9 @@ var (
 )
 
 type Cipher struct {
-	state [stateSize]byte
-	key   [KeySize]byte
-	mode  Mode
+	s    [5]uint64
+	key  [2]uint64
+	mode Mode
 }
 
 // New returns a Cipher struct implementing the cipher.AEAD interface. Mode is
@@ -60,7 +60,8 @@ func New(key []byte, m Mode) (*Cipher, error) {
 	}
 	c := new(Cipher)
 	c.mode = m
-	copy(c.key[:], key)
+	c.key[0] = binary.BigEndian.Uint64(key[0:8])
+	c.key[1] = binary.BigEndian.Uint64(key[8:16])
 	var _ cipher.AEAD = c
 	return c, nil
 }
@@ -131,23 +132,16 @@ func (a *Cipher) Open(dst, nonce, ciphertext, additionalData []byte) ([]byte, er
 }
 
 func (a *Cipher) initialize(nonce []byte) {
-	bcs := blockSize * byte(a.mode)
-	pB := permB + 2*(byte(a.mode)-1)
-	a.state[0] = KeySize * 8
-	a.state[1] = bcs * 8
-	a.state[2] = permA
-	a.state[3] = pB
-	a.state[4] = 0
-	a.state[5] = 0
-	a.state[6] = 0
-	a.state[7] = 0
-	copy(a.state[ivSize:ivSize+KeySize], a.key[:])
-	copy(a.state[ivSize+KeySize:ivSize+KeySize+NonceSize], nonce)
+	bcs := blockSize * uint64(a.mode)
+	pB := permB + 2*(uint64(a.mode)-1)
+	a.s[0] = ((KeySize * 8) << 56) | ((bcs * 8) << 48) | (permA << 40) | (pB << 32)
+	a.s[1] = a.key[0]
+	a.s[2] = a.key[1]
+	a.s[3] = binary.BigEndian.Uint64(nonce[0:8])
+	a.s[4] = binary.BigEndian.Uint64(nonce[8:16])
 	a.perm(permA)
-
-	for i := 0; i < KeySize; i++ {
-		a.state[stateSize-KeySize+i] ^= a.key[i]
-	}
+	a.s[3] ^= a.key[0]
+	a.s[4] ^= a.key[1]
 }
 
 func (a *Cipher) assocData(add []byte) {
@@ -155,20 +149,20 @@ func (a *Cipher) assocData(add []byte) {
 	pB := permB + 2*(int(a.mode)-1)
 	if len(add) > 0 {
 		for ; len(add) >= bcs; add = add[bcs:] {
-			for i := 0; i < bcs; i++ {
-				a.state[i] ^= add[i]
+			for i := 0; i < bcs; i += 8 {
+				a.s[i/8] ^= binary.BigEndian.Uint64(add[i : i+8])
 			}
 			a.perm(pB)
 		}
 		if len(add) >= 0 {
 			for i := 0; i < len(add); i++ {
-				a.state[i] ^= add[i]
+				a.s[i/8] ^= uint64(add[i]) << (56 - 8*(i%8))
 			}
-			a.state[len(add)] ^= 0x80
+			a.s[len(add)/8] ^= uint64(0x80) << (56 - 8*(len(add)%8))
 			a.perm(pB)
 		}
 	}
-	a.state[stateSize-1] ^= 0x01
+	a.s[4] ^= 0x01
 }
 
 func (a *Cipher) procText(in, out []byte, enc bool) {
@@ -179,77 +173,64 @@ func (a *Cipher) procText(in, out []byte, enc bool) {
 		cc = out
 	}
 	for ; len(in) >= bcs; in, out, cc = in[bcs:], out[bcs:], cc[bcs:] {
-		for i := 0; i < bcs; i++ {
-			out[i] = a.state[i] ^ in[i]
-			a.state[i] = cc[i]
+		for i := 0; i < bcs; i += 8 {
+			binary.BigEndian.PutUint64(out[i:i+8], a.s[i/8]^binary.BigEndian.Uint64(in[i:i+8]))
+			a.s[i/8] = binary.BigEndian.Uint64(cc[i : i+8])
 		}
 		a.perm(pB)
 	}
 	if len(in) >= 0 {
 		for i := 0; i < len(in); i++ {
-			out[i] = a.state[i] ^ in[i]
-			a.state[i] = cc[i]
+			off := 56 - (8 * (i % 8))
+			si := byte((a.s[i/8] >> off) & 0xFF)
+			out[i] = si ^ in[i]
+			a.s[i/8] = (uint64(a.s[i/8]) &^ (0xFF << off)) | uint64(cc[i])<<off
 		}
-		a.state[len(in)] ^= 0x80
+		a.s[len(in)/8] ^= uint64(0x80) << (56 - 8*(len(in)%8))
 	}
 }
 
 func (a *Cipher) finalize(tag []byte) {
 	bcs := blockSize * int(a.mode)
-	for i := 0; i < KeySize; i++ {
-		a.state[bcs+i] ^= a.key[i]
-	}
+	a.s[bcs/8+0] ^= a.key[0]
+	a.s[bcs/8+1] ^= a.key[1]
 	a.perm(permA)
-	for i := 0; i < KeySize; i++ {
-		tag[i] = a.state[stateSize-KeySize+i] ^ a.key[i]
-	}
+	binary.BigEndian.PutUint64(tag[0:8], a.s[3]^a.key[0])
+	binary.BigEndian.PutUint64(tag[8:16], a.s[4]^a.key[1])
 }
 
 func (a *Cipher) perm(n int) {
-	x := [5]uint64{}
-	x[0] = binary.BigEndian.Uint64(a.state[0:8])
-	x[1] = binary.BigEndian.Uint64(a.state[8:16])
-	x[2] = binary.BigEndian.Uint64(a.state[16:24])
-	x[3] = binary.BigEndian.Uint64(a.state[24:32])
-	x[4] = binary.BigEndian.Uint64(a.state[32:40])
-
 	for i := 0; i < n; i++ {
 		// pC -- addition of constants
 		ri := i
 		if n != permA {
 			ri = i + permA - n
 		}
-		x[2] ^= roundConst[ri]
+		a.s[2] ^= roundConst[ri]
 
 		// pS -- substitution layer
 		for j := 0; j < 64; j++ {
 			sx := subs[0|
-				(((x[0]>>j)&0x1)<<4)|
-				(((x[1]>>j)&0x1)<<3)|
-				(((x[2]>>j)&0x1)<<2)|
-				(((x[3]>>j)&0x1)<<1)|
-				(((x[4]>>j)&0x1)<<0)]
+				(((a.s[0]>>j)&0x1)<<4)|
+				(((a.s[1]>>j)&0x1)<<3)|
+				(((a.s[2]>>j)&0x1)<<2)|
+				(((a.s[3]>>j)&0x1)<<1)|
+				(((a.s[4]>>j)&0x1)<<0)]
 			mask := uint64(1) << j
-			x[0] = (x[0] &^ mask) | uint64((sx>>4)&0x1)<<j
-			x[1] = (x[1] &^ mask) | uint64((sx>>3)&0x1)<<j
-			x[2] = (x[2] &^ mask) | uint64((sx>>2)&0x1)<<j
-			x[3] = (x[3] &^ mask) | uint64((sx>>1)&0x1)<<j
-			x[4] = (x[4] &^ mask) | uint64((sx>>0)&0x1)<<j
+			a.s[0] = (a.s[0] &^ mask) | uint64((sx>>4)&0x1)<<j
+			a.s[1] = (a.s[1] &^ mask) | uint64((sx>>3)&0x1)<<j
+			a.s[2] = (a.s[2] &^ mask) | uint64((sx>>2)&0x1)<<j
+			a.s[3] = (a.s[3] &^ mask) | uint64((sx>>1)&0x1)<<j
+			a.s[4] = (a.s[4] &^ mask) | uint64((sx>>0)&0x1)<<j
 		}
 
 		// pL -- linear diffusion layer
-		x[0] ^= bits.RotateLeft64(x[0], -19) ^ bits.RotateLeft64(x[0], -28)
-		x[1] ^= bits.RotateLeft64(x[1], -61) ^ bits.RotateLeft64(x[1], -39)
-		x[2] ^= bits.RotateLeft64(x[2], -1) ^ bits.RotateLeft64(x[2], -6)
-		x[3] ^= bits.RotateLeft64(x[3], -10) ^ bits.RotateLeft64(x[3], -17)
-		x[4] ^= bits.RotateLeft64(x[4], -7) ^ bits.RotateLeft64(x[4], -41)
+		a.s[0] ^= bits.RotateLeft64(a.s[0], -19) ^ bits.RotateLeft64(a.s[0], -28)
+		a.s[1] ^= bits.RotateLeft64(a.s[1], -61) ^ bits.RotateLeft64(a.s[1], -39)
+		a.s[2] ^= bits.RotateLeft64(a.s[2], -1) ^ bits.RotateLeft64(a.s[2], -6)
+		a.s[3] ^= bits.RotateLeft64(a.s[3], -10) ^ bits.RotateLeft64(a.s[3], -17)
+		a.s[4] ^= bits.RotateLeft64(a.s[4], -7) ^ bits.RotateLeft64(a.s[4], -41)
 	}
-
-	binary.BigEndian.PutUint64(a.state[0:8], x[0])
-	binary.BigEndian.PutUint64(a.state[8:16], x[1])
-	binary.BigEndian.PutUint64(a.state[16:24], x[2])
-	binary.BigEndian.PutUint64(a.state[24:32], x[3])
-	binary.BigEndian.PutUint64(a.state[32:40], x[4])
 }
 
 var (
