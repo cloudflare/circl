@@ -2,6 +2,7 @@ package ascon_test
 
 import (
 	"bytes"
+	"crypto/cipher"
 	hexa "encoding/hex"
 	"encoding/json"
 	"io"
@@ -58,50 +59,76 @@ func readFile(t *testing.T, fileName string) []vector {
 func TestAscon(t *testing.T) {
 	// Test vectors generated with pyascon
 	// https://github.com/meichlseder/pyascon/
-	for _, cipher := range []struct {
-		mode ascon.Mode
-		name string
-	}{
-		{ascon.Ascon128, "ascon128"},
-		{ascon.Ascon128a, "ascon128a"},
-	} {
-		t.Run(cipher.name, func(t *testing.T) {
-			vectors := readFile(t, "testdata/"+cipher.name+".json")
+	for _, mode := range []ascon.Mode{ascon.Ascon128, ascon.Ascon128a} {
+		name := mode.String()
+		t.Run(name, func(t *testing.T) {
+			vectors := readFile(t, "testdata/"+name+".json")
 			for _, v := range vectors {
-				a, err := ascon.New(v.Key, cipher.mode)
-				if err != nil {
-					t.Fatal(err)
-				}
-				got := a.Seal(nil, v.Nonce, v.PT, v.AD)
+				a, err := ascon.New(v.Key, mode)
+				test.CheckNoErr(t, err, "failed to create cipher")
+
+				var aead cipher.AEAD = a
+				test.CheckOk(len(v.Nonce) == aead.NonceSize(), "bad nonce size", t)
+				got := aead.Seal(nil, v.Nonce, v.PT, v.AD)
 				want := v.CT
 				if !bytes.Equal(got, want) {
-					test.ReportError(t, got, want, cipher.name, v.Count)
+					test.ReportError(t, got, want, name, v.Count)
 				}
 
-				got, err = a.Open(nil, v.Nonce, v.CT, v.AD)
+				got, err = aead.Open(nil, v.Nonce, v.CT, v.AD)
 				if err != nil {
 					t.Fatal(err)
 				}
 				want = v.PT
 				if !bytes.Equal(got, want) {
-					test.ReportError(t, got, want, cipher.name, v.Count)
+					test.ReportError(t, got, want, name, v.Count)
 				}
+				test.CheckOk(len(v.PT)+aead.Overhead() == len(v.CT), "bad overhead size", t)
 			}
 		})
 	}
 }
 
+func TestBadInputs(t *testing.T) {
+	var key [ascon.KeySize]byte
+	var m ascon.Mode = 0
+
+	_, err := ascon.New(key[:], m)
+	test.CheckIsErr(t, err, "should fail due to bad mode")
+
+	err = test.CheckPanic(func() { _ = m.String() })
+	test.CheckNoErr(t, err, "should panic due to bad mode")
+
+	_, err = ascon.New(nil, ascon.Ascon128)
+	test.CheckIsErr(t, err, "should fail due to nil key")
+
+	_, err = ascon.New(key[:4], ascon.Ascon128)
+	test.CheckIsErr(t, err, "should fail due to short key")
+
+	a, _ := ascon.New(key[:], ascon.Ascon128)
+	err = test.CheckPanic(func() { _ = a.Seal(nil, nil, nil, nil) })
+	test.CheckNoErr(t, err, "should panic due to bad nonce")
+
+	err = test.CheckPanic(func() { _, _ = a.Open(nil, nil, nil, nil) })
+	test.CheckNoErr(t, err, "should panic due to bad nonce")
+
+	var nonce [ascon.NonceSize]byte
+	_ = a.Seal(nil, nonce[:], nil, nil)
+	_, err = a.Open(nil, nonce[:], nil, nil)
+	test.CheckIsErr(t, err, "should panic due to empty ciphertext")
+
+	pt := []byte("")
+	ct := a.Seal(nil, nonce[:], pt, nil)
+	ct[0] ^= 0xFF // tamper ciphertext
+	_, err = a.Open(nil, nonce[:], ct, nil)
+	test.CheckIsErr(t, err, "should panic due to bad ciphertext")
+}
+
 func BenchmarkAscon(b *testing.B) {
-	for _, cipher := range []struct {
-		mode ascon.Mode
-		name string
-	}{
-		{ascon.Ascon128, "ascon128"},
-		{ascon.Ascon128a, "ascon128a"},
-	} {
+	for _, mode := range []ascon.Mode{ascon.Ascon128, ascon.Ascon128a} {
 		for _, length := range []int{64, 1350, 8 * 1024} {
-			b.Run(cipher.name+"/Open-"+strconv.Itoa(length), func(b *testing.B) { benchmarkOpen(b, make([]byte, length), cipher.mode) })
-			b.Run(cipher.name+"/Seal-"+strconv.Itoa(length), func(b *testing.B) { benchmarkSeal(b, make([]byte, length), cipher.mode) })
+			b.Run(mode.String()+"/Open-"+strconv.Itoa(length), func(b *testing.B) { benchmarkOpen(b, make([]byte, length), mode) })
+			b.Run(mode.String()+"/Seal-"+strconv.Itoa(length), func(b *testing.B) { benchmarkSeal(b, make([]byte, length), mode) })
 		}
 	}
 }

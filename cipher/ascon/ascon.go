@@ -1,12 +1,11 @@
 // Package ascon provides a light-weight AEAD cipher.
 //
-// This packges implements the AEAD ciphers Ascon128 and Ascon128a as specified
+// This package implements Ascon128 and Ascon128a two AEAD ciphers as specified
 // in https://ascon.iaik.tugraz.at/index.html
 package ascon
 
 import (
 	"bytes"
-	"crypto/cipher"
 	"encoding/binary"
 	"errors"
 	"math/bits"
@@ -20,6 +19,17 @@ const (
 
 type Mode int
 
+func (m Mode) String() string {
+	switch m {
+	case Ascon128:
+		return "Ascon128"
+	case Ascon128a:
+		return "Ascon128a"
+	default:
+		panic(ErrMode)
+	}
+}
+
 const (
 	Ascon128 Mode = iota + 1
 	Ascon128a
@@ -27,7 +37,7 @@ const (
 
 const (
 	permA     = 12
-	permB     = 6 // 6 for Ascon128, or 8 for Ascon128a
+	permB     = 6 // 6 for Ascon128, or  8 for Ascon128a
 	blockSize = 8 // 8 for Ascon128, or 16 for Ascon128a
 	ivSize    = 8
 	stateSize = ivSize + KeySize + NonceSize
@@ -62,7 +72,7 @@ func New(key []byte, m Mode) (*Cipher, error) {
 	c.mode = m
 	c.key[0] = binary.BigEndian.Uint64(key[0:8])
 	c.key[1] = binary.BigEndian.Uint64(key[8:16])
-	var _ cipher.AEAD = c
+
 	return c, nil
 }
 
@@ -112,6 +122,9 @@ func (a *Cipher) Seal(dst, nonce, plaintext, additionalData []byte) []byte {
 func (a *Cipher) Open(dst, nonce, ciphertext, additionalData []byte) ([]byte, error) {
 	if len(nonce) != NonceSize {
 		panic(ErrNonceSize)
+	}
+	if len(ciphertext) < TagSize {
+		return nil, ErrDecryption
 	}
 
 	ptLen := len(ciphertext) - TagSize
@@ -184,7 +197,7 @@ func (a *Cipher) procText(in, out []byte, enc bool) {
 			off := 56 - (8 * (i % 8))
 			si := byte((a.s[i/8] >> off) & 0xFF)
 			out[i] = si ^ in[i]
-			a.s[i/8] = (uint64(a.s[i/8]) &^ (0xFF << off)) | uint64(cc[i])<<off
+			a.s[i/8] = (a.s[i/8] &^ (0xFF << off)) | uint64(cc[i])<<off
 		}
 		a.s[len(in)/8] ^= uint64(0x80) << (56 - 8*(len(in)%8))
 	}
