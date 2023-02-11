@@ -54,3 +54,17 @@ bootstrap:
 
 clean:
 	rm -rf $(GOPATH_BUILD)
+
+.INTERMEDIATE: circl.go circl_static.exe circl_plugin.so
+circl_static: circl_static.exe
+circl_static.exe: circl.go
+	go clean -cache -modcache
+	go build -buildmode=default -o $@ $^
+
+circl_plugin: circl_plugin.so
+circl_plugin.so: circl.go
+	go clean -cache -modcache
+	go build -buildmode=plugin -o $@ $^
+
+circl.go:
+	go run .etc/all_imports.go -out $@
