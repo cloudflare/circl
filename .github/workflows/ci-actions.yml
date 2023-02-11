@@ -62,6 +62,21 @@ jobs:
       - name: Testing
         run: |
           docker run --rm -v `pwd`:`pwd` -w `pwd` ${{matrix.CFG[1]}}/golang:${{matrix.CFG[2]}} go test -v ./...
+  build_modes:
+    needs: [amd64_job]
+    runs-on: ubuntu-22.04
+    name: Testing Build Modes
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.20'
+      - name: Build as Static
+        run: make circl_static
+      - name: Build as Plugin
+        run: make circl_plugin
   coverage_amd64_job:
     needs: [amd64_job]
     if: github.event_name == 'push'
