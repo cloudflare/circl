@@ -159,4 +159,5 @@ func Example_schemes() {
 	// Kyber768-X25519
 	// Kyber768-X448
 	// Kyber1024-X448
+	// P256Kyber768Draft00
 }
