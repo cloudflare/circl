@@ -43,16 +43,6 @@ const (
 	stateSize = ivSize + KeySize + NonceSize
 )
 
-var (
-	roundConst = [12]uint64{0xf0, 0xe1, 0xd2, 0xc3, 0xb4, 0xa5, 0x96, 0x87, 0x78, 0x69, 0x5a, 0x4b}
-	subs       = [32]int{
-		0x04, 0x0b, 0x1f, 0x14, 0x1a, 0x15, 0x09, 0x02,
-		0x1b, 0x05, 0x08, 0x12, 0x1d, 0x03, 0x06, 0x1c,
-		0x1e, 0x13, 0x07, 0x0e, 0x00, 0x0d, 0x11, 0x18,
-		0x10, 0x0c, 0x01, 0x19, 0x16, 0x0a, 0x0f, 0x17,
-	}
-)
-
 type Cipher struct {
 	s    [5]uint64
 	key  [2]uint64
@@ -212,38 +202,48 @@ func (a *Cipher) finalize(tag []byte) {
 	binary.BigEndian.PutUint64(tag[8:16], a.s[4]^a.key[1])
 }
 
+var roundConst = [12]uint64{0xf0, 0xe1, 0xd2, 0xc3, 0xb4, 0xa5, 0x96, 0x87, 0x78, 0x69, 0x5a, 0x4b}
+
 func (a *Cipher) perm(n int) {
+	ri := 0
+	if n != permA {
+		ri = permA - n
+	}
+
+	x0, x1, x2, x3, x4 := a.s[0], a.s[1], a.s[2], a.s[3], a.s[4]
 	for i := 0; i < n; i++ {
 		// pC -- addition of constants
-		ri := i
-		if n != permA {
-			ri = i + permA - n
-		}
-		a.s[2] ^= roundConst[ri]
+		x2 ^= roundConst[ri+i]
 
 		// pS -- substitution layer
-		for j := 0; j < 64; j++ {
-			sx := subs[0|
-				(((a.s[0]>>j)&0x1)<<4)|
-				(((a.s[1]>>j)&0x1)<<3)|
-				(((a.s[2]>>j)&0x1)<<2)|
-				(((a.s[3]>>j)&0x1)<<1)|
-				(((a.s[4]>>j)&0x1)<<0)]
-			mask := uint64(1) << j
-			a.s[0] = (a.s[0] &^ mask) | uint64((sx>>4)&0x1)<<j
-			a.s[1] = (a.s[1] &^ mask) | uint64((sx>>3)&0x1)<<j
-			a.s[2] = (a.s[2] &^ mask) | uint64((sx>>2)&0x1)<<j
-			a.s[3] = (a.s[3] &^ mask) | uint64((sx>>1)&0x1)<<j
-			a.s[4] = (a.s[4] &^ mask) | uint64((sx>>0)&0x1)<<j
-		}
+		// Figure 6 from Spec [DHVV18,Dae18]
+		// https://ascon.iaik.tugraz.at/files/asconv12-nist.pdf
+		x0 ^= x4
+		x4 ^= x3
+		x2 ^= x1
+		t0 := x0 & (^x4)
+		t1 := x2 & (^x1)
+		x0 ^= t1
+		t1 = x4 & (^x3)
+		x2 ^= t1
+		t1 = x1 & (^x0)
+		x4 ^= t1
+		t1 = x3 & (^x2)
+		x1 ^= t1
+		x3 ^= t0
+		x1 ^= x0
+		x3 ^= x2
+		x0 ^= x4
+		x2 = ^x2
 
 		// pL -- linear diffusion layer
-		a.s[0] ^= bits.RotateLeft64(a.s[0], -19) ^ bits.RotateLeft64(a.s[0], -28)
-		a.s[1] ^= bits.RotateLeft64(a.s[1], -61) ^ bits.RotateLeft64(a.s[1], -39)
-		a.s[2] ^= bits.RotateLeft64(a.s[2], -1) ^ bits.RotateLeft64(a.s[2], -6)
-		a.s[3] ^= bits.RotateLeft64(a.s[3], -10) ^ bits.RotateLeft64(a.s[3], -17)
-		a.s[4] ^= bits.RotateLeft64(a.s[4], -7) ^ bits.RotateLeft64(a.s[4], -41)
+		x0 ^= bits.RotateLeft64(x0, -19) ^ bits.RotateLeft64(x0, -28)
+		x1 ^= bits.RotateLeft64(x1, -61) ^ bits.RotateLeft64(x1, -39)
+		x2 ^= bits.RotateLeft64(x2, -1) ^ bits.RotateLeft64(x2, -6)
+		x3 ^= bits.RotateLeft64(x3, -10) ^ bits.RotateLeft64(x3, -17)
+		x4 ^= bits.RotateLeft64(x4, -7) ^ bits.RotateLeft64(x4, -41)
 	}
+	a.s[0], a.s[1], a.s[2], a.s[3], a.s[4] = x0, x1, x2, x3, x4
 }
 
 var (
