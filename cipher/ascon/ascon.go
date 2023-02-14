@@ -1,7 +1,8 @@
 // Package ascon provides a light-weight AEAD cipher.
 //
 // This package implements Ascon128 and Ascon128a two AEAD ciphers as specified
-// in https://ascon.iaik.tugraz.at/index.html
+// in ASCON v1.2 by C. Dobraunig, M. Eichlseder, F. Mendel, M. Schläffer.
+// https://ascon.iaik.tugraz.at/index.html
 package ascon
 
 import (
@@ -171,23 +172,29 @@ func (a *Cipher) assocData(add []byte) {
 func (a *Cipher) procText(in, out []byte, enc bool) {
 	bcs := blockSize * int(a.mode)
 	pB := permB + 2*(int(a.mode)-1)
-	cc := in
+	mask := uint64(0)
 	if enc {
-		cc = out
+		mask -= 1
 	}
-	for ; len(in) >= bcs; in, out, cc = in[bcs:], out[bcs:], cc[bcs:] {
+
+	for ; len(in) >= bcs; in, out = in[bcs:], out[bcs:] {
 		for i := 0; i < bcs; i += 8 {
-			binary.BigEndian.PutUint64(out[i:i+8], a.s[i/8]^binary.BigEndian.Uint64(in[i:i+8]))
-			a.s[i/8] = binary.BigEndian.Uint64(cc[i : i+8])
+			inW := binary.BigEndian.Uint64(in[i : i+8])
+			outW := a.s[i/8] ^ inW
+			binary.BigEndian.PutUint64(out[i:i+8], outW)
+
+			a.s[i/8] = (inW &^ mask) | (outW & mask)
 		}
 		a.perm(pB)
 	}
 	if len(in) >= 0 {
+		mask8 := byte(mask & 0xFF)
 		for i := 0; i < len(in); i++ {
 			off := 56 - (8 * (i % 8))
 			si := byte((a.s[i/8] >> off) & 0xFF)
 			out[i] = si ^ in[i]
-			a.s[i/8] = (a.s[i/8] &^ (0xFF << off)) | uint64(cc[i])<<off
+			ss := (in[i] &^ mask8) | (out[i] & mask8)
+			a.s[i/8] = (a.s[i/8] &^ (0xFF << off)) | uint64(ss)<<off
 		}
 		a.s[len(in)/8] ^= uint64(0x80) << (56 - 8*(len(in)%8))
 	}
