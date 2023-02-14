@@ -5,7 +5,7 @@
 package ascon
 
 import (
-	"bytes"
+	"crypto/subtle"
 	"encoding/binary"
 	"errors"
 	"math/bits"
@@ -127,7 +127,7 @@ func (a *Cipher) Open(dst, nonce, ciphertext, additionalData []byte) ([]byte, er
 	a.procText(ciphertext, plaintext, false)
 	a.finalize(tag1)
 
-	if !bytes.Equal(tag0, tag1) {
+	if subtle.ConstantTimeCompare(tag0, tag1) == 0 {
 		return nil, ErrDecryption
 	}
 
