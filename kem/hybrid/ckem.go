@@ -3,7 +3,6 @@ package hybrid
 // TODO move over to crypto/ecdh once we can assume Go 1.20.
 
 import (
-	"bytes"
 	"crypto/elliptic"
 	cryptoRand "crypto/rand"
 	"crypto/subtle"
@@ -123,10 +122,7 @@ func (sch *cScheme) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 	}
 	h := xof.SHAKE256.New()
 	_, _ = h.Write(seed)
-	buf := make([]byte, sch.PrivateKeySize())
-	_, _ = h.Read(buf)
-	rnd := bytes.NewReader(buf)
-	key, x, y, err := elliptic.GenerateKey(sch.curve, rnd)
+	key, x, y, err := elliptic.GenerateKey(sch.curve, h)
 	if err != nil {
 		panic(err)
 	}
