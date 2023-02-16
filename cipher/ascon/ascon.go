@@ -158,13 +158,11 @@ func (a *Cipher) assocData(add []byte) {
 			}
 			a.perm(pB)
 		}
-		if len(add) >= 0 {
-			for i := 0; i < len(add); i++ {
-				a.s[i/8] ^= uint64(add[i]) << (56 - 8*(i%8))
-			}
-			a.s[len(add)/8] ^= uint64(0x80) << (56 - 8*(len(add)%8))
-			a.perm(pB)
+		for i := 0; i < len(add); i++ {
+			a.s[i/8] ^= uint64(add[i]) << (56 - 8*(i%8))
 		}
+		a.s[len(add)/8] ^= uint64(0x80) << (56 - 8*(len(add)%8))
+		a.perm(pB)
 	}
 	a.s[4] ^= 0x01
 }
@@ -187,17 +185,16 @@ func (a *Cipher) procText(in, out []byte, enc bool) {
 		}
 		a.perm(pB)
 	}
-	if len(in) >= 0 {
-		mask8 := byte(mask & 0xFF)
-		for i := 0; i < len(in); i++ {
-			off := 56 - (8 * (i % 8))
-			si := byte((a.s[i/8] >> off) & 0xFF)
-			out[i] = si ^ in[i]
-			ss := (in[i] &^ mask8) | (out[i] & mask8)
-			a.s[i/8] = (a.s[i/8] &^ (0xFF << off)) | uint64(ss)<<off
-		}
-		a.s[len(in)/8] ^= uint64(0x80) << (56 - 8*(len(in)%8))
+
+	mask8 := byte(mask & 0xFF)
+	for i := 0; i < len(in); i++ {
+		off := 56 - (8 * (i % 8))
+		si := byte((a.s[i/8] >> off) & 0xFF)
+		out[i] = si ^ in[i]
+		ss := (in[i] &^ mask8) | (out[i] & mask8)
+		a.s[i/8] = (a.s[i/8] &^ (0xFF << off)) | uint64(ss)<<off
 	}
+	a.s[len(in)/8] ^= uint64(0x80) << (56 - 8*(len(in)%8))
 }
 
 func (a *Cipher) finalize(tag []byte) {
