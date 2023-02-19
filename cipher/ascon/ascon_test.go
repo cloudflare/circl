@@ -59,7 +59,7 @@ func readFile(t *testing.T, fileName string) []vector {
 func TestAscon(t *testing.T) {
 	// Test vectors generated with pyascon
 	// https://github.com/meichlseder/pyascon/
-	for _, mode := range []ascon.Mode{ascon.Ascon128, ascon.Ascon128a} {
+	for _, mode := range []ascon.Mode{ascon.Ascon128, ascon.Ascon128a, ascon.Ascon80pq} {
 		name := mode.String()
 		t.Run(name, func(t *testing.T) {
 			vectors := readFile(t, "testdata/"+name+".json")
@@ -105,6 +105,9 @@ func TestBadInputs(t *testing.T) {
 	_, err = ascon.New(key[:4], ascon.Ascon128)
 	test.CheckIsErr(t, err, "should fail due to short key")
 
+	_, err = ascon.New(key[:], ascon.Ascon80pq)
+	test.CheckIsErr(t, err, "should fail due to short key")
+
 	a, _ := ascon.New(key[:], ascon.Ascon128)
 	err = test.CheckPanic(func() { _ = a.Seal(nil, nil, nil, nil) })
 	test.CheckNoErr(t, err, "should panic due to bad nonce")
@@ -125,7 +128,7 @@ func TestBadInputs(t *testing.T) {
 }
 
 func BenchmarkAscon(b *testing.B) {
-	for _, mode := range []ascon.Mode{ascon.Ascon128, ascon.Ascon128a} {
+	for _, mode := range []ascon.Mode{ascon.Ascon128, ascon.Ascon128a, ascon.Ascon80pq} {
 		for _, length := range []int{64, 1350, 8 * 1024} {
 			b.Run(mode.String()+"/Open-"+strconv.Itoa(length), func(b *testing.B) { benchmarkOpen(b, make([]byte, length), mode) })
 			b.Run(mode.String()+"/Seal-"+strconv.Itoa(length), func(b *testing.B) { benchmarkSeal(b, make([]byte, length), mode) })
@@ -137,10 +140,20 @@ func benchmarkSeal(b *testing.B, buf []byte, mode ascon.Mode) {
 	b.ReportAllocs()
 	b.SetBytes(int64(len(buf)))
 
-	var key [ascon.KeySize]byte
+	var key []byte
+	switch mode {
+	case ascon.Ascon128, ascon.Ascon128a:
+		key = make([]byte, ascon.KeySize)
+	case ascon.Ascon80pq:
+		key = make([]byte, ascon.KeySize80pq)
+	}
+
 	var nonce [ascon.NonceSize]byte
 	var ad [13]byte
-	a, _ := ascon.New(key[:], mode)
+	a, err := ascon.New(key[:], mode)
+	if err != nil {
+		b.Fatal(err)
+	}
 	var out []byte
 
 	b.ResetTimer()
@@ -153,10 +166,20 @@ func benchmarkOpen(b *testing.B, buf []byte, mode ascon.Mode) {
 	b.ReportAllocs()
 	b.SetBytes(int64(len(buf)))
 
-	var key [ascon.KeySize]byte
+	var key []byte
+	switch mode {
+	case ascon.Ascon128, ascon.Ascon128a:
+		key = make([]byte, ascon.KeySize)
+	case ascon.Ascon80pq:
+		key = make([]byte, ascon.KeySize80pq)
+	}
+
 	var nonce [ascon.NonceSize]byte
 	var ad [13]byte
-	a, _ := ascon.New(key[:], mode)
+	a, err := ascon.New(key[:], mode)
+	if err != nil {
+		b.Fatal(err)
+	}
 	var out []byte
 
 	ct := a.Seal(nil, nonce[:], buf, ad[:])
