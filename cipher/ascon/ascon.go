@@ -1,8 +1,14 @@
-// Package ascon provides a light-weight AEAD cipher.
+// Package ascon provides ASCON family of light-weight AEAD ciphers.
 //
 // This package implements Ascon128 and Ascon128a two AEAD ciphers as specified
 // in ASCON v1.2 by C. Dobraunig, M. Eichlseder, F. Mendel, M. Schläffer.
 // https://ascon.iaik.tugraz.at/index.html
+//
+// It also implements Ascon-80pq, which has an increased key-size to provide
+// more resistance against a quantum adversary using Grover’s algorithm for
+// key search. Since Ascon-128 and Ascon-80pq share the same building blocks
+// and same parameters except the size of the key, it is claimed the same
+// security for Ascon-80pq against classical attacks as for Ascon-128.
 package ascon
 
 import (
@@ -13,14 +19,16 @@ import (
 )
 
 const (
-	KeySize     = 16
-	KeySize80pq = 20
+	KeySize     = 16 // For Ascon128 and Ascon128a.
+	KeySize80pq = 20 // Only for Ascon80pq.
 	NonceSize   = 16
-	TagSize     = KeySize
+	TagSize     = 16
 )
 
 type Mode int
 
+// KeySize is 16 for Ascon128 and Ascon128a, or 20 for Ascon80pq.
+func (m Mode) KeySize() int { v := int(m) >> 2; return KeySize&^v | KeySize80pq&v }
 func (m Mode) String() string {
 	switch m {
 	case Ascon128:
@@ -35,22 +43,12 @@ func (m Mode) String() string {
 }
 
 const (
-	Ascon128 Mode = iota + 1
-	Ascon128a
-	// Ascon-80pq has an increased key-size to provide more resistance against a quantum
-	// adversary using Grover’s algorithm for key search. Since Ascon-128 and Ascon-
-	// 80pq share the same building blocks and same parameters except the size of the key,
-	// we claim the same security for Ascon-80pq against classical attacks as for Ascon-128.
-	Ascon80pq
+	Ascon128  Mode = 1
+	Ascon128a Mode = 2
+	Ascon80pq Mode = -1
 )
 
-const (
-	permA     = 12
-	permB     = 6 // 6 for Ascon128 and Ascon80pq, or  8 for Ascon128a
-	blockSize = 8 // 8 for Ascon128 and Ascon80pq, or 16 for Ascon128a
-	ivSize    = 8
-	stateSize = ivSize + KeySize + NonceSize
-)
+const permA = 12
 
 type Cipher struct {
 	s    [5]uint64
@@ -58,8 +56,9 @@ type Cipher struct {
 	mode Mode
 }
 
-// New returns a Cipher struct implementing the cipher.AEAD interface. Mode is
-// one of Ascon128, Ascon128a or Ascon80pq.
+// New returns a Cipher struct implementing the crypto/cipher.AEAD interface.
+// The key must be Mode.KeySize() bytes long, and the mode is one of Ascon128,
+// Ascon128a or Ascon80pq.
 func New(key []byte, m Mode) (*Cipher, error) {
 	if (m == Ascon128 || m == Ascon128a) && len(key) != KeySize {
 		return nil, ErrKeySize
@@ -73,14 +72,14 @@ func New(key []byte, m Mode) (*Cipher, error) {
 	c := new(Cipher)
 	c.mode = m
 	if m == Ascon80pq {
-		c.key[0] = (uint64)(binary.BigEndian.Uint32(key[0:4]))
+		c.key[0] = uint64(binary.BigEndian.Uint32(key[0:4]))
 		c.key[1] = binary.BigEndian.Uint64(key[4:12])
 		c.key[2] = binary.BigEndian.Uint64(key[12:20])
-		return c, nil
+	} else {
+		c.key[0] = 0
+		c.key[1] = binary.BigEndian.Uint64(key[0:8])
+		c.key[2] = binary.BigEndian.Uint64(key[8:16])
 	}
-
-	c.key[0] = binary.BigEndian.Uint64(key[0:8])
-	c.key[1] = binary.BigEndian.Uint64(key[8:16])
 
 	return c, nil
 }
@@ -153,43 +152,35 @@ func (a *Cipher) Open(dst, nonce, ciphertext, additionalData []byte) ([]byte, er
 	return plaintext, nil
 }
 
-func (a *Cipher) initialize(nonce []byte) {
-	if a.mode == Ascon80pq {
-		bcs := blockSize * uint64(Ascon128)
-		pB := permB + 2*(uint64(Ascon128)-1)
-		a.s[0] = ((KeySize80pq * 8) << 56) | ((bcs * 8) << 48) | (permA << 40) | (pB << 32) | a.key[0]
-		a.s[1] = a.key[1]
-		a.s[2] = a.key[2]
-	} else {
-		bcs := blockSize * uint64(a.mode)
-		pB := permB + 2*(uint64(a.mode)-1)
-		a.s[0] = ((KeySize * 8) << 56) | ((bcs * 8) << 48) | (permA << 40) | (pB << 32)
-		a.s[1] = a.key[0]
-		a.s[2] = a.key[1]
-	}
+func abs(x int) int { m := uint(x >> (bits.UintSize - 1)); return int((uint(x) + m) ^ m) }
 
+// blockSize = 8 for Ascon128 and Ascon80pq, or 16 for Ascon128a.
+func (a *Cipher) blockSize() int { return abs(int(a.mode)) << 3 }
+
+// permB = 6 for Ascon128 and Ascon80pq, or 8 for Ascon128a.
+func (a *Cipher) permB() int { return (abs(int(a.mode)) + 2) << 1 }
+
+func (a *Cipher) initialize(nonce []byte) {
+	bcs := uint64(a.blockSize())
+	pB := uint64(a.permB())
+	kS := uint64(a.mode.KeySize())
+
+	a.s[0] = ((kS * 8) << 56) | ((bcs * 8) << 48) | (permA << 40) | (pB << 32) | a.key[0]
+	a.s[1] = a.key[1]
+	a.s[2] = a.key[2]
 	a.s[3] = binary.BigEndian.Uint64(nonce[0:8])
 	a.s[4] = binary.BigEndian.Uint64(nonce[8:16])
+
 	a.perm(permA)
 
-	if a.mode == Ascon80pq {
-		a.s[2] ^= a.key[0]
-		a.s[3] ^= a.key[1]
-		a.s[4] ^= a.key[2]
-	} else {
-		a.s[3] ^= a.key[0]
-		a.s[4] ^= a.key[1]
-	}
+	a.s[2] ^= a.key[0]
+	a.s[3] ^= a.key[1]
+	a.s[4] ^= a.key[2]
 }
 
 func (a *Cipher) assocData(add []byte) {
-	m := a.mode
-	if m == Ascon80pq {
-		m = Ascon128
-	}
-
-	bcs := blockSize * int(m)
-	pB := permB + 2*(int(m)-1)
+	bcs := a.blockSize()
+	pB := a.permB()
 	if len(add) > 0 {
 		for ; len(add) >= bcs; add = add[bcs:] {
 			for i := 0; i < bcs; i += 8 {
@@ -207,13 +198,8 @@ func (a *Cipher) assocData(add []byte) {
 }
 
 func (a *Cipher) procText(in, out []byte, enc bool) {
-	m := a.mode
-	if m == Ascon80pq {
-		m = Ascon128
-	}
-
-	bcs := blockSize * int(m)
-	pB := permB + 2*(int(m)-1)
+	bcs := a.blockSize()
+	pB := a.permB()
 	mask := uint64(0)
 	if enc {
 		mask -= 1
@@ -242,22 +228,19 @@ func (a *Cipher) procText(in, out []byte, enc bool) {
 }
 
 func (a *Cipher) finalize(tag []byte) {
+	bcs := a.blockSize()
 	if a.mode == Ascon80pq {
-		bcs := blockSize * int(Ascon128)
 		a.s[bcs/8+0] ^= a.key[0]<<32 | a.key[1]>>32
 		a.s[bcs/8+1] ^= a.key[1]<<32 | a.key[2]>>32
 		a.s[bcs/8+2] ^= a.key[2] << 32
-		a.perm(permA)
-		binary.BigEndian.PutUint64(tag[0:8], a.s[3]^a.key[1])
-		binary.BigEndian.PutUint64(tag[8:16], a.s[4]^a.key[2])
 	} else {
-		bcs := blockSize * int(a.mode)
-		a.s[bcs/8+0] ^= a.key[0]
-		a.s[bcs/8+1] ^= a.key[1]
-		a.perm(permA)
-		binary.BigEndian.PutUint64(tag[0:8], a.s[3]^a.key[0])
-		binary.BigEndian.PutUint64(tag[8:16], a.s[4]^a.key[1])
+		a.s[bcs/8+0] ^= a.key[1]
+		a.s[bcs/8+1] ^= a.key[2]
 	}
+
+	a.perm(permA)
+	binary.BigEndian.PutUint64(tag[0:8], a.s[3]^a.key[1])
+	binary.BigEndian.PutUint64(tag[8:16], a.s[4]^a.key[2])
 }
 
 var roundConst = [12]uint64{0xf0, 0xe1, 0xd2, 0xc3, 0xb4, 0xa5, 0x96, 0x87, 0x78, 0x69, 0x5a, 0x4b}
