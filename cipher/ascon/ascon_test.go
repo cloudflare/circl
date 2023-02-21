@@ -127,6 +127,62 @@ func TestBadInputs(t *testing.T) {
 	test.CheckIsErr(t, err, "should panic due to bad ciphertext")
 }
 
+func TestAPI(t *testing.T) {
+	key, _ := hexa.DecodeString("000102030405060708090A0B0C0D0E0F")
+	nonce, _ := hexa.DecodeString("000102030405060708090A0B0C0D0E0F")
+	c, _ := ascon.New(key, ascon.Ascon128)
+	pt := []byte("helloworld")
+	ct, _ := hexa.DecodeString("d4e663d29cd60a693c20f890982e167d266f940b93b586945065")
+
+	t.Run("append", func(t *testing.T) {
+		prefix := [5]byte{0x1F, 0x2F, 0x3F, 0x4F, 0x5F}
+		prefixAndCt := c.Seal(prefix[:], nonce, pt, nil)
+		got := prefixAndCt
+		want := append(append([]byte{}, prefix[:]...), ct...)
+		if !bytes.Equal(got, want) {
+			test.ReportError(t, got, want)
+		}
+
+		ciphertext := prefixAndCt[len(prefix):]
+		prefix = [5]byte{0x11, 0x22, 0x33, 0x44, 0x55}
+		prefixAndPt, err := c.Open(prefix[:], nonce, ciphertext, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got = prefixAndPt
+		want = append(append([]byte{}, prefix[:]...), pt...)
+		if !bytes.Equal(got, want) {
+			test.ReportError(t, got, want)
+		}
+	})
+	t.Run("reuse", func(t *testing.T) {
+		ptWithCap := make([]byte, len(pt), len(pt)+100)
+		copy(ptWithCap, pt)
+		// reusing the input to store the ciphertext.
+		ciphertext := c.Seal(ptWithCap[:0], nonce, ptWithCap, nil)
+		got := ciphertext
+		want := ct
+		if !bytes.Equal(got, want) {
+			test.ReportError(t, got, want)
+		}
+		test.CheckOk(&ptWithCap[0] == &ciphertext[0], "should have same address", t)
+
+		ctWithCap := make([]byte, len(ct), len(ct)+100)
+		copy(ctWithCap, ct)
+		// reusing the input to store the plaintext.
+		plaintext, err := c.Open(ctWithCap[:0], nonce, ctWithCap, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got = plaintext
+		want = pt
+		if !bytes.Equal(got, want) {
+			test.ReportError(t, got, want)
+		}
+		test.CheckOk(&ctWithCap[0] == &plaintext[0], "should have same address", t)
+	})
+}
+
 func BenchmarkAscon(b *testing.B) {
 	for _, mode := range []ascon.Mode{ascon.Ascon128, ascon.Ascon128a, ascon.Ascon80pq} {
 		for _, length := range []int{64, 1350, 8 * 1024} {

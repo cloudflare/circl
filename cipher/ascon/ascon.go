@@ -28,7 +28,16 @@ const (
 type Mode int
 
 // KeySize is 16 for Ascon128 and Ascon128a, or 20 for Ascon80pq.
-func (m Mode) KeySize() int { v := int(m) >> 2; return KeySize&^v | KeySize80pq&v }
+func (m Mode) KeySize() int {
+	switch m {
+	case Ascon128, Ascon128a, Ascon80pq:
+		v := int(m) >> 2
+		return KeySize&^v | KeySize80pq&v
+	default:
+		panic(ErrMode)
+	}
+}
+
 func (m Mode) String() string {
 	switch m {
 	case Ascon128:
@@ -105,15 +114,15 @@ func (a *Cipher) Seal(dst, nonce, plaintext, additionalData []byte) []byte {
 	}
 
 	ptLen := len(plaintext)
-	output := make([]byte, ptLen+TagSize)
-	ciphertext, tag := output[:ptLen], output[ptLen:]
+	ret, out := sliceForAppend(dst, ptLen+TagSize)
+	ciphertext, tag := out[:ptLen], out[ptLen:]
 
 	a.initialize(nonce)
 	a.assocData(additionalData)
 	a.procText(plaintext, ciphertext, true)
 	a.finalize(tag)
 
-	return output
+	return ret
 }
 
 // Open decrypts and authenticates ciphertext, authenticates the
@@ -136,7 +145,8 @@ func (a *Cipher) Open(dst, nonce, ciphertext, additionalData []byte) ([]byte, er
 	}
 
 	ptLen := len(ciphertext) - TagSize
-	plaintext := make([]byte, ptLen)
+	ret, out := sliceForAppend(dst, ptLen)
+	plaintext := out[:ptLen]
 	ciphertext, tag0 := ciphertext[:ptLen], ciphertext[ptLen:]
 	tag1 := (&[TagSize]byte{})[:]
 
@@ -149,7 +159,7 @@ func (a *Cipher) Open(dst, nonce, ciphertext, additionalData []byte) ([]byte, er
 		return nil, ErrDecryption
 	}
 
-	return plaintext, nil
+	return ret, nil
 }
 
 func abs(x int) int { m := uint(x >> (bits.UintSize - 1)); return int((uint(x) + m) ^ m) }
@@ -220,8 +230,10 @@ func (a *Cipher) procText(in, out []byte, enc bool) {
 	for i := 0; i < len(in); i++ {
 		off := 56 - (8 * (i % 8))
 		si := byte((a.s[i/8] >> off) & 0xFF)
-		out[i] = si ^ in[i]
-		ss := (in[i] &^ mask8) | (out[i] & mask8)
+		inB := in[i]
+		outB := si ^ inB
+		out[i] = outB
+		ss := inB&^mask8 | outB&mask8
 		a.s[i/8] = (a.s[i/8] &^ (0xFF << off)) | uint64(ss)<<off
 	}
 	a.s[len(in)/8] ^= uint64(0x80) << (56 - 8*(len(in)%8))
@@ -285,6 +297,21 @@ func (a *Cipher) perm(n int) {
 		x4 ^= bits.RotateLeft64(x4, -7) ^ bits.RotateLeft64(x4, -41)
 	}
 	a.s[0], a.s[1], a.s[2], a.s[3], a.s[4] = x0, x1, x2, x3, x4
+}
+
+// sliceForAppend takes a slice and a requested number of bytes. It returns a
+// slice with the contents of the given slice followed by that many bytes and a
+// second slice that aliases into it and contains only the extra bytes. If the
+// original slice has sufficient capacity then no allocation is performed.
+func sliceForAppend(in []byte, n int) (head, tail []byte) {
+	if total := len(in) + n; cap(in) >= total {
+		head = in[:total]
+	} else {
+		head = make([]byte, total)
+		copy(head, in)
+	}
+	tail = head[len(in):]
+	return
 }
 
 var (
