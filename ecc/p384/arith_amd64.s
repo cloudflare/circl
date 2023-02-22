@@ -289,7 +289,7 @@
 	\ // m = (T * P') mod R, store m in R8:R9:R10:R11:R12:R13
 	MOVQ ·pp+0(SB), AX \
 	MULQ 0+stack \
-	MOVQ AX, R8 \
+	MOVQ AX, R8 ; MOVQ R8, 96+stack\
 	MOVQ DX, R9 \
 	MOVQ ·pp+0(SB), AX \
 	MULQ 8+stack \
@@ -324,10 +324,10 @@
 	MOVQ ·pp+16(SB), AX \
 	MULQ 0+stack \
 	MOVQ AX, R14 \
-	MOVQ DX, R15 \
+	MOVQ DX, R8 \
 	MOVQ ·pp+16(SB), AX \
 	MULQ 8+stack \
-	ADDQ AX, R15 \
+	ADDQ AX, R8 \
 	ADCQ $0, DX \
 	MOVQ DX, BX \
 	MOVQ ·pp+16(SB), AX \
@@ -340,17 +340,17 @@
 	ADDQ AX, CX \
 	\
 	ADDQ R14, R10 \
-	ADCQ R15, R11 \
+	ADCQ R8, R11 \
 	ADCQ BX, R12 \
 	ADCQ CX, R13 \
 	\
 	MOVQ ·pp+24(SB), AX \
 	MULQ 0+stack \
 	MOVQ AX, R14 \
-	MOVQ DX, R15 \
+	MOVQ DX, R8 \
 	MOVQ ·pp+24(SB), AX \
 	MULQ 8+stack \
-	ADDQ AX, R15 \
+	ADDQ AX, R8 \
 	ADCQ $0, DX \
 	MOVQ DX, BX \
 	MOVQ ·pp+24(SB), AX \
@@ -358,23 +358,25 @@
 	ADDQ AX, BX \
 	\
 	ADDQ R14, R11 \
-	ADCQ R15, R12 \
+	ADCQ R8, R12 \
 	ADCQ BX, R13 \
 	\
 	MOVQ ·pp+32(SB), AX \
 	MULQ 0+stack \
 	MOVQ AX, R14 \
-	MOVQ DX, R15 \
+	MOVQ DX, R8 \
 	MOVQ ·pp+32(SB), AX \
 	MULQ 8+stack \
-	ADDQ AX, R15 \
+	ADDQ AX, R8 \
 	\
 	ADDQ R14, R12 \
-	ADCQ R15, R13 \
+	ADCQ R8, R13 \
 	\
 	MOVQ ·pp+40(SB), AX \
 	MULQ 0+stack \
 	ADDQ AX, R13 \
+	\
+	MOVQ 96+stack, R8 \
 	\
 	storeBlock(R8,R9,R10,R11,R12,R13, 96+stack) \
 	\
@@ -382,9 +384,9 @@
 	mul(·p+0(SB),·p+8(SB),·p+16(SB),·p+24(SB),·p+32(SB),·p+40(SB), 96+stack, 144+stack) \
 	\
 	\ // Add the 768-bit intermediate to m*N
-	MOVQ $0, DI \
+	MOVQ $0, R15 \
 	loadBlock(144+stack, R8,R9,R10,R11,R12,R13) \
-	loadBlock(192+stack, R14,R15,AX,BX,CX,DX) \
+	loadBlock(192+stack, R14,SI,AX,BX,CX,DX) \
 	\
 	ADDQ 0+stack, R8 \
 	ADCQ 8+stack, R9 \
@@ -393,18 +395,18 @@
 	ADCQ 32+stack, R12 \
 	ADCQ 40+stack, R13 \
 	ADCQ 48+stack, R14 \
-	ADCQ 56+stack, R15 \
+	ADCQ 56+stack, SI \
 	ADCQ 64+stack, AX \
 	ADCQ 72+stack, BX \
 	ADCQ 80+stack, CX \
 	ADCQ 88+stack, DX \
-	ADCQ $0, DI \
+	ADCQ $0, R15 \
 	\
-	fp384Carry(R14,R15,AX,BX,CX,DX,DI, R8,R9,R10,R11,R12,R13,SI)
+	fp384Carry(R14,SI,AX,BX,CX,DX,R15, R8,R9,R10,R11,R12,R13,DI)
 
 #define mulBMI2(a0,a1,a2,a3,a4,a5, rb, stack) \
 	MOVQ a0, DX \
-	MULXQ 0+rb, R8, R9 \
+	MULXQ 0+rb, R8, R9; MOVQ R8, 0+stack; MOVQ $0, R8 \
 	MULXQ 8+rb, AX, R10 \
 	ADDQ AX, R9 \
 	MULXQ 16+rb, AX, R11 \
@@ -417,13 +419,9 @@
 	ADCQ AX, R13 \
 	ADCQ $0, R14 \
 	\
-	MOVQ R8, 0+stack \
-	MOVQ $0, R15 \
-	MOVQ $0, R8 \
-	\
 	MOVQ a1, DX \
 	MULXQ 0+rb, AX, BX \
-	ADDQ AX, R9 \
+	ADDQ AX, R9; MOVQ R9, 8+stack; MOVL $0, R9 \
 	ADCQ BX, R10 \
 	MULXQ 16+rb, AX, BX \
 	ADCQ AX, R11 \
@@ -431,7 +429,7 @@
 	MULXQ 32+rb, AX, BX \
 	ADCQ AX, R13 \
 	ADCQ BX, R14 \
-	ADCQ $0, R15 \
+	ADCQ $0,  R8 \
 	MULXQ 8+rb, AX, BX \
 	ADDQ AX, R10 \
 	ADCQ BX, R11 \
@@ -440,23 +438,20 @@
 	ADCQ BX, R13 \
 	MULXQ 40+rb, AX, BX \
 	ADCQ AX, R14 \
-	ADCQ BX, R15 \
-	ADCQ $0, R8 \
-	\
-	MOVQ R9, 8+stack \
-	MOVQ $0, R9 \
+	ADCQ BX, R8 \
+	ADCQ $0, R9 \
 	\
 	MOVQ a2, DX \
 	MULXQ 0+rb, AX, BX \
-	ADDQ AX, R10 \
+	ADDQ AX, R10; MOVQ R10, 16+stack; MOVL $0, R10 \
 	ADCQ BX, R11 \
 	MULXQ 16+rb, AX, BX \
 	ADCQ AX, R12 \
 	ADCQ BX, R13 \
 	MULXQ 32+rb, AX, BX \
 	ADCQ AX, R14 \
-	ADCQ BX, R15 \
-	ADCQ $0, R8 \
+	ADCQ BX, R8 \
+	ADCQ $0, R9 \
 	MULXQ 8+rb, AX, BX \
 	ADDQ AX, R11 \
 	ADCQ BX, R12 \
@@ -464,84 +459,74 @@
 	ADCQ AX, R13 \
 	ADCQ BX, R14 \
 	MULXQ 40+rb, AX, BX \
-	ADCQ AX, R15 \
-	ADCQ BX, R8 \
-	ADCQ $0, R9 \
-	\
-	MOVQ R10, 16+stack \
-	MOVQ $0, R10 \
+	ADCQ AX, R8 \
+	ADCQ BX, R9 \
+	ADCQ $0, R10 \
 	\
 	MOVQ a3, DX \
 	MULXQ 0+rb, AX, BX \
-	ADDQ AX, R11 \
+	ADDQ AX, R11; MOVQ R11, 24+stack; MOVL $0, R11 \
 	ADCQ BX, R12 \
 	MULXQ 16+rb, AX, BX \
 	ADCQ AX, R13 \
 	ADCQ BX, R14 \
 	MULXQ 32+rb, AX, BX \
-	ADCQ AX, R15 \
-	ADCQ BX, R8 \
-	ADCQ $0, R9 \
+	ADCQ AX, R8 \
+	ADCQ BX, R9 \
+	ADCQ $0, R10 \
 	MULXQ 8+rb, AX, BX \
 	ADDQ AX, R12 \
 	ADCQ BX, R13 \
 	MULXQ 24+rb, AX, BX \
 	ADCQ AX, R14 \
-	ADCQ BX, R15 \
+	ADCQ BX, R8 \
 	MULXQ 40+rb, AX, BX \
-	ADCQ AX, R8 \
-	ADCQ BX, R9 \
-	ADCQ $0, R10 \
-	\
-	MOVQ R11, 24+stack \
-	MOVQ $0, R11 \
+	ADCQ AX, R9 \
+	ADCQ BX, R10 \
+	ADCQ $0, R11 \
 	\
 	MOVQ a4, DX \
 	MULXQ 0+rb, AX, BX \
-	ADDQ AX, R12 \
+	ADDQ AX, R12; MOVQ R12, 32+stack; MOVL $0, R12 \
 	ADCQ BX, R13 \
 	MULXQ 16+rb, AX, BX \
 	ADCQ AX, R14 \
-	ADCQ BX, R15 \
-	MULXQ 32+rb, AX, BX \
-	ADCQ AX, R8 \
-	ADCQ BX, R9 \
-	ADCQ $0, R10 \
-	MULXQ 8+rb, AX, BX \
-	ADDQ AX, R13 \
-	ADCQ BX, R14 \
-	MULXQ 24+rb, AX, BX \
-	ADCQ AX, R15 \
-	ADCQ BX, R8 \
-	MULXQ 40+rb, AX, BX \
-	ADCQ AX, R9 \
-	ADCQ BX, R10 \
-	ADCQ $0, R11 \
-	\
-	MOVQ R12, 32+stack \
-	\
-	MOVQ a5, DX \
-	MULXQ 0+rb, AX, BX \
-	ADDQ AX, R13 \
-	ADCQ BX, R14 \
-	MULXQ 16+rb, AX, BX \
-	ADCQ AX, R15 \
 	ADCQ BX, R8 \
 	MULXQ 32+rb, AX, BX \
 	ADCQ AX, R9 \
 	ADCQ BX, R10 \
 	ADCQ $0, R11 \
 	MULXQ 8+rb, AX, BX \
-	ADDQ AX, R14 \
-	ADCQ BX, R15 \
+	ADDQ AX, R13 \
+	ADCQ BX, R14 \
 	MULXQ 24+rb, AX, BX \
 	ADCQ AX, R8 \
 	ADCQ BX, R9 \
 	MULXQ 40+rb, AX, BX \
 	ADCQ AX, R10 \
 	ADCQ BX, R11 \
+	ADCQ $0, R12 \
 	\
-	MOVQ R13, 40+stack
+	MOVQ a5, DX \
+	MULXQ 0+rb, AX, BX \
+	ADDQ AX, R13; MOVQ R13, 40+stack \
+	ADCQ BX, R14 \
+	MULXQ 16+rb, AX, BX \
+	ADCQ AX, R8 \
+	ADCQ BX, R9 \
+	MULXQ 32+rb, AX, BX \
+	ADCQ AX, R10 \
+	ADCQ BX, R11 \
+	ADCQ $0, R12 \
+	MULXQ 8+rb, AX, BX \
+	ADDQ AX, R14 \
+	ADCQ BX, R8 \
+	MULXQ 24+rb, AX, BX \
+	ADCQ AX, R9 \
+	ADCQ BX, R10 \
+	MULXQ 40+rb, AX, BX \
+	ADCQ AX, R11 \
+	ADCQ BX, R12
 
 #define fp384ReduceBMI2(stack) \
 	\ // m = (T * P') mod R, store m in R8:R9:R10:R11:R12:R13
@@ -604,24 +589,24 @@
 	mulBMI2(·p+0(SB),·p+8(SB),·p+16(SB),·p+24(SB),·p+32(SB),·p+40(SB), 96+stack, 144+stack) \
 	\
 	\ // Add the 768-bit intermediate to m*N
-	MOVQ $0, AX \
-	loadBlock(144+stack, R12,R13,BX,CX,DX,DI) \
+	loadBlock(144+stack, AX,R13,BX,CX,DX,DI) \
 	\
-	ADDQ 0+stack, R12 \
+	ADDQ 0+stack,  AX \
 	ADCQ 8+stack, R13 \
 	ADCQ 16+stack, BX \
 	ADCQ 24+stack, CX \
 	ADCQ 32+stack, DX \
 	ADCQ 40+stack, DI \
 	ADCQ 48+stack, R14 \
-	ADCQ 56+stack, R15 \
-	ADCQ 64+stack, R8 \
-	ADCQ 72+stack, R9 \
-	ADCQ 80+stack, R10 \
-	ADCQ 88+stack, R11 \
-	ADCQ $0, AX \
+	ADCQ 56+stack, R8 \
+	ADCQ 64+stack, R9 \
+	ADCQ 72+stack, R10 \
+	ADCQ 80+stack, R11 \
+	ADCQ 88+stack, R12 \
+	MOVQ $0, 0+stack \
+	ADCQ $0, 0+stack \
 	\
-	fp384Carry(R14,R15,R8,R9,R10,R11,AX, R12,R13,BX,CX,DX,DI,SI)
+	fp384Carry(R14,R8,R9,R10,R11,R12, 0+stack, AX,R13,BX,CX,DX,DI,SI)
 
 TEXT ·fp384Neg(SB), NOSPLIT, $0-16
 	MOVQ ·p+0(SB), R8
@@ -639,8 +624,8 @@ TEXT ·fp384Neg(SB), NOSPLIT, $0-16
 	SBBQ 32(DI), R12
 	SBBQ 40(DI), R13
 
-	MOVQ $0, R14
-	fp384Carry(R8,R9,R10,R11,R12,R13,R14, R15,AX,BX,CX,DX,DI,SI)
+	MOVQ $0, R15
+	fp384Carry(R8,R9,R10,R11,R12,R13,R15, R14,AX,BX,CX,DX,DI,SI)
 
 	MOVQ c+0(FP), DI
 	storeBlock(R8,R9,R10,R11,R12,R13, 0(DI))
@@ -651,7 +636,7 @@ TEXT ·fp384Add(SB), NOSPLIT, $0-24
 	MOVQ b+16(FP), SI
 
 	loadBlock(0(DI), R8,R9,R10,R11,R12,R13)
-	MOVQ $0, R14
+	MOVQ $0, R15
 
 	ADDQ  0(SI), R8
 	ADCQ  8(SI), R9
@@ -659,9 +644,9 @@ TEXT ·fp384Add(SB), NOSPLIT, $0-24
 	ADCQ 24(SI), R11
 	ADCQ 32(SI), R12
 	ADCQ 40(SI), R13
-	ADCQ $0, R14
+	ADCQ $0, R15
 
-	fp384Carry(R8,R9,R10,R11,R12,R13,R14, R15,AX,BX,CX,DX,DI,SI)
+	fp384Carry(R8,R9,R10,R11,R12,R13,R15, R14,AX,BX,CX,DX,DI,SI)
 
 	MOVQ c+0(FP), DI
 	storeBlock(R8,R9,R10,R11,R12,R13, 0(DI))
@@ -683,7 +668,7 @@ TEXT ·fp384Sub(SB), NOSPLIT, $0-24
 	SBBQ 32(DI), R12
 	SBBQ 40(DI), R13
 
-	MOVQ $0, R14
+	MOVQ $0, R15
 	MOVQ a+8(FP), DI
 	ADDQ 0(DI), R8
 	ADCQ 8(DI), R9
@@ -691,9 +676,9 @@ TEXT ·fp384Sub(SB), NOSPLIT, $0-24
 	ADCQ 24(DI), R11
 	ADCQ 32(DI), R12
 	ADCQ 40(DI), R13
-	ADCQ $0, R14
+	ADCQ $0, R15
 
-	fp384Carry(R8,R9,R10,R11,R12,R13,R14, R15,AX,BX,CX,DX,DI,SI)
+	fp384Carry(R8,R9,R10,R11,R12,R13,R15, R14,AX,BX,CX,DX,DI,SI)
 
 	MOVQ c+0(FP), DI
 	storeBlock(R8,R9,R10,R11,R12,R13, 0(DI))
@@ -709,13 +694,13 @@ TEXT ·fp384Mul(SB), NOSPLIT, $240-24
 
 	// T = a * b
 	mulBMI2(0(DI),8(DI),16(DI),24(DI),32(DI),40(DI), 0(SI), 0(SP))
-	storeBlock(R14,R15,R8,R9,R10,R11, 48(SP))
+	storeBlock(R14,R8,R9,R10,R11,R12, 48(SP))
 
 	// Reduce T.
 	fp384ReduceBMI2(0(SP))
 
 	MOVQ c+0(FP), DI
-	storeBlock(R14,R15,R8,R9,R10,R11, 0(DI))
+	storeBlock(R14,R8,R9,R10,R11,R12, 0(DI))
 	JMP end
 
 nobmi2Mul:
@@ -726,7 +711,7 @@ nobmi2Mul:
 	fp384Reduce(0(SP))
 
 	MOVQ c+0(FP), DI
-	storeBlock(R14,R15,AX,BX,CX,DX, 0(DI))
+	storeBlock(R14,SI,AX,BX,CX,DX, 0(DI))
 
 end:
 	RET
