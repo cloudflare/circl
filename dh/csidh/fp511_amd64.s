@@ -101,7 +101,7 @@ TEXT ·mulBmiAsm(SB),NOSPLIT,$8-24
     XORQ R12, R12
     XORQ R13, R13
     XORQ R14, R14
-    XORQ R15, R15
+    XORQ  CX,  CX
 
     MOVQ BP, 0(SP) // push: BP is Callee-save.
     XORQ BP, BP
@@ -113,42 +113,43 @@ TEXT ·mulBmiAsm(SB),NOSPLIT,$8-24
 #define MULS_MULX_512(idx, r0, r1, r2, r3, r4, r5, r6, r7, r8) \
     \ // Reduction step
     MOVQ  ( 0)(SI), DX      \
-    MULXQ ( 8*idx)(DI), DX, CX  \
+    MULXQ ( 8*idx)(DI), DX, AX  \
     ADDQ  r0, DX            \
-    MULXQ ·pNegInv(SB), DX, CX  \
+    MOVQ ·pNegInv(SB), AX \
+    MULXQ AX, DX, AX  \
     \
-    XORQ  AX, AX \
-    MULXQ ·p+ 0(SB), AX, BX;             ; ADOXQ AX, r0 \
-    MULXQ ·p+ 8(SB), AX, CX; ADCXQ BX, r1; ADOXQ AX, r1 \
-    MULXQ ·p+16(SB), AX, BX; ADCXQ CX, r2; ADOXQ AX, r2 \
-    MULXQ ·p+24(SB), AX, CX; ADCXQ BX, r3; ADOXQ AX, r3 \
-    MULXQ ·p+32(SB), AX, BX; ADCXQ CX, r4; ADOXQ AX, r4 \
-    MULXQ ·p+40(SB), AX, CX; ADCXQ BX, r5; ADOXQ AX, r5 \
-    MULXQ ·p+48(SB), AX, BX; ADCXQ CX, r6; ADOXQ AX, r6 \
-    MULXQ ·p+56(SB), AX, CX; ADCXQ BX, r7; ADOXQ AX, r7 \
-    MOVQ  $0, AX           ; ADCXQ CX, r8; ADOXQ AX, r8 \
+    XORQ  AX, AX; \
+    MOVQ ·p+ 0(SB), AX; MULXQ AX, AX, BX;  ADOXQ AX, r0; ADCXQ BX, r1 \
+    MOVQ ·p+ 8(SB), AX; MULXQ AX, AX, BX;  ADOXQ AX, r1; ADCXQ BX, r2 \
+    MOVQ ·p+16(SB), AX; MULXQ AX, AX, BX;  ADOXQ AX, r2; ADCXQ BX, r3 \
+    MOVQ ·p+24(SB), AX; MULXQ AX, AX, BX;  ADOXQ AX, r3; ADCXQ BX, r4 \
+    MOVQ ·p+32(SB), AX; MULXQ AX, AX, BX;  ADOXQ AX, r4; ADCXQ BX, r5 \
+    MOVQ ·p+40(SB), AX; MULXQ AX, AX, BX;  ADOXQ AX, r5; ADCXQ BX, r6 \
+    MOVQ ·p+48(SB), AX; MULXQ AX, AX, BX;  ADOXQ AX, r6; ADCXQ BX, r7 \
+    MOVQ ·p+56(SB), AX; MULXQ AX, AX, BX;  ADOXQ AX, r7; ADCXQ BX, r8 \
+    MOVQ  $0, AX; ;;;;;;;;;;;;;;;;;;;;;;;  ADOXQ AX, r8; \
     \ // Multiplication step
     MOVQ (8*idx)(DI), DX \
     \
     XORQ  AX, AX \
-    MULXQ ( 0)(SI), AX, BX; ADOXQ AX, r0 \
-    MULXQ ( 8)(SI), AX, CX; ADCXQ BX, r1; ADOXQ AX, r1 \
-    MULXQ (16)(SI), AX, BX; ADCXQ CX, r2; ADOXQ AX, r2 \
-    MULXQ (24)(SI), AX, CX; ADCXQ BX, r3; ADOXQ AX, r3 \
-    MULXQ (32)(SI), AX, BX; ADCXQ CX, r4; ADOXQ AX, r4 \
-    MULXQ (40)(SI), AX, CX; ADCXQ BX, r5; ADOXQ AX, r5 \
-    MULXQ (48)(SI), AX, BX; ADCXQ CX, r6; ADOXQ AX, r6 \
-    MULXQ (56)(SI), AX, CX; ADCXQ BX, r7; ADOXQ AX, r7 \
-    MOVQ  $0, AX          ; ADCXQ CX, r8; ADOXQ AX, r8
+    MULXQ ( 0)(SI), AX, BX; ADOXQ AX, r0; ADCXQ BX, r1 \
+    MULXQ ( 8)(SI), AX, BX; ADOXQ AX, r1; ADCXQ BX, r2 \
+    MULXQ (16)(SI), AX, BX; ADOXQ AX, r2; ADCXQ BX, r3 \
+    MULXQ (24)(SI), AX, BX; ADOXQ AX, r3; ADCXQ BX, r4 \
+    MULXQ (32)(SI), AX, BX; ADOXQ AX, r4; ADCXQ BX, r5 \
+    MULXQ (40)(SI), AX, BX; ADOXQ AX, r5; ADCXQ BX, r6 \
+    MULXQ (48)(SI), AX, BX; ADOXQ AX, r6; ADCXQ BX, r7 \
+    MULXQ (56)(SI), AX, BX; ADOXQ AX, r7; ADCXQ BX, r8 \
+    MOVQ  $0, AX          ; ADOXQ AX, r8;
 
-    MULS_MULX_512(0,  R8,  R9, R10, R11, R12, R13, R14, R15,  BP)
-    MULS_MULX_512(1,  R9, R10, R11, R12, R13, R14, R15,  BP,  R8)
-    MULS_MULX_512(2, R10, R11, R12, R13, R14, R15,  BP,  R8,  R9)
-    MULS_MULX_512(3, R11, R12, R13, R14, R15,  BP,  R8,  R9, R10)
-    MULS_MULX_512(4, R12, R13, R14, R15,  BP,  R8,  R9, R10, R11)
-    MULS_MULX_512(5, R13, R14, R15,  BP,  R8,  R9, R10, R11, R12)
-    MULS_MULX_512(6, R14, R15,  BP,  R8,  R9, R10, R11, R12, R13)
-    MULS_MULX_512(7, R15,  BP,  R8,  R9, R10, R11, R12, R13, R14)
+    MULS_MULX_512(0,  R8,  R9, R10, R11, R12, R13, R14,  CX,  BP)
+    MULS_MULX_512(1,  R9, R10, R11, R12, R13, R14,  CX,  BP,  R8)
+    MULS_MULX_512(2, R10, R11, R12, R13, R14,  CX,  BP,  R8,  R9)
+    MULS_MULX_512(3, R11, R12, R13, R14,  CX,  BP,  R8,  R9, R10)
+    MULS_MULX_512(4, R12, R13, R14,  CX,  BP,  R8,  R9, R10, R11)
+    MULS_MULX_512(5, R13, R14,  CX,  BP,  R8,  R9, R10, R11, R12)
+    MULS_MULX_512(6, R14,  CX,  BP,  R8,  R9, R10, R11, R12, R13)
+    MULS_MULX_512(7,  CX,  BP,  R8,  R9, R10, R11, R12, R13, R14)
 #undef MULS_MULX_512
 
     MOVQ res+0(FP), DI
