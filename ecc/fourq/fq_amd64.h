@@ -9,6 +9,7 @@
     _fpSub(16+c,16+a,16+b)
 
 #define _fqMulBmi2(c, a, b) \
+    MOVL $0, R15 \
     \ // T0 = a0 * b0, R11:R10:R9:R8 <- 0+ra:8+ra * 0+rb:8+rb
     MOVQ 0+b, DX \
     MULXQ 0+a, R8, R9 \
