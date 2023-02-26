@@ -193,29 +193,41 @@
 #define MULS_128x320(I0, I1, T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, add1, add2, adc1, adc2) \
 	\ // Column 0
 	MOVQ    I0, DX              \
-	MULXQ   I1+24(SB), T0, T1   \
-	MULXQ   I1+32(SB), T4, T2   \
+	MOVQ    I1+24(SB), AX       \
+	MULXQ   AX, T0, T1          \
+	MOVQ    I1+32(SB), AX       \
+	MULXQ   AX, T4, T2          \
+	MOVQ    I1+40(SB), AX       \
+	MULXQ   AX, T5, T3          \
 	XORQ    AX, AX              \
-	MULXQ   I1+40(SB), T5, T3   \
 	add1    T4, T1              \
 	adc1    T5, T2              \
-	MULXQ   I1+48(SB), T7, T4   \
+	MOVQ    I1+48(SB), AX       \
+	MULXQ   AX, T7, T4          \
 	adc1    T7, T3              \
-	MULXQ   I1+56(SB), T6, T5   \
+	MOVQ    I1+56(SB), AX       \
+	MULXQ   AX, T6, T5          \
 	adc1    T6, T4              \
+	MOVL    $0, AX              \
 	adc1    AX, T5              \
 	\ // Column 1
 	MOVQ    8+I0, DX            \
-	MULXQ   I1+24(SB), T6, T7   \
+	MOVQ    I1+24(SB), AX       \
+	MULXQ   AX, T6, T7          \
 	add2    T6, T1              \
 	adc2    T7, T2              \
-	MULXQ   I1+32(SB), T8, T6   \
+	MOVQ    I1+32(SB), AX       \
+	MULXQ   AX, T8, T6          \
 	adc2    T6, T3              \
-	MULXQ   I1+40(SB), T7, T9   \
+	MOVQ    I1+40(SB), AX       \
+	MULXQ   AX, T7, T9          \
 	adc2    T9, T4              \
-	MULXQ   I1+48(SB), T9, T6   \
+	MOVQ    I1+48(SB), AX       \
+	MULXQ   AX, T9, T6          \
 	adc2    T6, T5              \
-	MULXQ   I1+56(SB), DX, T6   \
+	MOVQ    I1+56(SB), AX       \
+	MULXQ   AX, DX, T6          \
+	MOVL    $0, AX              \
 	adc2    AX, T6              \
 	\ // Output
 	XORQ    AX, AX              \
@@ -361,7 +373,7 @@
 //    * MULS: either MULS_128x320_MULX or MULS_128x320_MULX_ADCX_ADOX
 // Output: OUT 512-bit
 #define REDC(OUT, IN, MULS) \
-	MULS(0(IN), ·P503p1, R8, R9, R10, R11, R12, R13, R14, BX, CX, R15) \
+	MULS(0(IN), ·P503p1, R8, R9, R10, R11, R12, R13, R14, BX, CX, BP) \
 	XORQ    R15, R15        \
 	ADDQ    (24)(IN), R8    \
 	ADCQ    (32)(IN), R9    \
@@ -395,7 +407,7 @@
 	MOVQ    R11, (112)(IN)  \
 	MOVQ    R12, (120)(IN)  \
 	\
-	MULS(16(IN), ·P503p1, R8, R9, R10, R11, R12, R13, R14, BX, CX, R15)    \
+	MULS(16(IN), ·P503p1, R8, R9, R10, R11, R12, R13, R14, BX, CX, BP)    \
 	XORQ    R15, R15        \
 	ADDQ    (40)(IN), R8    \
 	ADCQ    (48)(IN), R9    \
@@ -423,7 +435,7 @@
 	MOVQ    R9, (112)(IN)   \
 	MOVQ    R10, (120)(IN)  \
 	\
-	MULS(32(IN), ·P503p1, R8, R9, R10, R11, R12, R13, R14, BX, CX, R15)    \
+	MULS(32(IN), ·P503p1, R8, R9, R10, R11, R12, R13, R14, BX, CX, BP)    \
 	XORQ    R15, R15        \
 	XORQ    BX, BX          \
 	ADDQ    ( 56)(IN), R8   \
@@ -445,7 +457,7 @@
 	MOVQ    BX,  (120)(IN)  \
 	MOVQ    R9,  (  0)(OUT) \ // Result: OUT[0]
 	\
-	MULS(48(IN), ·P503p1, R8, R9, R10, R11, R12, R13, R14, BX, CX, R15)    \
+	MULS(48(IN), ·P503p1, R8, R9, R10, R11, R12, R13, R14, BX, CX, BP)    \
 	ADDQ    ( 72)(IN), R8   \
 	ADCQ    ( 80)(IN), R9   \
 	ADCQ    ( 88)(IN), R10  \
@@ -1218,7 +1230,7 @@ mul_with_mulx:
 	MUL(CX, REG_P1, REG_P2, MULS256_MULX)
 	RET
 
-TEXT ·rdcP503(SB), $0-16
+TEXT ·rdcP503(SB), $8-16
 	MOVQ    z+0(FP), REG_P2
 	MOVQ    x+8(FP), REG_P1
 
@@ -1536,13 +1548,17 @@ redc_with_mulx_adcx_adox:
 	// Implementation of the Montgomery reduction for CPUs
 	// supporting two independent carry chain (ADOX/ADCX)
 	// instructions and carry-less MULX multiplier
+	MOVQ BP, 0(SP) // push: BP is Callee-save.
 	REDC(REG_P2, REG_P1, MULS_128x320_MULX_ADCX_ADOX)
+	MOVQ 0(SP), BP // pop: BP is Callee-save.
 	RET
 
 redc_with_mulx:
 	// Implementation of the Montgomery reduction for CPUs
 	// supporting carry-less MULX multiplier.
+	MOVQ BP, 0(SP) // push: BP is Callee-save.
 	REDC(REG_P2, REG_P1, MULS_128x320_MULX)
+	MOVQ 0(SP), BP // pop: BP is Callee-save.
 	RET
 
 TEXT ·adlP503(SB), NOSPLIT, $0-24
