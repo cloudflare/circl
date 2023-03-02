@@ -255,18 +255,11 @@ func (a *Cipher) finalize(tag []byte) {
 	binary.BigEndian.PutUint64(tag[8:16], a.s[4]^a.key[2])
 }
 
-var roundConst = [12]uint64{0xf0, 0xe1, 0xd2, 0xc3, 0xb4, 0xa5, 0x96, 0x87, 0x78, 0x69, 0x5a, 0x4b}
-
 func (a *Cipher) perm(n int) {
-	ri := 0
-	if n != permA {
-		ri = permA - n
-	}
-
 	x0, x1, x2, x3, x4 := a.s[0], a.s[1], a.s[2], a.s[3], a.s[4]
-	for i := 0; i < n; i++ {
+	for i := permA - n; i < permA; i++ {
 		// pC -- addition of constants
-		x2 ^= roundConst[ri+i]
+		x2 ^= uint64((0xF-i)<<4 | i)
 
 		// pS -- substitution layer
 		// Figure 6 from Spec [DHVV18,Dae18]
