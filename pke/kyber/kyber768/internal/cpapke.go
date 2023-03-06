@@ -3,6 +3,8 @@
 package internal
 
 import (
+	"crypto/subtle"
+
 	"github.com/cloudflare/circl/internal/sha3"
 	"github.com/cloudflare/circl/pke/kyber/internal/common"
 )
@@ -172,5 +174,5 @@ func (sk *PrivateKey) Equal(other *PrivateKey) bool {
 			ret |= sk.sh[i][j] ^ other.sh[i][j]
 		}
 	}
-	return ret == 0
+	return subtle.ConstantTimeEq(int32(ret), 0) == 1
 }

@@ -3,7 +3,7 @@
 package tkn
 
 import (
-	"bytes"
+	"crypto/subtle"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -181,7 +181,8 @@ func (s *SecretParams) UnmarshalBinary(data []byte) error {
 
 func (s *SecretParams) Equal(s2 *SecretParams) bool {
 	return s.a.Equal(s2.a) && s.wtA.Equal(s2.wtA) && s.bstar.Equal(s2.bstar) &&
-		s.bstar12.Equal(s2.bstar12) && s.k.Equal(s2.k) && bytes.Equal(s.prfKey, s2.prfKey)
+		s.bstar12.Equal(s2.bstar12) && s.k.Equal(s2.k) &&
+		subtle.ConstantTimeCompare(s.prfKey, s2.prfKey) == 1
 }
 
 type AttributesKey struct {
