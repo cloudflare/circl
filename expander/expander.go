@@ -54,7 +54,6 @@ func (e *expanderMD) Expand(in []byte, n uint) []byte {
 	libStr[1] = byte(n & 0xFF)
 	dstPrime := e.calcDSTPrime()
 
-	H.Reset()
 	mustWrite(H, zPad)
 	mustWrite(H, in)
 	mustWrite(H, libStr)

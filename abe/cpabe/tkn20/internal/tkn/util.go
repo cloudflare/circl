@@ -30,7 +30,6 @@ func HashStringToScalar(key []byte, value string) *pairing.Scalar {
 	if err != nil {
 		return nil
 	}
-	xof.Reset()
 	_, err = xof.Write([]byte(value))
 	if err != nil {
 		return nil
