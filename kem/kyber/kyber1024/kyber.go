@@ -296,7 +296,7 @@ func (sk *PrivateKey) Equal(other kem.PrivateKey) bool {
 		return false
 	}
 	if !bytes.Equal(sk.hpk[:], oth.hpk[:]) ||
-		!bytes.Equal(sk.z[:], oth.z[:]) {
+		subtle.ConstantTimeCompare(sk.z[:], oth.z[:]) != 1 {
 		return false
 	}
 	return sk.sk.Equal(oth.sk)
