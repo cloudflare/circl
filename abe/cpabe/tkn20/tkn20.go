@@ -62,7 +62,10 @@ func (msk *SystemSecretKey) KeyGen(rand io.Reader, attrs Attributes) (AttributeK
 		rand = cryptoRand.Reader
 	}
 	sk, err := tkn.DeriveAttributeKeysCCA(rand, &msk.sp, &attrs.attrs)
-	return AttributeKey{*sk}, err
+	if err != nil {
+		return AttributeKey{}, err
+	}
+	return AttributeKey{*sk}, nil
 }
 
 type AttributeKey struct {
@@ -150,5 +153,8 @@ func Setup(rand io.Reader) (PublicKey, SystemSecretKey, error) {
 		rand = cryptoRand.Reader
 	}
 	pp, sp, err := tkn.GenerateParams(rand)
-	return PublicKey{*pp}, SystemSecretKey{*sp}, err
+	if err != nil {
+		return PublicKey{}, SystemSecretKey{}, err
+	}
+	return PublicKey{*pp}, SystemSecretKey{*sp}, nil
 }
