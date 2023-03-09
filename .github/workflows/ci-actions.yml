@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        GOVER: ['1.20', '1.19', '1.18']
+        GOVER: ['1.20', '1.19']
     steps:
       - name: Setup Go-${{ matrix.GOVER }}
         uses: actions/setup-go@v3
@@ -24,7 +24,7 @@ jobs:
       - name: Linting
         uses: golangci/golangci-lint-action@v3
         with:
-          version: v1.51
+          version: v1.51.2
           args: --config=./.etc/golangci.yml ./...
       - name: Check shadowing
         run: |
