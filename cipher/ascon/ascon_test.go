@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"sync"
 	"testing"
 
 	"github.com/cloudflare/circl/cipher/ascon"
@@ -180,6 +181,26 @@ func TestAPI(t *testing.T) {
 			test.ReportError(t, got, want)
 		}
 		test.CheckOk(&ctWithCap[0] == &plaintext[0], "should have same address", t)
+	})
+	t.Run("parallel", func(t *testing.T) {
+		var wg sync.WaitGroup
+		for i := 0; i < 1_000; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				ciphertext := c.Seal(nil, nonce, pt, nil)
+				plaintext, err := c.Open(nil, nonce, ciphertext, nil)
+				if err != nil {
+					t.Error(err)
+				}
+				got := plaintext
+				want := pt
+				if !bytes.Equal(got, want) {
+					test.ReportError(t, got, want)
+				}
+			}()
+		}
+		wg.Wait()
 	})
 }
 
