@@ -160,7 +160,9 @@ func generateKeyPair(rand io.Reader) (*PublicKey, *PrivateKey, error) {
 func (pk *PublicKey) EncapsulateTo(ct []byte, ss []byte, seed []byte) {
 	if seed == nil {
 		seed = make([]byte, EncapsulationSeedSize)
-		_, _ = cryptoRand.Read(seed[:])
+		if _, err := cryptoRand.Read(seed[:]); err != nil {
+			panic(err)
+		}
 	}
 	if len(seed) != EncapsulationSeedSize {
 		panic("seed must be of length EncapsulationSeedSize")

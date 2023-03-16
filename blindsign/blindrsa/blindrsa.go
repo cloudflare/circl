@@ -183,7 +183,7 @@ func (v RSAVerifier) Blind(random io.Reader, message []byte) ([]byte, blindsign.
 	}
 
 	salt := make([]byte, v.hash.Size())
-	_, err := random.Read(salt)
+	_, err := io.ReadFull(random, salt)
 	if err != nil {
 		return nil, nil, err
 	}
