@@ -135,7 +135,9 @@ func (*scheme) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 
 func (sch *scheme) Encapsulate(pk kem.PublicKey) (ct []byte, ss []byte, err error) {
 	var seed [EncapsulationSeedSize]byte
-	cryptoRand.Read(seed[:])
+	if _, err := cryptoRand.Read(seed[:]); err != nil {
+		return nil, nil, err
+	}
 	return sch.EncapsulateDeterministically(pk, seed[:])
 }
 
