@@ -5,7 +5,7 @@
 // Post-quantum kems:
 //
 //	SNTRUP653, SNTRUP761, SNTRUP857, SNTRUP953, SNTRUP1013, SNTRUP1277
-package schemes
+package sntrupSchemes
 
 import (
 	"strings"
@@ -20,12 +20,12 @@ import (
 )
 
 var allSchemes = [...]kem.Scheme{
-	sntrup653.Scheme(),
-	sntrup761.Scheme(),
-	sntrup857.Scheme(),
-	sntrup953.Scheme(),
-	sntrup1013.Scheme(),
-	sntrup1277.Scheme(),
+	sntrup653.SntrupScheme(),
+	sntrup761.SntrupScheme(),
+	sntrup857.SntrupScheme(),
+	sntrup953.SntrupScheme(),
+	sntrup1013.SntrupScheme(),
+	sntrup1277.SntrupScheme(),
 }
 
 var allSchemeNames map[string]kem.Scheme

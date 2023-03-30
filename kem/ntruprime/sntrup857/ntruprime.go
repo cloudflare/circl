@@ -13,8 +13,9 @@ import (
 	"crypto/sha512"
 
 	"github.com/cloudflare/circl/internal/nist"
+	"github.com/cloudflare/circl/kem"
 	"github.com/cloudflare/circl/kem/ntruprime/internal"
-	"github.com/cloudflare/circl/pke/ntruprime/kem"
+	sntrupKem "github.com/cloudflare/circl/pke/ntruprime/kem"
 	ntrup "github.com/cloudflare/circl/pke/ntruprime/sntrup857"
 )
 
@@ -45,6 +46,12 @@ const (
 )
 
 const (
+	// Size of seed for NewKeyFromSeed
+	// Note that during keyGen, a random small is generated until a valid one (whose reciprocal succeeds) is found
+	// The size of keySeed depends on the number of times the reciprocal fails
+	// This is why DeriveKeyPairFromGen is used to deterministically derive key pair instead of using seed
+	KeySeedSize = 4*p + p*4 + inputsBytes
+
 	// Size of seed for EncapsulateTo.
 	EncapsulationSeedSize = 4 * p
 
@@ -816,14 +823,18 @@ type PublicKey struct {
 
 type scheme struct{}
 
-var sch kem.Scheme = &scheme{}
+var sch sntrupKem.Scheme = &scheme{}
 
 // Scheme returns a KEM interface.
 func Scheme() kem.Scheme { return sch }
 
+// SntrupScheme returns a sntrup.KEM interface
+func SntrupScheme() sntrupKem.Scheme { return sch }
+
 func (*scheme) Name() string               { return "sntrup857" }
 func (*scheme) PublicKeySize() int         { return PublicKeySize }
 func (*scheme) PrivateKeySize() int        { return PrivateKeySize }
+func (*scheme) SeedSize() int              { return KeySeedSize }
 func (*scheme) SharedKeySize() int         { return SharedKeySize }
 func (*scheme) CiphertextSize() int        { return CiphertextSize }
 func (*scheme) EncapsulationSeedSize() int { return EncapsulationSeedSize }
@@ -874,6 +885,11 @@ func (*scheme) GenerateKeyPair() (kem.PublicKey, kem.PrivateKey, error) {
 
 	return &PublicKey{pk: pk}, &PrivateKey{sk: sk}, nil
 
+}
+
+// Not used
+func (*scheme) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
+	return nil, nil
 }
 
 func (*scheme) DeriveKeyPairFromGen(gen *nist.DRBG) (kem.PublicKey, kem.PrivateKey) {
