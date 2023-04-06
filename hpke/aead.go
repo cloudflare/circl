@@ -7,11 +7,14 @@ import (
 
 type encdecContext struct {
 	// Serialized parameters
-	suite          Suite
-	exporterSecret []byte
-	key            []byte
-	baseNonce      []byte
-	sequenceNumber []byte
+	suite              Suite
+	sharedSecret       []byte
+	secret             []byte
+	keyScheduleContext []byte
+	exporterSecret     []byte
+	key                []byte
+	baseNonce          []byte
+	sequenceNumber     []byte
 
 	// Operational parameters
 	cipher.AEAD

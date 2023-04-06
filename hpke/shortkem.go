@@ -11,7 +11,7 @@ import (
 )
 
 type shortKEM struct {
-	kemBase
+	dhKemBase
 	elliptic.Curve
 }
 
@@ -88,6 +88,10 @@ func (s shortKEM) UnmarshalBinaryPrivateKey(data []byte) (kem.PrivateKey, error)
 	}
 	sk := &shortKEMPrivKey{s, make([]byte, l), nil}
 	copy(sk.priv[l-len(data):l], data[:l])
+	if !sk.validate() {
+		return nil, ErrInvalidKEMPrivateKey
+	}
+
 	return sk, nil
 }
 
@@ -96,7 +100,11 @@ func (s shortKEM) UnmarshalBinaryPublicKey(data []byte) (kem.PublicKey, error) {
 	if x == nil {
 		return nil, ErrInvalidKEMPublicKey
 	}
-	return &shortKEMPubKey{s, x, y}, nil
+	key := &shortKEMPubKey{s, x, y}
+	if !key.validate() {
+		return nil, ErrInvalidKEMPublicKey
+	}
+	return key, nil
 }
 
 type shortKEMPubKey struct {
@@ -120,7 +128,7 @@ func (k *shortKEMPubKey) Equal(pk kem.PublicKey) bool {
 		k.y.Cmp(k1.y) == 0
 }
 
-func (k *shortKEMPubKey) Validate() bool {
+func (k *shortKEMPubKey) validate() bool {
 	p := k.scheme.Params().P
 	notAtInfinity := k.x.Sign() > 0 && k.y.Sign() > 0
 	lessThanP := k.x.Cmp(p) < 0 && k.y.Cmp(p) < 0
@@ -155,7 +163,7 @@ func (k *shortKEMPrivKey) Public() kem.PublicKey {
 	return k.pub
 }
 
-func (k *shortKEMPrivKey) Validate() bool {
+func (k *shortKEMPrivKey) validate() bool {
 	n := new(big.Int).SetBytes(k.priv)
 	order := k.scheme.Curve.Params().N
 	return len(k.priv) == k.scheme.PrivateKeySize() && n.Cmp(order) < 0

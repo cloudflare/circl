@@ -105,10 +105,6 @@ type Sender struct {
 
 // NewSender creates a Sender with knowledge of the receiver's public-key.
 func (suite Suite) NewSender(pkR kem.PublicKey, info []byte) (*Sender, error) {
-	if !suite.kemID.validatePublicKey(pkR) {
-		return nil, ErrInvalidKEMPublicKey
-	}
-
 	return &Sender{
 		state: state{Suite: suite, info: info},
 		pkR:   pkR,
@@ -127,10 +123,6 @@ func (s *Sender) Setup(rnd io.Reader) (enc []byte, seal Sealer, err error) {
 func (s *Sender) SetupAuth(rnd io.Reader, skS kem.PrivateKey) (
 	enc []byte, seal Sealer, err error,
 ) {
-	if !s.kemID.validatePrivateKey(skS) {
-		return nil, nil, ErrInvalidKEMPrivateKey
-	}
-
 	s.modeID = modeAuth
 	s.state.skS = skS
 	return s.allSetup(rnd)
@@ -152,10 +144,6 @@ func (s *Sender) SetupPSK(rnd io.Reader, psk, pskID []byte) (
 func (s *Sender) SetupAuthPSK(rnd io.Reader, skS kem.PrivateKey, psk, pskID []byte) (
 	enc []byte, seal Sealer, err error,
 ) {
-	if !s.kemID.validatePrivateKey(skS) {
-		return nil, nil, ErrInvalidKEMPrivateKey
-	}
-
 	s.modeID = modeAuthPSK
 	s.state.skS = skS
 	s.state.psk = psk
@@ -174,10 +162,6 @@ type Receiver struct {
 func (suite Suite) NewReceiver(skR kem.PrivateKey, info []byte) (
 	*Receiver, error,
 ) {
-	if !suite.kemID.validatePrivateKey(skR) {
-		return nil, ErrInvalidKEMPrivateKey
-	}
-
 	return &Receiver{state: state{Suite: suite, info: info}, skR: skR}, nil
 }
 
@@ -192,10 +176,6 @@ func (r *Receiver) Setup(enc []byte) (Opener, error) {
 // SetupAuth generates a new HPKE context used for Auth Mode encryption.
 // SetupAuth takes an encapsulated key and a public key, and returns an Opener.
 func (r *Receiver) SetupAuth(enc []byte, pkS kem.PublicKey) (Opener, error) {
-	if !r.kemID.validatePublicKey(pkS) {
-		return nil, ErrInvalidKEMPublicKey
-	}
-
 	r.modeID = modeAuth
 	r.enc = enc
 	r.state.pkS = pkS
@@ -219,10 +199,6 @@ func (r *Receiver) SetupPSK(enc, psk, pskID []byte) (Opener, error) {
 func (r *Receiver) SetupAuthPSK(
 	enc, psk, pskID []byte, pkS kem.PublicKey,
 ) (Opener, error) {
-	if !r.kemID.validatePublicKey(pkS) {
-		return nil, ErrInvalidKEMPublicKey
-	}
-
 	r.modeID = modeAuthPSK
 	r.enc = enc
 	r.state.psk = psk

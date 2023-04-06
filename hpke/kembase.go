@@ -23,6 +23,10 @@ type kemBase struct {
 	id   KEM
 	name string
 	crypto.Hash
+}
+
+type dhKemBase struct {
+	kemBase
 	dhKEM
 }
 
@@ -45,6 +49,7 @@ func (k kemBase) extractExpand(dh, kemCtx []byte) []byte {
 	)
 }
 
+// nolint:unparam
 func (k kemBase) labeledExtract(salt, label, info []byte) []byte {
 	suiteID := k.getSuiteID()
 	labeledIKM := append(append(append(append(
@@ -77,7 +82,7 @@ func (k kemBase) labeledExpand(prk, label, info []byte, l uint16) []byte {
 	return b
 }
 
-func (k kemBase) AuthEncapsulate(pkr kem.PublicKey, sks kem.PrivateKey) (
+func (k dhKemBase) AuthEncapsulate(pkr kem.PublicKey, sks kem.PrivateKey) (
 	ct []byte, ss []byte, err error,
 ) {
 	seed := make([]byte, k.SeedSize())
@@ -89,7 +94,7 @@ func (k kemBase) AuthEncapsulate(pkr kem.PublicKey, sks kem.PrivateKey) (
 	return k.authEncap(pkr, sks, seed)
 }
 
-func (k kemBase) Encapsulate(pkr kem.PublicKey) (
+func (k dhKemBase) Encapsulate(pkr kem.PublicKey) (
 	ct []byte, ss []byte, err error,
 ) {
 	seed := make([]byte, k.SeedSize())
@@ -101,19 +106,19 @@ func (k kemBase) Encapsulate(pkr kem.PublicKey) (
 	return k.encap(pkr, seed)
 }
 
-func (k kemBase) AuthEncapsulateDeterministically(
+func (k dhKemBase) AuthEncapsulateDeterministically(
 	pkr kem.PublicKey, sks kem.PrivateKey, seed []byte,
 ) (ct, ss []byte, err error) {
 	return k.authEncap(pkr, sks, seed)
 }
 
-func (k kemBase) EncapsulateDeterministically(
+func (k dhKemBase) EncapsulateDeterministically(
 	pkr kem.PublicKey, seed []byte,
 ) (ct, ss []byte, err error) {
 	return k.encap(pkr, seed)
 }
 
-func (k kemBase) encap(
+func (k dhKemBase) encap(
 	pkR kem.PublicKey,
 	seed []byte,
 ) (ct []byte, ss []byte, err error) {
@@ -126,7 +131,7 @@ func (k kemBase) encap(
 	return enc, ss, nil
 }
 
-func (k kemBase) authEncap(
+func (k dhKemBase) authEncap(
 	pkR kem.PublicKey,
 	skS kem.PrivateKey,
 	seed []byte,
@@ -154,7 +159,7 @@ func (k kemBase) authEncap(
 	return enc, ss, nil
 }
 
-func (k kemBase) coreEncap(
+func (k dhKemBase) coreEncap(
 	dh []byte,
 	pkR kem.PublicKey,
 	seed []byte,
@@ -178,7 +183,7 @@ func (k kemBase) coreEncap(
 	return enc, kemCtx, nil
 }
 
-func (k kemBase) Decapsulate(skr kem.PrivateKey, ct []byte) ([]byte, error) {
+func (k dhKemBase) Decapsulate(skr kem.PrivateKey, ct []byte) ([]byte, error) {
 	dh := make([]byte, k.sizeDH())
 	kemCtx, err := k.coreDecap(dh, skr, ct)
 	if err != nil {
@@ -187,7 +192,7 @@ func (k kemBase) Decapsulate(skr kem.PrivateKey, ct []byte) ([]byte, error) {
 	return k.extractExpand(dh, kemCtx), nil
 }
 
-func (k kemBase) AuthDecapsulate(
+func (k dhKemBase) AuthDecapsulate(
 	skR kem.PrivateKey,
 	ct []byte,
 	pkS kem.PublicKey,
@@ -212,7 +217,7 @@ func (k kemBase) AuthDecapsulate(
 	return k.extractExpand(dh, kemCtx), nil
 }
 
-func (k kemBase) coreDecap(
+func (k dhKemBase) coreDecap(
 	dh []byte,
 	skR kem.PrivateKey,
 	ct []byte,
