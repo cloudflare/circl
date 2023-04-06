@@ -44,12 +44,12 @@ func setupAeadTest() (*sealContext, *openContext, error) {
 
 	sealer := &sealContext{
 		&encdecContext{
-			suite, nil, nil, baseNonce, make([]byte, Nn), aead, make([]byte, Nn),
+			suite, nil, nil, nil, nil, nil, baseNonce, make([]byte, Nn), aead, make([]byte, Nn),
 		},
 	}
 	opener := &openContext{
 		&encdecContext{
-			suite, nil, nil, baseNonce, make([]byte, Nn), aead, make([]byte, Nn),
+			suite, nil, nil, nil, nil, nil, baseNonce, make([]byte, Nn), aead, make([]byte, Nn),
 		},
 	}
 	return sealer, opener, nil

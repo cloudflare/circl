@@ -15,6 +15,7 @@ import (
 	"github.com/cloudflare/circl/dh/x448"
 	"github.com/cloudflare/circl/ecc/p384"
 	"github.com/cloudflare/circl/kem"
+	"github.com/cloudflare/circl/kem/kyber/kyber768"
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/hkdf"
 )
@@ -35,6 +36,9 @@ const (
 	// KEM_X448_HKDF_SHA512 is a KEM using X448 Diffie-Hellman function and
 	// HKDF with SHA-512.
 	KEM_X448_HKDF_SHA512 KEM = 0x21
+	// KEM_X25519_KYBER768_DRAFT00 is a hybrid KEM built on DHKEM(X25519, HKDF-SHA256)
+	// and Kyber768Draft00
+	KEM_X25519_KYBER768_DRAFT00 KEM = 0x30
 )
 
 // IsValid returns true if the KEM identifier is supported by the HPKE package.
@@ -44,7 +48,8 @@ func (k KEM) IsValid() bool {
 		KEM_P384_HKDF_SHA384,
 		KEM_P521_HKDF_SHA512,
 		KEM_X25519_HKDF_SHA256,
-		KEM_X448_HKDF_SHA512:
+		KEM_X448_HKDF_SHA512,
+		KEM_X25519_KYBER768_DRAFT00:
 		return true
 	default:
 		return false
@@ -65,32 +70,8 @@ func (k KEM) Scheme() kem.AuthScheme {
 		return dhkemx25519hkdfsha256
 	case KEM_X448_HKDF_SHA512:
 		return dhkemx448hkdfsha512
-	default:
-		panic(ErrInvalidKEM)
-	}
-}
-
-func (k KEM) validatePublicKey(pk kem.PublicKey) bool {
-	switch k {
-	case KEM_P256_HKDF_SHA256, KEM_P384_HKDF_SHA384, KEM_P521_HKDF_SHA512:
-		pub, ok := pk.(*shortKEMPubKey)
-		return ok && k == pub.scheme.id && pub.Validate()
-	case KEM_X25519_HKDF_SHA256, KEM_X448_HKDF_SHA512:
-		pub, ok := pk.(*xKEMPubKey)
-		return ok && k == pub.scheme.id && pub.Validate()
-	default:
-		panic(ErrInvalidKEM)
-	}
-}
-
-func (k KEM) validatePrivateKey(sk kem.PrivateKey) bool {
-	switch k {
-	case KEM_P256_HKDF_SHA256, KEM_P384_HKDF_SHA384, KEM_P521_HKDF_SHA512:
-		priv, ok := sk.(*shortKEMPrivKey)
-		return ok && k == priv.scheme.id && priv.Validate()
-	case KEM_X25519_HKDF_SHA256, KEM_X448_HKDF_SHA512:
-		priv, ok := sk.(*xKEMPrivKey)
-		return ok && k == priv.scheme.id && priv.Validate()
+	case KEM_X25519_KYBER768_DRAFT00:
+		return hybridkemX25519Kyber768
 	default:
 		panic(ErrInvalidKEM)
 	}
@@ -243,36 +224,43 @@ func (a AEAD) CipherLen(mLen uint) uint {
 var (
 	dhkemp256hkdfsha256, dhkemp384hkdfsha384, dhkemp521hkdfsha512 shortKEM
 	dhkemx25519hkdfsha256, dhkemx448hkdfsha512                    xKEM
+	hybridkemX25519Kyber768                                       hybridKEM
 )
 
 func init() {
 	dhkemp256hkdfsha256.Curve = elliptic.P256()
-	dhkemp256hkdfsha256.kemBase.id = KEM_P256_HKDF_SHA256
-	dhkemp256hkdfsha256.kemBase.name = "HPKE_KEM_P256_HKDF_SHA256"
-	dhkemp256hkdfsha256.kemBase.Hash = crypto.SHA256
-	dhkemp256hkdfsha256.kemBase.dhKEM = dhkemp256hkdfsha256
+	dhkemp256hkdfsha256.dhKemBase.id = KEM_P256_HKDF_SHA256
+	dhkemp256hkdfsha256.dhKemBase.name = "HPKE_KEM_P256_HKDF_SHA256"
+	dhkemp256hkdfsha256.dhKemBase.Hash = crypto.SHA256
+	dhkemp256hkdfsha256.dhKemBase.dhKEM = dhkemp256hkdfsha256
 
 	dhkemp384hkdfsha384.Curve = p384.P384()
-	dhkemp384hkdfsha384.kemBase.id = KEM_P384_HKDF_SHA384
-	dhkemp384hkdfsha384.kemBase.name = "HPKE_KEM_P384_HKDF_SHA384"
-	dhkemp384hkdfsha384.kemBase.Hash = crypto.SHA384
-	dhkemp384hkdfsha384.kemBase.dhKEM = dhkemp384hkdfsha384
+	dhkemp384hkdfsha384.dhKemBase.id = KEM_P384_HKDF_SHA384
+	dhkemp384hkdfsha384.dhKemBase.name = "HPKE_KEM_P384_HKDF_SHA384"
+	dhkemp384hkdfsha384.dhKemBase.Hash = crypto.SHA384
+	dhkemp384hkdfsha384.dhKemBase.dhKEM = dhkemp384hkdfsha384
 
 	dhkemp521hkdfsha512.Curve = elliptic.P521()
-	dhkemp521hkdfsha512.kemBase.id = KEM_P521_HKDF_SHA512
-	dhkemp521hkdfsha512.kemBase.name = "HPKE_KEM_P521_HKDF_SHA512"
-	dhkemp521hkdfsha512.kemBase.Hash = crypto.SHA512
-	dhkemp521hkdfsha512.kemBase.dhKEM = dhkemp521hkdfsha512
+	dhkemp521hkdfsha512.dhKemBase.id = KEM_P521_HKDF_SHA512
+	dhkemp521hkdfsha512.dhKemBase.name = "HPKE_KEM_P521_HKDF_SHA512"
+	dhkemp521hkdfsha512.dhKemBase.Hash = crypto.SHA512
+	dhkemp521hkdfsha512.dhKemBase.dhKEM = dhkemp521hkdfsha512
 
 	dhkemx25519hkdfsha256.size = x25519.Size
-	dhkemx25519hkdfsha256.kemBase.id = KEM_X25519_HKDF_SHA256
-	dhkemx25519hkdfsha256.kemBase.name = "HPKE_KEM_X25519_HKDF_SHA256"
-	dhkemx25519hkdfsha256.kemBase.Hash = crypto.SHA256
-	dhkemx25519hkdfsha256.kemBase.dhKEM = dhkemx25519hkdfsha256
+	dhkemx25519hkdfsha256.dhKemBase.id = KEM_X25519_HKDF_SHA256
+	dhkemx25519hkdfsha256.dhKemBase.name = "HPKE_KEM_X25519_HKDF_SHA256"
+	dhkemx25519hkdfsha256.dhKemBase.Hash = crypto.SHA256
+	dhkemx25519hkdfsha256.dhKemBase.dhKEM = dhkemx25519hkdfsha256
 
 	dhkemx448hkdfsha512.size = x448.Size
-	dhkemx448hkdfsha512.kemBase.id = KEM_X448_HKDF_SHA512
-	dhkemx448hkdfsha512.kemBase.name = "HPKE_KEM_X448_HKDF_SHA512"
-	dhkemx448hkdfsha512.kemBase.Hash = crypto.SHA512
-	dhkemx448hkdfsha512.kemBase.dhKEM = dhkemx448hkdfsha512
+	dhkemx448hkdfsha512.dhKemBase.id = KEM_X448_HKDF_SHA512
+	dhkemx448hkdfsha512.dhKemBase.name = "HPKE_KEM_X448_HKDF_SHA512"
+	dhkemx448hkdfsha512.dhKemBase.Hash = crypto.SHA512
+	dhkemx448hkdfsha512.dhKemBase.dhKEM = dhkemx448hkdfsha512
+
+	hybridkemX25519Kyber768.kemBase.id = KEM_X25519_KYBER768_DRAFT00
+	hybridkemX25519Kyber768.kemBase.name = "HPKE_KEM_X25519_KYBER768_HKDF_SHA256"
+	hybridkemX25519Kyber768.kemBase.Hash = crypto.SHA256
+	hybridkemX25519Kyber768.kemA = dhkemx25519hkdfsha256
+	hybridkemX25519Kyber768.kemB = kyber768.Scheme()
 }
