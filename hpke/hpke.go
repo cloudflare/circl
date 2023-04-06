@@ -237,7 +237,7 @@ func (s *Sender) allSetup(rnd io.Reader) ([]byte, Sealer, error) {
 	if rnd == nil {
 		rnd = rand.Reader
 	}
-	seed := make([]byte, scheme.SeedSize())
+	seed := make([]byte, scheme.EncapsulationSeedSize())
 	_, err := io.ReadFull(rnd, seed)
 	if err != nil {
 		return nil, nil, err
