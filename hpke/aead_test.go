@@ -10,9 +10,9 @@ import (
 )
 
 func TestAeadExporter(t *testing.T) {
-	suite := Suite{kdfID: KDF_HKDF_SHA256, aeadID: AEAD_AES128GCM}
+	suite := Suite{Kdf: KDF_HKDF_SHA256, Aead: AEAD_AES128GCM}
 	exporter := &encdecContext{suite: suite}
-	maxLength := uint(255 * suite.kdfID.ExtractSize())
+	maxLength := uint(255 * suite.Kdf.ExtractSize())
 
 	err := test.CheckPanic(func() {
 		exporter.Export([]byte("exporter"), maxLength+1)
@@ -21,15 +21,15 @@ func TestAeadExporter(t *testing.T) {
 }
 
 func setupAeadTest() (*sealContext, *openContext, error) {
-	suite := Suite{aeadID: AEAD_AES128GCM}
-	key := make([]byte, suite.aeadID.KeySize())
+	suite := Suite{Aead: AEAD_AES128GCM}
+	key := make([]byte, suite.Aead.KeySize())
 	if n, err := rand.Read(key); err != nil {
 		return nil, nil, err
 	} else if n != len(key) {
 		return nil, nil, fmt.Errorf("unexpected key size: got %d; want %d", n, len(key))
 	}
 
-	aead, err := suite.aeadID.New(key)
+	aead, err := suite.Aead.New(key)
 	if err != nil {
 		return nil, nil, err
 	}

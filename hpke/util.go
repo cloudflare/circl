@@ -20,10 +20,10 @@ func (st state) keySchedule(ss, info, psk, pskID []byte) (*encdecContext, error)
 
 	secret := st.labeledExtract(ss, []byte("secret"), psk)
 
-	Nk := uint16(st.aeadID.KeySize())
+	Nk := uint16(st.Aead.KeySize())
 	key := st.labeledExpand(secret, []byte("key"), keySchCtx, Nk)
 
-	aead, err := st.aeadID.New(key)
+	aead, err := st.Aead.New(key)
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +34,7 @@ func (st state) keySchedule(ss, info, psk, pskID []byte) (*encdecContext, error)
 		secret,
 		[]byte("exp"),
 		keySchCtx,
-		uint16(st.kdfID.ExtractSize()),
+		uint16(st.Kdf.ExtractSize()),
 	)
 
 	return &encdecContext{
@@ -69,28 +69,28 @@ func (st state) verifyPSKInputs(psk, pskID []byte) error {
 
 // Params returns the codepoints for the algorithms comprising the suite.
 func (suite Suite) Params() (KEM, KDF, AEAD) {
-	return suite.kemID, suite.kdfID, suite.aeadID
+	return suite.Kem, suite.Kdf, suite.Aead
 }
 
 func (suite Suite) String() string {
 	return fmt.Sprintf(
 		"kem_id: %v kdf_id: %v aead_id: %v",
-		suite.kemID, suite.kdfID, suite.aeadID,
+		suite.Kem, suite.Kdf, suite.Aead,
 	)
 }
 
 func (suite Suite) getSuiteID() (id [10]byte) {
 	id[0], id[1], id[2], id[3] = 'H', 'P', 'K', 'E'
-	binary.BigEndian.PutUint16(id[4:6], uint16(suite.kemID))
-	binary.BigEndian.PutUint16(id[6:8], uint16(suite.kdfID))
-	binary.BigEndian.PutUint16(id[8:10], uint16(suite.aeadID))
+	binary.BigEndian.PutUint16(id[4:6], uint16(suite.Kem))
+	binary.BigEndian.PutUint16(id[6:8], uint16(suite.Kdf))
+	binary.BigEndian.PutUint16(id[8:10], uint16(suite.Aead))
 	return
 }
 
 func (suite Suite) isValid() bool {
-	return suite.kemID.IsValid() &&
-		suite.kdfID.IsValid() &&
-		suite.aeadID.IsValid()
+	return suite.Kem.IsValid() &&
+		suite.Kdf.IsValid() &&
+		suite.Aead.IsValid()
 }
 
 func (suite Suite) labeledExtract(salt, label, ikm []byte) []byte {
@@ -101,7 +101,7 @@ func (suite Suite) labeledExtract(salt, label, ikm []byte) []byte {
 		suiteID[:]...),
 		label...),
 		ikm...)
-	return suite.kdfID.Extract(labeledIKM, salt)
+	return suite.Kdf.Extract(labeledIKM, salt)
 }
 
 func (suite Suite) labeledExpand(prk, label, info []byte, l uint16) []byte {
@@ -114,5 +114,5 @@ func (suite Suite) labeledExpand(prk, label, info []byte, l uint16) []byte {
 		suiteID[:]...),
 		label...),
 		info...)
-	return suite.kdfID.Expand(prk, labeledInfo, uint(l))
+	return suite.Kdf.Expand(prk, labeledInfo, uint(l))
 }

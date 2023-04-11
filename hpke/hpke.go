@@ -72,9 +72,9 @@ const (
 
 // Suite is an HPKE cipher suite consisting of a KEM, KDF, and AEAD algorithm.
 type Suite struct {
-	kemID  KEM
-	kdfID  KDF
-	aeadID AEAD
+	Kem  KEM
+	Kdf  KDF
+	Aead AEAD
 }
 
 // NewSuite builds a Suite from a specified set of algorithms. Panics
@@ -105,7 +105,7 @@ type Sender struct {
 
 // NewSender creates a Sender with knowledge of the receiver's public-key.
 func (suite Suite) NewSender(pkR kem.PublicKey, info []byte) (*Sender, error) {
-	if !suite.kemID.validatePublicKey(pkR) {
+	if !suite.Kem.validatePublicKey(pkR) {
 		return nil, ErrInvalidKEMPublicKey
 	}
 
@@ -127,7 +127,7 @@ func (s *Sender) Setup(rnd io.Reader) (enc []byte, seal Sealer, err error) {
 func (s *Sender) SetupAuth(rnd io.Reader, skS kem.PrivateKey) (
 	enc []byte, seal Sealer, err error,
 ) {
-	if !s.kemID.validatePrivateKey(skS) {
+	if !s.Kem.validatePrivateKey(skS) {
 		return nil, nil, ErrInvalidKEMPrivateKey
 	}
 
@@ -152,7 +152,7 @@ func (s *Sender) SetupPSK(rnd io.Reader, psk, pskID []byte) (
 func (s *Sender) SetupAuthPSK(rnd io.Reader, skS kem.PrivateKey, psk, pskID []byte) (
 	enc []byte, seal Sealer, err error,
 ) {
-	if !s.kemID.validatePrivateKey(skS) {
+	if !s.Kem.validatePrivateKey(skS) {
 		return nil, nil, ErrInvalidKEMPrivateKey
 	}
 
@@ -174,7 +174,7 @@ type Receiver struct {
 func (suite Suite) NewReceiver(skR kem.PrivateKey, info []byte) (
 	*Receiver, error,
 ) {
-	if !suite.kemID.validatePrivateKey(skR) {
+	if !suite.Kem.validatePrivateKey(skR) {
 		return nil, ErrInvalidKEMPrivateKey
 	}
 
@@ -192,7 +192,7 @@ func (r *Receiver) Setup(enc []byte) (Opener, error) {
 // SetupAuth generates a new HPKE context used for Auth Mode encryption.
 // SetupAuth takes an encapsulated key and a public key, and returns an Opener.
 func (r *Receiver) SetupAuth(enc []byte, pkS kem.PublicKey) (Opener, error) {
-	if !r.kemID.validatePublicKey(pkS) {
+	if !r.Kem.validatePublicKey(pkS) {
 		return nil, ErrInvalidKEMPublicKey
 	}
 
@@ -219,7 +219,7 @@ func (r *Receiver) SetupPSK(enc, psk, pskID []byte) (Opener, error) {
 func (r *Receiver) SetupAuthPSK(
 	enc, psk, pskID []byte, pkS kem.PublicKey,
 ) (Opener, error) {
-	if !r.kemID.validatePublicKey(pkS) {
+	if !r.Kem.validatePublicKey(pkS) {
 		return nil, ErrInvalidKEMPublicKey
 	}
 
@@ -232,7 +232,7 @@ func (r *Receiver) SetupAuthPSK(
 }
 
 func (s *Sender) allSetup(rnd io.Reader) ([]byte, Sealer, error) {
-	scheme := s.kemID.Scheme()
+	scheme := s.Kem.Scheme()
 
 	if rnd == nil {
 		rnd = rand.Reader
@@ -265,7 +265,7 @@ func (s *Sender) allSetup(rnd io.Reader) ([]byte, Sealer, error) {
 func (r *Receiver) allSetup() (Opener, error) {
 	var err error
 	var ss []byte
-	scheme := r.kemID.Scheme()
+	scheme := r.Kem.Scheme()
 	switch r.modeID {
 	case modeBase, modePSK:
 		ss, err = scheme.Decapsulate(r.skR, r.enc)

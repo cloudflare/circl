@@ -29,7 +29,7 @@ type (
 // greater than 255*N bytes, where N is the size (in bytes) of the KDF's
 // output.
 func (c *encdecContext) Export(exporterContext []byte, length uint) []byte {
-	maxLength := uint(255 * c.suite.kdfID.ExtractSize())
+	maxLength := uint(255 * c.suite.Kdf.ExtractSize())
 	if length > maxLength {
 		panic(fmt.Errorf("output length must be lesser than %v bytes", maxLength))
 	}
