@@ -69,7 +69,7 @@ func unmarshalContext(raw []byte) (*encdecContext, error) {
 		return nil, err
 	}
 
-	Nn := c.AEAD.NonceSize()
+	Nn := int(c.suite.aeadID.NonceSize())
 	if len(c.baseNonce) != Nn {
 		return nil, errors.New("invalid base nonce length")
 	}
