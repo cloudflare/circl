@@ -196,7 +196,7 @@ func (a AEAD) IsValid() bool {
 	}
 }
 
-// KeySize returns the size in bytes of the keys used by AEAD cipher.
+// KeySize returns the size in bytes of the keys used by the AEAD cipher.
 func (a AEAD) KeySize() uint {
 	switch a {
 	case AEAD_AES128GCM:
@@ -205,6 +205,18 @@ func (a AEAD) KeySize() uint {
 		return 32
 	case AEAD_ChaCha20Poly1305:
 		return chacha20poly1305.KeySize
+	default:
+		panic(ErrInvalidAEAD)
+	}
+}
+
+// NonceSize returns the size in bytes of the nonce used by the AEAD cipher.
+func (a AEAD) NonceSize() uint {
+	switch a {
+	case AEAD_AES128GCM,
+		AEAD_AES256GCM,
+		AEAD_ChaCha20Poly1305:
+		return 12
 	default:
 		panic(ErrInvalidAEAD)
 	}

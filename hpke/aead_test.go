@@ -34,7 +34,7 @@ func setupAeadTest() (*sealContext, *openContext, error) {
 		return nil, nil, err
 	}
 
-	Nn := aead.NonceSize()
+	Nn := suite.aeadID.NonceSize()
 	baseNonce := make([]byte, Nn)
 	if n, err := rand.Read(baseNonce); err != nil {
 		return nil, nil, err
