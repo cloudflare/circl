@@ -53,7 +53,7 @@ func (s shortKEM) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 		bitmask = 0x01
 	}
 
-	dkpPrk := s.labeledExtract(nil, []byte("dkp_prk"), seed)
+	dkpPrk := s.labeledExtract([]byte(""), []byte("dkp_prk"), seed)
 	var bytes []byte
 	ctr := 0
 	for skBig := new(big.Int); skBig.Sign() == 0 || skBig.Cmp(s.Params().N) >= 0; ctr++ {

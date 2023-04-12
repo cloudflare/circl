@@ -40,7 +40,7 @@ func (k kemBase) getSuiteID() (sid [5]byte) {
 }
 
 func (k kemBase) extractExpand(dh, kemCtx []byte) []byte {
-	eaePkr := k.labeledExtract(nil, []byte("eae_prk"), dh)
+	eaePkr := k.labeledExtract([]byte(""), []byte("eae_prk"), dh)
 	return k.labeledExpand(
 		eaePkr,
 		[]byte("shared_secret"),
@@ -49,7 +49,6 @@ func (k kemBase) extractExpand(dh, kemCtx []byte) []byte {
 	)
 }
 
-// nolint:unparam
 func (k kemBase) labeledExtract(salt, label, info []byte) []byte {
 	suiteID := k.getSuiteID()
 	labeledIKM := append(append(append(append(

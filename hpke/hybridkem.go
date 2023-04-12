@@ -165,7 +165,7 @@ func (h hybridKEM) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 	}
 
 	outputSeedSize := h.kemA.SeedSize() + h.kemB.SeedSize()
-	dkpPrk := h.labeledExtract(nil, []byte("dkp_prk"), seed)
+	dkpPrk := h.labeledExtract([]byte(""), []byte("dkp_prk"), seed)
 	bytes := h.labeledExpand(
 		dkpPrk,
 		[]byte("sk"),
