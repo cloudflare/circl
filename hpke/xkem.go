@@ -59,7 +59,7 @@ func (x xKEM) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 		panic(kem.ErrSeedSize)
 	}
 	sk := &xKEMPrivKey{scheme: x, priv: make([]byte, x.size)}
-	dkpPrk := x.labeledExtract(nil, []byte("dkp_prk"), seed)
+	dkpPrk := x.labeledExtract([]byte(""), []byte("dkp_prk"), seed)
 	bytes := x.labeledExpand(
 		dkpPrk,
 		[]byte("sk"),
