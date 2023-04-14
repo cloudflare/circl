@@ -229,15 +229,15 @@ type vector struct {
 	AeadID             uint16             `json:"aead_id"`
 	Info               string             `json:"info"`
 	IkmR               string             `json:"ikmR"`
-	IkmE               string             `json:"ikmE"`
+	IkmE               string             `json:"ikmE,omitempty"`
 	SkRm               string             `json:"skRm"`
-	SkEm               string             `json:"skEm"`
+	SkEm               string             `json:"skEm,omitempty"`
 	SkSm               string             `json:"skSm,omitempty"`
 	Psk                string             `json:"psk,omitempty"`
 	PskID              string             `json:"psk_id,omitempty"`
 	PkSm               string             `json:"pkSm,omitempty"`
 	PkRm               string             `json:"pkRm"`
-	PkEm               string             `json:"pkEm"`
+	PkEm               string             `json:"pkEm,omitempty"`
 	Enc                string             `json:"enc"`
 	SharedSecret       string             `json:"shared_secret"`
 	KeyScheduleContext string             `json:"key_schedule_context"`
@@ -344,11 +344,6 @@ func TestHybridKemRoundTrip(t *testing.T) {
 		t.Error(err)
 	}
 
-	ikmE, pkE, skE, err := generateHybridKeyPair(rnd, kemID.Scheme())
-	if err != nil {
-		t.Error(err)
-	}
-
 	receiver, err := suite.NewReceiver(skR, info)
 	if err != nil {
 		t.Error(err)
@@ -407,11 +402,8 @@ func TestHybridKemRoundTrip(t *testing.T) {
 			AeadID:             uint16(aeadID),
 			Info:               hex.EncodeToString(info),
 			IkmR:               hex.EncodeToString(ikmR),
-			IkmE:               hex.EncodeToString(ikmE),
 			SkRm:               hex.EncodeToString(mustEncodePrivateKey(skR)),
-			SkEm:               hex.EncodeToString(mustEncodePrivateKey(skE)),
 			PkRm:               hex.EncodeToString(mustEncodePublicKey(pkR)),
-			PkEm:               hex.EncodeToString(mustEncodePublicKey(pkE)),
 			Enc:                hex.EncodeToString(enc),
 			SharedSecret:       hex.EncodeToString(innerSealer.sharedSecret),
 			KeyScheduleContext: hex.EncodeToString(innerSealer.keyScheduleContext),
