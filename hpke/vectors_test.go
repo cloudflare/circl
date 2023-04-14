@@ -228,16 +228,17 @@ type vector struct {
 	KdfID              uint16             `json:"kdf_id"`
 	AeadID             uint16             `json:"aead_id"`
 	Info               string             `json:"info"`
+	Ier                string             `json:"ier,omitempty"`
 	IkmR               string             `json:"ikmR"`
-	IkmE               string             `json:"ikmE"`
+	IkmE               string             `json:"ikmE,omitempty"`
 	SkRm               string             `json:"skRm"`
-	SkEm               string             `json:"skEm"`
+	SkEm               string             `json:"skEm,omitempty"`
 	SkSm               string             `json:"skSm,omitempty"`
 	Psk                string             `json:"psk,omitempty"`
 	PskID              string             `json:"psk_id,omitempty"`
 	PkSm               string             `json:"pkSm,omitempty"`
 	PkRm               string             `json:"pkRm"`
-	PkEm               string             `json:"pkEm"`
+	PkEm               string             `json:"pkEm,omitempty"`
 	Enc                string             `json:"enc"`
 	SharedSecret       string             `json:"shared_secret"`
 	KeyScheduleContext string             `json:"key_schedule_context"`
@@ -344,10 +345,8 @@ func TestHybridKemRoundTrip(t *testing.T) {
 		t.Error(err)
 	}
 
-	ikmE, pkE, skE, err := generateHybridKeyPair(rnd, kemID.Scheme())
-	if err != nil {
-		t.Error(err)
-	}
+	ier := make([]byte, 64)
+	_, _ = rnd.Read(ier)
 
 	receiver, err := suite.NewReceiver(skR, info)
 	if err != nil {
@@ -366,9 +365,10 @@ func TestHybridKemRoundTrip(t *testing.T) {
 			opener Opener
 			enc    []byte
 		)
+		rnd2 := bytes.NewBuffer(ier)
 		switch mode {
 		case modeBase:
-			enc, sealer, err2 = sender.Setup(rnd)
+			enc, sealer, err2 = sender.Setup(rnd2)
 			if err2 != nil {
 				t.Error(err2)
 			}
@@ -377,7 +377,7 @@ func TestHybridKemRoundTrip(t *testing.T) {
 				t.Error(err2)
 			}
 		case modePSK:
-			enc, sealer, err2 = sender.SetupPSK(rnd, psk, pskid)
+			enc, sealer, err2 = sender.SetupPSK(rnd2, psk, pskid)
 			if err2 != nil {
 				t.Error(err2)
 			}
@@ -387,6 +387,10 @@ func TestHybridKemRoundTrip(t *testing.T) {
 			}
 		default:
 			panic("unsupported mode")
+		}
+
+		if rnd2.Len() != 0 {
+			t.Fatal()
 		}
 
 		innerSealer := sealer.(*sealContext)
@@ -405,13 +409,11 @@ func TestHybridKemRoundTrip(t *testing.T) {
 			KemID:              uint16(kemID),
 			KdfID:              uint16(kdfID),
 			AeadID:             uint16(aeadID),
+			Ier:                hex.EncodeToString(ier),
 			Info:               hex.EncodeToString(info),
 			IkmR:               hex.EncodeToString(ikmR),
-			IkmE:               hex.EncodeToString(ikmE),
 			SkRm:               hex.EncodeToString(mustEncodePrivateKey(skR)),
-			SkEm:               hex.EncodeToString(mustEncodePrivateKey(skE)),
 			PkRm:               hex.EncodeToString(mustEncodePublicKey(pkR)),
-			PkEm:               hex.EncodeToString(mustEncodePublicKey(pkE)),
 			Enc:                hex.EncodeToString(enc),
 			SharedSecret:       hex.EncodeToString(innerSealer.sharedSecret),
 			KeyScheduleContext: hex.EncodeToString(innerSealer.keyScheduleContext),
