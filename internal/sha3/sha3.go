@@ -194,3 +194,7 @@ func (d *State) Sum(in []byte) []byte {
 	_, _ = dup.Read(hash)
 	return append(in, hash...)
 }
+
+func (d *State) IsAbsorbing() bool {
+	return d.state == spongeAbsorbing
+}

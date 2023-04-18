@@ -113,3 +113,7 @@ func TurboShakeSum256(hash, data []byte, D byte) {
 	_, _ = h.Write(data)
 	_, _ = h.Read(hash)
 }
+
+func (d *State) SwitchDS(D byte) {
+	d.dsbyte = D
+}
