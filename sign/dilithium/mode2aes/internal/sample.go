@@ -20,7 +20,7 @@ var DeriveX4Available = keccakf1600.IsEnabledX4() && !UseAES
 // Can only be called when DeriveX4Available is true.
 func PolyDeriveUniformX4(ps [4]*common.Poly, seed *[32]byte, nonces [4]uint16) {
 	var perm keccakf1600.StateX4
-	state := perm.Initialize()
+	state := perm.Initialize(false)
 
 	// Absorb the seed in the four states
 	for i := 0; i < 4; i++ {
@@ -248,7 +248,7 @@ func PolyDeriveUniformLeGamma1(p *common.Poly, seed *[64]byte, nonce uint16) {
 // This function is currently not used (yet).
 func PolyDeriveUniformBallX4(ps [4]*common.Poly, seed *[32]byte) {
 	var perm keccakf1600.StateX4
-	state := perm.Initialize()
+	state := perm.Initialize(false)
 
 	// Absorb the seed in the four states
 	for i := 0; i < 4; i++ {

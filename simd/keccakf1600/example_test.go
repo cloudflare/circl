@@ -38,7 +38,7 @@ func Example() {
 		// type is used to ensure that the encapsulated [100]uint64 is aligned
 		// properly to be used efficiently with vector instructions.)
 		var perm keccakf1600.StateX4
-		state := perm.Initialize()
+		state := perm.Initialize(false)
 
 		// state is initialized with zeroes.  As the messages fit within one
 		// block, we only need to write the messages, domain separators
