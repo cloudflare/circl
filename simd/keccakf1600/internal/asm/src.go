@@ -14,7 +14,7 @@ func main() {
 	ConstraintExpr("amd64")
 
 	// Must be called on 32 byte aligned memory.
-	TEXT("f1600x4AVX2", NOSPLIT, "func(state *uint64, rc *[24]uint64)")
+	TEXT("f1600x4AVX2", NOSPLIT, "func(state *uint64, rc *[24]uint64, turbo bool)")
 
 	Pragma("noescape")
 
@@ -30,6 +30,13 @@ func main() {
 	// super round.  Thus we have six super rounds.
 	superRound := GP64()
 	MOVQ(U64(6), superRound) // count down.
+
+	turbo := Load(Param("turbo"), GP64())
+	TESTQ(turbo, turbo)
+	JZ(LabelRef("loop"))
+
+	MOVQ(U64(3), superRound) // Skip 3 * 4 = 12 rounds
+	ADDQ(Imm(8*12), rcPtr)
 
 	// XXX Because our AVX2 is significantly larger, it might better not
 	//     to group four rounds together, but simply loop over the rounds

@@ -161,13 +161,23 @@ func sequentialBytes(size int) []byte {
 	return result
 }
 
+// BenchmarkPermutationFunctionTurbo measures the speed of the permutation
+// function with no input data.
+func BenchmarkPermutationFunctionTurbo(b *testing.B) {
+	b.SetBytes(int64(200))
+	var lanes [25]uint64
+	for i := 0; i < b.N; i++ {
+		KeccakF1600(&lanes, true)
+	}
+}
+
 // BenchmarkPermutationFunction measures the speed of the permutation function
 // with no input data.
 func BenchmarkPermutationFunction(b *testing.B) {
 	b.SetBytes(int64(200))
 	var lanes [25]uint64
 	for i := 0; i < b.N; i++ {
-		KeccakF1600(&lanes)
+		KeccakF1600(&lanes, false)
 	}
 }
 
@@ -220,6 +230,9 @@ func BenchmarkShake256_MTU(b *testing.B)  { benchmarkShake(b, NewShake256(), 135
 func BenchmarkShake256_16x(b *testing.B)  { benchmarkShake(b, NewShake256(), 16, 1024) }
 func BenchmarkShake256_1MiB(b *testing.B) { benchmarkShake(b, NewShake256(), 1024, 1024) }
 
+func BenchmarkTurboShake128_1MiB(b *testing.B) { benchmarkShake(b, NewTurboShake128(0x37), 1024, 1024) }
+func BenchmarkTurboShake256_1MiB(b *testing.B) { benchmarkShake(b, NewTurboShake256(0x37), 1024, 1024) }
+
 func BenchmarkSha3_512_1MiB(b *testing.B) { benchmarkHash(b, New512(), 1024, 1024) }
 
 func Example_sum() {
@@ -246,4 +259,27 @@ func Example_mac() {
 	_, _ = d.Read(h)
 	fmt.Printf("%x\n", h)
 	// Output: 78de2974bd2711d5549ffd32b753ef0f5fa80a0db2556db60f0987eb8a9218ff
+}
+
+func TestTurboShake128(t *testing.T) {
+	out := make([]byte, 64)
+	TurboShakeSum128(out, []byte{}, 0x07)
+	if hex.EncodeToString(out) != "5a223ad30b3b8c66a243048cfced430f54e7529287d15150b973133adfac6a2ffe2708e73061e09a4000168ba9c8ca1813198f7bbed4984b4185f2c2580ee623" {
+		t.Fatal()
+	}
+
+	h := NewTurboShake128(0x07)
+	out = make([]byte, 10032)
+	_, _ = h.Read(out)
+	if hex.EncodeToString(out[len(out)-32:]) != "7593a28020a3c4ae0d605fd61f5eb56eccd27cc3d12ff09f78369772a460c55d" {
+		t.Fatal()
+	}
+
+	out = make([]byte, 32)
+	TurboShakeSum128(out, []byte{0xff}, 0x06)
+	if hex.EncodeToString(out) != "8ec9c66465ed0d4a6c35d13506718d687a25cb05c74cca1e42501abd83874a67" {
+		t.Fatal()
+	}
+
+	// TODO all tests
 }
