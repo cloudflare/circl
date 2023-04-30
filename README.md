@@ -95,6 +95,8 @@ To contribute, fork this repository and make your changes, and then make a Pull
 Request. A Pull Request requires approval of the admin team and a successful
 CI build.
 
+**Formatting** Source files must pass the linter job invoked by running: `make lint`.
+
 ## How to Cite
 
 To cite CIRCL, use one of the following formats and update the version and date you accessed this project.
