@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"fmt"
+	"testing"
 
 	"github.com/cloudflare/circl/hpke"
 )
@@ -60,4 +61,107 @@ func Example() {
 	// Plaintext was sent successfully.
 	fmt.Println(bytes.Equal(ptAlice, ptBob))
 	// Output: true
+}
+
+func runHpkeBenchmark(b *testing.B, kem hpke.KEM, kdf hpke.KDF, aead hpke.AEAD) {
+	suite := hpke.NewSuite(kem, kdf, aead)
+
+	pkR, skR, err := kem.Scheme().GenerateKeyPair()
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	info := []byte("public info string")
+	sender, err := suite.NewSender(pkR, info)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.Run(fmt.Sprintf("SetupSender-%04x-%04x-%04x", kem, kdf, aead), func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, _, err = sender.Setup(rand.Reader)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+
+	enc, _, err := sender.Setup(rand.Reader)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	receiver, err := suite.NewReceiver(skR, info)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.Run(fmt.Sprintf("SetupReceiver-%04x-%04x-%04x", kem, kdf, aead), func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, err := receiver.Setup(enc)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+
+	b.Run(fmt.Sprintf("Encrypt-%04x-%04x-%04x", kem, kdf, aead), func(b *testing.B) {
+		pt := []byte("plaintext")
+		aad := []byte("additional authenticated data")
+		cts := make([][]byte, b.N)
+		_, sealer, err := sender.Setup(rand.Reader)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			cts[i], err = sealer.Seal(pt, aad)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+
+	b.Run(fmt.Sprintf("Decrypt-%04x-%04x-%04x", kem, kdf, aead), func(b *testing.B) {
+		pt := []byte("plaintext")
+		aad := []byte("additional authenticated data")
+		cts := make([][]byte, b.N)
+		enc, sealer, err := sender.Setup(rand.Reader)
+		if err != nil {
+			b.Fatal(err)
+		}
+		opener, err := receiver.Setup(enc)
+		if err != nil {
+			b.Fatal(err)
+		}
+		for i := 0; i < b.N; i++ {
+			cts[i], err = sealer.Seal(pt, aad)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_, err = opener.Open(cts[i], aad)
+			if err != nil {
+				b.Log(i)
+				b.Fatal(err)
+			}
+		}
+	})
+}
+
+func BenchmarkHpkeRoundTrip(b *testing.B) {
+	tests := []struct {
+		kem  hpke.KEM
+		kdf  hpke.KDF
+		aead hpke.AEAD
+	}{
+		{hpke.KEM_X25519_HKDF_SHA256, hpke.KDF_HKDF_SHA256, hpke.AEAD_AES128GCM},
+		{hpke.KEM_X25519_KYBER768_DRAFT00, hpke.KDF_HKDF_SHA256, hpke.AEAD_AES128GCM},
+	}
+	for _, test := range tests {
+		runHpkeBenchmark(b, test.kem, test.kdf, test.aead)
+	}
 }
