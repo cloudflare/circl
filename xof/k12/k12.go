@@ -79,6 +79,29 @@ func (s *State) Reset() {
 	s.chunk = 0
 }
 
+func (s *State) Clone() State {
+	stalk := s.stalk.Clone().(*sha3.State)
+	ret := State{
+		initialTodo: s.initialTodo,
+		stalk:       *stalk,
+		context:     s.context,
+		offset:      s.offset,
+		chunk:       s.chunk,
+		lanes:       s.lanes,
+	}
+
+	if s.leaf != nil {
+		ret.leaf = s.leaf.Clone().(*sha3.State)
+	}
+
+	if s.buf != nil {
+		ret.buf = make([]byte, len(s.buf))
+		copy(ret.buf, s.buf)
+	}
+
+	return ret
+}
+
 func Draft10Sum(hash []byte, msg []byte, c []byte) {
 	// TODO Tweak number of lanes depending on the length of the message
 	s := NewDraft10(c)

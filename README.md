@@ -74,6 +74,7 @@ go get -u github.com/cloudflare/circl
 #### XOF: eXtendable Output Functions
  - [FIPS 202](https://doi.org/10.6028/NIST.FIPS.202): SHAKE128 and SHAKE256
  - [BLAKE2X](https://www.blake2.net/blake2x.pdf): BLAKE2XB and BLAKE2XS
+ - [KangarooTwelve](https://keccak.team/kangarootwelve.html): KangarooTwelve
 
 #### Zero-knowledge Proofs
  - [Schnorr](./zk/dl): Prove knowledge of the Discrete Logarithm.
