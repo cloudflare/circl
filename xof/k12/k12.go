@@ -1,6 +1,6 @@
 // k12 implements the KangarooTwelve XOF.
 //
-// KangarooTwelve is being standardised at the CFFRG working group
+// KangarooTwelve is being standardised at the CFRG working group
 // of the IRTF. This package implements draft 10.
 //
 // https://datatracker.ietf.org/doc/draft-irtf-cfrg-kangarootwelve/10/
