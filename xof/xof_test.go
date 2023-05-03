@@ -53,6 +53,12 @@ var allVectors = []vector{
 		out:    "0650cde4df888a06eada0f0fecb3c17594304b4a03fdd678182f27db1238b174",
 		outLen: 32,
 	},
+	{
+		id:     xof.K12D10,
+		in:     "The quick brown fox jumps over the lazy dog",
+		out:    "b4f249b4f77c58df170aa4d1723db1127d82f1d98d25ddda561ada459cd11a48",
+		outLen: 32,
+	},
 }
 
 func TestXof(t *testing.T) {
