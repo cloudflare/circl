@@ -58,7 +58,7 @@ func (x ID) New() XOF {
 		x, _ := blake2s.NewXOF(blake2s.OutputLengthUnknown, nil)
 		return blake2xs{x}
 	case K12D10:
-		x := k12.NewDraft10([]byte{})
+		x := k12.NewDraft10()
 		return k12d10{&x}
 	default:
 		panic("crypto: requested unavailable XOF function")

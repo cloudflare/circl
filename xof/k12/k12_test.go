@@ -2,6 +2,7 @@ package k12
 
 import (
 	"encoding/hex"
+	"runtime"
 	"testing"
 )
 
@@ -16,8 +17,12 @@ func ptn(n int) []byte {
 }
 
 func testK12(t *testing.T, msg []byte, c []byte, l int, want string) {
-	do := func(lanes byte, writeSize int) {
-		h := newDraft10(c, lanes)
+	do := func(lanes byte, writeSize int, workers int) {
+		h := newDraft10(options{
+			context: c,
+			lanes:   lanes,
+			workers: workers,
+		})
 		msg2 := msg
 		for len(msg2) > 0 {
 			to := writeSize
@@ -31,13 +36,16 @@ func testK12(t *testing.T, msg []byte, c []byte, l int, want string) {
 		_, _ = h.Read(buf)
 		got := hex.EncodeToString(buf)
 		if want != got {
-			t.Fatalf("%s != %s (lanes=%d, writeSize=%d )", want, got, lanes, writeSize)
+			t.Fatalf("%s != %s (lanes=%d, writeSize=%d workers=%d len(msg)=%d)",
+				want, got, lanes, writeSize, workers, len(msg))
 		}
 	}
 
 	for _, lanes := range []byte{1, 2, 4} {
-		for _, writeSize := range []int{7919, 1024, 8 * 1024} {
-			do(lanes, writeSize)
+		for _, workers := range []int{1, 4, runtime.NumCPU()} {
+			for _, writeSize := range []int{7919, 1024, 8 * 1024, chunkSize * int(lanes)} {
+				do(lanes, writeSize, workers)
+			}
 		}
 	}
 }
@@ -71,26 +79,56 @@ func TestK12(t *testing.T) {
 	testK12(t, ptn(3*chunkSize+1), []byte{}, 16, "38cb940999aca742d69dd79298c6051c")
 }
 
-func BenchmarkK12_100B(b *testing.B) { benchmarkK12(b, 100, 1) }
-func BenchmarkK12_10K(b *testing.B)  { benchmarkK12(b, 10000, 1) }
-func BenchmarkK12_100K(b *testing.B) { benchmarkK12(b, 10000, 10) }
-func BenchmarkK12_1M(b *testing.B)   { benchmarkK12(b, 10000, 100) }
-func BenchmarkK12_10M(b *testing.B)  { benchmarkK12(b, 10000, 1000) }
+func BenchmarkK12_100B(b *testing.B)  { benchmarkK12(b, 1, 100) }
+func BenchmarkK12_10K(b *testing.B)   { benchmarkK12(b, 1, 10000) }
+func BenchmarkK12_100K(b *testing.B)  { benchmarkK12(b, 1, 100000) }
+func BenchmarkK12_3M(b *testing.B)    { benchmarkK12(b, 1, 3276800) }
+func BenchmarkK12_32M(b *testing.B)   { benchmarkK12(b, 1, 32768000) }
+func BenchmarkK12_327M(b *testing.B)  { benchmarkK12(b, 1, 327680000) }
+func BenchmarkK12_3276M(b *testing.B) { benchmarkK12(b, 1, 3276800000) }
 
-func benchmarkK12(b *testing.B, size, num int) {
+func BenchmarkK12x2_32M(b *testing.B)   { benchmarkK12(b, 2, 32768000) }
+func BenchmarkK12x2_327M(b *testing.B)  { benchmarkK12(b, 2, 327680000) }
+func BenchmarkK12x2_3276M(b *testing.B) { benchmarkK12(b, 2, 3276800000) }
+
+func BenchmarkK12x4_32M(b *testing.B)   { benchmarkK12(b, 4, 32768000) }
+func BenchmarkK12x4_327M(b *testing.B)  { benchmarkK12(b, 4, 327680000) }
+func BenchmarkK12x4_3276M(b *testing.B) { benchmarkK12(b, 4, 6553600000) }
+
+func BenchmarkK12x8_32M(b *testing.B)   { benchmarkK12(b, 8, 32768000) }
+func BenchmarkK12x8_327M(b *testing.B)  { benchmarkK12(b, 8, 327680000) }
+func BenchmarkK12x8_3276M(b *testing.B) { benchmarkK12(b, 8, 6553600000) }
+
+func BenchmarkK12xCPUs_32M(b *testing.B)   { benchmarkK12(b, 0, 32768000) }
+func BenchmarkK12xCPUs_327M(b *testing.B)  { benchmarkK12(b, 0, 327680000) }
+func BenchmarkK12xCPUs_3276M(b *testing.B) { benchmarkK12(b, 0, 6553600000) }
+
+func benchmarkK12(b *testing.B, workers, size int) {
+	if workers == 0 {
+		workers = runtime.NumCPU()
+	}
+
 	b.StopTimer()
-	h := NewDraft10([]byte{})
-	data := make([]byte, size)
+	h := NewDraft10(WithWorkers(workers))
+	buf := make([]byte, h.MaxWriteSize())
 	d := make([]byte, 32)
 
-	b.SetBytes(int64(size * num))
+	b.SetBytes(int64(size))
 	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
+		todo := size
 		h.Reset()
-		for j := 0; j < num; j++ {
-			_, _ = h.Write(data)
+
+		for todo > 0 {
+			next := h.NextWriteSize()
+			if next > todo {
+				next = todo
+			}
+			_, _ = h.Write(buf[:next])
+			todo -= next
 		}
+
 		_, _ = h.Read(d)
 	}
 }
