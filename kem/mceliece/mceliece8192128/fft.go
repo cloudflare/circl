@@ -1,7 +1,7 @@
 // Code generated from fft_other.templ.go. DO NOT EDIT.
 
 // The following code is translated from the C `vec` Additional Implementation
-// from the NIST round 3 submission package.
+// from the NIST round 4 submission package.
 
 package mceliece8192128
 

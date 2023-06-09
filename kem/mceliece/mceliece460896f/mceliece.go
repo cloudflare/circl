@@ -1,7 +1,7 @@
 // Code generated from mceliece.templ.go. DO NOT EDIT.
 
 // Package mceliece460896f implements the IND-CCA2 secure key encapsulation mechanism
-// mceliece460896f as submitted to round 3 of the NIST PQC competition and
+// mceliece460896f as submitted to round 4 of the NIST PQC competition and
 // described in
 //
 // https://classic.mceliece.org/nist/mceliece-20201010.pdf

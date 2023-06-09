@@ -1,7 +1,7 @@
 // Code generated from pk_gen_vec.templ.go. DO NOT EDIT.
 
 // The following code is translated from the C `vec` Additional Implementation
-// from the NIST round 3 submission package.
+// from the NIST round 4 submission package.
 
 package mceliece8192128f
 
