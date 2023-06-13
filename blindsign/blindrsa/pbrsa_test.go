@@ -4,13 +4,10 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/big"
 	"os"
 	"testing"
@@ -131,7 +128,6 @@ type encodedPBRSATestVector struct {
 }
 
 type rawPBRSATestVector struct {
-	t           *testing.T
 	privateKey  *rsa.PrivateKey
 	message     []byte
 	metadata    []byte
@@ -146,28 +142,6 @@ type rawPBRSATestVector struct {
 
 func mustHex(d []byte) string {
 	return hex.EncodeToString(d)
-}
-
-func mustMarshalPrivateKey(key *rsa.PrivateKey) []byte {
-	der, err := x509.MarshalPKCS8PrivateKey(key)
-	if err != nil {
-		panic(err)
-	}
-
-	block := &pem.Block{
-		Type:  "PRIVATE KEY",
-		Bytes: der,
-	}
-
-	return pem.EncodeToMemory(block)
-}
-
-func mustMarshalPublicKey(key *rsa.PublicKey) []byte {
-	enc, err := x509.MarshalPKIXPublicKey(key)
-	if err != nil {
-		panic(err)
-	}
-	return enc
 }
 
 func (tv rawPBRSATestVector) MarshalJSON() ([]byte, error) {
@@ -282,7 +256,7 @@ func TestPBRSAGenerateTestVector(t *testing.T) {
 
 	var outputFile string
 	if outputFile = os.Getenv(pbrsaTestVectorOutEnvironmentKey); len(outputFile) > 0 {
-		err := ioutil.WriteFile(outputFile, encoded, 0644)
+		err := os.WriteFile(outputFile, encoded, 0644)
 		if err != nil {
 			t.Fatalf("Error writing test vectors: %v", err)
 		}

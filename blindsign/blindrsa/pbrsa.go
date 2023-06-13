@@ -209,7 +209,10 @@ func (v PBRSAVerifier) Blind(random io.Reader, message, metadata []byte) ([]byte
 
 	// Pick a random string rand of length 32 bytes
 	rand := make([]byte, 32)
-	random.Read(rand)
+	_, err = random.Read(rand)
+	if err != nil {
+		return nil, PBRSAVerifierState{}, err
+	}
 
 	// M' = M || rand
 	msgPrime := append(rand, message...)
