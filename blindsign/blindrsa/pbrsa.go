@@ -46,7 +46,7 @@ type BigPrivateKey struct {
 // A PBRSAVerifier represents a Verifier in the RSA blind signature protocol.
 // It carries state needed to produce and validate an RSA signature produced
 // using the blind RSA protocol.
-type PBRSAVerifier struct {
+type RandomizedPBRSAVerifier struct {
 	// Public key of the Signer
 	pk *BigPublicKey
 
@@ -64,10 +64,10 @@ func newCustomPublicKey(pk *rsa.PublicKey) *BigPublicKey {
 	}
 }
 
-// NewPBRSAVerifier creates a new PBRSAVerifier using the corresponding Signer parameters.
-func NewPBRSAVerifier(pk *rsa.PublicKey, hash crypto.Hash) PBRSAVerifier {
+// RandomizedPBRSAVerifier creates a new PBRSAVerifier using the corresponding Signer parameters.
+func NewRandomizedPBRSAVerifier(pk *rsa.PublicKey, hash crypto.Hash) PBRSAVerifier {
 	h := convertHashFunction(hash)
-	return PBRSAVerifier{
+	return RandomizedPBRSAVerifier{
 		pk:         newCustomPublicKey(pk),
 		cryptoHash: hash,
 		hash:       h,
@@ -181,8 +181,14 @@ func fixedPartiallyBlind(message, rand, salt []byte, r, rInv *big.Int, pk *BigPu
 		hash:       hash,
 		salt:       salt,
 		rInv:       rInv,
-		rand:       rand,
+		// rand:       rand,
 	}, nil
+}
+
+type PBRSAVerifier interface {
+	Blind(random io.Reader, message, metadata []byte) ([]byte, PBRSAVerifierState, error)
+	Verify(message, signature, metadata []byte) error
+	Hash() hash.Hash
 }
 
 // Blind initializes the blind RSA protocol using an input message and source of randomness. The
@@ -191,7 +197,7 @@ func fixedPartiallyBlind(message, rand, salt []byte, r, rInv *big.Int, pk *BigPu
 //
 // See the specification for more details:
 // https://datatracker.ietf.org/doc/html/draft-amjad-cfrg-partially-blind-rsa-00#name-blind
-func (v PBRSAVerifier) Blind(random io.Reader, message, metadata []byte) ([]byte, PBRSAVerifierState, error) {
+func (v RandomizedPBRSAVerifier) Blind(random io.Reader, message, metadata []byte) ([]byte, PBRSAVerifierState, error) {
 	if random == nil {
 		return nil, PBRSAVerifierState{}, ErrInvalidRandomness
 	}
@@ -207,34 +213,28 @@ func (v PBRSAVerifier) Blind(random io.Reader, message, metadata []byte) ([]byte
 		return nil, PBRSAVerifierState{}, err
 	}
 
-	// Pick a random string rand of length 32 bytes
-	rand := make([]byte, 32)
-	_, err = random.Read(rand)
-	if err != nil {
-		return nil, PBRSAVerifierState{}, err
-	}
-
-	// M' = M || rand
-	msgPrime := append(rand, message...)
-
 	// Compute e_MD = e * H_MD(D)
 	metadataKey := augmentPublicKey(v.cryptoHash, v.pk, metadata)
 
 	// Do the rest with (M', D) as the message being signed
-	inputMsg := encodeMessageMetadata(msgPrime, metadata)
+	inputMsg := encodeMessageMetadata(message, metadata)
 
-	return fixedPartiallyBlind(inputMsg, rand, salt, r, rInv, metadataKey, v.hash)
+	return fixedPartiallyBlind(inputMsg, nil, salt, r, rInv, metadataKey, v.hash)
 }
 
 // Verify verifies the input (message, signature) pair and produces an error upon failure.
 //
 // See the specification for more details:
 // https://datatracker.ietf.org/doc/html/draft-amjad-cfrg-partially-blind-rsa-00#name-verification-2
-func (v PBRSAVerifier) Verify(message, metadata, rand, signature []byte) error {
-	msgPrime := append(rand, message...)
+func (v RandomizedPBRSAVerifier) Verify(message, metadata, signature []byte) error {
 	metadataKey := augmentPublicKey(v.cryptoHash, v.pk, metadata)
-	inputMsg := encodeMessageMetadata(msgPrime, metadata)
+	inputMsg := encodeMessageMetadata(message, metadata)
 	return verifyMessageSignature(inputMsg, signature, v.hash.Size(), metadataKey, v.cryptoHash)
+}
+
+// Hash returns the hash function associated with the PBRSAVerifier.
+func (v RandomizedPBRSAVerifier) Hash() hash.Hash {
+	return v.hash
 }
 
 // A PBRSAVerifierState carries state needed to complete the blind signature protocol
@@ -253,7 +253,7 @@ type PBRSAVerifierState struct {
 	salt []byte
 
 	// The random component attached to each message
-	rand []byte
+	// rand []byte
 
 	// Inverse of the blinding factor produced by the Verifier
 	rInv *big.Int
@@ -296,13 +296,6 @@ func (state PBRSAVerifierState) CopySalt() []byte {
 	salt := make([]byte, len(state.salt))
 	copy(salt, state.salt)
 	return salt
-}
-
-// CopyRand returns the random component of the per-message randomness.
-func (state PBRSAVerifierState) CopyRand() []byte {
-	rand := make([]byte, len(state.rand))
-	copy(rand, state.rand)
-	return rand
 }
 
 // An PBRSASigner represents the Signer in the blind RSA protocol.
