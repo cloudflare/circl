@@ -340,7 +340,7 @@ func verifyTestVector(t *testing.T, vector testVector) {
 	signer := NewBRSASigner(key)
 	verifier := NewBRSAVerifier(&key.PublicKey, crypto.SHA384)
 
-	blindedMsg, state, err := fixedBlind(vector.msg, vector.salt, r, rInv, verifier.PublicKey(), verifier.Hash())
+	blindedMsg, state, err := fixedBlind(vector.msg, vector.salt, r, rInv, &key.PublicKey, verifier.Hash())
 	if err != nil {
 		t.Fatal(err)
 	}

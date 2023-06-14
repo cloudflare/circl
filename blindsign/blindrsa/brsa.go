@@ -1,7 +1,7 @@
 package blindrsa
 
 // This package implements the blind RSA protocol based on the CFRG specification:
-// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-rsa-blind-signatures-02
+// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-rsa-blind-signatures
 //
 // Blind RSA is an example of a blind signature protocol is a two-party protocol
 // for computing a digital signature. One party (the server) holds the signing
@@ -49,12 +49,21 @@ type DeterminsiticBRSAVerifier struct {
 	hash hash.Hash
 }
 
+// PBRSAVerifier is a type that implements the client side of the blind RSA
+// protocol, described in https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-rsa-blind-signatures
 type BRSAVerifier interface {
+	// Blind initializes the blind RSA protocol using an input message and source of randomness. The
+	// signature is deterministic. This function fails if randomness was not provided.
 	Blind(random io.Reader, message []byte) ([]byte, BRSAVerifierState, error)
+
+	// FixedBlind runs the Blind function with fixed blind and salt inputs.
 	FixedBlind(message, blind, salt []byte) ([]byte, BRSAVerifierState, error)
+
+	// Verify verifies the input (message, signature) pair and produces an error upon failure.
 	Verify(message, signature []byte) error
+
+	// Hash returns the hash function associated with the BRSAVerifier.
 	Hash() hash.Hash
-	PublicKey() *rsa.PublicKey
 }
 
 func convertHashFunction(hash crypto.Hash) hash.Hash {
@@ -80,12 +89,9 @@ func NewDeterministicBRSAVerifier(pk *rsa.PublicKey, hash crypto.Hash) BRSAVerif
 	}
 }
 
+// Hash returns the hash function associated with the BRSAVerifier.
 func (v DeterminsiticBRSAVerifier) Hash() hash.Hash {
 	return v.hash
-}
-
-func (v DeterminsiticBRSAVerifier) PublicKey() *rsa.PublicKey {
-	return v.pk
 }
 
 // NewBRSAVerifier creates a new BRSAVerifier using the corresponding Signer parameters.
@@ -98,22 +104,9 @@ func NewBRSAVerifier(pk *rsa.PublicKey, hash crypto.Hash) BRSAVerifier {
 	}
 }
 
+// Hash returns the hash function associated with the BRSAVerifier.
 func (v RandomBRSAVerifier) Hash() hash.Hash {
 	return v.hash
-}
-
-func (v RandomBRSAVerifier) PublicKey() *rsa.PublicKey {
-	return v.pk
-}
-
-func encodeMessageEMSAPSS(message []byte, N *big.Int, hash hash.Hash, salt []byte) ([]byte, error) {
-	hash.Reset() // Ensure the hash state is cleared
-	hash.Write(message)
-	digest := hash.Sum(nil)
-	hash.Reset()
-	emBits := N.BitLen() - 1
-	encodedMsg, err := emsaPSSEncode(digest[:], emBits, salt, hash)
-	return encodedMsg, err
 }
 
 func generateBlindingFactor(random io.Reader, N *big.Int) (*big.Int, *big.Int, error) {
@@ -196,6 +189,9 @@ func (v DeterminsiticBRSAVerifier) FixedBlind(message, blind, salt []byte) ([]by
 	}
 
 	r := new(big.Int).SetBytes(blind)
+	if r.Cmp(v.pk.N) < 0 {
+		return nil, BRSAVerifierState{}, ErrInvalidBlind
+	}
 	rInv := new(big.Int).ModInverse(r, v.pk.N)
 	if rInv == nil {
 		return nil, BRSAVerifierState{}, ErrInvalidBlind

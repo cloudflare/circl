@@ -21,8 +21,8 @@ func verifyPSS(pub *BigPublicKey, hash crypto.Hash, digest []byte, sig []byte, o
 		return rsa.ErrVerification
 	}
 	s := new(big.Int).SetBytes(sig)
-	m := encrypt(new(big.Int), pub.N, pub.e, s)
-	emBits := pub.N.BitLen() - 1
+	m := encrypt(new(big.Int), pub.n, pub.e, s)
+	emBits := pub.n.BitLen() - 1
 	emLen := (emBits + 7) / 8
 	if m.BitLen() > emLen*8 {
 		return rsa.ErrVerification
@@ -47,7 +47,7 @@ func verifyBlindSignature(pub *BigPublicKey, hashed, sig []byte) error {
 	m := new(big.Int).SetBytes(hashed)
 	bigSig := new(big.Int).SetBytes(sig)
 
-	c := encrypt(new(big.Int), pub.N, pub.e, bigSig)
+	c := encrypt(new(big.Int), pub.n, pub.e, bigSig)
 	if subtle.ConstantTimeCompare(m.Bytes(), c.Bytes()) == 1 {
 		return nil
 	} else {

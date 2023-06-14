@@ -54,7 +54,7 @@ func runPBRSA(signer PBRSASigner, verifier PBRSAVerifier, message, metadata []by
 		return nil, err
 	}
 
-	kLen := (signer.sk.pk.N.BitLen() + 7) / 8
+	kLen := (signer.sk.pk.n.BitLen() + 7) / 8
 	if len(blindedMsg) != kLen {
 		return nil, fmt.Errorf("Protocol message (blind message) length mismatch, expected %d, got %d", kLen, len(blindedMsg))
 	}

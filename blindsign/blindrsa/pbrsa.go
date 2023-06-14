@@ -18,13 +18,13 @@ import (
 // blind scheme, this is required since the public key will typically be
 // any value in the RSA group.
 type BigPublicKey struct {
-	N *big.Int
+	n *big.Int
 	e *big.Int
 }
 
 // Size returns the size of the public key.
 func (pub *BigPublicKey) Size() int {
-	return (pub.N.BitLen() + 7) / 8
+	return (pub.n.BitLen() + 7) / 8
 }
 
 // Marshal encodes the public key exponent (e).
@@ -59,7 +59,7 @@ type RandomizedPBRSAVerifier struct {
 
 func newCustomPublicKey(pk *rsa.PublicKey) *BigPublicKey {
 	return &BigPublicKey{
-		N: pk.N,
+		n: pk.N,
 		e: new(big.Int).SetInt64(int64(pk.E)),
 	}
 }
@@ -84,11 +84,11 @@ func NewRandomizedPBRSAVerifier(pk *rsa.PublicKey, hash crypto.Hash) PBRSAVerifi
 func augmentPublicKey(h crypto.Hash, pk *BigPublicKey, metadata []byte) *BigPublicKey {
 	// expandLen = ceil((ceil(log2(\lambda)) + k) / 8), where k is the security parameter of the suite (e.g., k = 128).
 	// We stretch the input metadata beyond \lambda bits s.t. the output bytes are indifferentiable from truly random bytes
-	lambda := pk.N.BitLen() / 2
+	lambda := pk.n.BitLen() / 2
 	expandLen := uint((lambda + 128) / 8)
 
-	hkdfSalt := make([]byte, (pk.N.BitLen()+7)/8)
-	pk.N.FillBytes(hkdfSalt)
+	hkdfSalt := make([]byte, (pk.n.BitLen()+7)/8)
+	pk.n.FillBytes(hkdfSalt)
 	hkdfInput := append([]byte("key"), append(metadata, 0x00)...)
 
 	hkdf := hkdf.New(h.New, hkdfInput, hkdfSalt, []byte("PBRSA"))
@@ -109,14 +109,14 @@ func augmentPublicKey(h crypto.Hash, pk *BigPublicKey, metadata []byte) *BigPubl
 	// Compute e_MD = e * H_MD(D)
 	newE := new(big.Int).Mul(hmd, pk.e)
 	return &BigPublicKey{
-		N: pk.N,
+		n: pk.n,
 		e: newE,
 	}
 }
 
 func convertToCustomPublicKey(pk *rsa.PublicKey) *BigPublicKey {
 	return &BigPublicKey{
-		N: pk.N,
+		n: pk.N,
 		e: new(big.Int).SetInt64(int64(pk.E)),
 	}
 }
@@ -124,7 +124,7 @@ func convertToCustomPublicKey(pk *rsa.PublicKey) *BigPublicKey {
 func convertToCustomPrivateKey(sk *rsa.PrivateKey) *BigPrivateKey {
 	return &BigPrivateKey{
 		pk: &BigPublicKey{
-			N: sk.N,
+			n: sk.N,
 			e: new(big.Int).SetInt64(int64(sk.PublicKey.E)),
 		},
 		d: sk.D,
@@ -158,7 +158,7 @@ func augmentPrivateKey(h crypto.Hash, sk *BigPrivateKey, metadata []byte) *BigPr
 }
 
 func fixedPartiallyBlind(message, salt []byte, r, rInv *big.Int, pk *BigPublicKey, hash hash.Hash) ([]byte, PBRSAVerifierState, error) {
-	encodedMsg, err := encodeMessageEMSAPSS(message, pk.N, hash, salt)
+	encodedMsg, err := encodeMessageEMSAPSS(message, pk.n, hash, salt)
 	if err != nil {
 		return nil, PBRSAVerifierState{}, err
 	}
@@ -166,12 +166,12 @@ func fixedPartiallyBlind(message, salt []byte, r, rInv *big.Int, pk *BigPublicKe
 	m := new(big.Int).SetBytes(encodedMsg)
 
 	bigE := pk.e
-	x := new(big.Int).Exp(r, bigE, pk.N)
+	x := new(big.Int).Exp(r, bigE, pk.n)
 	z := new(big.Int).Set(m)
 	z.Mul(z, x)
-	z.Mod(z, pk.N)
+	z.Mod(z, pk.n)
 
-	kLen := (pk.N.BitLen() + 7) / 8
+	kLen := (pk.n.BitLen() + 7) / 8
 	blindedMsg := make([]byte, kLen)
 	z.FillBytes(blindedMsg)
 
@@ -184,9 +184,19 @@ func fixedPartiallyBlind(message, salt []byte, r, rInv *big.Int, pk *BigPublicKe
 	}, nil
 }
 
+// PBRSAVerifier is a type that implements the client side of the partially blind RSA
+// protocol, described in https://datatracker.ietf.org/doc/html/draft-amjad-cfrg-partially-blind-rsa-00
 type PBRSAVerifier interface {
+	// Blind initializes the blind RSA protocol using an input message and source of randomness. The
+	// signature includes a randomly generated PSS salt whose length equals the size of the underlying
+	// hash function. This function fails if randomness was not provided.
 	Blind(random io.Reader, message, metadata []byte) ([]byte, PBRSAVerifierState, error)
+
+	// Verify verifies the input (message, signature) pair using the augmented public key
+	// and produces an error upon failure.
 	Verify(message, signature, metadata []byte) error
+
+	// Hash returns the hash function associated with the PBRSAVerifier.
 	Hash() hash.Hash
 }
 
@@ -207,7 +217,7 @@ func (v RandomizedPBRSAVerifier) Blind(random io.Reader, message, metadata []byt
 		return nil, PBRSAVerifierState{}, err
 	}
 
-	r, rInv, err := generateBlindingFactor(random, v.pk.N)
+	r, rInv, err := generateBlindingFactor(random, v.pk.n)
 	if err != nil {
 		return nil, PBRSAVerifierState{}, err
 	}
@@ -257,7 +267,7 @@ type PBRSAVerifierState struct {
 // See the specification for more details:
 // https://datatracker.ietf.org/doc/html/draft-amjad-cfrg-partially-blind-rsa-00#name-finalize
 func (state PBRSAVerifierState) Finalize(data []byte) ([]byte, error) {
-	kLen := (state.pk.N.BitLen() + 7) / 8
+	kLen := (state.pk.n.BitLen() + 7) / 8
 	if len(data) != kLen {
 		return nil, ErrUnexpectedSize
 	}
@@ -265,7 +275,7 @@ func (state PBRSAVerifierState) Finalize(data []byte) ([]byte, error) {
 	z := new(big.Int).SetBytes(data)
 	s := new(big.Int).Set(state.rInv)
 	s.Mul(s, z)
-	s.Mod(s, state.pk.N)
+	s.Mod(s, state.pk.n)
 
 	sig := make([]byte, kLen)
 	s.FillBytes(sig)
@@ -280,7 +290,7 @@ func (state PBRSAVerifierState) Finalize(data []byte) ([]byte, error) {
 
 // CopyBlind returns an encoding of the blind value used in the protocol.
 func (state PBRSAVerifierState) CopyBlind() []byte {
-	r := new(big.Int).ModInverse(state.rInv, state.pk.N)
+	r := new(big.Int).ModInverse(state.rInv, state.pk.n)
 	return r.Bytes()
 }
 
@@ -313,13 +323,13 @@ func NewPBRSASigner(sk *rsa.PrivateKey, h crypto.Hash) PBRSASigner {
 // See the specification for more details:
 // https://datatracker.ietf.org/doc/html/draft-amjad-cfrg-partially-blind-rsa-00#name-blindsign
 func (signer PBRSASigner) BlindSign(data, metadata []byte) ([]byte, error) {
-	kLen := (signer.sk.pk.N.BitLen() + 7) / 8
+	kLen := (signer.sk.pk.n.BitLen() + 7) / 8
 	if len(data) != kLen {
 		return nil, ErrUnexpectedSize
 	}
 
 	m := new(big.Int).SetBytes(data)
-	if m.Cmp(signer.sk.pk.N) > 0 {
+	if m.Cmp(signer.sk.pk.n) > 0 {
 		return nil, ErrInvalidMessageLength
 	}
 

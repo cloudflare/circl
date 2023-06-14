@@ -86,11 +86,11 @@ func encrypt(c *big.Int, N *big.Int, e *big.Int, m *big.Int) *big.Int {
 // random source is given, RSA blinding is used.
 func decrypt(random io.Reader, priv *BigPrivateKey, c *big.Int) (m *big.Int, err error) {
 	// TODO(agl): can we get away with reusing blinds?
-	if c.Cmp(priv.pk.N) > 0 {
+	if c.Cmp(priv.pk.n) > 0 {
 		err = rsa.ErrDecryption
 		return
 	}
-	if priv.pk.N.Sign() == 0 {
+	if priv.pk.n.Sign() == 0 {
 		return nil, rsa.ErrDecryption
 	}
 
@@ -104,31 +104,31 @@ func decrypt(random io.Reader, priv *BigPrivateKey, c *big.Int) (m *big.Int, err
 		var r *big.Int
 		ir = new(big.Int)
 		for {
-			r, err = rand.Int(random, priv.pk.N)
+			r, err = rand.Int(random, priv.pk.n)
 			if err != nil {
 				return
 			}
 			if r.Cmp(bigZero) == 0 {
 				r = bigOne
 			}
-			ok := ir.ModInverse(r, priv.pk.N)
+			ok := ir.ModInverse(r, priv.pk.n)
 			if ok != nil {
 				break
 			}
 		}
-		rpowe := new(big.Int).Exp(r, priv.pk.e, priv.pk.N) // N != 0
+		rpowe := new(big.Int).Exp(r, priv.pk.e, priv.pk.n) // N != 0
 		cCopy := new(big.Int).Set(c)
 		cCopy.Mul(cCopy, rpowe)
-		cCopy.Mod(cCopy, priv.pk.N)
+		cCopy.Mod(cCopy, priv.pk.n)
 		c = cCopy
 	}
 
-	m = new(big.Int).Exp(c, priv.d, priv.pk.N)
+	m = new(big.Int).Exp(c, priv.d, priv.pk.n)
 
 	if ir != nil {
 		// Unblind.
 		m.Mul(m, ir)
-		m.Mod(m, priv.pk.N)
+		m.Mod(m, priv.pk.n)
 	}
 
 	return m, nil
@@ -142,7 +142,7 @@ func decryptAndCheck(random io.Reader, priv *BigPrivateKey, c *big.Int) (m *big.
 
 	// In order to defend against errors in the CRT computation, m^e is
 	// calculated, which should match the original ciphertext.
-	check := encrypt(new(big.Int), priv.pk.N, priv.pk.e, m)
+	check := encrypt(new(big.Int), priv.pk.n, priv.pk.e, m)
 	if c.Cmp(check) != 0 {
 		return nil, errors.New("rsa: internal error")
 	}
