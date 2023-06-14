@@ -202,7 +202,7 @@ func (v RandomizedPBRSAVerifier) Blind(random io.Reader, message, metadata []byt
 	}
 
 	salt := make([]byte, v.hash.Size())
-	_, err := random.Read(salt)
+	_, err := io.ReadFull(rand.Reader, salt)
 	if err != nil {
 		return nil, PBRSAVerifierState{}, err
 	}

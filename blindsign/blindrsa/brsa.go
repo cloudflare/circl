@@ -16,7 +16,6 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"errors"
-	"fmt"
 	"hash"
 	"io"
 	"math/big"
@@ -132,7 +131,6 @@ func generateBlindingFactor(random io.Reader, N *big.Int) (*big.Int, *big.Int, e
 	}
 	rInv := new(big.Int).ModInverse(r, N)
 	if rInv == nil {
-		fmt.Println(r, N)
 		return nil, nil, ErrInvalidBlind
 	}
 

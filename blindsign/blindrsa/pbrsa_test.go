@@ -18,7 +18,7 @@ const (
 	pbrsaTestVectorInEnvironmentKey  = "PBRSA_TEST_VECTORS_IN"
 )
 
-func loadStrongRSAKey() (*rsa.PrivateKey, error) {
+func loadStrongRSAKey() *rsa.PrivateKey {
 	// https://gist.github.com/chris-wood/b77536febb25a5a11af428afff77820a
 	pEnc := "dcd90af1be463632c0d5ea555256a20605af3db667475e190e3af12a34a3324c46a3094062c59fb4b249e0ee6afba8bee14e0276d126c99f4784b23009bf6168ff628ac1486e5ae8e23ce4d362889de4df63109cbd90ef93db5ae64372bfe1c55f832766f21e94ea3322eb2182f10a891546536ba907ad74b8d72469bea396f3"
 	qEnc := "f8ba5c89bd068f57234a3cf54a1c89d5b4cd0194f2633ca7c60b91a795a56fa8c8686c0e37b1c4498b851e3420d08bea29f71d195cfbd3671c6ddc49cf4c1db5b478231ea9d91377ffa98fe95685fca20ba4623212b2f2def4da5b281ed0100b651f6db32112e4017d831c0da668768afa7141d45bbc279f1e0f8735d74395b3"
@@ -45,7 +45,7 @@ func loadStrongRSAKey() (*rsa.PrivateKey, error) {
 		Primes: primes,
 	}
 
-	return key, nil
+	return key
 }
 
 func runPBRSA(signer PBRSASigner, verifier PBRSAVerifier, message, metadata []byte, random io.Reader) ([]byte, error) {
@@ -92,10 +92,7 @@ func mustDecodeHex(h string) []byte {
 func TestPBRSARoundTrip(t *testing.T) {
 	message := []byte("hello world")
 	metadata := []byte("metadata")
-	key, err := loadStrongRSAKey()
-	if err != nil {
-		t.Fatal(err)
-	}
+	key := loadStrongRSAKey()
 
 	hash := crypto.SHA384
 	verifier := NewRandomizedPBRSAVerifier(&key.PublicKey, hash)
@@ -171,10 +168,7 @@ func (tv rawPBRSATestVector) MarshalJSON() ([]byte, error) {
 }
 
 func generatePBRSATestVector(t *testing.T, msg, metadata []byte) rawPBRSATestVector {
-	key, err := loadStrongRSAKey()
-	if err != nil {
-		t.Fatal(err)
-	}
+	key := loadStrongRSAKey()
 
 	hash := crypto.SHA384
 	verifier := NewRandomizedPBRSAVerifier(&key.PublicKey, hash)
@@ -265,15 +259,13 @@ func TestPBRSAGenerateTestVector(t *testing.T) {
 func BenchmarkPBRSA(b *testing.B) {
 	message := []byte("hello world")
 	metadata := []byte("good doggo")
-	key, err := loadStrongRSAKey()
-	if err != nil {
-		b.Fatal(err)
-	}
+	key := loadStrongRSAKey()
 
 	hash := crypto.SHA384
 	verifier := NewRandomizedPBRSAVerifier(&key.PublicKey, hash)
 	signer := NewPBRSASigner(key, hash)
 
+	var err error
 	var blindedMsg []byte
 	var state PBRSAVerifierState
 	b.Run("Blind", func(b *testing.B) {

@@ -383,14 +383,12 @@ func TestVectors(t *testing.T) {
 
 func BenchmarkBRSA(b *testing.B) {
 	message := []byte("hello world")
-	key, err := loadStrongRSAKey()
-	if err != nil {
-		b.Fatal(err)
-	}
+	key := loadStrongRSAKey()
 
 	verifier := NewBRSAVerifier(&key.PublicKey, crypto.SHA512)
 	signer := NewBRSASigner(key)
 
+	var err error
 	var blindedMsg []byte
 	var state BRSAVerifierState
 	b.Run("Blind", func(b *testing.B) {
