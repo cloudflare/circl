@@ -157,7 +157,7 @@ func augmentPrivateKey(h crypto.Hash, sk *BigPrivateKey, metadata []byte) *BigPr
 	}
 }
 
-func fixedPartiallyBlind(message, rand, salt []byte, r, rInv *big.Int, pk *BigPublicKey, hash hash.Hash) ([]byte, PBRSAVerifierState, error) {
+func fixedPartiallyBlind(message, salt []byte, r, rInv *big.Int, pk *BigPublicKey, hash hash.Hash) ([]byte, PBRSAVerifierState, error) {
 	encodedMsg, err := encodeMessageEMSAPSS(message, pk.N, hash, salt)
 	if err != nil {
 		return nil, PBRSAVerifierState{}, err
@@ -181,7 +181,6 @@ func fixedPartiallyBlind(message, rand, salt []byte, r, rInv *big.Int, pk *BigPu
 		hash:       hash,
 		salt:       salt,
 		rInv:       rInv,
-		// rand:       rand,
 	}, nil
 }
 
@@ -213,16 +212,13 @@ func (v RandomizedPBRSAVerifier) Blind(random io.Reader, message, metadata []byt
 		return nil, PBRSAVerifierState{}, err
 	}
 
-	// Compute e_MD = e * H_MD(D)
 	metadataKey := augmentPublicKey(v.cryptoHash, v.pk, metadata)
-
-	// Do the rest with (M', D) as the message being signed
 	inputMsg := encodeMessageMetadata(message, metadata)
-
-	return fixedPartiallyBlind(inputMsg, nil, salt, r, rInv, metadataKey, v.hash)
+	return fixedPartiallyBlind(inputMsg, salt, r, rInv, metadataKey, v.hash)
 }
 
-// Verify verifies the input (message, signature) pair and produces an error upon failure.
+// Verify verifies the input (message, signature) pair using the augmented public key
+// and produces an error upon failure.
 //
 // See the specification for more details:
 // https://datatracker.ietf.org/doc/html/draft-amjad-cfrg-partially-blind-rsa-00#name-verification-2
@@ -251,9 +247,6 @@ type PBRSAVerifierState struct {
 
 	// The salt used when encoding the message
 	salt []byte
-
-	// The random component attached to each message
-	// rand []byte
 
 	// Inverse of the blinding factor produced by the Verifier
 	rInv *big.Int
