@@ -155,7 +155,7 @@ func (v determinsiticBRSAVerifier) FixedBlind(message, blind, salt []byte) ([]by
 	}
 
 	r := new(big.Int).SetBytes(blind)
-	if r.Cmp(v.pk.N) < 0 {
+	if r.Cmp(v.pk.N) >= 0 {
 		return nil, VerifierState{}, ErrInvalidBlind
 	}
 	rInv := new(big.Int).ModInverse(r, v.pk.N)
@@ -203,6 +203,10 @@ func (v randomBRSAVerifier) FixedBlind(message, blind, salt []byte) ([]byte, Ver
 	}
 
 	r := new(big.Int).SetBytes(blind)
+	if r.Cmp(v.pk.N) >= 0 {
+		return nil, VerifierState{}, ErrInvalidBlind
+	}
+
 	rInv := new(big.Int).ModInverse(r, v.pk.N)
 	if rInv == nil {
 		return nil, VerifierState{}, ErrInvalidBlind
