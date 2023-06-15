@@ -194,7 +194,7 @@ func (v randomizedVerifier) Verify(message, metadata, signature []byte) error {
 	return blindrsa.VerifyMessageSignature(inputMsg, signature, v.hash.Size(), metadataKey, v.cryptoHash)
 }
 
-// Hash returns the hash function associated with the PBRSAVerifier.
+// Hash returns the hash function associated with the Verifier.
 func (v randomizedVerifier) Hash() hash.Hash {
 	return v.hash
 }
