@@ -25,7 +25,7 @@ func encodeMessageMetadata(message, metadata []byte) []byte {
 	return append(framedMetadata, message...)
 }
 
-// A PBRSAVerifier represents a Verifier in the RSA blind signature protocol.
+// A randomizedVerifier represents a Verifier in the partially blind RSA signature protocol.
 // It carries state needed to produce and validate an RSA signature produced
 // using the blind RSA protocol.
 type randomizedVerifier struct {
