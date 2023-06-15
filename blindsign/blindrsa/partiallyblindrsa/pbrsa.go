@@ -38,7 +38,7 @@ type randomizedVerifier struct {
 	hash hash.Hash
 }
 
-// RandomizedPBRSAVerifier creates a new PBRSAVerifier using the corresponding Signer parameters.
+// NewVerifier creates a new PBRSAVerifier using the corresponding Signer parameters.
 // This corresponds to the RSAPBSSA-SHA384-PSS-Deterministic variant. See the specification for more details:
 // https://datatracker.ietf.org/doc/html/draft-amjad-cfrg-partially-blind-rsa#name-rsapbssa-variants
 func NewVerifier(pk *rsa.PublicKey, hash crypto.Hash) Verifier {
