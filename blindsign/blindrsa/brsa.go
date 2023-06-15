@@ -49,7 +49,7 @@ type determinsiticBRSAVerifier struct {
 	hash hash.Hash
 }
 
-// PBRSAVerifier is a type that implements the client side of the blind RSA
+// Verifier is a type that implements the client side of the blind RSA
 // protocol, described in https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-rsa-blind-signatures
 type Verifier interface {
 	// Blind initializes the blind RSA protocol using an input message and source of randomness. The
