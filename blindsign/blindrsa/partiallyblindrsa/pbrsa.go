@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/binary"
+	"errors"
 	"hash"
 	"io"
 	"math/big"
@@ -264,12 +265,25 @@ type Signer struct {
 	h  crypto.Hash
 }
 
+// isSafePrime returns true if the input prime p is safe, i.e., p = (2 * q) + 1 for some prime q
+func isSafePrime(p *big.Int) bool {
+	q := new(big.Int).Set(p)
+	q.Sub(q, big.NewInt(1))
+	q.Div(q, big.NewInt(2))
+	return q.ProbablyPrime(20)
+}
+
 // NewSigner creates a new Signer for the blind RSA protocol using an RSA private key.
-func NewSigner(sk *rsa.PrivateKey, h crypto.Hash) Signer {
-	return Signer{
-		sk: keys.NewBigPrivateKey(sk),
-		h:  h,
+func NewSigner(sk *rsa.PrivateKey, h crypto.Hash) (Signer, error) {
+	bigSk := keys.NewBigPrivateKey(sk)
+	if !(isSafePrime(bigSk.P) && isSafePrime(bigSk.Q)) {
+		return Signer{}, ErrInvalidPrivateKey
 	}
+
+	return Signer{
+		sk: bigSk,
+		h:  h,
+	}, nil
 }
 
 // BlindSign blindly computes the RSA operation using the Signer's private key on the blinded
@@ -300,3 +314,8 @@ func (signer Signer) BlindSign(data, metadata []byte) ([]byte, error) {
 
 	return blindSig, nil
 }
+
+var (
+	// ErrInvalidPrivateKey is the error used if a private key is invalid
+	ErrInvalidPrivateKey = errors.New("blindsign/blindrsa/partiallyblindrsa: invalid private key")
+)

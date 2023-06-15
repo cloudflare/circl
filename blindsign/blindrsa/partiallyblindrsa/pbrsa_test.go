@@ -98,7 +98,10 @@ func TestPBRSARoundTrip(t *testing.T) {
 
 	hash := crypto.SHA384
 	verifier := NewRandomizedPBRSAVerifier(&key.PublicKey, hash)
-	signer := NewSigner(key, hash)
+	signer, err := NewSigner(key, hash)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	sig, err := runPBRSA(signer, verifier, message, metadata, rand.Reader)
 	if err != nil {
@@ -174,7 +177,10 @@ func generatePBRSATestVector(t *testing.T, msg, metadata []byte) rawPBRSATestVec
 
 	hash := crypto.SHA384
 	verifier := NewRandomizedPBRSAVerifier(&key.PublicKey, hash)
-	signer := NewSigner(key, hash)
+	signer, err := NewSigner(key, hash)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	publicKey := keys.NewBigPublicKey(&key.PublicKey)
 	metadataKey := augmentPublicKey(hash, publicKey, metadata)
@@ -265,9 +271,11 @@ func BenchmarkPBRSA(b *testing.B) {
 
 	hash := crypto.SHA384
 	verifier := NewRandomizedPBRSAVerifier(&key.PublicKey, hash)
-	signer := NewSigner(key, hash)
+	signer, err := NewSigner(key, hash)
+	if err != nil {
+		b.Fatal(err)
+	}
 
-	var err error
 	var blindedMsg []byte
 	var state VerifierState
 	b.Run("Blind", func(b *testing.B) {
