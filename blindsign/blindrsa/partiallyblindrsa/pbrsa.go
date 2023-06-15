@@ -1,7 +1,6 @@
 // Package partiallyblindrsa implements a partially blind RSA protocol.
 package partiallyblindrsa
 
-
 import (
 	"crypto"
 	"crypto/rand"
@@ -40,7 +39,9 @@ type randomizedVerifier struct {
 }
 
 // RandomizedPBRSAVerifier creates a new PBRSAVerifier using the corresponding Signer parameters.
-func NewRandomizedPBRSAVerifier(pk *rsa.PublicKey, hash crypto.Hash) Verifier {
+// This corresponds to the RSAPBSSA-SHA384-PSS-Deterministic variant. See the specification for more details:
+// https://datatracker.ietf.org/doc/html/draft-amjad-cfrg-partially-blind-rsa#name-rsapbssa-variants
+func NewVerifier(pk *rsa.PublicKey, hash crypto.Hash) Verifier {
 	h := blindrsa.ConvertHashFunction(hash)
 	return randomizedVerifier{
 		pk:         keys.NewBigPublicKey(pk),

@@ -67,6 +67,8 @@ type Verifier interface {
 }
 
 // NewDeterministicVerifier creates a new DeterminsiticBRSAVerifier using the corresponding Signer parameters.
+// This corresponds to the RSABSSA-SHA384-PSSZERO-Deterministic variant. See the specification for more details:
+// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-rsa-blind-signatures#name-rsabssa-variants
 func NewDeterministicVerifier(pk *rsa.PublicKey, hash crypto.Hash) Verifier {
 	h := ConvertHashFunction(hash)
 	return determinsiticBRSAVerifier{
@@ -82,6 +84,8 @@ func (v determinsiticBRSAVerifier) Hash() hash.Hash {
 }
 
 // NewVerifier creates a new BRSAVerifier using the corresponding Signer parameters.
+// This corresponds to the RSABSSA-SHA384-PSS-Deterministic variant. See the specification for more details:
+// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-rsa-blind-signatures#name-rsabssa-variants
 func NewVerifier(pk *rsa.PublicKey, hash crypto.Hash) Verifier {
 	h := ConvertHashFunction(hash)
 	return randomBRSAVerifier{
