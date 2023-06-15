@@ -152,7 +152,7 @@ type Verifier interface {
 	// and produces an error upon failure.
 	Verify(message, signature, metadata []byte) error
 
-	// Hash returns the hash function associated with the PBRSAVerifier.
+	// Hash returns the hash function associated with the Verifier.
 	Hash() hash.Hash
 }
 
