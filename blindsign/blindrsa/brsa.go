@@ -62,7 +62,7 @@ type Verifier interface {
 	// Verify verifies the input (message, signature) pair and produces an error upon failure.
 	Verify(message, signature []byte) error
 
-	// Hash returns the hash function associated with the BRSAVerifier.
+	// Hash returns the hash function associated with the Verifier.
 	Hash() hash.Hash
 }
 
