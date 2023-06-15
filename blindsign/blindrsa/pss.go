@@ -39,7 +39,6 @@ import (
 	"crypto/rsa"
 	"errors"
 	"hash"
-	"math/big"
 )
 
 // Per RFC 8017, Section 9.1
@@ -228,14 +227,4 @@ func emsaPSSVerify(mHash, em []byte, emBits, sLen int, hash hash.Hash) error {
 		return rsa.ErrVerification
 	}
 	return nil
-}
-
-func encodeMessageEMSAPSS(message []byte, N *big.Int, hash hash.Hash, salt []byte) ([]byte, error) {
-	hash.Reset() // Ensure the hash state is cleared
-	hash.Write(message)
-	digest := hash.Sum(nil)
-	hash.Reset()
-	emBits := N.BitLen() - 1
-	encodedMsg, err := emsaPSSEncode(digest[:], emBits, salt, hash)
-	return encodedMsg, err
 }

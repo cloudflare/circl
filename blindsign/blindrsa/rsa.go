@@ -31,10 +31,11 @@ package blindrsa
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"errors"
 	"hash"
 	"io"
 	"math/big"
+
+	"github.com/cloudflare/circl/blindsign/blindrsa/internal/keys"
 )
 
 var (
@@ -84,13 +85,13 @@ func encrypt(c *big.Int, N *big.Int, e *big.Int, m *big.Int) *big.Int {
 
 // decrypt performs an RSA decryption, resulting in a plaintext integer. If a
 // random source is given, RSA blinding is used.
-func decrypt(random io.Reader, priv *BigPrivateKey, c *big.Int) (m *big.Int, err error) {
+func decrypt(random io.Reader, priv *keys.BigPrivateKey, c *big.Int) (m *big.Int, err error) {
 	// TODO(agl): can we get away with reusing blinds?
-	if c.Cmp(priv.pk.n) > 0 {
+	if c.Cmp(priv.Pk.N) > 0 {
 		err = rsa.ErrDecryption
 		return
 	}
-	if priv.pk.n.Sign() == 0 {
+	if priv.Pk.N.Sign() == 0 {
 		return nil, rsa.ErrDecryption
 	}
 
@@ -104,47 +105,32 @@ func decrypt(random io.Reader, priv *BigPrivateKey, c *big.Int) (m *big.Int, err
 		var r *big.Int
 		ir = new(big.Int)
 		for {
-			r, err = rand.Int(random, priv.pk.n)
+			r, err = rand.Int(random, priv.Pk.N)
 			if err != nil {
 				return
 			}
 			if r.Cmp(bigZero) == 0 {
 				r = bigOne
 			}
-			ok := ir.ModInverse(r, priv.pk.n)
+			ok := ir.ModInverse(r, priv.Pk.N)
 			if ok != nil {
 				break
 			}
 		}
-		rpowe := new(big.Int).Exp(r, priv.pk.e, priv.pk.n) // N != 0
+		rpowe := new(big.Int).Exp(r, priv.Pk.E, priv.Pk.N) // N != 0
 		cCopy := new(big.Int).Set(c)
 		cCopy.Mul(cCopy, rpowe)
-		cCopy.Mod(cCopy, priv.pk.n)
+		cCopy.Mod(cCopy, priv.Pk.N)
 		c = cCopy
 	}
 
-	m = new(big.Int).Exp(c, priv.d, priv.pk.n)
+	m = new(big.Int).Exp(c, priv.D, priv.Pk.N)
 
 	if ir != nil {
 		// Unblind.
 		m.Mul(m, ir)
-		m.Mod(m, priv.pk.n)
+		m.Mod(m, priv.Pk.N)
 	}
 
-	return m, nil
-}
-
-func decryptAndCheck(random io.Reader, priv *BigPrivateKey, c *big.Int) (m *big.Int, err error) {
-	m, err = decrypt(random, priv, c)
-	if err != nil {
-		return nil, err
-	}
-
-	// In order to defend against errors in the CRT computation, m^e is
-	// calculated, which should match the original ciphertext.
-	check := encrypt(new(big.Int), priv.pk.n, priv.pk.e, m)
-	if c.Cmp(check) != 0 {
-		return nil, errors.New("rsa: internal error")
-	}
 	return m, nil
 }

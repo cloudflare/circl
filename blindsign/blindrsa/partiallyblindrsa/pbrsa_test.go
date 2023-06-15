@@ -1,4 +1,4 @@
-package blindrsa
+package partiallyblindrsa
 
 import (
 	"crypto"
@@ -11,6 +11,8 @@ import (
 	"math/big"
 	"os"
 	"testing"
+
+	"github.com/cloudflare/circl/blindsign/blindrsa/internal/keys"
 )
 
 const (
@@ -48,13 +50,13 @@ func loadStrongRSAKey() *rsa.PrivateKey {
 	return key
 }
 
-func runPBRSA(signer PBRSASigner, verifier PBRSAVerifier, message, metadata []byte, random io.Reader) ([]byte, error) {
+func runPBRSA(signer Signer, verifier Verifier, message, metadata []byte, random io.Reader) ([]byte, error) {
 	blindedMsg, state, err := verifier.Blind(random, message, metadata)
 	if err != nil {
 		return nil, err
 	}
 
-	kLen := (signer.sk.pk.n.BitLen() + 7) / 8
+	kLen := (signer.sk.Pk.N.BitLen() + 7) / 8
 	if len(blindedMsg) != kLen {
 		return nil, fmt.Errorf("Protocol message (blind message) length mismatch, expected %d, got %d", kLen, len(blindedMsg))
 	}
@@ -96,7 +98,7 @@ func TestPBRSARoundTrip(t *testing.T) {
 
 	hash := crypto.SHA384
 	verifier := NewRandomizedPBRSAVerifier(&key.PublicKey, hash)
-	signer := NewPBRSASigner(key, hash)
+	signer := NewSigner(key, hash)
 
 	sig, err := runPBRSA(signer, verifier, message, metadata, rand.Reader)
 	if err != nil {
@@ -172,9 +174,9 @@ func generatePBRSATestVector(t *testing.T, msg, metadata []byte) rawPBRSATestVec
 
 	hash := crypto.SHA384
 	verifier := NewRandomizedPBRSAVerifier(&key.PublicKey, hash)
-	signer := NewPBRSASigner(key, hash)
+	signer := NewSigner(key, hash)
 
-	publicKey := newCustomPublicKey(&key.PublicKey)
+	publicKey := keys.NewBigPublicKey(&key.PublicKey)
 	metadataKey := augmentPublicKey(hash, publicKey, metadata)
 
 	blindedMsg, state, err := verifier.Blind(rand.Reader, msg, metadata)
@@ -263,11 +265,11 @@ func BenchmarkPBRSA(b *testing.B) {
 
 	hash := crypto.SHA384
 	verifier := NewRandomizedPBRSAVerifier(&key.PublicKey, hash)
-	signer := NewPBRSASigner(key, hash)
+	signer := NewSigner(key, hash)
 
 	var err error
 	var blindedMsg []byte
-	var state PBRSAVerifierState
+	var state VerifierState
 	b.Run("Blind", func(b *testing.B) {
 		for n := 0; n < b.N; n++ {
 			blindedMsg, state, err = verifier.Blind(rand.Reader, message, metadata)
