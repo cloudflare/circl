@@ -257,7 +257,7 @@ func TestPBRSAGenerateTestVector(t *testing.T) {
 
 	var outputFile string
 	if outputFile = os.Getenv(pbrsaTestVectorOutEnvironmentKey); len(outputFile) > 0 {
-		err := os.WriteFile(outputFile, encoded, 0600)
+		err := os.WriteFile(outputFile, encoded, 0o600)
 		if err != nil {
 			t.Fatalf("Error writing test vectors: %v", err)
 		}
