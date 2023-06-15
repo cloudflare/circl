@@ -57,7 +57,7 @@ func NewRandomizedPBRSAVerifier(pk *rsa.PublicKey, hash crypto.Hash) Verifier {
 // See the following issue for more discussion on HKDF vs hash-to-field:
 // https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/issues/202
 func augmentPublicKey(h crypto.Hash, pk *keys.BigPublicKey, metadata []byte) *keys.BigPublicKey {
-	// expandLen = ceil((ceil(log2(\lambda)) + k) / 8), where k is the security parameter of the suite (e.g., k = 128).
+	// expandLen = ceil((ceil(log2(\lambda)/2) + k) / 8), where k is the security parameter of the suite (e.g., k = 128).
 	// We stretch the input metadata beyond \lambda bits s.t. the output bytes are indifferentiable from truly random bytes
 	lambda := pk.N.BitLen() / 2
 	expandLen := uint((lambda + 128) / 8)
