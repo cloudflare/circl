@@ -219,7 +219,7 @@ func generatePBRSATestVector(t *testing.T, msg, metadata []byte) rawPBRSATestVec
 }
 
 func TestPBRSAGenerateTestVector(t *testing.T) {
-	var testCases = []struct {
+	testCases := []struct {
 		msg      []byte
 		metadata []byte
 	}{
@@ -257,7 +257,7 @@ func TestPBRSAGenerateTestVector(t *testing.T) {
 
 	var outputFile string
 	if outputFile = os.Getenv(pbrsaTestVectorOutEnvironmentKey); len(outputFile) > 0 {
-		err := os.WriteFile(outputFile, encoded, 0644)
+		err := os.WriteFile(outputFile, encoded, 0o644)
 		if err != nil {
 			t.Fatalf("Error writing test vectors: %v", err)
 		}

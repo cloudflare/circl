@@ -315,7 +315,5 @@ func (signer Signer) BlindSign(data, metadata []byte) ([]byte, error) {
 	return blindSig, nil
 }
 
-var (
-	// ErrInvalidPrivateKey is the error used if a private key is invalid
-	ErrInvalidPrivateKey = errors.New("blindsign/blindrsa/partiallyblindrsa: invalid private key")
-)
+// ErrInvalidPrivateKey is the error used if a private key is invalid
+var ErrInvalidPrivateKey = errors.New("blindsign/blindrsa/partiallyblindrsa: invalid private key")
