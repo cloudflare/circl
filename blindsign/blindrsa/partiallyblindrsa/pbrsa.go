@@ -1,6 +1,6 @@
+// Package partiallyblindrsa implements a partially blind RSA protocol.
 package partiallyblindrsa
 
-// This package implements a partially blind RSA protocol.
 
 import (
 	"crypto"
