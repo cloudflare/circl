@@ -18,12 +18,8 @@ import (
 // ConvertHashFunction converts a crypto.Hash function to an equivalent hash.Hash type.
 func ConvertHashFunction(hash crypto.Hash) hash.Hash {
 	switch hash {
-	case crypto.SHA256:
-		return sha256.New()
-	case crypto.SHA384:
-		return sha512.New384()
-	case crypto.SHA512:
-		return sha512.New()
+	case crypto.SHA256, crypto.SHA384, crypto.SHA512:
+		return hash.New()
 	default:
 		panic(errUnsupportedHashFunction)
 	}
