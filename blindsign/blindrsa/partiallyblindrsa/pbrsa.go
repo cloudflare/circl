@@ -11,7 +11,7 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/cloudflare/circl/blindsign/blindrsa"
+	"github.com/cloudflare/circl/blindsign/blindrsa/internal/common"
 	"github.com/cloudflare/circl/blindsign/blindrsa/internal/keys"
 	"golang.org/x/crypto/hkdf"
 )
@@ -42,7 +42,7 @@ type randomizedVerifier struct {
 // This corresponds to the RSAPBSSA-SHA384-PSS-Deterministic variant. See the specification for more details:
 // https://datatracker.ietf.org/doc/html/draft-amjad-cfrg-partially-blind-rsa#name-rsapbssa-variants
 func NewVerifier(pk *rsa.PublicKey, hash crypto.Hash) Verifier {
-	h := blindrsa.ConvertHashFunction(hash)
+	h := common.ConvertHashFunction(hash)
 	return randomizedVerifier{
 		pk:         keys.NewBigPublicKey(pk),
 		cryptoHash: hash,
@@ -115,7 +115,7 @@ func augmentPrivateKey(h crypto.Hash, sk *keys.BigPrivateKey, metadata []byte) *
 }
 
 func fixedPartiallyBlind(message, salt []byte, r, rInv *big.Int, pk *keys.BigPublicKey, hash hash.Hash) ([]byte, VerifierState, error) {
-	encodedMsg, err := blindrsa.EncodeMessageEMSAPSS(message, pk.N, hash, salt)
+	encodedMsg, err := common.EncodeMessageEMSAPSS(message, pk.N, hash, salt)
 	if err != nil {
 		return nil, VerifierState{}, err
 	}
@@ -165,7 +165,7 @@ type Verifier interface {
 // https://datatracker.ietf.org/doc/html/draft-amjad-cfrg-partially-blind-rsa-00#name-blind
 func (v randomizedVerifier) Blind(random io.Reader, message, metadata []byte) ([]byte, VerifierState, error) {
 	if random == nil {
-		return nil, VerifierState{}, blindrsa.ErrInvalidRandomness
+		return nil, VerifierState{}, common.ErrInvalidRandomness
 	}
 
 	salt := make([]byte, v.hash.Size())
@@ -174,7 +174,7 @@ func (v randomizedVerifier) Blind(random io.Reader, message, metadata []byte) ([
 		return nil, VerifierState{}, err
 	}
 
-	r, rInv, err := blindrsa.GenerateBlindingFactor(random, v.pk.N)
+	r, rInv, err := common.GenerateBlindingFactor(random, v.pk.N)
 	if err != nil {
 		return nil, VerifierState{}, err
 	}
@@ -192,7 +192,7 @@ func (v randomizedVerifier) Blind(random io.Reader, message, metadata []byte) ([
 func (v randomizedVerifier) Verify(message, metadata, signature []byte) error {
 	metadataKey := augmentPublicKey(v.cryptoHash, v.pk, metadata)
 	inputMsg := encodeMessageMetadata(message, metadata)
-	return blindrsa.VerifyMessageSignature(inputMsg, signature, v.hash.Size(), metadataKey, v.cryptoHash)
+	return common.VerifyMessageSignature(inputMsg, signature, v.hash.Size(), metadataKey, v.cryptoHash)
 }
 
 // Hash returns the hash function associated with the Verifier.
@@ -226,7 +226,7 @@ type VerifierState struct {
 func (state VerifierState) Finalize(data []byte) ([]byte, error) {
 	kLen := (state.pk.N.BitLen() + 7) / 8
 	if len(data) != kLen {
-		return nil, blindrsa.ErrUnexpectedSize
+		return nil, common.ErrUnexpectedSize
 	}
 
 	z := new(big.Int).SetBytes(data)
@@ -237,7 +237,7 @@ func (state VerifierState) Finalize(data []byte) ([]byte, error) {
 	sig := make([]byte, kLen)
 	s.FillBytes(sig)
 
-	err := blindrsa.VerifyBlindSignature(state.pk, state.encodedMsg, sig)
+	err := common.VerifyBlindSignature(state.pk, state.encodedMsg, sig)
 	if err != nil {
 		return nil, err
 	}
@@ -295,17 +295,17 @@ func NewSigner(sk *rsa.PrivateKey, h crypto.Hash) (Signer, error) {
 func (signer Signer) BlindSign(data, metadata []byte) ([]byte, error) {
 	kLen := (signer.sk.Pk.N.BitLen() + 7) / 8
 	if len(data) != kLen {
-		return nil, blindrsa.ErrUnexpectedSize
+		return nil, common.ErrUnexpectedSize
 	}
 
 	m := new(big.Int).SetBytes(data)
 	if m.Cmp(signer.sk.Pk.N) > 0 {
-		return nil, blindrsa.ErrInvalidMessageLength
+		return nil, common.ErrInvalidMessageLength
 	}
 
 	skPrime := augmentPrivateKey(signer.h, signer.sk, metadata)
 
-	s, err := blindrsa.DecryptAndCheck(rand.Reader, skPrime, m)
+	s, err := common.DecryptAndCheck(rand.Reader, skPrime, m)
 	if err != nil {
 		return nil, err
 	}
@@ -316,5 +316,10 @@ func (signer Signer) BlindSign(data, metadata []byte) ([]byte, error) {
 	return blindSig, nil
 }
 
-// ErrInvalidPrivateKey is the error used if a private key is invalid
-var ErrInvalidPrivateKey = errors.New("blindsign/blindrsa/partiallyblindrsa: invalid private key")
+var (
+	// ErrInvalidPrivateKey is the error used if a private key is invalid
+	ErrInvalidPrivateKey    = errors.New("blindsign/blindrsa/partiallyblindrsa: invalid private key")
+	ErrUnexpectedSize       = common.ErrUnexpectedSize
+	ErrInvalidMessageLength = common.ErrInvalidMessageLength
+	ErrInvalidRandomness    = common.ErrInvalidRandomness
+)

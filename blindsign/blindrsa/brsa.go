@@ -13,15 +13,13 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
-	"errors"
 	"hash"
 	"io"
 	"math/big"
 
+	"github.com/cloudflare/circl/blindsign/blindrsa/internal/common"
 	"github.com/cloudflare/circl/blindsign/blindrsa/internal/keys"
 )
-
-var errUnsupportedHashFunction = errors.New("unsupported hash function")
 
 // An randomBRSAVerifier represents a Verifier in the RSA blind signature protocol.
 // It carries state needed to produce and validate an RSA signature produced
@@ -70,7 +68,7 @@ type Verifier interface {
 // This corresponds to the RSABSSA-SHA384-PSSZERO-Deterministic variant. See the specification for more details:
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-rsa-blind-signatures#name-rsabssa-variants
 func NewDeterministicVerifier(pk *rsa.PublicKey, hash crypto.Hash) Verifier {
-	h := ConvertHashFunction(hash)
+	h := common.ConvertHashFunction(hash)
 	return determinsiticBRSAVerifier{
 		pk:         pk,
 		cryptoHash: hash,
@@ -87,7 +85,7 @@ func (v determinsiticBRSAVerifier) Hash() hash.Hash {
 // This corresponds to the RSABSSA-SHA384-PSS-Deterministic variant. See the specification for more details:
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-rsa-blind-signatures#name-rsabssa-variants
 func NewVerifier(pk *rsa.PublicKey, hash crypto.Hash) Verifier {
-	h := ConvertHashFunction(hash)
+	h := common.ConvertHashFunction(hash)
 	return randomBRSAVerifier{
 		pk:         pk,
 		cryptoHash: hash,
@@ -101,7 +99,7 @@ func (v randomBRSAVerifier) Hash() hash.Hash {
 }
 
 func fixedBlind(message, salt []byte, r, rInv *big.Int, pk *rsa.PublicKey, hash hash.Hash) ([]byte, VerifierState, error) {
-	encodedMsg, err := EncodeMessageEMSAPSS(message, pk.N, hash, salt)
+	encodedMsg, err := common.EncodeMessageEMSAPSS(message, pk.N, hash, salt)
 	if err != nil {
 		return nil, VerifierState{}, err
 	}
@@ -134,10 +132,10 @@ func fixedBlind(message, salt []byte, r, rInv *big.Int, pk *rsa.PublicKey, hash 
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-rsa-blind-signatures-02#section-5.1.1
 func (v determinsiticBRSAVerifier) Blind(random io.Reader, message []byte) ([]byte, VerifierState, error) {
 	if random == nil {
-		return nil, VerifierState{}, ErrInvalidRandomness
+		return nil, VerifierState{}, common.ErrInvalidRandomness
 	}
 
-	r, rInv, err := GenerateBlindingFactor(random, v.pk.N)
+	r, rInv, err := common.GenerateBlindingFactor(random, v.pk.N)
 	if err != nil {
 		return nil, VerifierState{}, err
 	}
@@ -145,26 +143,19 @@ func (v determinsiticBRSAVerifier) Blind(random io.Reader, message []byte) ([]by
 	return fixedBlind(message, nil, r, rInv, v.pk, v.hash)
 }
 
-func saltLength(opts *rsa.PSSOptions) int {
-	if opts == nil {
-		return rsa.PSSSaltLengthAuto
-	}
-	return opts.SaltLength
-}
-
 // FixedBlind runs the Blind function with fixed blind and salt inputs.
 func (v determinsiticBRSAVerifier) FixedBlind(message, blind, salt []byte) ([]byte, VerifierState, error) {
 	if blind == nil {
-		return nil, VerifierState{}, ErrInvalidRandomness
+		return nil, VerifierState{}, common.ErrInvalidRandomness
 	}
 
 	r := new(big.Int).SetBytes(blind)
 	if r.Cmp(v.pk.N) >= 0 {
-		return nil, VerifierState{}, ErrInvalidBlind
+		return nil, VerifierState{}, common.ErrInvalidBlind
 	}
 	rInv := new(big.Int).ModInverse(r, v.pk.N)
 	if rInv == nil {
-		return nil, VerifierState{}, ErrInvalidBlind
+		return nil, VerifierState{}, common.ErrInvalidBlind
 	}
 
 	return fixedBlind(message, salt, r, rInv, v.pk, v.hash)
@@ -172,7 +163,7 @@ func (v determinsiticBRSAVerifier) FixedBlind(message, blind, salt []byte) ([]by
 
 // Verify verifies the input (message, signature) pair and produces an error upon failure.
 func (v determinsiticBRSAVerifier) Verify(message, signature []byte) error {
-	return VerifyMessageSignature(message, signature, 0, keys.NewBigPublicKey(v.pk), v.cryptoHash)
+	return common.VerifyMessageSignature(message, signature, 0, keys.NewBigPublicKey(v.pk), v.cryptoHash)
 }
 
 // Blind initializes the blind RSA protocol using an input message and source of randomness. The
@@ -183,7 +174,7 @@ func (v determinsiticBRSAVerifier) Verify(message, signature []byte) error {
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-rsa-blind-signatures-02#section-5.1.1
 func (v randomBRSAVerifier) Blind(random io.Reader, message []byte) ([]byte, VerifierState, error) {
 	if random == nil {
-		return nil, VerifierState{}, ErrInvalidRandomness
+		return nil, VerifierState{}, common.ErrInvalidRandomness
 	}
 
 	salt := make([]byte, v.hash.Size())
@@ -192,7 +183,7 @@ func (v randomBRSAVerifier) Blind(random io.Reader, message []byte) ([]byte, Ver
 		return nil, VerifierState{}, err
 	}
 
-	r, rInv, err := GenerateBlindingFactor(random, v.pk.N)
+	r, rInv, err := common.GenerateBlindingFactor(random, v.pk.N)
 	if err != nil {
 		return nil, VerifierState{}, err
 	}
@@ -203,17 +194,17 @@ func (v randomBRSAVerifier) Blind(random io.Reader, message []byte) ([]byte, Ver
 // FixedBlind runs the Blind function with fixed blind and salt inputs.
 func (v randomBRSAVerifier) FixedBlind(message, blind, salt []byte) ([]byte, VerifierState, error) {
 	if blind == nil {
-		return nil, VerifierState{}, ErrInvalidRandomness
+		return nil, VerifierState{}, common.ErrInvalidRandomness
 	}
 
 	r := new(big.Int).SetBytes(blind)
 	if r.Cmp(v.pk.N) >= 0 {
-		return nil, VerifierState{}, ErrInvalidBlind
+		return nil, VerifierState{}, common.ErrInvalidBlind
 	}
 
 	rInv := new(big.Int).ModInverse(r, v.pk.N)
 	if rInv == nil {
-		return nil, VerifierState{}, ErrInvalidBlind
+		return nil, VerifierState{}, common.ErrInvalidBlind
 	}
 
 	return fixedBlind(message, salt, r, rInv, v.pk, v.hash)
@@ -221,7 +212,7 @@ func (v randomBRSAVerifier) FixedBlind(message, blind, salt []byte) ([]byte, Ver
 
 // Verify verifies the input (message, signature) pair and produces an error upon failure.
 func (v randomBRSAVerifier) Verify(message, signature []byte) error {
-	return VerifyMessageSignature(message, signature, v.hash.Size(), keys.NewBigPublicKey(v.pk), v.cryptoHash)
+	return common.VerifyMessageSignature(message, signature, v.hash.Size(), keys.NewBigPublicKey(v.pk), v.cryptoHash)
 }
 
 // An VerifierState carries state needed to complete the blind signature protocol
@@ -250,7 +241,7 @@ type VerifierState struct {
 func (state VerifierState) Finalize(data []byte) ([]byte, error) {
 	kLen := (state.pk.N.BitLen() + 7) / 8
 	if len(data) != kLen {
-		return nil, ErrUnexpectedSize
+		return nil, common.ErrUnexpectedSize
 	}
 
 	z := new(big.Int).SetBytes(data)
@@ -261,7 +252,7 @@ func (state VerifierState) Finalize(data []byte) ([]byte, error) {
 	sig := make([]byte, kLen)
 	s.FillBytes(sig)
 
-	err := VerifyBlindSignature(keys.NewBigPublicKey(state.pk), state.encodedMsg, sig)
+	err := common.VerifyBlindSignature(keys.NewBigPublicKey(state.pk), state.encodedMsg, sig)
 	if err != nil {
 		return nil, err
 	}
@@ -304,15 +295,15 @@ func NewSigner(sk *rsa.PrivateKey) Signer {
 func (signer Signer) BlindSign(data []byte) ([]byte, error) {
 	kLen := (signer.sk.N.BitLen() + 7) / 8
 	if len(data) != kLen {
-		return nil, ErrUnexpectedSize
+		return nil, common.ErrUnexpectedSize
 	}
 
 	m := new(big.Int).SetBytes(data)
 	if m.Cmp(signer.sk.N) > 0 {
-		return nil, ErrInvalidMessageLength
+		return nil, common.ErrInvalidMessageLength
 	}
 
-	s, err := DecryptAndCheck(rand.Reader, keys.NewBigPrivateKey(signer.sk), m)
+	s, err := common.DecryptAndCheck(rand.Reader, keys.NewBigPrivateKey(signer.sk), m)
 	if err != nil {
 		return nil, err
 	}
@@ -324,15 +315,9 @@ func (signer Signer) BlindSign(data []byte) ([]byte, error) {
 }
 
 var (
-	// ErrUnexpectedSize is the error used if the size of a parameter does not match its expected value.
-	ErrUnexpectedSize = errors.New("blindsign/blindrsa: unexpected input size")
-
-	// ErrInvalidMessageLength is the error used if the size of a protocol message does not match its expected value.
-	ErrInvalidMessageLength = errors.New("blindsign/blindrsa: invalid message length")
-
-	// ErrInvalidBlind is the error used if the blind generated by the Verifier fails.
-	ErrInvalidBlind = errors.New("blindsign/blindrsa: invalid blind")
-
-	// ErrInvalidRandomness is the error used if caller did not provide randomness to the Blind() function.
-	ErrInvalidRandomness = errors.New("blindsign/blindrsa: invalid random parameter")
+	ErrUnexpectedSize          = common.ErrUnexpectedSize
+	ErrInvalidMessageLength    = common.ErrInvalidMessageLength
+	ErrInvalidBlind            = common.ErrInvalidBlind
+	ErrInvalidRandomness       = common.ErrInvalidRandomness
+	ErrUnsupportedHashFunction = common.ErrUnsupportedHashFunction
 )
