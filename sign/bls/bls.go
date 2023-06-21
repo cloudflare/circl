@@ -73,6 +73,15 @@ func (k *PrivateKey[K]) Equal(x crypto.PrivateKey) bool {
 	}
 }
 
+func (k *PrivateKey[K]) MarshalBinary() ([]byte, error) {
+	switch (interface{})(k).(type) {
+	case *PrivateKey[G1], *PrivateKey[G2]:
+		return k.key.MarshalBinary()
+	default:
+		panic(ErrInvalid)
+	}
+}
+
 func (k *PrivateKey[K]) UnmarshalBinary(data []byte) error {
 	switch (interface{})(k).(type) {
 	case *PrivateKey[G1], *PrivateKey[G2]:
@@ -103,9 +112,35 @@ func (k *PublicKey[K]) Equal(x crypto.PublicKey) bool {
 		kk := (interface{})(k.key).(G1)
 		return ok && kk.g.IsEqual(&xxx.g)
 	case *PublicKey[G2]:
-		xxx := (interface{})(xx.key).(G1)
-		kk := (interface{})(k.key).(G1)
+		xxx := (interface{})(xx.key).(G2)
+		kk := (interface{})(k.key).(G2)
 		return ok && kk.g.IsEqual(&xxx.g)
+	default:
+		panic(ErrInvalid)
+	}
+}
+
+func (k *PublicKey[K]) MarshalBinary() ([]byte, error) {
+	switch (interface{})(k).(type) {
+	case *PublicKey[G1]:
+		kk := (interface{})(k.key).(G1)
+		return kk.g.BytesCompressed(), nil
+	case *PublicKey[G2]:
+		kk := (interface{})(k.key).(G2)
+		return kk.g.BytesCompressed(), nil
+	default:
+		panic(ErrInvalid)
+	}
+}
+
+func (k *PublicKey[K]) UnmarshalBinary(data []byte) error {
+	switch (interface{})(k).(type) {
+	case *PublicKey[G1]:
+		kk := (interface{})(&k.key).(*G1)
+		return kk.setBytes(data)
+	case *PublicKey[G2]:
+		kk := (interface{})(&k.key).(*G2)
+		return kk.setBytes(data)
 	default:
 		panic(ErrInvalid)
 	}
