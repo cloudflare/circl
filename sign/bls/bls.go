@@ -20,6 +20,10 @@ type (
 	G1 struct{ g GG.G1 }
 	// G2 group used for keys defined in pairing group G2.
 	G2 struct{ g GG.G2 }
+	// KeyG1SigG2 sets the keys to G1 and signatures to G2.
+	KeyG1SigG2 = G1
+	// KeyG2SigG1 sets the keys to G2 and signatures to G1.
+	KeyG2SigG1 = G2
 )
 
 func (f *G1) setBytes(b []byte) error { return f.g.SetBytes(b) }
@@ -64,6 +68,15 @@ func (k *PrivateKey[K]) Equal(x crypto.PrivateKey) bool {
 	switch (interface{})(k).(type) {
 	case *PrivateKey[G1], *PrivateKey[G2]:
 		return ok && k.key.IsEqual(&xx.key) == 1
+	default:
+		panic(ErrInvalid)
+	}
+}
+
+func (k *PrivateKey[K]) UnmarshalBinary(data []byte) error {
+	switch (interface{})(k).(type) {
+	case *PrivateKey[G1], *PrivateKey[G2]:
+		return k.key.UnmarshalBinary(data)
 	default:
 		panic(ErrInvalid)
 	}
