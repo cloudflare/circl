@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding"
+	"fmt"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/test"
@@ -17,6 +18,8 @@ func TestBls(t *testing.T) {
 	t.Run("G2/Marshal", testMarshalKeys[bls.G2])
 	t.Run("G1/Errors", testErrors[bls.G1])
 	t.Run("G2/Errors", testErrors[bls.G2])
+	t.Run("G1/Aggregation", testAggregation[bls.G1])
+	t.Run("G2/Aggregation", testAggregation[bls.G2])
 }
 
 func testBls[K bls.KeyGroup](t *testing.T) {
@@ -92,6 +95,32 @@ func testErrors[K bls.KeyGroup](t *testing.T) {
 	test.CheckOk(bls.Verify(pub, nil, nil) == false, "should fail: bad signature", t)
 }
 
+func testAggregation[K bls.KeyGroup](t *testing.T) {
+	const N = 3
+
+	ikm := [32]byte{}
+	_, _ = rand.Reader.Read(ikm[:])
+
+	msgs := make([][]byte, N)
+	sigs := make([]bls.Signature, N)
+	pubKeys := make([]*bls.PublicKey[K], N)
+
+	for i := range sigs {
+		priv, err := bls.KeyGen[K](ikm[:], nil, nil)
+		test.CheckNoErr(t, err, "failed to keygen")
+		pubKeys[i] = priv.PublicKey()
+
+		msgs[i] = []byte(fmt.Sprintf("Message number: %v", i))
+		sigs[i] = bls.Sign(priv, msgs[i])
+	}
+
+	aggSig, err := bls.Aggregate(*new(K), sigs)
+	test.CheckNoErr(t, err, "failed to aggregate")
+
+	ok := bls.VerifyAggregate(pubKeys, msgs, aggSig)
+	test.CheckOk(ok, "failed to verify aggregated signature", t)
+}
+
 func BenchmarkBls(b *testing.B) {
 	b.Run("G1", benchmarkBls[bls.G1])
 	b.Run("G2", benchmarkBls[bls.G2])
@@ -106,6 +135,18 @@ func benchmarkBls[K bls.KeyGroup](b *testing.B) {
 	_, _ = rand.Reader.Read(salt[:])
 
 	priv, _ := bls.KeyGen[K](ikm[:], salt[:], keyInfo)
+
+	const N = 3
+	msgs := make([][]byte, N)
+	sigs := make([]bls.Signature, N)
+	pubKeys := make([]*bls.PublicKey[K], N)
+
+	for i := range sigs {
+		pubKeys[i] = priv.PublicKey()
+
+		msgs[i] = []byte(fmt.Sprintf("Message number: %v", i))
+		sigs[i] = bls.Sign(priv, msgs[i])
+	}
 
 	b.Run("Keygen", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
@@ -127,6 +168,21 @@ func benchmarkBls[K bls.KeyGroup](b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			bls.Verify(pub, msg, signature)
+		}
+	})
+
+	b.Run("Aggregate3", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, _ = bls.Aggregate(*new(K), sigs)
+		}
+	})
+
+	b.Run("VerifyAggregate3", func(b *testing.B) {
+		aggSig, _ := bls.Aggregate(*new(K), sigs)
+
+		b.ResetTimer()
+		for i := 0; i < b.N; i++ {
+			_ = bls.VerifyAggregate(pubKeys, msgs, aggSig)
 		}
 	})
 }
