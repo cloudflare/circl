@@ -5,7 +5,6 @@ import (
 	"crypto"
 	"crypto/sha256"
 	"encoding/binary"
-	"encoding/hex"
 	"errors"
 	"io"
 
@@ -183,15 +182,15 @@ func KeyGen[K KeyGroup](ikm, salt, keyInfo []byte) (*PrivateKey[K], error) {
 func Sign[K KeyGroup](k *PrivateKey[K], msg []byte) Signature {
 	switch (interface{})(k).(type) {
 	case *PrivateKey[G1]:
-		var Q G2
-		Q.hash(msg)
-		Q.g.ScalarMult(&k.key, &Q.g)
-		return Q.g.BytesCompressed()
+		var Q GG.G2
+		Q.Hash(msg, []byte(dstG2))
+		Q.ScalarMult(&k.key, &Q)
+		return Q.BytesCompressed()
 	case *PrivateKey[G2]:
-		var Q G1
-		Q.hash(msg)
-		Q.g.ScalarMult(&k.key, &Q.g)
-		return Q.g.BytesCompressed()
+		var Q GG.G1
+		Q.Hash(msg, []byte(dstG1))
+		Q.ScalarMult(&k.key, &Q)
+		return Q.BytesCompressed()
 	default:
 		panic(ErrInvalid)
 	}
@@ -237,60 +236,92 @@ func Verify[K KeyGroup](pub *PublicKey[K], msg []byte, sig Signature) bool {
 	return res.IsIdentity()
 }
 
-func Aggregate[K KeyGroup](sigs []Signature) (Signature, error) {
+func Aggregate[K KeyGroup](k K, sigs []Signature) (Signature, error) {
 	if len(sigs) == 0 {
 		return nil, ErrAggregate
 	}
 
-	return nil, nil
-	// switch (interface{})(Aggregate[K]).(type) {
-	// case *func([]Signature) (Signature, error):
-	// 	var P, Q GG.G2
-	// 	P.SetIdentity()
-	// 	for _, sig := range sigs {
-	// 		if err := Q.SetBytes(sig); err != nil {
-	// 			return nil, err
-	// 		}
-	// 		P.Add(&P, &Q)
-	// 	}
-	// 	return P.BytesCompressed(), nil
-
-	// case *func([]Signature) (Signature, error):
-	// 	var P, Q GG.G1
-	// 	P.SetIdentity()
-	// 	for _, sig := range sigs {
-	// 		if err := Q.SetBytes(sig); err != nil {
-	// 			return nil, err
-	// 		}
-	// 		P.Add(&P, &Q)
-	// 	}
-	// 	return P.BytesCompressed(), nil
-
-	// default:
-	// 	panic(ErrInvalid)
-	// }
-}
-
-func VerifyAggregate[K KeyGroup](pubs []PublicKey[K], msgs [][]byte, sig Signature) bool {
-	if len(pubs) != len(msgs) || len(pubs) == 0 || len(msgs) == 0 {
-		return false
-	}
-
-	setMsgs := make(map[string][]PublicKey[K], len(pubs))
-	switch (interface{})(pubs).(type) {
-	case []PublicKey[G1]:
-		for i := range msgs {
-			s := hex.EncodeToString(msgs[i])
-			setMsgs[s] = append(setMsgs[s], pubs[i])
+	switch (interface{})(k).(type) {
+	case G1:
+		var P, Q GG.G2
+		P.SetIdentity()
+		for _, sig := range sigs {
+			if err := Q.SetBytes(sig); err != nil {
+				return nil, err
+			}
+			P.Add(&P, &Q)
 		}
-		return false
+		return P.BytesCompressed(), nil
 
-	case []PublicKey[G2]:
-		return false
+	case G2:
+		var P, Q GG.G1
+		P.SetIdentity()
+		for _, sig := range sigs {
+			if err := Q.SetBytes(sig); err != nil {
+				return nil, err
+			}
+			P.Add(&P, &Q)
+		}
+		return P.BytesCompressed(), nil
 
 	default:
 		panic(ErrInvalid)
 	}
+}
+
+func VerifyAggregate[K KeyGroup](pubs []*PublicKey[K], msgs [][]byte, aggSig Signature) bool {
+	if len(pubs) != len(msgs) || len(pubs) == 0 || len(msgs) == 0 {
+		return false
+	}
+
+	n := len(pubs)
+	listG1 := make([]*GG.G1, n+1)
+	listG2 := make([]*GG.G2, n+1)
+	listExp := make([]int, n+1)
+
+	switch (interface{})(pubs).(type) {
+	case []*PublicKey[G1]:
+		for i := range msgs {
+			listG2[i] = new(GG.G2)
+			listG2[i].Hash(msgs[i], []byte(dstG2))
+
+			xP := (interface{})(pubs[i].key).(G1)
+			listG1[i] = &xP.g
+			listExp[i] = 1
+		}
+
+		listG2[n] = new(GG.G2)
+		err := listG2[n].SetBytes(aggSig)
+		if err != nil {
+			return false
+		}
+		listG1[n] = GG.G1Generator()
+		listExp[n] = -1
+
+	case []*PublicKey[G2]:
+		for i := range msgs {
+			listG1[i] = new(GG.G1)
+			listG1[i].Hash(msgs[i], []byte(dstG1))
+
+			xP := (interface{})(pubs[i].key).(G2)
+			listG2[i] = &xP.g
+			listExp[i] = 1
+		}
+
+		listG1[n] = new(GG.G1)
+		err := listG1[n].SetBytes(aggSig)
+		if err != nil {
+			return false
+		}
+		listG2[n] = GG.G2Generator()
+		listExp[n] = -1
+
+	default:
+		panic(ErrInvalid)
+	}
+
+	C := GG.ProdPairFrac(listG1, listG2, listExp)
+	return C.IsIdentity()
 }
 
 var (
