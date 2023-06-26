@@ -3,6 +3,7 @@ package bls_test
 import (
 	"bytes"
 	"crypto/rand"
+	"crypto/rsa"
 	"encoding"
 	"fmt"
 	"testing"
@@ -80,6 +81,9 @@ func testMarshal[K bls.KeyGroup](
 	if !bytes.Equal(got, want) {
 		test.ReportError(t, got, want)
 	}
+
+	err = right.UnmarshalBinary(nil)
+	test.CheckIsErr(t, err, "should fail: empty input")
 }
 
 func testErrors[K bls.KeyGroup](t *testing.T) {
@@ -93,6 +97,33 @@ func testErrors[K bls.KeyGroup](t *testing.T) {
 	test.CheckNoErr(t, err, "failed to keygen")
 	pub := priv.PublicKey()
 	test.CheckOk(bls.Verify(pub, nil, nil) == false, "should fail: bad signature", t)
+
+	// Bad public key
+	msg := []byte("hello")
+	sig := bls.Sign[K](priv, msg)
+	pub = new(bls.PublicKey[K])
+	test.CheckOk(pub.Validate() == false, "should fail: bad public key", t)
+	test.CheckOk(bls.Verify(pub, msg, sig) == false, "should fail: bad signature", t)
+
+	// Bad private key
+	priv = new(bls.PrivateKey[K])
+	test.CheckOk(priv.Validate() == false, "should fail: bad private key", t)
+	err = test.CheckPanic(func() { bls.Sign(priv, msg) })
+	test.CheckNoErr(t, err, "sign should panic")
+
+	// Wrong comparisons
+	test.CheckOk(priv.Equal(new(rsa.PrivateKey)) == false, "should fail: bad private key types", t)
+	test.CheckOk(pub.Equal(new(rsa.PublicKey)) == false, "should fail: bad public key types", t)
+
+	// Aggregate nil
+	_, err = bls.Aggregate[K](*new(K), nil)
+	test.CheckIsErr(t, err, "should fail: empty signatures")
+
+	// VerifyAggregate nil
+	test.CheckOk(bls.VerifyAggregate([]*bls.PublicKey[K]{}, nil, nil) == false, "should fail: empty keys", t)
+
+	// VerifyAggregate empty signature
+	test.CheckOk(bls.VerifyAggregate([]*bls.PublicKey[K]{pub}, [][]byte{msg}, nil) == false, "should fail: empty signature", t)
 }
 
 func testAggregation[K bls.KeyGroup](t *testing.T) {
