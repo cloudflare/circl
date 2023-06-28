@@ -183,7 +183,7 @@ func generatePBRSATestVector(t *testing.T, msg, metadata []byte) rawPBRSATestVec
 	}
 
 	publicKey := keys.NewBigPublicKey(&key.PublicKey)
-	metadataKey := augmentPublicKey(hash, publicKey, metadata)
+	metadataKey := derivePublicKey(hash, publicKey, metadata)
 
 	blindedMsg, state, err := verifier.Blind(rand.Reader, msg, metadata)
 	if err != nil {

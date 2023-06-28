@@ -50,14 +50,14 @@ func NewVerifier(pk *rsa.PublicKey, hash crypto.Hash) Verifier {
 	}
 }
 
-// augmentPublicKey tweaks the public key based on the input metadata.
+// derivePublicKey tweaks the public key based on the input metadata.
 //
 // See the specification for more details:
 // https://datatracker.ietf.org/doc/html/draft-amjad-cfrg-partially-blind-rsa-00#name-public-key-augmentation
 //
 // See the following issue for more discussion on HKDF vs hash-to-field:
 // https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/issues/202
-func augmentPublicKey(h crypto.Hash, pk *keys.BigPublicKey, metadata []byte) *keys.BigPublicKey {
+func derivePublicKey(h crypto.Hash, pk *keys.BigPublicKey, metadata []byte) *keys.BigPublicKey {
 	// expandLen = ceil((ceil(log2(\lambda)/2) + k) / 8), where k is the security parameter of the suite (e.g., k = 128).
 	// We stretch the input metadata beyond \lambda bits s.t. the output bytes are indifferentiable from truly random bytes
 	lambda := pk.N.BitLen() / 2
@@ -77,24 +77,23 @@ func augmentPublicKey(h crypto.Hash, pk *keys.BigPublicKey, metadata []byte) *ke
 	// H_MD(D) = 1 || G(x), where G(x) is output of length \lambda-2 bits
 	// We do this by sampling \lambda bits, clearing the top two bits (so the output is \lambda-2 bits)
 	// and setting the bottom bit (so the result is odd).
-	hmd := new(big.Int).SetBytes(bytes[:lambda/8])
-	hmd.SetBit(hmd, 0, 1)
-	hmd.SetBit(hmd, lambda-1, 0)
-	hmd.SetBit(hmd, lambda-2, 0)
+	newE := new(big.Int).SetBytes(bytes[:lambda/8])
+	newE.SetBit(newE, 0, 1)
+	newE.SetBit(newE, lambda-1, 0)
+	newE.SetBit(newE, lambda-2, 0)
 
 	// Compute e_MD = e * H_MD(D)
-	newE := new(big.Int).Mul(hmd, pk.E)
 	return &keys.BigPublicKey{
 		N: pk.N,
 		E: newE,
 	}
 }
 
-// augmentPrivateKey tweaks the private key using the metadata as input.
+// deriveKeyPair tweaks the private key using the metadata as input.
 //
 // See the specification for more details:
 // https://datatracker.ietf.org/doc/html/draft-amjad-cfrg-partially-blind-rsa-00#name-private-key-augmentation
-func augmentPrivateKey(h crypto.Hash, sk *keys.BigPrivateKey, metadata []byte) *keys.BigPrivateKey {
+func deriveKeyPair(h crypto.Hash, sk *keys.BigPrivateKey, metadata []byte) *keys.BigPrivateKey {
 	// pih(N) = (p-1)(q-1)
 	pm1 := new(big.Int).Set(sk.P)
 	pm1.Sub(pm1, new(big.Int).SetInt64(int64(1)))
@@ -103,7 +102,7 @@ func augmentPrivateKey(h crypto.Hash, sk *keys.BigPrivateKey, metadata []byte) *
 	phi := new(big.Int).Mul(pm1, qm1)
 
 	// d = e^-1 mod phi(N)
-	pk := augmentPublicKey(h, sk.Pk, metadata)
+	pk := derivePublicKey(h, sk.Pk, metadata)
 	bigE := new(big.Int).Mod(pk.E, phi)
 	d := new(big.Int).ModInverse(bigE, phi)
 	return &keys.BigPrivateKey{
@@ -179,7 +178,7 @@ func (v randomizedVerifier) Blind(random io.Reader, message, metadata []byte) ([
 		return nil, VerifierState{}, err
 	}
 
-	metadataKey := augmentPublicKey(v.cryptoHash, v.pk, metadata)
+	metadataKey := derivePublicKey(v.cryptoHash, v.pk, metadata)
 	inputMsg := encodeMessageMetadata(message, metadata)
 	return fixedPartiallyBlind(inputMsg, salt, r, rInv, metadataKey, v.hash)
 }
@@ -190,7 +189,7 @@ func (v randomizedVerifier) Blind(random io.Reader, message, metadata []byte) ([
 // See the specification for more details:
 // https://datatracker.ietf.org/doc/html/draft-amjad-cfrg-partially-blind-rsa-00#name-verification-2
 func (v randomizedVerifier) Verify(message, metadata, signature []byte) error {
-	metadataKey := augmentPublicKey(v.cryptoHash, v.pk, metadata)
+	metadataKey := derivePublicKey(v.cryptoHash, v.pk, metadata)
 	inputMsg := encodeMessageMetadata(message, metadata)
 	return common.VerifyMessageSignature(inputMsg, signature, v.hash.Size(), metadataKey, v.cryptoHash)
 }
@@ -303,7 +302,7 @@ func (signer Signer) BlindSign(data, metadata []byte) ([]byte, error) {
 		return nil, common.ErrInvalidMessageLength
 	}
 
-	skPrime := augmentPrivateKey(signer.h, signer.sk, metadata)
+	skPrime := deriveKeyPair(signer.h, signer.sk, metadata)
 
 	s, err := common.DecryptAndCheck(rand.Reader, skPrime, m)
 	if err != nil {
