@@ -1,6 +1,7 @@
 package partiallyblindrsa
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -114,14 +115,13 @@ func TestPBRSARoundTrip(t *testing.T) {
 
 type encodedPBRSATestVector struct {
 	Message   string `json:"msg"`
-	Metadata  string `json:"metadata"`
+	Info      string `json:"info"`
 	P         string `json:"p"`
 	Q         string `json:"q"`
 	D         string `json:"d"`
 	E         string `json:"e"`
 	N         string `json:"N"`
 	Eprime    string `json:"eprime"`
-	Rand      string `json:"rand"`
 	Blind     string `json:"blind"`
 	Salt      string `json:"salt"`
 	Request   string `json:"blinded_msg"`
@@ -130,16 +130,15 @@ type encodedPBRSATestVector struct {
 }
 
 type rawPBRSATestVector struct {
-	privateKey  *rsa.PrivateKey
-	message     []byte
-	metadata    []byte
-	metadataKey []byte
-	rand        []byte
-	blind       []byte
-	salt        []byte
-	request     []byte
-	response    []byte
-	signature   []byte
+	privateKey *rsa.PrivateKey
+	message    []byte
+	info       []byte
+	infoKey    []byte
+	blind      []byte
+	salt       []byte
+	request    []byte
+	response   []byte
+	signature  []byte
 }
 
 func mustHex(d []byte) string {
@@ -153,7 +152,7 @@ func (tv rawPBRSATestVector) MarshalJSON() ([]byte, error) {
 	e := new(big.Int).SetInt64(int64(tv.privateKey.PublicKey.E))
 	eEnc := mustHex(e.Bytes())
 	dEnc := mustHex(tv.privateKey.D.Bytes())
-	ePrimeEnc := mustHex(tv.metadataKey)
+	ePrimeEnc := mustHex(tv.infoKey)
 	return json.Marshal(encodedPBRSATestVector{
 		P:         pEnc,
 		Q:         qEnc,
@@ -162,8 +161,7 @@ func (tv rawPBRSATestVector) MarshalJSON() ([]byte, error) {
 		N:         nEnc,
 		Eprime:    ePrimeEnc,
 		Message:   mustHex(tv.message),
-		Metadata:  mustHex(tv.metadata),
-		Rand:      mustHex(tv.rand),
+		Info:      mustHex(tv.info),
 		Blind:     mustHex(tv.blind),
 		Salt:      mustHex(tv.salt),
 		Request:   mustHex(tv.request),
@@ -206,15 +204,58 @@ func generatePBRSATestVector(t *testing.T, msg, metadata []byte) rawPBRSATestVec
 	}
 
 	return rawPBRSATestVector{
-		message:     msg,
-		metadata:    metadata,
-		privateKey:  key,
-		metadataKey: metadataKey.Marshal(),
-		salt:        state.CopySalt(),
-		blind:       state.CopyBlind(),
-		request:     blindedMsg,
-		response:    blindedSig,
-		signature:   sig,
+		message:    msg,
+		info:       metadata,
+		privateKey: key,
+		infoKey:    metadataKey.Marshal(),
+		salt:       state.CopySalt(),
+		blind:      state.CopyBlind(),
+		request:    blindedMsg,
+		response:   blindedSig,
+		signature:  sig,
+	}
+}
+
+func verifyTestVector(t *testing.T, vector rawPBRSATestVector) {
+	key := loadStrongRSAKey()
+
+	key.PublicKey.N = vector.privateKey.N
+	key.PublicKey.E = vector.privateKey.E
+	key.D = vector.privateKey.D
+	key.Primes[0] = vector.privateKey.Primes[0]
+	key.Primes[1] = vector.privateKey.Primes[1]
+	key.Precomputed.Dp = nil // Remove precomputed CRT values
+
+	hash := crypto.SHA384
+	signer, err := NewSigner(key, hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+	verifier := NewVerifier(&key.PublicKey, crypto.SHA384)
+
+	r := new(big.Int).SetBytes(vector.blind)
+	rInv := new(big.Int).ModInverse(r, key.N)
+	if r == nil {
+		t.Fatal("Failed to compute blind inverse")
+	}
+
+	blindedMsg, state, err := verifier.FixedBlind(vector.message, vector.info, vector.salt, r.Bytes(), rInv.Bytes())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	blindSig, err := signer.BlindSign(blindedMsg, vector.info)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sig, err := state.Finalize(blindSig)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !bytes.Equal(sig, vector.signature) {
+		t.Errorf("Signature mismatch: expected %x, got %x", sig, vector.signature)
 	}
 }
 
@@ -246,14 +287,15 @@ func TestPBRSAGenerateTestVector(t *testing.T) {
 		vectors = append(vectors, generatePBRSATestVector(t, testCase.msg, testCase.metadata))
 	}
 
+	for _, vector := range vectors {
+		verifyTestVector(t, vector)
+	}
+
 	// Encode the test vectors
 	encoded, err := json.Marshal(vectors)
 	if err != nil {
 		t.Fatalf("Error producing test vectors: %v", err)
 	}
-
-	// TODO(caw): verify that we process them correctly
-	// verifyPBRSATestVectors(t, encoded)
 
 	var outputFile string
 	if outputFile = os.Getenv(pbrsaTestVectorOutEnvironmentKey); len(outputFile) > 0 {

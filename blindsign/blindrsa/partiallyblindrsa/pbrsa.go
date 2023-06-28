@@ -143,10 +143,13 @@ func fixedPartiallyBlind(message, salt []byte, r, rInv *big.Int, pk *keys.BigPub
 // Verifier is a type that implements the client side of the partially blind RSA
 // protocol, described in https://datatracker.ietf.org/doc/html/draft-amjad-cfrg-partially-blind-rsa-00
 type Verifier interface {
-	// Blind initializes the blind RSA protocol using an input message and source of randomness. The
-	// signature includes a randomly generated PSS salt whose length equals the size of the underlying
-	// hash function. This function fails if randomness was not provided.
+	// Blind initializes the partially blind RSA protocol using an input message and source of
+	// randomness. The signature includes a randomly generated PSS salt whose length equals the
+	// size of the underlying hash function. This function fails if randomness was not provided.
 	Blind(random io.Reader, message, metadata []byte) ([]byte, VerifierState, error)
+
+	// FixedBlind initializes the partially blind RSA protocol using an input message, metadata, and randomness values.
+	FixedBlind(message, metadata, salt, blind, blindInv []byte) ([]byte, VerifierState, error)
 
 	// Verify verifies the input (message, signature) pair using the augmented public key
 	// and produces an error upon failure.
@@ -156,7 +159,7 @@ type Verifier interface {
 	Hash() hash.Hash
 }
 
-// Blind initializes the blind RSA protocol using an input message and source of randomness. The
+// Blind initializes the partially blind RSA protocol using an input message and source of randomness. The
 // signature includes a randomly generated PSS salt whose length equals the size of the underlying
 // hash function. This function fails if randomness was not provided.
 //
@@ -178,6 +181,13 @@ func (v randomizedVerifier) Blind(random io.Reader, message, metadata []byte) ([
 		return nil, VerifierState{}, err
 	}
 
+	return v.FixedBlind(message, metadata, salt, r.Bytes(), rInv.Bytes())
+}
+
+// FixedBlind initializes the partially blind RSA using fixed randomness as input.
+func (v randomizedVerifier) FixedBlind(message, metadata, salt, blind, blindInv []byte) ([]byte, VerifierState, error) {
+	r := new(big.Int).SetBytes(blind)
+	rInv := new(big.Int).SetBytes(blindInv)
 	metadataKey := derivePublicKey(v.cryptoHash, v.pk, metadata)
 	inputMsg := encodeMessageMetadata(message, metadata)
 	return fixedPartiallyBlind(inputMsg, salt, r, rInv, metadataKey, v.hash)
