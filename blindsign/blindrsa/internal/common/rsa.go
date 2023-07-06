@@ -26,15 +26,16 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package blindrsa
+package common
 
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"errors"
 	"hash"
 	"io"
 	"math/big"
+
+	"github.com/cloudflare/circl/blindsign/blindrsa/internal/keys"
 )
 
 var (
@@ -77,21 +78,20 @@ func mgf1XOR(out []byte, hash hash.Hash, seed []byte) {
 	}
 }
 
-func encrypt(c *big.Int, pub *rsa.PublicKey, m *big.Int) *big.Int {
-	e := big.NewInt(int64(pub.E))
-	c.Exp(m, e, pub.N)
+func encrypt(c *big.Int, N *big.Int, e *big.Int, m *big.Int) *big.Int {
+	c.Exp(m, e, N)
 	return c
 }
 
 // decrypt performs an RSA decryption, resulting in a plaintext integer. If a
 // random source is given, RSA blinding is used.
-func decrypt(random io.Reader, priv *rsa.PrivateKey, c *big.Int) (m *big.Int, err error) {
+func decrypt(random io.Reader, priv *keys.BigPrivateKey, c *big.Int) (m *big.Int, err error) {
 	// TODO(agl): can we get away with reusing blinds?
-	if c.Cmp(priv.N) > 0 {
+	if c.Cmp(priv.Pk.N) > 0 {
 		err = rsa.ErrDecryption
 		return
 	}
-	if priv.N.Sign() == 0 {
+	if priv.Pk.N.Sign() == 0 {
 		return nil, rsa.ErrDecryption
 	}
 
@@ -105,75 +105,32 @@ func decrypt(random io.Reader, priv *rsa.PrivateKey, c *big.Int) (m *big.Int, er
 		var r *big.Int
 		ir = new(big.Int)
 		for {
-			r, err = rand.Int(random, priv.N)
+			r, err = rand.Int(random, priv.Pk.N)
 			if err != nil {
 				return
 			}
 			if r.Cmp(bigZero) == 0 {
 				r = bigOne
 			}
-			ok := ir.ModInverse(r, priv.N)
+			ok := ir.ModInverse(r, priv.Pk.N)
 			if ok != nil {
 				break
 			}
 		}
-		bigE := big.NewInt(int64(priv.E))
-		rpowe := new(big.Int).Exp(r, bigE, priv.N) // N != 0
+		rpowe := new(big.Int).Exp(r, priv.Pk.E, priv.Pk.N) // N != 0
 		cCopy := new(big.Int).Set(c)
 		cCopy.Mul(cCopy, rpowe)
-		cCopy.Mod(cCopy, priv.N)
+		cCopy.Mod(cCopy, priv.Pk.N)
 		c = cCopy
 	}
 
-	if priv.Precomputed.Dp == nil {
-		m = new(big.Int).Exp(c, priv.D, priv.N)
-	} else {
-		// We have the precalculated values needed for the CRT.
-		m = new(big.Int).Exp(c, priv.Precomputed.Dp, priv.Primes[0])
-		m2 := new(big.Int).Exp(c, priv.Precomputed.Dq, priv.Primes[1])
-		m.Sub(m, m2)
-		if m.Sign() < 0 {
-			m.Add(m, priv.Primes[0])
-		}
-		m.Mul(m, priv.Precomputed.Qinv)
-		m.Mod(m, priv.Primes[0])
-		m.Mul(m, priv.Primes[1])
-		m.Add(m, m2)
-
-		for i, values := range priv.Precomputed.CRTValues {
-			prime := priv.Primes[2+i]
-			m2.Exp(c, values.Exp, prime)
-			m2.Sub(m2, m)
-			m2.Mul(m2, values.Coeff)
-			m2.Mod(m2, prime)
-			if m2.Sign() < 0 {
-				m2.Add(m2, prime)
-			}
-			m2.Mul(m2, values.R)
-			m.Add(m, m2)
-		}
-	}
+	m = new(big.Int).Exp(c, priv.D, priv.Pk.N)
 
 	if ir != nil {
 		// Unblind.
 		m.Mul(m, ir)
-		m.Mod(m, priv.N)
+		m.Mod(m, priv.Pk.N)
 	}
 
-	return m, nil
-}
-
-func decryptAndCheck(random io.Reader, priv *rsa.PrivateKey, c *big.Int) (m *big.Int, err error) {
-	m, err = decrypt(random, priv, c)
-	if err != nil {
-		return nil, err
-	}
-
-	// In order to defend against errors in the CRT computation, m^e is
-	// calculated, which should match the original ciphertext.
-	check := encrypt(new(big.Int), &priv.PublicKey, m)
-	if c.Cmp(check) != 0 {
-		return nil, errors.New("rsa: internal error")
-	}
 	return m, nil
 }
