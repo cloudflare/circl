@@ -22,7 +22,7 @@
 //
 // # References
 //
-// [1] https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/
+// [1] https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-05
 //
 // [2] https://github.com/zkcrypto/bls12_381/blob/0.7.0/src/notes/serialization.rs
 package bls
@@ -88,12 +88,12 @@ func (k *PrivateKey[K]) Public() crypto.PublicKey { return k.PublicKey() }
 func (k *PrivateKey[K]) PublicKey() *PublicKey[K] {
 	if k.pub == nil {
 		k.pub = new(PublicKey[K])
-		switch (interface{})(k).(type) {
+		switch any(k).(type) {
 		case *PrivateKey[G1]:
-			kk := (interface{})(&k.pub.key).(*G1)
+			kk := any(&k.pub.key).(*G1)
 			kk.g.ScalarMult(&k.key, GG.G1Generator())
 		case *PrivateKey[G2]:
-			kk := (interface{})(&k.pub.key).(*G2)
+			kk := any(&k.pub.key).(*G2)
 			kk.g.ScalarMult(&k.key, GG.G2Generator())
 		default:
 			panic(ErrInvalid)
@@ -109,7 +109,7 @@ func (k *PrivateKey[K]) Equal(x crypto.PrivateKey) bool {
 		return false
 	}
 
-	switch (interface{})(k).(type) {
+	switch any(k).(type) {
 	case *PrivateKey[G1], *PrivateKey[G2]:
 		return k.key.IsEqual(&xx.key) == 1
 	default:
@@ -119,7 +119,7 @@ func (k *PrivateKey[K]) Equal(x crypto.PrivateKey) bool {
 
 // Validate explicitly determines if a private key is valid.
 func (k *PrivateKey[K]) Validate() bool {
-	switch (interface{})(k).(type) {
+	switch any(k).(type) {
 	case *PrivateKey[G1], *PrivateKey[G2]:
 		return k.key.IsZero() == 0
 	default:
@@ -130,7 +130,7 @@ func (k *PrivateKey[K]) Validate() bool {
 // MarshalBinary returns a slice with the representation of
 // the underlying PrivateKey scalar (in big-endian order).
 func (k *PrivateKey[K]) MarshalBinary() ([]byte, error) {
-	switch (interface{})(k).(type) {
+	switch any(k).(type) {
 	case *PrivateKey[G1], *PrivateKey[G2]:
 		return k.key.MarshalBinary()
 	default:
@@ -139,7 +139,7 @@ func (k *PrivateKey[K]) MarshalBinary() ([]byte, error) {
 }
 
 func (k *PrivateKey[K]) UnmarshalBinary(data []byte) error {
-	switch (interface{})(k).(type) {
+	switch any(k).(type) {
 	case *PrivateKey[G1], *PrivateKey[G2]:
 		if err := k.key.UnmarshalBinary(data); err != nil {
 			return err
@@ -156,12 +156,12 @@ func (k *PrivateKey[K]) UnmarshalBinary(data []byte) error {
 
 // Validate explicitly determines if a public key is valid.
 func (k *PublicKey[K]) Validate() bool {
-	switch (interface{})(k).(type) {
+	switch any(k).(type) {
 	case *PublicKey[G1]:
-		kk := (interface{})(k.key).(G1)
+		kk := any(k.key).(G1)
 		return !kk.g.IsIdentity() && kk.g.IsOnG1()
 	case *PublicKey[G2]:
-		kk := (interface{})(k.key).(G2)
+		kk := any(k.key).(G2)
 		return !kk.g.IsIdentity() && kk.g.IsOnG2()
 	default:
 		panic(ErrInvalid)
@@ -174,14 +174,14 @@ func (k *PublicKey[K]) Equal(x crypto.PublicKey) bool {
 		return false
 	}
 
-	switch (interface{})(k).(type) {
+	switch any(k).(type) {
 	case *PublicKey[G1]:
-		xxx := (interface{})(xx.key).(G1)
-		kk := (interface{})(k.key).(G1)
+		xxx := any(xx.key).(G1)
+		kk := any(k.key).(G1)
 		return kk.g.IsEqual(&xxx.g)
 	case *PublicKey[G2]:
-		xxx := (interface{})(xx.key).(G2)
-		kk := (interface{})(k.key).(G2)
+		xxx := any(xx.key).(G2)
+		kk := any(k.key).(G2)
 		return kk.g.IsEqual(&xxx.g)
 	default:
 		panic(ErrInvalid)
@@ -191,12 +191,12 @@ func (k *PublicKey[K]) Equal(x crypto.PublicKey) bool {
 // MarshalBinary returns a slice with the compressed
 // representation of the underlying element in G1 or G2.
 func (k *PublicKey[K]) MarshalBinary() ([]byte, error) {
-	switch (interface{})(k).(type) {
+	switch any(k).(type) {
 	case *PublicKey[G1]:
-		kk := (interface{})(k.key).(G1)
+		kk := any(k.key).(G1)
 		return kk.g.BytesCompressed(), nil
 	case *PublicKey[G2]:
-		kk := (interface{})(k.key).(G2)
+		kk := any(k.key).(G2)
 		return kk.g.BytesCompressed(), nil
 	default:
 		panic(ErrInvalid)
@@ -204,12 +204,12 @@ func (k *PublicKey[K]) MarshalBinary() ([]byte, error) {
 }
 
 func (k *PublicKey[K]) UnmarshalBinary(data []byte) error {
-	switch (interface{})(k).(type) {
+	switch any(k).(type) {
 	case *PublicKey[G1]:
-		kk := (interface{})(&k.key).(*G1)
+		kk := any(&k.key).(*G1)
 		return kk.setBytes(data)
 	case *PublicKey[G2]:
-		kk := (interface{})(&k.key).(*G2)
+		kk := any(&k.key).(*G2)
 		return kk.setBytes(data)
 	default:
 		panic(ErrInvalid)
@@ -263,7 +263,7 @@ func Sign[K KeyGroup](k *PrivateKey[K], msg []byte) Signature {
 		panic(ErrInvalidKey)
 	}
 
-	switch (interface{})(k).(type) {
+	switch any(k).(type) {
 	case *PrivateKey[G1]:
 		var Q GG.G2
 		Q.Hash(msg, []byte(dstG2))
@@ -291,17 +291,17 @@ func Verify[K KeyGroup](pub *PublicKey[K], msg []byte, sig Signature) bool {
 		listG2 [2]*GG.G2
 	)
 
-	switch (interface{})(pub).(type) {
+	switch any(pub).(type) {
 	case *PublicKey[G1]:
 		aa, bb := new(G2), new(G2)
 		a, b = aa, bb
-		k := (interface{})(pub.key).(G1)
+		k := any(pub.key).(G1)
 		listG1[0], listG1[1] = &k.g, GG.G1Generator()
 		listG2[0], listG2[1] = &aa.g, &bb.g
 	case *PublicKey[G2]:
 		aa, bb := new(G1), new(G1)
 		a, b = aa, bb
-		k := (interface{})(pub.key).(G2)
+		k := any(pub.key).(G2)
 		listG2[0], listG2[1] = &k.g, GG.G2Generator()
 		listG1[0], listG1[1] = &aa.g, &bb.g
 	default:
@@ -329,7 +329,7 @@ func Aggregate[K KeyGroup](k K, sigs []Signature) (Signature, error) {
 		return nil, ErrAggregate
 	}
 
-	switch (interface{})(k).(type) {
+	switch any(k).(type) {
 	case G1:
 		var P, Q GG.G2
 		P.SetIdentity()
@@ -361,28 +361,34 @@ func Aggregate[K KeyGroup](k K, sigs []Signature) (Signature, error) {
 // the list of messages and public keys provided. The slices must have
 // equal size and have at least one element.
 func VerifyAggregate[K KeyGroup](pubs []*PublicKey[K], msgs [][]byte, aggSig Signature) bool {
-	if len(pubs) != len(msgs) || len(pubs) == 0 || len(msgs) == 0 {
+	if len(pubs) != len(msgs) || len(pubs) == 0 {
 		return false
+	}
+
+	for _, p := range pubs {
+		if !p.Validate() {
+			return false
+		}
 	}
 
 	n := len(pubs)
 	listG1 := make([]*GG.G1, n+1)
 	listG2 := make([]*GG.G2, n+1)
-	listExp := make([]int, n+1)
+	listSigns := make([]int, n+1)
 
 	listG1[n] = GG.G1Generator()
 	listG2[n] = GG.G2Generator()
-	listExp[n] = -1
+	listSigns[n] = -1
 
-	switch (interface{})(pubs).(type) {
+	switch any(pubs).(type) {
 	case []*PublicKey[G1]:
 		for i := range msgs {
 			listG2[i] = new(GG.G2)
 			listG2[i].Hash(msgs[i], []byte(dstG2))
 
-			xP := (interface{})(pubs[i].key).(G1)
+			xP := any(pubs[i].key).(G1)
 			listG1[i] = &xP.g
-			listExp[i] = 1
+			listSigns[i] = 1
 		}
 
 		err := listG2[n].SetBytes(aggSig)
@@ -395,9 +401,9 @@ func VerifyAggregate[K KeyGroup](pubs []*PublicKey[K], msgs [][]byte, aggSig Sig
 			listG1[i] = new(GG.G1)
 			listG1[i].Hash(msgs[i], []byte(dstG1))
 
-			xP := (interface{})(pubs[i].key).(G2)
+			xP := any(pubs[i].key).(G2)
 			listG2[i] = &xP.g
-			listExp[i] = 1
+			listSigns[i] = 1
 		}
 
 		err := listG1[n].SetBytes(aggSig)
@@ -409,6 +415,6 @@ func VerifyAggregate[K KeyGroup](pubs []*PublicKey[K], msgs [][]byte, aggSig Sig
 		panic(ErrInvalid)
 	}
 
-	C := GG.ProdPairFrac(listG1, listG2, listExp)
+	C := GG.ProdPairFrac(listG1, listG2, listSigns)
 	return C.IsIdentity()
 }
