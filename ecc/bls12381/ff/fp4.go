@@ -23,6 +23,8 @@ func (z *Fp4) IsEqual(x *Fp4) int {
 	return z[0].IsEqual(&x[0]) & z[1].IsEqual(&x[1])
 }
 
+func (z *Fp4) Cjg() { z[1].Neg() }
+
 func (z *Fp4) Neg() {
 	z[0].Neg()
 	z[1].Neg()

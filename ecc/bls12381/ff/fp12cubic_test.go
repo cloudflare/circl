@@ -17,7 +17,7 @@ func TestFP12CubicAdd(t *testing.T) {
 		yalt.FromFp12(y)
 		zalt.Add(&xalt, &yalt)
 		z.Add(x, y)
-		zcmp.FromFp12Alt(&zalt)
+		zcmp.FromFp12Cubic(&zalt)
 		if z.IsEqual(&zcmp) == 0 {
 			test.ReportError(t, z, zcmp, x, y)
 		}
@@ -35,7 +35,7 @@ func TestFP12CubicMul(t *testing.T) {
 		yalt.FromFp12(y)
 		zalt.Mul(&xalt, &yalt)
 		z.Mul(x, y)
-		zcmp.FromFp12Alt(&zalt)
+		zcmp.FromFp12Cubic(&zalt)
 		if z.IsEqual(&zcmp) == 0 {
 			test.ReportError(t, z, zcmp, x, y)
 		}
@@ -51,7 +51,7 @@ func TestFP12AltSqr(t *testing.T) {
 		xalt.FromFp12(x)
 		zalt.Sqr(&xalt)
 		z.Sqr(x)
-		zcmp.FromFp12Alt(&zalt)
+		zcmp.FromFp12Cubic(&zalt)
 		if z.IsEqual(&zcmp) == 0 {
 			test.ReportError(t, z, zcmp, x)
 		}

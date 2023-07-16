@@ -8,9 +8,44 @@ func (z Cyclo6) IsEqual(x *Cyclo6) int    { return (Fp12)(z).IsEqual((*Fp12)(x))
 func (z Cyclo6) IsIdentity() int          { i := &Fp12{}; i.SetOne(); return z.IsEqual((*Cyclo6)(i)) }
 func (z *Cyclo6) Frob(x *Cyclo6)          { (*Fp12)(z).Frob((*Fp12)(x)) }
 func (z *Cyclo6) Mul(x, y *Cyclo6)        { (*Fp12)(z).Mul((*Fp12)(x), (*Fp12)(y)) }
-func (z *Cyclo6) Sqr(x *Cyclo6)           { (*Fp12)(z).Sqr((*Fp12)(x)) }
 func (z *Cyclo6) Inv(x *Cyclo6)           { *z = *x; z[1].Neg() }
 func (z *Cyclo6) exp(x *Cyclo6, n []byte) { (*Fp12)(z).Exp((*Fp12)(x), n) }
+func (z *Cyclo6) Sqr(x *Cyclo6) {
+	// Method of Granger-Scott.
+	// Page 7 of "Faster Squaring in the Cyclotomic Subgroup of Sixth Degree Extensions"
+	// https://www.iacr.org/archive/pkc2010/60560212/60560212.pdf
+	var xx, zz Fp12Cubic
+	xx.FromFp12((*Fp12)(x))
+
+	a, b, c := &xx[0], &xx[1], &xx[2]
+	z0, z1, z2 := &zz[0], &zz[1], &zz[2]
+
+	var aa, bb, cc, tt Fp4
+	aa.Sqr(a)
+	bb.Sqr(b)
+	cc.Sqr(c)
+	cc.mulT(&cc)
+
+	z0.Add(&aa, &aa)
+	z0.Add(z0, &aa)
+	tt.Add(a, a)
+	tt.Cjg()
+	z0.Sub(z0, &tt)
+
+	z1.Add(&cc, &cc)
+	z1.Add(z1, &cc)
+	tt.Add(b, b)
+	tt.Cjg()
+	z1.Add(z1, &tt)
+
+	z2.Add(&bb, &bb)
+	z2.Add(z2, &bb)
+	tt.Add(c, c)
+	tt.Cjg()
+	z2.Sub(z2, &tt)
+
+	(*Fp12)(z).FromFp12Cubic(&zz)
+}
 
 // PowToX computes z = x^paramX, where paramX is the parameter of the BLS curve.
 func (z *Cyclo6) PowToX(x *Cyclo6) {
