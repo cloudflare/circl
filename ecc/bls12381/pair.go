@@ -32,7 +32,7 @@ func miller(f *ff.Fp12, P *G1, Q *G2) {
 			acc.MulLine(acc, g)
 		}
 	}
-	f.FromFp12Alt(acc)
+	f.FromFp12Cubic(acc)
 	f.Cjg() // inverts f as paramX is negative.
 }
 

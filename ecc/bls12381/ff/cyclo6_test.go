@@ -82,6 +82,19 @@ func TestCyclo6(t *testing.T) {
 			}
 		}
 	})
+	t.Run("sqr_sqrfasr", func(t *testing.T) {
+		var want, got Cyclo6
+		for i := 0; i < testTimes; i++ {
+			x := randomCyclo6(t)
+
+			// Specialized square in cyclotomic vs Generic Square in Fp12
+			got.Sqr(x)
+			(*Fp12)(&want).Sqr((*Fp12)(x))
+			if got.IsEqual(&want) == 0 {
+				test.ReportError(t, got, want, x)
+			}
+		}
+	})
 
 	t.Run("invFp12_vs_invCyclo6", func(t *testing.T) {
 		var want, got Fp12

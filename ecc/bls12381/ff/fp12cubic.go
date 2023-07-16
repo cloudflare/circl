@@ -29,7 +29,7 @@ func (z *Fp12Cubic) FromFp12(x *Fp12) {
 	z[2][1] = x[1][2] // w^5
 }
 
-func (z *Fp12) FromFp12Alt(x *Fp12Cubic) {
+func (z *Fp12) FromFp12Cubic(x *Fp12Cubic) {
 	z[0][0] = x[0][0] // w^0
 	z[1][0] = x[1][0] // w^1
 	z[0][1] = x[2][0] // w^2
