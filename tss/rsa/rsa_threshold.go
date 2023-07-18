@@ -19,12 +19,15 @@ import (
 	"math/big"
 
 	cmath "github.com/cloudflare/circl/math"
+	"github.com/cloudflare/circl/zk/qndleq"
 )
 
-// GenerateKey generates a RSA keypair for its use in RSA threshold signatures.
-// Internally, the modulus is the product of two safe primes. The time
-// consumed by this function is relatively longer than the regular
-// GenerateKey function from the crypto/rsa package.
+// GenerateKey generates an RSA keypair for its use in RSA threshold signatures.
+// Unlike crypto/rsa.GenerateKey, this function calculates the modulus as the
+// product of two safe primes. Note that the time consumed by this function is
+// relatively longer than the time of the crypto/rsa.GenerateKey function.
+//
+// Generate keys with this function to enable verifiability of signature shares.
 func GenerateKey(random io.Reader, bits int) (*rsa.PrivateKey, error) {
 	p, err := cmath.SafePrime(random, bits/2)
 	if err != nil {
@@ -85,9 +88,12 @@ func validateParams(players, threshold uint) error {
 	return nil
 }
 
-// Deal takes in an existing RSA private key generated elsewhere. If cache is true, cached values are stored in KeyShare taking up more memory by reducing Sign time.
-// See KeyShare documentation. Multi-prime RSA keys are unsupported.
-func Deal(randSource io.Reader, players, threshold uint, key *rsa.PrivateKey, cache bool) ([]KeyShare, error) {
+// Deal splits an RSA private key into key shares, so signing can be performed
+// from a threshold number of signatures shares.
+// When the modulus is the product of two safe primes, key shares include
+// keys for verification of signatures shares.
+// Note that multi-prime RSA keys are not supported.
+func Deal(randSource io.Reader, players, threshold uint, key *rsa.PrivateKey) ([]KeyShare, error) {
 	err := validateParams(players, threshold)
 
 	ONE := big.NewInt(1)
@@ -103,6 +109,7 @@ func Deal(randSource io.Reader, players, threshold uint, key *rsa.PrivateKey, ca
 	p := key.Primes[0]
 	q := key.Primes[1]
 	e := int64(key.E)
+	hasSafePrimes := cmath.IsSafePrime(p) && cmath.IsSafePrime(q)
 
 	// p = 2p' + 1
 	// q = 2q' + 1
@@ -143,6 +150,14 @@ func Deal(randSource io.Reader, players, threshold uint, key *rsa.PrivateKey, ca
 		}
 	}
 
+	var groupKey *big.Int
+	if hasSafePrimes {
+		groupKey, err = qndleq.SampleQn(randSource, key.N)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	shares := make([]KeyShare, players)
 
 	// 1 <= i <= l
@@ -150,11 +165,17 @@ func Deal(randSource io.Reader, players, threshold uint, key *rsa.PrivateKey, ca
 		shares[i-1].Players = players
 		shares[i-1].Threshold = threshold
 		// Σ^{k-1}_{i=0} | a_i * X^i (mod m)
-		poly := computePolynomial(threshold, a, i, &m)
-		shares[i-1].si = poly
+		si := computePolynomial(threshold, a, i, &m)
+		shares[i-1].si = si
 		shares[i-1].Index = i
-		if cache {
-			shares[i-1].get2DeltaSi(int64(players))
+		shares[i-1].get2DeltaSi(int64(players))
+
+		// If the modulus is composed by safe primes, verification keys are included.
+		if hasSafePrimes {
+			shares[i-1].vk = &VerifyKeys{
+				GroupKey:  groupKey,
+				VerifyKey: new(big.Int).Exp(groupKey, si, key.N),
+			}
 		}
 	}
 

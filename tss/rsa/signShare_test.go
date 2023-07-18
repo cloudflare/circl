@@ -75,7 +75,7 @@ func TestMarshallFullSignShare(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	keys, err := Deal(rand.Reader, players, threshold, key, false)
+	keys, err := Deal(rand.Reader, players, threshold, key)
 	if err != nil {
 		t.Fatal(err)
 	}

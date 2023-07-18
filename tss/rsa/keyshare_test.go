@@ -117,7 +117,7 @@ func TestMarshallKeyShare(t *testing.T) {
 
 	marshalTestKeyShare(KeyShare{
 		si:         big.NewInt(10),
-		twoDeltaSi: nil,
+		twoDeltaSi: big.NewInt(20),
 		Index:      30,
 		Threshold:  0,
 		Players:    200,
@@ -151,7 +151,7 @@ func TestMarshallKeyShareFull(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	keys, err := Deal(rand.Reader, players, threshold, key, false)
+	keys, err := Deal(rand.Reader, players, threshold, key)
 	if err != nil {
 		t.Fatal(err)
 	}

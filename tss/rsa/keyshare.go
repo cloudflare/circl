@@ -10,17 +10,35 @@ import (
 	"math"
 	"math/big"
 	"sync"
+
+	"github.com/cloudflare/circl/zk/qndleq"
 )
+
+// VerifyKeys contains keys used to verify whether a signature share
+// was computed using the signer's key share.
+type VerifyKeys struct {
+	// This key is common to the group of signers.
+	GroupKey *big.Int
+	// This key is the (public) key associated with the (private) key share.
+	VerifyKey *big.Int
+}
 
 // KeyShare represents a portion of the key. It can only be used to generate SignShare's. During the dealing phase (when Deal is called), one KeyShare is generated per player.
 type KeyShare struct {
 	si *big.Int
 
-	twoDeltaSi *big.Int // optional cached value, this value is used to marginally speed up SignShare generation in Sign. If nil, it will be generated when needed and then cached.
+	twoDeltaSi *big.Int // this value is used to marginally speed up SignShare generation in Sign.
 	Index      uint     // When KeyShare's are generated they are each assigned an index sequentially
 
 	Players   uint
 	Threshold uint
+
+	// It stores keys to produce verifiable signature shares.
+	// If it's nil, signature shares are still produced but
+	// they are not verifiable.
+	// This field is present only if the RSA private key is
+	// composed of two safe primes.
+	vk *VerifyKeys
 }
 
 func (kshare KeyShare) String() string {
@@ -51,11 +69,7 @@ func (kshare *KeyShare) MarshalBinary() ([]byte, error) {
 	threshold := uint16(kshare.Threshold)
 	index := uint16(kshare.Index)
 
-	twoDeltaSiBytes := []byte(nil)
-	if kshare.twoDeltaSi != nil {
-		twoDeltaSiBytes = kshare.twoDeltaSi.Bytes()
-	}
-
+	twoDeltaSiBytes := kshare.twoDeltaSi.Bytes()
 	twoDeltaSiLen := len(twoDeltaSiBytes)
 
 	if twoDeltaSiLen > math.MaxInt16 {
@@ -86,15 +100,11 @@ func (kshare *KeyShare) MarshalBinary() ([]byte, error) {
 
 	copy(out[8:8+siLength], siBytes)
 
-	if twoDeltaSiBytes != nil {
-		out[8+siLength] = 1 // twoDeltaSiNil
-	}
+	out[8+siLength] = 1 // twoDeltaSiNil
 
 	binary.BigEndian.PutUint16(out[8+siLength+1:8+siLength+3], uint16(twoDeltaSiLen))
 
-	if twoDeltaSiBytes != nil {
-		copy(out[8+siLength+3:8+siLength+3+twoDeltaSiLen], twoDeltaSiBytes)
-	}
+	copy(out[8+siLength+3:8+siLength+3+twoDeltaSiLen], twoDeltaSiBytes)
 
 	return out, nil
 }
@@ -132,23 +142,17 @@ func (kshare *KeyShare) UnmarshalBinary(data []byte) error {
 		return fmt.Errorf("rsa_threshold: keyshare unmarshalKeyShareTest failed: data length was too short for reading twoDeltaSiNil")
 	}
 
-	isNil := data[8+siLen]
-
-	var twoDeltaSi *big.Int
-
-	if isNil != 0 {
-		if len(data[8+siLen+1:]) < 2 {
-			return fmt.Errorf("rsa_threshold: keyshare unmarshalKeyShareTest failed: data length was too short for reading twoDeltaSiLen length")
-		}
-
-		twoDeltaSiLen := binary.BigEndian.Uint16(data[8+siLen+1 : 8+siLen+3])
-
-		if uint16(len(data[8+siLen+3:])) < twoDeltaSiLen {
-			return fmt.Errorf("rsa_threshold: keyshare unmarshalKeyShareTest failed: data length was too short for reading twoDeltaSi, needed: %d found: %d", twoDeltaSiLen, len(data[8+siLen+2:]))
-		}
-
-		twoDeltaSi = new(big.Int).SetBytes(data[8+siLen+3 : 8+siLen+3+twoDeltaSiLen])
+	if len(data[8+siLen+1:]) < 2 {
+		return fmt.Errorf("rsa_threshold: keyshare unmarshalKeyShareTest failed: data length was too short for reading twoDeltaSiLen length")
 	}
+
+	twoDeltaSiLen := binary.BigEndian.Uint16(data[8+siLen+1 : 8+siLen+3])
+
+	if uint16(len(data[8+siLen+3:])) < twoDeltaSiLen {
+		return fmt.Errorf("rsa_threshold: keyshare unmarshalKeyShareTest failed: data length was too short for reading twoDeltaSi, needed: %d found: %d", twoDeltaSiLen, len(data[8+siLen+2:]))
+	}
+
+	twoDeltaSi := new(big.Int).SetBytes(data[8+siLen+3 : 8+siLen+3+twoDeltaSiLen])
 
 	kshare.Players = uint(players)
 	kshare.Threshold = uint(threshold)
@@ -171,6 +175,24 @@ func (kshare *KeyShare) get2DeltaSi(players int64) *big.Int {
 	delta.Lsh(delta, 1).Mul(delta, kshare.si)
 	kshare.twoDeltaSi = delta
 	return delta
+}
+
+// IsVerifiable returns true if the key share can produce
+// verifiable signature shares.
+func (kshare *KeyShare) IsVerifiable() bool { return kshare.vk != nil }
+
+// VerifyKeys returns a copy of the verification keys used to verify
+// signature shares. Returns nil if the key share cannot produce
+// verifiable signature shares.
+func (kshare *KeyShare) VerifyKeys() (vk *VerifyKeys) {
+	if kshare.IsVerifiable() {
+		vk = &VerifyKeys{
+			GroupKey:  new(big.Int).Set(kshare.vk.GroupKey),
+			VerifyKey: new(big.Int).Set(kshare.vk.VerifyKey),
+		}
+	}
+
+	return
 }
 
 // Sign msg using a KeyShare. msg MUST be padded and hashed. Call PadHash before this method.
@@ -246,6 +268,26 @@ func (kshare *KeyShare) Sign(randSource io.Reader, pub *rsa.PublicKey, digest []
 		// x^{2∆s_i}
 		signShare.xi = &big.Int{}
 		signShare.xi.Exp(x, exp, pub.N)
+	}
+
+	// When verification keys are available, a DLEQ Proof is included.
+	if kshare.vk != nil {
+		const SecParam = 128
+		fourDelta := calculateDelta(int64(kshare.Players))
+		fourDelta.Lsh(fourDelta, 2)
+		x4Delta := new(big.Int).Exp(x, fourDelta, pub.N)
+		xiSqr := new(big.Int).Mul(signShare.xi, signShare.xi)
+		xiSqr.Mod(xiSqr, pub.N)
+
+		proof, err := qndleq.Prove(randSource,
+			kshare.si,
+			kshare.vk.GroupKey, kshare.vk.VerifyKey,
+			x4Delta, xiSqr,
+			pub.N, SecParam)
+		if err != nil {
+			return SignShare{}, err
+		}
+		signShare.proof = proof
 	}
 
 	return signShare, nil
