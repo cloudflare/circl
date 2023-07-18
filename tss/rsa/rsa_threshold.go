@@ -1,3 +1,11 @@
+// Package rsa provides RSA threshold signature scheme.
+//
+// This package implements the Protocol 1 of "Practical Threshold Signatures"
+// by Victor Shoup [1].
+//
+// # References
+//
+// [1] https://www.iacr.org/archive/eurocrypt2000/1807/18070209-new.pdf
 package rsa
 
 import (
@@ -9,7 +17,59 @@ import (
 	"io"
 	"math"
 	"math/big"
+
+	cmath "github.com/cloudflare/circl/math"
 )
+
+// GenerateKey generates a RSA keypair for its use in RSA threshold signatures.
+// Internally, the modulus is the product of two safe primes. The time
+// consumed by this function is relatively longer than the regular
+// GenerateKey function from the crypto/rsa package.
+func GenerateKey(random io.Reader, bits int) (*rsa.PrivateKey, error) {
+	p, err := cmath.SafePrime(random, bits/2)
+	if err != nil {
+		return nil, err
+	}
+
+	var q *big.Int
+	n := new(big.Int)
+	found := false
+	for !found {
+		q, err = cmath.SafePrime(random, bits-p.BitLen())
+		if err != nil {
+			return nil, err
+		}
+
+		// check for different primes.
+		if p.Cmp(q) != 0 {
+			n.Mul(p, q)
+			// check n has the desired bitlength.
+			if n.BitLen() == bits {
+				found = true
+			}
+		}
+	}
+
+	one := big.NewInt(1)
+	pminus1 := new(big.Int).Sub(p, one)
+	qminus1 := new(big.Int).Sub(q, one)
+	totient := new(big.Int).Mul(pminus1, qminus1)
+
+	priv := new(rsa.PrivateKey)
+	priv.Primes = []*big.Int{p, q}
+	priv.N = n
+	priv.E = 65537
+	priv.D = new(big.Int)
+	e := big.NewInt(int64(priv.E))
+	ok := priv.D.ModInverse(e, totient)
+	if ok == nil {
+		return nil, errors.New("public key is not coprime to phi(n)")
+	}
+
+	priv.Precompute()
+
+	return priv, nil
+}
 
 // l or `Players`, the total number of Players.
 // t, the number of corrupted Players.
