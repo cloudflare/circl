@@ -79,6 +79,7 @@ go get -u github.com/cloudflare/circl
 #### Zero-knowledge Proofs
  - [Schnorr](./zk/dl): Prove knowledge of the Discrete Logarithm.
  - [DLEQ](./zk/dleq): Prove knowledge of the Discrete Logarithm Equality.
+ - [DLEQ in Qn](./zk/qndleq): Prove knowledge of the Discrete Logarithm Equality for subgroup of squares in (Z/nZ)*.
 
 ## Testing and Benchmarking
 
