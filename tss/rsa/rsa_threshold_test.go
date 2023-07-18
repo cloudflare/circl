@@ -7,12 +7,23 @@ import (
 	"crypto/rsa"
 	_ "crypto/sha256"
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
 	"testing"
+
+	"github.com/cloudflare/circl/internal/test"
 )
 
 var ONE = big.NewInt(1)
+
+func TestGenerateKey(t *testing.T) {
+	// [Warning]: this is only for tests, use a secure bitlen above 2048 bits.
+	bitlen := 128
+	key, err := GenerateKey(rand.Reader, bitlen)
+	test.CheckNoErr(t, err, "failed to create key")
+	test.CheckOk(key.Validate() == nil, fmt.Sprintf("key is not valid: %v", key), t)
+}
 
 func createPrivateKey(p, q *big.Int, e int) *rsa.PrivateKey {
 	return &rsa.PrivateKey{
