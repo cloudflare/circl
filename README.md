@@ -94,7 +94,7 @@ Alternatively, look at the [Cloudflare Go](https://github.com/cloudflare/go/tree
 
  - [Schnorr](./zk/dl): Prove knowledge of the Discrete Logarithm. ([RFC-8235])
  - [DLEQ](./zk/dleq): Prove knowledge of the Discrete Logarithm Equality. ([RFC-9497])
-
+ - [DLEQ in Qn](./zk/qndleq): Prove knowledge of the Discrete Logarithm Equality for subgroup of squares in (Z/nZ)*.
 
 ### Symmetric Cryptography
 
