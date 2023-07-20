@@ -80,7 +80,7 @@ func GenerateKey(random io.Reader, bits int) (*rsa.PrivateKey, error) {
 
 func validateParams(players, threshold uint) error {
 	if players <= 1 {
-		return errors.New("rsa_threshold: Players (l) invalid: should be > 1")
+		return fmt.Errorf("rsa_threshold: Players (%v) invalid: should be > 1", players)
 	}
 	if threshold < 1 || threshold > players {
 		return fmt.Errorf("rsa_threshold: Threshold (k) invalid: %d < 1 || %d > %d", threshold, threshold, players)
@@ -157,18 +157,19 @@ func Deal(randSource io.Reader, players, threshold uint, key *rsa.PrivateKey) ([
 			return nil, err
 		}
 	}
-
+	modulusLengthBits := uint(key.N.BitLen())
 	shares := make([]KeyShare, players)
 
 	// 1 <= i <= l
 	for i := uint(1); i <= players; i++ {
+		shares[i-1].ModulusLength = modulusLengthBits
 		shares[i-1].Players = players
 		shares[i-1].Threshold = threshold
 		// Σ^{k-1}_{i=0} | a_i * X^i (mod m)
 		si := computePolynomial(threshold, a, i, &m)
 		shares[i-1].si = si
 		shares[i-1].Index = i
-		shares[i-1].get2DeltaSi(int64(players))
+		shares[i-1].get2DeltaSi(int64(players), &m)
 
 		// If the modulus is composed by safe primes, verification keys are included.
 		if hasSafePrimes {
@@ -226,7 +227,7 @@ func PadHash(padder Padder, hash crypto.Hash, pub *rsa.PublicKey, msg []byte) ([
 type Signature = []byte
 
 // CombineSignShares combines t SignShare's to produce a valid signature
-func CombineSignShares(pub *rsa.PublicKey, shares []SignShare, msg []byte) (Signature, error) {
+func CombineSignShares(pub *rsa.PublicKey, shares []*SignShare, msg []byte) (Signature, error) {
 	players := shares[0].Players
 	threshold := shares[0].Threshold
 
@@ -313,7 +314,7 @@ func CombineSignShares(pub *rsa.PublicKey, shares []SignShare, msg []byte) (Sign
 // computes lagrange Interpolation for the shares
 // i must be an id 0..l but not in S
 // j must be in S
-func computeLambda(delta *big.Int, S []SignShare, i, j int64) (*big.Int, error) {
+func computeLambda(delta *big.Int, S []*SignShare, i, j int64) (*big.Int, error) {
 	if i == j {
 		return nil, errors.New("rsa_threshold: i and j can't be equal by precondition")
 	}

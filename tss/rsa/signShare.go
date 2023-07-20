@@ -2,23 +2,20 @@ package rsa
 
 import (
 	"crypto/rsa"
-	"encoding/binary"
 	"errors"
 	"fmt"
-	"math"
 	"math/big"
 
+	"github.com/cloudflare/circl/internal/conv"
 	"github.com/cloudflare/circl/zk/qndleq"
+	"golang.org/x/crypto/cryptobyte"
 )
 
 // SignShare represents a portion of a signature. It is generated when a message is signed by a KeyShare. t SignShare's are then combined by calling CombineSignShares, where t is the Threshold.
 type SignShare struct {
+	share
+
 	xi *big.Int
-
-	Index uint
-
-	Players   uint
-	Threshold uint
 
 	// It stores a DLEQ proof attesting that the signature
 	// share was computed using the signer's key share.
@@ -29,8 +26,7 @@ type SignShare struct {
 }
 
 func (s SignShare) String() string {
-	return fmt.Sprintf("(t,n): (%v,%v) index: %v xi: 0x%v",
-		s.Threshold, s.Players, s.Index, s.xi.Text(16))
+	return fmt.Sprintf("%v xi: 0x%v proof: {%v}", s.share, s.xi.Text(16), s.proof)
 }
 
 // IsVerifiable returns true if the signature share contains
@@ -58,94 +54,80 @@ func (s *SignShare) Verify(pub *rsa.PublicKey, vk *VerifyKeys, digest []byte) er
 	xiSqr := new(big.Int).Mul(s.xi, s.xi)
 	xiSqr.Mod(xiSqr, pub.N)
 
-	if !s.proof.Verify(vk.GroupKey, vk.VerifyKey, x4Delta, xiSqr, pub.N) {
+	const SecParam = 128
+	if !s.proof.Verify(vk.GroupKey, vk.VerifyKey, x4Delta, xiSqr, pub.N, SecParam) {
 		return ErrSignShareInvalid
 	}
 
 	return nil
 }
 
-// MarshalBinary encodes SignShare into a byte array in a format readable by UnmarshalBinary.
-// Note: Only Index's up to math.MaxUint16 are supported
-func (s *SignShare) MarshalBinary() ([]byte, error) {
-	// | Players: uint16 | Threshold: uint16 | Index: uint16 | xiLen: uint16 | xi: []byte |
+func (s *SignShare) Marshal(b *cryptobyte.Builder) error {
+	buf := make([]byte, (s.ModulusLength+7)/8)
+	b.AddValue(&s.share)
+	b.AddBytes(s.xi.FillBytes(buf))
 
-	if s.Players > math.MaxUint16 {
-		return nil, fmt.Errorf("rsa_threshold: signshare marshall: Players is too big to fit in a uint16")
+	isVerifiable := s.IsVerifiable()
+	var flag uint8
+	if isVerifiable {
+		flag = 0x01
 	}
+	b.AddUint8(flag)
 
-	if s.Threshold > math.MaxUint16 {
-		return nil, fmt.Errorf("rsa_threshold: signshare marshall: Threshold is too big to fit in a uint16")
+	if isVerifiable {
+		b.AddValue(s.proof)
 	}
-
-	if s.Index > math.MaxUint16 {
-		return nil, fmt.Errorf("rsa_threshold: signshare marshall: Index is too big to fit in a uint16")
-	}
-
-	players := uint16(s.Players)
-	threshold := uint16(s.Threshold)
-	index := uint16(s.Index)
-
-	xiBytes := s.xi.Bytes()
-	xiLen := len(xiBytes)
-
-	if xiLen > math.MaxInt16 {
-		return nil, fmt.Errorf("rsa_threshold: signshare marshall: xiBytes is too big to fit it's length in a uint16")
-	}
-
-	if xiLen == 0 {
-		xiLen = 1
-		xiBytes = []byte{0}
-	}
-
-	blen := 2 + 2 + 2 + 2 + xiLen
-	out := make([]byte, blen)
-
-	binary.BigEndian.PutUint16(out[0:2], players)
-	binary.BigEndian.PutUint16(out[2:4], threshold)
-	binary.BigEndian.PutUint16(out[4:6], index)
-
-	binary.BigEndian.PutUint16(out[6:8], uint16(xiLen))
-
-	copy(out[8:8+xiLen], xiBytes)
-
-	return out, nil
-}
-
-// UnmarshalBinary converts a byte array outputted from Marshall into a SignShare or returns an error if the value is invalid
-func (s *SignShare) UnmarshalBinary(data []byte) error {
-	// | Players: uint16 | Threshold: uint16 | Index: uint16 | xiLen: uint16 | xi: []byte |
-	if len(data) < 8 {
-		return fmt.Errorf("rsa_threshold: signshare unmarshalKeyShareTest failed: data length was too short for reading Players, Threshold, Index, and xiLen")
-	}
-
-	players := binary.BigEndian.Uint16(data[0:2])
-	threshold := binary.BigEndian.Uint16(data[2:4])
-	index := binary.BigEndian.Uint16(data[4:6])
-	xiLen := binary.BigEndian.Uint16(data[6:8])
-
-	if xiLen == 0 {
-		return fmt.Errorf("rsa_threshold: signshare unmarshalKeyShareTest failed: xi is a required field but xiLen was 0")
-	}
-
-	if uint16(len(data[8:])) < xiLen {
-		return fmt.Errorf("rsa_threshold: signshare unmarshalKeyShareTest failed: data length was too short for reading xi, needed: %d found: %d", xiLen, len(data[6:]))
-	}
-
-	xi := big.Int{}
-	bytes := make([]byte, xiLen)
-	copy(bytes, data[8:8+xiLen])
-	xi.SetBytes(bytes)
-
-	s.Players = uint(players)
-	s.Threshold = uint(threshold)
-	s.Index = uint(index)
-	s.xi = &xi
 
 	return nil
 }
 
+func (s *SignShare) ReadValue(r *cryptobyte.String) bool {
+	var sh share
+	ok := sh.ReadValue(r)
+	if !ok {
+		return false
+	}
+
+	mlen := int((sh.ModulusLength + 7) / 8)
+	var xiBytes []byte
+	ok = r.ReadBytes(&xiBytes, mlen)
+	if !ok {
+		return false
+	}
+
+	var isVerifiable uint8
+	ok = r.ReadUint8(&isVerifiable)
+	if !ok {
+		return false
+	}
+
+	var proof *qndleq.Proof
+	switch isVerifiable {
+	case 0:
+		proof = nil
+	case 1:
+		proof = new(qndleq.Proof)
+		ok = proof.ReadValue(r)
+		if !ok {
+			return false
+		}
+
+	default:
+		return false
+	}
+
+	s.share = sh
+	s.xi = new(big.Int).SetBytes(xiBytes)
+	s.proof = proof
+
+	return true
+}
+
+func (s *SignShare) MarshalBinary() ([]byte, error) { return conv.MarshalBinary(s) }
+func (s *SignShare) UnmarshalBinary(b []byte) error { return conv.UnmarshalBinary(s, b) }
+
 var (
+	ErrKeyShareNonVerifiable  = errors.New("key share has no verification keys")
 	ErrSignShareNonVerifiable = errors.New("signature share is not verifiable")
 	ErrSignShareInvalid       = errors.New("signature share is invalid")
 )

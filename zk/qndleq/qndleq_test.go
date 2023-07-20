@@ -30,7 +30,8 @@ func TestProve(t *testing.T) {
 
 		proof, err := qndleq.Prove(rand.Reader, x, g, gx, h, hx, N, SecParam)
 		test.CheckNoErr(t, err, "failed to generate proof")
-		test.CheckOk(proof.Verify(g, gx, h, hx, N), "failed to verify", t)
+		test.CheckMarshal(t, proof, new(qndleq.Proof))
+		test.CheckOk(proof.Verify(g, gx, h, hx, N, SecParam), "failed to verify", t)
 	}
 }
 
@@ -78,7 +79,7 @@ func Benchmark_qndleq(b *testing.B) {
 
 	b.Run("Verify", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_ = proof.Verify(g, gx, h, hx, N)
+			_ = proof.Verify(g, gx, h, hx, N, SecParam)
 		}
 	})
 }

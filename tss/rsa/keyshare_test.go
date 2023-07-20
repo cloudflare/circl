@@ -1,11 +1,58 @@
 package rsa
 
 import (
+	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
+	"fmt"
 	"math/big"
 	"testing"
+
+	"github.com/cloudflare/circl/internal/test"
 )
+
+func TestProtocol(t *testing.T) {
+	const (
+		bits      = 512
+		Players   = 10
+		Threshold = 5
+	)
+
+	priv, err := GenerateKey(rand.Reader, bits)
+	pub := &priv.PublicKey
+	test.CheckNoErr(t, err, fmt.Sprintf("cannot generate keys: %v", err))
+
+	msg := []byte("Cloudflare!")
+	hash := crypto.SHA256
+	padded, err := PadHash(new(PKCS1v15Padder), hash, pub, msg)
+	test.CheckNoErr(t, err, fmt.Sprintf("cannot pad message: %v", err))
+
+	keyShares, err := Deal(rand.Reader, Players, Threshold, priv)
+	test.CheckNoErr(t, err, fmt.Sprintf("cannot deal key shares: %v", err))
+
+	test.CheckMarshal(t, &keyShares[0], new(KeyShare))
+
+	signShares := make([]*SignShare, len(keyShares))
+	for i := range keyShares {
+		signShares[i], err = keyShares[i].Sign(rand.Reader, pub, padded, true)
+		test.CheckNoErr(t, err, fmt.Sprintf("cannot create signature share: %v", err))
+
+		err = signShares[i].Verify(pub, keyShares[i].VerifyKeys(), padded)
+		test.CheckNoErr(t, err, fmt.Sprintf("signature share does not verify: %v", err))
+	}
+
+	test.CheckMarshal(t, signShares[0], new(SignShare))
+
+	signature, err := CombineSignShares(pub, signShares, padded)
+	test.CheckNoErr(t, err, fmt.Sprintf("cannot create RSA signature: %v", err))
+
+	hasher := hash.New()
+	hasher.Write(msg)
+	hashed := hasher.Sum(nil)
+
+	err = rsa.VerifyPKCS1v15(pub, hash, hashed, signature)
+	test.CheckNoErr(t, err, fmt.Sprintf("RSA signature does not verify: %v", err))
+}
 
 func TestKeyShare_Sign(t *testing.T) {
 	// delta = 3! = 6
@@ -16,9 +63,14 @@ func TestKeyShare_Sign(t *testing.T) {
 	// x_i = x^{2∆kshare.si} = 150^{2 * 6 * 15} = 150^180 = 243
 
 	kshare := KeyShare{
-		si:      big.NewInt(15),
-		Index:   1,
-		Players: 3,
+		share: share{
+			ModulusLength: 256,
+			Threshold:     1,
+			Players:       3,
+			Index:         1,
+		},
+		si:         big.NewInt(15),
+		twoDeltaSi: big.NewInt(180),
 	}
 	pub := rsa.PublicKey{N: big.NewInt(253)}
 	share, err := kshare.Sign(nil, &pub, []byte{150}, false)
@@ -39,9 +91,14 @@ func testSignBlind(parallel bool, t *testing.T) {
 	// x_i = x^{2∆kshare.si} = 150^{2 * 6 * 15} = 150^180 = 243
 
 	kshare := KeyShare{
-		si:      big.NewInt(15),
-		Index:   1,
-		Players: 3,
+		share: share{
+			ModulusLength: 256,
+			Threshold:     1,
+			Players:       3,
+			Index:         1,
+		},
+		si:         big.NewInt(15),
+		twoDeltaSi: big.NewInt(180),
 	}
 	pub := rsa.PublicKey{N: big.NewInt(253)}
 	share, err := kshare.Sign(rand.Reader, &pub, []byte{150}, parallel)
@@ -59,103 +116,4 @@ func TestKeyShare_SignBlind(t *testing.T) {
 
 func TestKeyShare_SignBlindParallel(t *testing.T) {
 	testSignBlind(true, t)
-}
-
-func marshalTestKeyShare(share KeyShare, t *testing.T) {
-	marshall, err := share.MarshalBinary()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	share2 := KeyShare{}
-	err = share2.UnmarshalBinary(marshall)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if share.Players != share2.Players {
-		t.Fatalf("Players did not match, expected %d, found %d", share.Players, share2.Players)
-	}
-
-	if share.Threshold != share2.Threshold {
-		t.Fatalf("Threshold did not match, expected %d, found %d", share.Threshold, share2.Threshold)
-	}
-
-	if share.Index != share2.Index {
-		t.Fatalf("Index did not match, expected %d, found %d", share.Index, share2.Index)
-	}
-
-	if (share.twoDeltaSi == nil || share2.twoDeltaSi == nil) && share.twoDeltaSi != share2.twoDeltaSi {
-		t.Fatalf("twoDeltaSi did not match, expected %v, found %v", share.twoDeltaSi, share2.twoDeltaSi)
-	}
-
-	if !(share.twoDeltaSi == nil && share2.twoDeltaSi == nil) && share.twoDeltaSi.Cmp(share2.twoDeltaSi) != 0 {
-		t.Fatalf("twoDeltaSi did not match, expected %v, found %v", share.twoDeltaSi.Bytes(), share2.twoDeltaSi.Bytes())
-	}
-
-	if share.si.Cmp(share2.si) != 0 {
-		t.Fatalf("si did not match, expected %v, found %v", share.si.Bytes(), share2.si.Bytes())
-	}
-}
-
-func unmarshalKeyShareTest(t *testing.T, input []byte) {
-	share := KeyShare{}
-	err := share.UnmarshalBinary(input)
-	if err == nil {
-		t.Fatalf("unmarshall succeeded when it shouldn't have")
-	}
-}
-
-func TestMarshallKeyShare(t *testing.T) {
-	marshalTestKeyShare(KeyShare{
-		si:         big.NewInt(10),
-		twoDeltaSi: big.NewInt(20),
-		Index:      30,
-		Threshold:  10,
-		Players:    2,
-	}, t)
-
-	marshalTestKeyShare(KeyShare{
-		si:         big.NewInt(10),
-		twoDeltaSi: big.NewInt(20),
-		Index:      30,
-		Threshold:  0,
-		Players:    200,
-	}, t)
-
-	marshalTestKeyShare(KeyShare{
-		si:         big.NewInt(0),
-		twoDeltaSi: big.NewInt(0),
-		Index:      0,
-		Threshold:  0,
-		Players:    0,
-	}, t)
-
-	unmarshalKeyShareTest(t, []byte{})
-	unmarshalKeyShareTest(t, []byte{1, 0, 1})
-	unmarshalKeyShareTest(t, []byte{1, 0, 1})
-	unmarshalKeyShareTest(t, []byte{0, 1, 0, 1, 0, 1})
-	unmarshalKeyShareTest(t, []byte{0, 1, 0, 1, 0, 1, 0, 1})
-	unmarshalKeyShareTest(t, []byte{0, 1, 0, 1, 0, 1, 0})
-	unmarshalKeyShareTest(t, []byte{0, 1, 0, 1, 0, 1, 0, 2, 1})
-	unmarshalKeyShareTest(t, []byte{0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0})
-	unmarshalKeyShareTest(t, []byte{0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1})
-}
-
-func TestMarshallKeyShareFull(t *testing.T) {
-	const players = 3
-	const threshold = 2
-	const bits = 4096
-
-	key, err := rsa.GenerateKey(rand.Reader, bits)
-	if err != nil {
-		t.Fatal(err)
-	}
-	keys, err := Deal(rand.Reader, players, threshold, key)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, share := range keys {
-		marshalTestKeyShare(share, t)
-	}
 }
