@@ -46,17 +46,23 @@ func unmarshalSignShareTest(t *testing.T, input []byte) {
 
 func TestMarshallSignShare(t *testing.T) {
 	marshalTestSignShare(SignShare{
-		xi:        big.NewInt(10),
-		Index:     30,
-		Players:   16,
-		Threshold: 18,
+		xi: big.NewInt(10),
+		share: share{
+			ModulusLength: 256,
+			Index:         30,
+			Players:       18,
+			Threshold:     16,
+		},
 	}, t)
 
 	marshalTestSignShare(SignShare{
-		xi:        big.NewInt(0),
-		Index:     0,
-		Players:   0,
-		Threshold: 0,
+		xi: big.NewInt(0),
+		share: share{
+			ModulusLength: 256,
+			Index:         1,
+			Players:       2,
+			Threshold:     1,
+		},
 	}, t)
 
 	unmarshalSignShareTest(t, []byte{})

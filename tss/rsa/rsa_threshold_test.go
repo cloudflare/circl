@@ -81,8 +81,9 @@ func TestComputeLambda(t *testing.T) {
 	// dem = (3 - 1) * (3 - 2) * (3 - 4) * (3 - 5) = 4
 	// num/dev = 40/4 = 10
 	// ∆ * 10 = 120 * 10 = 1200
-	shares := make([]SignShare, 5)
+	shares := make([]*SignShare, 5)
 	for i := uint(1); i <= 5; i++ {
+		shares[i-1] = new(SignShare)
 		shares[i-1].Index = i
 	}
 	i := int64(0)
@@ -192,7 +193,7 @@ func testIntegration(t *testing.T, algo crypto.Hash, priv *rsa.PrivateKey, thres
 		t.Fatal(err)
 	}
 
-	signshares := make([]SignShare, threshold)
+	signshares := make([]*SignShare, threshold)
 
 	for i := uint(0); i < threshold; i++ {
 		signshares[i], err = keys[i].Sign(rand.Reader, pub, msgPH, true)
@@ -308,7 +309,7 @@ func benchmarkSignCombineHelper(randSource io.Reader, parallel bool, b *testing.
 		b.Fatal(err)
 	}
 
-	signshares := make([]SignShare, threshold)
+	signshares := make([]*SignShare, threshold)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for i := uint(0); i < threshold; i++ {

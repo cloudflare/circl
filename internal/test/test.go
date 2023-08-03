@@ -1,6 +1,8 @@
 package test
 
 import (
+	"bytes"
+	"encoding"
 	"errors"
 	"fmt"
 	"strings"
@@ -57,4 +59,27 @@ func CheckPanic(f func()) error {
 	}()
 	f()
 	return hasPanicked
+}
+
+func CheckMarshal(
+	t *testing.T,
+	x, y interface {
+		encoding.BinaryMarshaler
+		encoding.BinaryUnmarshaler
+	},
+) {
+	t.Helper()
+
+	want, err := x.MarshalBinary()
+	CheckNoErr(t, err, fmt.Sprintf("cannot marshal %T = %v", x, x))
+
+	err = y.UnmarshalBinary(want)
+	CheckNoErr(t, err, fmt.Sprintf("cannot unmarshal %T from %x", y, want))
+
+	got, err := y.MarshalBinary()
+	CheckNoErr(t, err, fmt.Sprintf("cannot marshal %T = %v", y, y))
+
+	if !bytes.Equal(got, want) {
+		ReportError(t, got, want, x, y)
+	}
 }

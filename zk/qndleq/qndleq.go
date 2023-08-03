@@ -24,15 +24,21 @@ package qndleq
 
 import (
 	"crypto/rand"
+	"fmt"
 	"io"
 	"math/big"
 
+	"github.com/cloudflare/circl/internal/conv"
 	"github.com/cloudflare/circl/internal/sha3"
+	"golang.org/x/crypto/cryptobyte"
 )
 
 type Proof struct {
-	Z, C     *big.Int
-	SecParam uint
+	Z, C *big.Int
+}
+
+func (p Proof) String() string {
+	return fmt.Sprintf("Z: 0x%v C: 0x%v", p.Z.Text(16), p.C.Text(16))
 }
 
 // SampleQn returns an element of Qn (the subgroup of squares in (Z/nZ)*).
@@ -84,11 +90,11 @@ func Prove(random io.Reader, x, g, gx, h, hx, N *big.Int, secParam uint) (*Proof
 	z.Mul(c, x).Add(z, r)
 	r.Xor(r, r)
 
-	return &Proof{Z: z, C: c, SecParam: secParam}, nil
+	return &Proof{Z: z, C: c}, nil
 }
 
 // Verify checks whether x = Log_g(g^x) = Log_h(h^x).
-func (p Proof) Verify(g, gx, h, hx, N *big.Int) bool {
+func (p Proof) Verify(g, gx, h, hx, N *big.Int, secParam uint) bool {
 	gPNum := new(big.Int).Exp(g, p.Z, N)
 	gPDen := new(big.Int).Exp(gx, p.C, N)
 	ok := gPDen.ModInverse(gPDen, N)
@@ -107,7 +113,7 @@ func (p Proof) Verify(g, gx, h, hx, N *big.Int) bool {
 	hP := hPNum.Mul(hPNum, hPDen)
 	hP.Mod(hP, N)
 
-	c := doChallenge(g, gx, h, hx, gP, hP, N, p.SecParam)
+	c := doChallenge(g, gx, h, hx, gP, hP, N, secParam)
 
 	return p.C.Cmp(c) == 0
 }
@@ -142,3 +148,26 @@ func doChallenge(g, gx, h, hx, gP, hP, N *big.Int, secParam uint) *big.Int {
 
 	return new(big.Int).SetBytes(cBytes)
 }
+
+func (p *Proof) Marshal(b *cryptobyte.Builder) error {
+	b.AddUint16LengthPrefixed(func(c *cryptobyte.Builder) { c.AddBytes(p.Z.Bytes()) })
+	b.AddUint16LengthPrefixed(func(c *cryptobyte.Builder) { c.AddBytes(p.C.Bytes()) })
+	return nil
+}
+
+func (p *Proof) ReadValue(r *cryptobyte.String) bool {
+	var zStr, cStr cryptobyte.String
+	ok := r.ReadUint16LengthPrefixed(&zStr) &&
+		r.ReadUint16LengthPrefixed(&cStr)
+	if !ok {
+		return false
+	}
+
+	p.Z = new(big.Int).SetBytes([]byte(zStr))
+	p.C = new(big.Int).SetBytes([]byte(cStr))
+
+	return true
+}
+
+func (p *Proof) MarshalBinary() ([]byte, error) { return conv.MarshalBinary(p) }
+func (p *Proof) UnmarshalBinary(b []byte) error { return conv.UnmarshalBinary(p, b) }
