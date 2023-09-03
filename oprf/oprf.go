@@ -265,7 +265,7 @@ type FinalizeData struct {
 	evalReq *EvaluationRequest
 }
 
-// CopyBlinds copies the serialized blinds to use when determinstically
+// CopyBlinds copies the serialized blinds to use when deterministically
 // invoking DeterministicBlind.
 func (f FinalizeData) CopyBlinds() []Blind {
 	out := make([]Blind, len(f.blinds))
