@@ -124,7 +124,7 @@ func Example() {
 		log.Fatalf("decryption using right attrs should have succeeded, plaintext: %s", pt)
 	}
 	if !bytes.Equal(pt, []byte(msgStr)) {
-		log.Fatalf("recoverd plaintext: %s is not equal to original msg: %s", pt, msgStr)
+		log.Fatalf("recovered plaintext: %s is not equal to original msg: %s", pt, msgStr)
 	}
 	fmt.Println("Successfully recovered plaintext")
 	// Output: (occupation:doctor and country:US)
