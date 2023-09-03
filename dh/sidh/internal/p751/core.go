@@ -9,7 +9,7 @@ import (
 )
 
 // -----------------------------------------------------------------------------
-// Functions for traversing isogeny trees acoording to strategy. Key type 'A' is
+// Functions for traversing isogeny trees according to strategy. Key type 'A' is
 //
 
 // Traverses isogeny tree in order to compute xR, xP, xQ and xQmP needed
