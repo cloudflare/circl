@@ -40,7 +40,7 @@ func (kshare *KeyShare) MarshalBinary() ([]byte, error) {
 	}
 
 	if kshare.Threshold > math.MaxUint16 {
-		return nil, fmt.Errorf("rsa_threshold: keyshare marshall: Threhsold is too big to fit in a uint16")
+		return nil, fmt.Errorf("rsa_threshold: keyshare marshall: Threshold is too big to fit in a uint16")
 	}
 
 	if kshare.Index > math.MaxUint16 {
@@ -105,7 +105,7 @@ func (kshare *KeyShare) UnmarshalBinary(data []byte) error {
 	// | Players: uint16 | Threshold: uint16 | Index: uint16 | siLen: uint16 | si: []byte | twoDeltaSiNil: bool | twoDeltaSiLen: uint16 | twoDeltaSi: []byte |
 	// with all values in big-endian.
 	if len(data) < 6 {
-		return fmt.Errorf("rsa_threshold: keyshare unmarshalKeyShareTest failed: data length was too short for reading Players, Threashold, Index")
+		return fmt.Errorf("rsa_threshold: keyshare unmarshalKeyShareTest failed: data length was too short for reading Players, Threshold, Index")
 	}
 
 	players := binary.BigEndian.Uint16(data[0:2])
