@@ -19,7 +19,7 @@
 //
 // # Fp4
 //
-// Fp4 is GF(p^4)=Fp2[t]/(t^2-(u+1)). We use the repesentation  a[1]v+a[0].
+// Fp4 is GF(p^4)=Fp2[t]/(t^2-(u+1)). We use the representation  a[1]v+a[0].
 // There is no fixed external form.
 //
 // # Fp6
