@@ -338,7 +338,7 @@ func testKAT(t *testing.T, v sikeVec) {
 		}
 
 		err := v.kem.Decapsulate(ssGot, prvKey, pubKey, ct)
-		CheckNoErr(t, err, "sike test: can't perform degcapsulation KAT")
+		CheckNoErr(t, err, "sike test: can't perform decapsulation KAT")
 		if !bytes.Equal(ssGot, ssExpected) {
 			t.Fatalf("KAT decapsulation failed\n")
 		}
