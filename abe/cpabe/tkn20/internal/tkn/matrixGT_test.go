@@ -157,7 +157,7 @@ func TestExpGTLinearity(t *testing.T) {
 	absum.add(aexp, bexp)
 	abexp.exp(ab)
 	if !abexp.Equal(absum) {
-		t.Fatal("linearity of exponentation broken")
+		t.Fatal("linearity of exponentiation broken")
 	}
 }
 
