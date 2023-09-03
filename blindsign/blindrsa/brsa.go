@@ -35,8 +35,8 @@ type randomBRSAVerifier struct {
 	hash hash.Hash
 }
 
-// A determinsiticBRSAVerifier is a BRSAVerifier that supports deterministic signatures.
-type determinsiticBRSAVerifier struct {
+// A deterministicBRSAVerifier is a BRSAVerifier that supports deterministic signatures.
+type deterministicBRSAVerifier struct {
 	// Public key of the Signer
 	pk *rsa.PublicKey
 
@@ -64,12 +64,12 @@ type Verifier interface {
 	Hash() hash.Hash
 }
 
-// NewDeterministicVerifier creates a new DeterminsiticBRSAVerifier using the corresponding Signer parameters.
+// NewDeterministicVerifier creates a new DeterministicBRSAVerifier using the corresponding Signer parameters.
 // This corresponds to the RSABSSA-SHA384-PSSZERO-Deterministic variant. See the specification for more details:
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-rsa-blind-signatures#name-rsabssa-variants
 func NewDeterministicVerifier(pk *rsa.PublicKey, hash crypto.Hash) Verifier {
 	h := common.ConvertHashFunction(hash)
-	return determinsiticBRSAVerifier{
+	return deterministicBRSAVerifier{
 		pk:         pk,
 		cryptoHash: hash,
 		hash:       h,
@@ -77,7 +77,7 @@ func NewDeterministicVerifier(pk *rsa.PublicKey, hash crypto.Hash) Verifier {
 }
 
 // Hash returns the hash function associated with the BRSAVerifier.
-func (v determinsiticBRSAVerifier) Hash() hash.Hash {
+func (v deterministicBRSAVerifier) Hash() hash.Hash {
 	return v.hash
 }
 
@@ -130,7 +130,7 @@ func fixedBlind(message, salt []byte, r, rInv *big.Int, pk *rsa.PublicKey, hash 
 //
 // See the specification for more details:
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-rsa-blind-signatures-02#section-5.1.1
-func (v determinsiticBRSAVerifier) Blind(random io.Reader, message []byte) ([]byte, VerifierState, error) {
+func (v deterministicBRSAVerifier) Blind(random io.Reader, message []byte) ([]byte, VerifierState, error) {
 	if random == nil {
 		return nil, VerifierState{}, common.ErrInvalidRandomness
 	}
@@ -144,7 +144,7 @@ func (v determinsiticBRSAVerifier) Blind(random io.Reader, message []byte) ([]by
 }
 
 // FixedBlind runs the Blind function with fixed blind and salt inputs.
-func (v determinsiticBRSAVerifier) FixedBlind(message, blind, salt []byte) ([]byte, VerifierState, error) {
+func (v deterministicBRSAVerifier) FixedBlind(message, blind, salt []byte) ([]byte, VerifierState, error) {
 	if blind == nil {
 		return nil, VerifierState{}, common.ErrInvalidRandomness
 	}
@@ -162,7 +162,7 @@ func (v determinsiticBRSAVerifier) FixedBlind(message, blind, salt []byte) ([]by
 }
 
 // Verify verifies the input (message, signature) pair and produces an error upon failure.
-func (v determinsiticBRSAVerifier) Verify(message, signature []byte) error {
+func (v deterministicBRSAVerifier) Verify(message, signature []byte) error {
 	return common.VerifyMessageSignature(message, signature, 0, keys.NewBigPublicKey(v.pk), v.cryptoHash)
 }
 
