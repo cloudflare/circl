@@ -28,7 +28,7 @@ func (p *isogG2Point) IsOnCurve() bool {
 }
 
 // sswu implements the Simplified Shallue-van de Woestijne-Ulas method for
-// maping a field element to a point on the isogenous curve.
+// mapping a field element to a point on the isogenous curve.
 func (p *isogG2Point) sswu(u *ff.Fp2) {
 	// Method in Appendix-G.2.3 of
 	// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11
