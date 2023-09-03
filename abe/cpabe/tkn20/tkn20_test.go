@@ -108,7 +108,7 @@ func TestEndToEndEncryption(t *testing.T) {
 				t.Fatalf("extracted policy doesn't match original")
 			}
 			if sat != npol2.Satisfaction(attrs) {
-				t.Fatalf("round triped policy doesn't match original")
+				t.Fatalf("round tripped policy doesn't match original")
 			}
 			ctSat := attrs.CouldDecrypt(ct)
 			pt, err := sk.Decrypt(ct)
