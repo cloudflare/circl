@@ -121,7 +121,7 @@ func subAVX2() {
 // Why these permutations?  There are two reasons: these are reasonable
 // easy to implement and they pull sequential butterflies in the NTT apart.
 // Recall, namely, that on the fifth layer of the NTT we're computing
-// butteflies between indices
+// butterflies between indices
 //
 //      abcd0fgh  abcd1fgh
 //
