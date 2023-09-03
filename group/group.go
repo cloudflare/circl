@@ -88,7 +88,7 @@ type Element interface {
 	// BinaryUnmarshaler recovers an element from a byte representation
 	// produced either by encoding.BinaryMarshaler or MarshalBinaryCompress.
 	encoding.BinaryUnmarshaler
-	// MarshalBinaryCompress returns a byte representation of an elment in a
+	// MarshalBinaryCompress returns a byte representation of an element in a
 	// compact form whenever the group supports it; otherwise, returns the
 	// same byte representation produced by encoding.BinaryMarshaler.
 	MarshalBinaryCompress() ([]byte, error)
