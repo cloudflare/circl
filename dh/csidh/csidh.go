@@ -66,7 +66,7 @@ func (s *fpRngGen) randFp(v *fp, rng io.Reader) {
 // cofactorMul helper implements batch cofactor multiplication as described
 // in the ia.cr/2018/383 (algo. 3). Returns tuple of two booleans, first indicates
 // if function has finished successfully. In case first return value is true,
-// second return value indicates if curve represented by coffactor 'a' is
+// second return value indicates if curve represented by cofactor 'a' is
 // supersingular.
 // Implementation uses divide-and-conquer strategy and recursion in order to
 // speed up calculation of Q_i = [(p+1)/l_i] * P.
