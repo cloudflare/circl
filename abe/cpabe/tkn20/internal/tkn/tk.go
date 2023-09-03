@@ -352,7 +352,7 @@ func (hdr *ciphertextHeader) marshalBinary() ([]byte, error) {
 	ret = appendLenPrefixed(ret, c1Bytes)
 
 	// Now we need to indicate how long c2, c3, c3neg are.
-	// Each array will be the same size (or nil), so with more work we can specalize
+	// Each array will be the same size (or nil), so with more work we can specialize
 	// but for now we will ignore that.
 
 	c2Len := len(hdr.c2)
