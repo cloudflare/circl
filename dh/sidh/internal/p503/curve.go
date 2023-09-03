@@ -48,7 +48,7 @@ func Jinvariant(cparams *ProjectiveCurveParameters, j *Fp2) {
 }
 
 // Given affine points x(P), x(Q) and x(Q-P) in a extension field F_{p^2}, function
-// recorvers projective coordinate A of a curve. This is Algorithm 10 from SIKE.
+// recovers projective coordinate A of a curve. This is Algorithm 10 from SIKE.
 func RecoverCoordinateA(curve *ProjectiveCurveParameters, xp, xq, xr *Fp2) {
 	var t0, t1 Fp2
 
