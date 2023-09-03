@@ -43,7 +43,7 @@ func (p *Poly) normalizeGeneric() {
 
 // Multiplies p in-place by the Montgomery factor 2¹⁶.
 //
-// Coefficients of p can be artbitray.  Resulting coefficients are bounded
+// Coefficients of p can be arbitrary.  Resulting coefficients are bounded
 // in absolute value by q.
 func (p *Poly) ToMont() {
 	for i := 0; i < N; i++ {
