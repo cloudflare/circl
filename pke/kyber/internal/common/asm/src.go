@@ -701,7 +701,7 @@ func nttAVX2() {
 		// which pairs to flip.  We try to keep the permutations as local
 		// as possible: there is only mixing between xs[0], xs[1], xs[2]
 		// and xs[3].  As an added benefit this ensures that the final
-		// complete permuation is convenient for multiplication.
+		// complete permutation is convenient for multiplication.
 
 		VMOVDQU(Mem{Base: zetasPtr, Disp: 32 * (9 + offset*4)}, zs[0])
 		VMOVDQU(Mem{Base: zetasPtr, Disp: 32 * (9 + offset*4 + 1)}, zs[1])
