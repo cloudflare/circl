@@ -24,7 +24,7 @@ func xAdd(PaQ, P, Q, PdQ *point) {
 }
 
 // xDbl implements point doubling on a Montgomery curve
-// E(x): x^3 + A*x^2 + x by using x-coordinate onlyh arithmetic.
+// E(x): x^3 + A*x^2 + x by using x-coordinate only arithmetic.
 //
 //	x(Q) = [2]*x(P)
 //
@@ -48,7 +48,7 @@ func xDbl(Q, P, A *point) {
 
 // xDblAdd implements combined doubling of point P
 // and addition of points P and Q on a Montgomery curve
-// E(x): x^3 + A*x^2 + x by using x-coordinate onlyh arithmetic.
+// E(x): x^3 + A*x^2 + x by using x-coordinate only arithmetic.
 //
 //	x(PaP) = x(2*P)
 //	x(PaQ) = x(P+Q)
