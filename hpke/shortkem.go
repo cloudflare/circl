@@ -37,7 +37,7 @@ func (s shortKEM) calcDH(dh []byte, sk kem.PrivateKey, pk kem.PublicKey) error {
 	return nil
 }
 
-// Deterministicallly derives a keypair from a seed. If you're unsure,
+// Deterministically derives a keypair from a seed. If you're unsure,
 // you're better off using GenerateKey().
 //
 // Panics if seed is not of length SeedSize().
