@@ -100,7 +100,7 @@ func (g ristrettoGroup) HashToElementNonUniform(b, dst []byte) Element {
 }
 
 func (g ristrettoGroup) HashToElement(msg, dst []byte) Element {
-	// Compliaint with draft-irtf-cfrg-hash-to-curve.
+	// Compliant with draft-irtf-cfrg-hash-to-curve.
 	// Appendix B - Hashing to ristretto255
 	// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-14#appendix-B
 	// SuiteID: ristretto255_XMD:SHA-512_R255MAP_RO_
