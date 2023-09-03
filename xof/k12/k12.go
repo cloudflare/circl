@@ -31,7 +31,7 @@ type State struct {
 	context []byte // context string "C" provided by the user
 
 	// buffer of incoming data so we can do parallel TurboSHAKE128:
-	// nil when we haven't aborbed the first chunk yet;
+	// nil when we haven't absorbed the first chunk yet;
 	// empty if we have, but we do not have a fast parallel TurboSHAKE128;
 	// and chunkSize*lanes in length if we have.
 	buf []byte
