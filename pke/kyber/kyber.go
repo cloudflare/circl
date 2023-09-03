@@ -1,6 +1,6 @@
 //go:generate go run gen.go
 
-// Package kyber implements the CRYSTALS-Kyber.CPAPKE public key encrpyption
+// Package kyber implements the CRYSTALS-Kyber.CPAPKE public key encryption
 // as submitted to round 3 of the NIST PQC competition and described in
 //
 //	https://pq-crystals.org/kyber/data/kyber-specification-round3.pdf
