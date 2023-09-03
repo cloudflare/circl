@@ -243,7 +243,7 @@ func (p *Policy) ExtractFromCiphertext(ct []byte) error {
 	}
 	macData, _, err := removeLenPrefixed(rest)
 	if err != nil {
-		return fmt.Errorf("invalid ciphetext")
+		return fmt.Errorf("invalid ciphertext")
 	}
 	C1, _, err := removeLenPrefixed(macData)
 	if err != nil {
