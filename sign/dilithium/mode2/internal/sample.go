@@ -240,7 +240,7 @@ func PolyDeriveUniformLeGamma1(p *common.Poly, seed *[64]byte, nonce uint16) {
 }
 
 // For each i, sample ps[i] uniformly with τ non-zero coefficients in {q-1,1}
-// using the the given seed and w1[i].  ps[i] may be nil and is ignored
+// using the given seed and w1[i].  ps[i] may be nil and is ignored
 // in that case.  ps[i] will be normalized.
 //
 // Can only be called when DeriveX4Available is true.
