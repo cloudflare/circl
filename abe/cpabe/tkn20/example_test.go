@@ -50,7 +50,7 @@ func checkPolicy(in map[string][]string) bool {
 
 func Example() {
 	policyStr := `(occupation: doctor) and (country: US)`
-	invalidPolicyStr := `(ocupation: doctor) and (country: pacific)`
+	invalidPolicyStr := `(title: doctor) and (country: pacific)`
 	msgStr := `must have the precious 🎃`
 	wrongAttrsMap := map[string]string{"occupation": "doctor", "country": "croatia"}
 	rightAttrsMap := map[string]string{"occupation": "doctor", "country": "US", "age": "16"}
