@@ -582,13 +582,13 @@ func BenchmarkSharedSecretBobP434(b *testing.B) {
 func ExamplePrivateKey() {
 	// import "github.com/cloudflare/circl/dh/sidh"
 
-	// Allice's key pair
+	// Alice's key pair
 	prvA := NewPrivateKey(Fp503, KeyVariantSidhA)
 	pubA := NewPublicKey(Fp503, KeyVariantSidhA)
 	// Bob's key pair
 	prvB := NewPrivateKey(Fp503, KeyVariantSidhB)
 	pubB := NewPublicKey(Fp503, KeyVariantSidhB)
-	// Generate keypair for Allice
+	// Generate keypair for Alice
 	err := prvA.Generate(rand.Reader)
 	if err != nil {
 		fmt.Print(err)
@@ -603,11 +603,11 @@ func ExamplePrivateKey() {
 	// Buffers storing shared secret
 	ssA := make([]byte, prvA.SharedSecretSize())
 	ssB := make([]byte, prvA.SharedSecretSize())
-	// Allice calculates shared secret with hers private
+	// Alice calculates shared secret with hers private
 	// key and Bob's public key
 	prvA.DeriveSecret(ssA[:], pubB)
 	// Bob calculates shared secret with hers private
-	// key and Allice's public key
+	// key and Alice's public key
 	prvB.DeriveSecret(ssB[:], pubA)
 	// Check if ssA == ssB
 	fmt.Printf("%t\n", bytes.Equal(ssA, ssB))

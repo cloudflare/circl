@@ -530,13 +530,13 @@ func BenchmarkEncaps(b *testing.B) { benchSike(b, &tdataSike, benchmarkEncaps) }
 func BenchmarkDecaps(b *testing.B) { benchSike(b, &tdataSike, benchmarkDecaps) }
 
 func ExampleKEM() {
-	// Allice's key pair
+	// Alice's key pair
 	prvA := NewPrivateKey(Fp503, KeyVariantSike)
 	pubA := NewPublicKey(Fp503, KeyVariantSike)
 	// Bob's key pair
 	prvB := NewPrivateKey(Fp503, KeyVariantSike)
 	pubB := NewPublicKey(Fp503, KeyVariantSike)
-	// Generate keypair for Allice
+	// Generate keypair for Alice
 	err := prvA.Generate(rand.Reader)
 	if err != nil {
 		panic(err)
@@ -555,7 +555,7 @@ func ExampleKEM() {
 	ct := make([]byte, kem.CiphertextSize())
 	ssE := make([]byte, kem.SharedSecretSize())
 	ssD := make([]byte, kem.SharedSecretSize())
-	// Allice performs encapsulation with Bob's public key
+	// Alice performs encapsulation with Bob's public key
 	err = kem.Encapsulate(ct, ssE, pubB)
 	if err != nil {
 		panic(err)
@@ -567,12 +567,12 @@ func ExampleKEM() {
 	}
 	fmt.Printf("%t\n", bytes.Equal(ssE, ssD))
 
-	// Bob performs encapsulation with Allices's public key
+	// Bob performs encapsulation with Alice's public key
 	err = kem.Encapsulate(ct, ssE, pubA)
 	if err != nil {
 		panic(err)
 	}
-	// Allice performs decapsulation with hers key pair
+	// Alice performs decapsulation with hers key pair
 	err = kem.Decapsulate(ssD, prvA, pubA, ct)
 	if err != nil {
 		panic(err)
