@@ -29,6 +29,7 @@ func createPrivateKey(p, q *big.Int, e int) *rsa.PrivateKey {
 	return &rsa.PrivateKey{
 		PublicKey: rsa.PublicKey{
 			E: e,
+			N: new(big.Int).Mul(p, q),
 		},
 		D:           nil,
 		Primes:      []*big.Int{p, q},
@@ -141,7 +142,7 @@ func TestDeal(t *testing.T) {
 	//
 	//
 	//
-	r := bytes.NewReader([]byte{33, 17})
+	r := io.MultiReader(bytes.NewReader([]byte{33, 17}), rand.Reader)
 	players := uint(3)
 	threshold := uint(2)
 	p := int64(23)
@@ -150,7 +151,7 @@ func TestDeal(t *testing.T) {
 
 	key := createPrivateKey(big.NewInt(p), big.NewInt(q), e)
 
-	share, err := Deal(r, players, threshold, key, false)
+	share, err := Deal(r, players, threshold, key)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -198,6 +199,14 @@ func testIntegration(t *testing.T, algo crypto.Hash, priv *rsa.PrivateKey, thres
 		if err != nil {
 			t.Fatal(err)
 		}
+
+		if signshares[i].IsVerifiable() {
+			verifKeys := keys[i].VerifyKeys()
+			err = signshares[i].Verify(pub, verifKeys, msgPH)
+			if err != nil {
+				t.Fatalf("sign share is verifiable, but didn't pass verification")
+			}
+		}
 	}
 
 	sig, err := CombineSignShares(pub, signshares, msgPH)
@@ -236,14 +245,15 @@ func testIntegration(t *testing.T, algo crypto.Hash, priv *rsa.PrivateKey, thres
 func TestIntegrationStdRsaKeyGenerationPKS1v15(t *testing.T) {
 	const players = 3
 	const threshold = 2
-	const bits = 2048
+	// [warning] Bitlength used for tests only, use a bitlength above 2048 for security.
+	const bits = 512
 	const algo = crypto.SHA256
 
-	key, err := rsa.GenerateKey(rand.Reader, bits)
+	key, err := GenerateKey(rand.Reader, bits)
 	if err != nil {
 		t.Fatal(err)
 	}
-	keys, err := Deal(rand.Reader, players, threshold, key, false)
+	keys, err := Deal(rand.Reader, players, threshold, key)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -253,14 +263,15 @@ func TestIntegrationStdRsaKeyGenerationPKS1v15(t *testing.T) {
 func TestIntegrationStdRsaKeyGenerationPSS(t *testing.T) {
 	const players = 3
 	const threshold = 2
-	const bits = 2048
+	// [warning] Bitlength used for tests only, use a bitlength above 2048 for security.
+	const bits = 512
 	const algo = crypto.SHA256
 
 	key, err := rsa.GenerateKey(rand.Reader, bits)
 	if err != nil {
 		t.Fatal(err)
 	}
-	keys, err := Deal(rand.Reader, players, threshold, key, false)
+	keys, err := Deal(rand.Reader, players, threshold, key)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -275,7 +286,7 @@ func benchmarkSignCombineHelper(randSource io.Reader, parallel bool, b *testing.
 		panic(err)
 	}
 
-	keys, err := Deal(rand.Reader, players, threshold, key, true)
+	keys, err := Deal(rand.Reader, players, threshold, key)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -428,7 +439,7 @@ func BenchmarkDealGeneration(b *testing.B) {
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := Deal(rand.Reader, players, threshold, key, false)
+		_, err := Deal(rand.Reader, players, threshold, key)
 		if err != nil {
 			b.Fatal(err)
 		}
