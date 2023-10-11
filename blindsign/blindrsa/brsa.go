@@ -1,13 +1,28 @@
-package blindrsa
-
-// This package implements the blind RSA protocol based on the CFRG specification:
-// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-rsa-blind-signatures
+// Package blindrsa implements the RSA Blind Signature Protocol.
 //
-// Blind RSA is an example of a blind signature protocol is a two-party protocol
-// for computing a digital signature. One party (the server) holds the signing
-// key, and the other (the client) holds the message input. Blindness
-// ensures that the server does not learn anything about the client's
-// input during the BlindSign step.
+// The RSA Blind Signature protocol, also called RSABSSA
+// (RSA Blind Signature with Appendix) is a two-party protocol
+// between a Client and Server where they interact to compute
+//
+//	sig = Sign(sk, input_msg),
+//
+// where `input_msg = Prepare(msg)` is a prepared version of a private
+// message `msg` provided by the Client, and `sk` is the private signing
+// key provided by the server.
+//
+// # Supported Variants
+//
+// This package is compliant with the [RFC-9474] document
+// and supports the following variants:
+//   - [NewVerifier] implements RSABSSA-SHA384-PSS-Deterministic
+//   - [NewDeterministicVerifier] implements RSABSSA-SHA384-PSSZERO-Deterministic
+//
+// while these variants are not supported yet:
+//   - RSABSSA-SHA384-PSS-Randomized
+//   - RSABSSA-SHA384-PSSZERO-Randomized
+//
+// [RFC-9474]: https://www.rfc-editor.org/info/rfc9474
+package blindrsa
 
 import (
 	"crypto"
@@ -48,7 +63,7 @@ type deterministicBRSAVerifier struct {
 }
 
 // Verifier is a type that implements the client side of the blind RSA
-// protocol, described in https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-rsa-blind-signatures
+// protocol, described in https://www.rfc-editor.org/rfc/rfc9474.html#name-rsabssa-variants
 type Verifier interface {
 	// Blind initializes the blind RSA protocol using an input message and source of randomness. The
 	// signature is deterministic. This function fails if randomness was not provided.
@@ -66,7 +81,7 @@ type Verifier interface {
 
 // NewDeterministicVerifier creates a new DeterministicBRSAVerifier using the corresponding Signer parameters.
 // This corresponds to the RSABSSA-SHA384-PSSZERO-Deterministic variant. See the specification for more details:
-// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-rsa-blind-signatures#name-rsabssa-variants
+// https://www.rfc-editor.org/rfc/rfc9474.html#name-rsabssa-variants
 func NewDeterministicVerifier(pk *rsa.PublicKey, hash crypto.Hash) Verifier {
 	h := common.ConvertHashFunction(hash)
 	return deterministicBRSAVerifier{
@@ -83,7 +98,7 @@ func (v deterministicBRSAVerifier) Hash() hash.Hash {
 
 // NewVerifier creates a new BRSAVerifier using the corresponding Signer parameters.
 // This corresponds to the RSABSSA-SHA384-PSS-Deterministic variant. See the specification for more details:
-// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-rsa-blind-signatures#name-rsabssa-variants
+// https://www.rfc-editor.org/rfc/rfc9474.html#name-rsabssa-variants
 func NewVerifier(pk *rsa.PublicKey, hash crypto.Hash) Verifier {
 	h := common.ConvertHashFunction(hash)
 	return randomBRSAVerifier{
@@ -96,6 +111,10 @@ func NewVerifier(pk *rsa.PublicKey, hash crypto.Hash) Verifier {
 // Hash returns the hash function associated with the BRSAVerifier.
 func (v randomBRSAVerifier) Hash() hash.Hash {
 	return v.hash
+}
+
+func prepareMsg(message, prefix []byte) []byte {
+	return append(append([]byte{}, prefix...), message...)
 }
 
 func fixedBlind(message, salt []byte, r, rInv *big.Int, pk *rsa.PublicKey, hash hash.Hash) ([]byte, VerifierState, error) {
@@ -129,7 +148,7 @@ func fixedBlind(message, salt []byte, r, rInv *big.Int, pk *rsa.PublicKey, hash 
 // signature is deterministic. This function fails if randomness was not provided.
 //
 // See the specification for more details:
-// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-rsa-blind-signatures-02#section-5.1.1
+// https://www.rfc-editor.org/rfc/rfc9474.html#name-blind
 func (v deterministicBRSAVerifier) Blind(random io.Reader, message []byte) ([]byte, VerifierState, error) {
 	if random == nil {
 		return nil, VerifierState{}, common.ErrInvalidRandomness
@@ -171,7 +190,7 @@ func (v deterministicBRSAVerifier) Verify(message, signature []byte) error {
 // hash function. This function fails if randomness was not provided.
 //
 // See the specification for more details:
-// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-rsa-blind-signatures-02#section-5.1.1
+// https://www.rfc-editor.org/rfc/rfc9474.html#name-blind
 func (v randomBRSAVerifier) Blind(random io.Reader, message []byte) ([]byte, VerifierState, error) {
 	if random == nil {
 		return nil, VerifierState{}, common.ErrInvalidRandomness
@@ -237,7 +256,7 @@ type VerifierState struct {
 // Finalize computes and outputs the final signature, if it's valid. Otherwise, it returns an error.
 //
 // See the specification for more details:
-// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-rsa-blind-signatures-02#section-5.1.3
+// https://www.rfc-editor.org/rfc/rfc9474.html#name-finalize
 func (state VerifierState) Finalize(data []byte) ([]byte, error) {
 	kLen := (state.pk.N.BitLen() + 7) / 8
 	if len(data) != kLen {
@@ -291,7 +310,7 @@ func NewSigner(sk *rsa.PrivateKey) Signer {
 // message input, if it's of valid length, and returns an error should the function fail.
 //
 // See the specification for more details:
-// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-rsa-blind-signatures-02#section-5.1.2
+// https://www.rfc-editor.org/rfc/rfc9474.html#name-blindsign
 func (signer Signer) BlindSign(data []byte) ([]byte, error) {
 	kLen := (signer.sk.N.BitLen() + 7) / 8
 	if len(data) != kLen {

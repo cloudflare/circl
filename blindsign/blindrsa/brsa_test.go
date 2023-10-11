@@ -13,7 +13,10 @@ import (
 	"io"
 	"math/big"
 	"os"
+	"strings"
 	"testing"
+
+	"github.com/cloudflare/circl/internal/test"
 )
 
 // 2048-bit RSA private key
@@ -254,31 +257,39 @@ func TestFixedRandomSignVerify(t *testing.T) {
 }
 
 type rawTestVector struct {
+	Name           string `json:"name"`
 	P              string `json:"p"`
 	Q              string `json:"q"`
 	N              string `json:"n"`
 	E              string `json:"e"`
 	D              string `json:"d"`
 	Msg            string `json:"msg"`
+	MsgPrefix      string `json:"msg_prefix"`
+	InputMsg       string `json:"input_msg"`
 	Salt           string `json:"salt"`
+	SaltLen        string `json:"sLen"`
+	IsRandomized   string `json:"is_randomized"`
 	Inv            string `json:"inv"`
-	EncodedMsg     string `json:"encoded_msg"`
-	BlindedMessage string `json:"blinded_message"`
+	BlindedMessage string `json:"blinded_msg"`
 	BlindSig       string `json:"blind_sig"`
 	Sig            string `json:"sig"`
 }
 
 type testVector struct {
 	t              *testing.T
+	name           string
 	p              *big.Int
 	q              *big.Int
 	n              *big.Int
 	e              int
 	d              *big.Int
 	msg            []byte
+	msgPrefix      []byte
+	inputMsg       []byte
 	salt           []byte
+	saltLen        int
+	isRandomized   bool
 	blindInverse   *big.Int
-	encodedMessage []byte
 	blindedMessage []byte
 	blindSig       []byte
 	sig            []byte
@@ -290,17 +301,14 @@ type testVectorList struct {
 }
 
 func mustUnhexBigInt(number string) *big.Int {
-	data, err := hex.DecodeString(number)
-	if err != nil {
-		panic(err)
-	}
-
+	data := mustUnhex(number)
 	value := new(big.Int)
 	value.SetBytes(data)
 	return value
 }
 
 func mustUnhex(value string) []byte {
+	value = strings.TrimPrefix(value, "0x")
 	data, err := hex.DecodeString(value)
 	if err != nil {
 		panic(err)
@@ -322,14 +330,18 @@ func (tv *testVector) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
+	tv.name = raw.Name
 	tv.p = mustUnhexBigInt(raw.P)
 	tv.q = mustUnhexBigInt(raw.Q)
 	tv.n = mustUnhexBigInt(raw.N)
 	tv.e = mustUnhexInt(raw.E)
 	tv.d = mustUnhexBigInt(raw.D)
 	tv.msg = mustUnhex(raw.Msg)
+	tv.msgPrefix = mustUnhex(raw.MsgPrefix)
+	tv.inputMsg = mustUnhex(raw.InputMsg)
 	tv.salt = mustUnhex(raw.Salt)
-	tv.encodedMessage = mustUnhex(raw.EncodedMsg)
+	tv.saltLen = mustUnhexInt(raw.SaltLen)
+	tv.isRandomized = mustUnhexInt(raw.IsRandomized) != 0
 	tv.blindedMessage = mustUnhex(raw.BlindedMessage)
 	tv.blindInverse = mustUnhexBigInt(raw.Inv)
 	tv.blindSig = mustUnhex(raw.BlindSig)
@@ -356,16 +368,11 @@ func (tvl *testVectorList) UnmarshalJSON(data []byte) error {
 }
 
 func verifyTestVector(t *testing.T, vector testVector) {
-	key, err := loadPrivateKey()
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	key := new(rsa.PrivateKey)
 	key.PublicKey.N = vector.n
 	key.PublicKey.E = vector.e
 	key.D = vector.d
-	key.Primes[0] = vector.p
-	key.Primes[1] = vector.q
+	key.Primes = []*big.Int{vector.p, vector.q}
 	key.Precomputed.Dp = nil // Remove precomputed CRT values
 
 	// Recompute the original blind
@@ -376,34 +383,56 @@ func verifyTestVector(t *testing.T, vector testVector) {
 	}
 
 	signer := NewSigner(key)
-	verifier := NewVerifier(&key.PublicKey, crypto.SHA384)
 
-	blindedMsg, state, err := fixedBlind(vector.msg, vector.salt, r, rInv, &key.PublicKey, verifier.Hash())
-	if err != nil {
-		t.Fatal(err)
+	var verifier Verifier
+	switch vector.name {
+	case "RSABSSA-SHA384-PSS-Deterministic":
+		verifier = NewVerifier(&key.PublicKey, crypto.SHA384)
+	case "RSABSSA-SHA384-PSSZERO-Deterministic":
+		verifier = NewDeterministicVerifier(&key.PublicKey, crypto.SHA384)
+	case "RSABSSA-SHA384-PSS-Randomized", "RSABSSA-SHA384-PSSZERO-Randomized":
+		t.Skipf("variant %v not supported yet", vector.name)
+	default:
+		t.Fatal("variant not supported")
+	}
+
+	inputMsg := prepareMsg(vector.msg, vector.msgPrefix)
+	got := hex.EncodeToString(inputMsg)
+	want := hex.EncodeToString(vector.inputMsg)
+	if got != want {
+		test.ReportError(t, got, want)
+	}
+
+	blindedMsg, state, err := fixedBlind(inputMsg, vector.salt, r, rInv, &key.PublicKey, verifier.Hash())
+	test.CheckNoErr(t, err, "fixedBlind failed")
+	got = hex.EncodeToString(blindedMsg)
+	want = hex.EncodeToString(vector.blindedMessage)
+	if got != want {
+		test.ReportError(t, got, want)
 	}
 
 	blindSig, err := signer.BlindSign(blindedMsg)
-	if err != nil {
-		t.Fatal(err)
+	test.CheckNoErr(t, err, "blindSign failed")
+	got = hex.EncodeToString(blindSig)
+	want = hex.EncodeToString(vector.blindSig)
+	if got != want {
+		test.ReportError(t, got, want)
 	}
 
 	sig, err := state.Finalize(blindSig)
-	if err != nil {
-		t.Fatal(err)
+	test.CheckNoErr(t, err, "finalize failed")
+	got = hex.EncodeToString(sig)
+	want = hex.EncodeToString(vector.sig)
+	if got != want {
+		test.ReportError(t, got, want)
 	}
 
-	if !bytes.Equal(state.encodedMsg, vector.encodedMessage) {
-		t.Errorf("Encoded message mismatch: expected %x, got %x", state.encodedMsg, vector.encodedMessage)
-	}
-
-	if !bytes.Equal(sig, vector.sig) {
-		t.Errorf("Signature mismatch: expected %x, got %x", sig, vector.sig)
-	}
+	err = verifier.Verify(inputMsg, sig)
+	test.CheckNoErr(t, err, "verification failed")
 }
 
 func TestVectors(t *testing.T) {
-	data, err := os.ReadFile("testdata/test_vectors.json")
+	data, err := os.ReadFile("testdata/test_vectors_rfc9474.json")
 	if err != nil {
 		t.Fatal("Failed reading test vectors:", err)
 	}
@@ -415,7 +444,9 @@ func TestVectors(t *testing.T) {
 	}
 
 	for _, vector := range tvl.vectors {
-		verifyTestVector(t, vector)
+		t.Run(vector.name, func(tt *testing.T) {
+			verifyTestVector(tt, vector)
+		})
 	}
 }
 
@@ -462,4 +493,49 @@ func BenchmarkBRSA(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
+}
+
+func Example_blindrsa() {
+	// Setup (offline)
+
+	// Server: generate an RSA keypair.
+	sk, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to generate RSA key: %v", err)
+		return
+	}
+	pk := &sk.PublicKey
+	server := NewSigner(sk)
+
+	// Client: stores Server's public key.
+	verifier := NewVerifier(pk, crypto.SHA384)
+
+	// Protocol (online)
+
+	// Client blinds a message.
+	msg := []byte("alice and bob")
+	blindedMsg, state, err := verifier.Blind(rand.Reader, msg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "client failed to generate blinded message: %v", err)
+		return
+	}
+
+	// Server signs a blinded message, and produces a blinded signature.
+	blindedSignature, err := server.BlindSign(blindedMsg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "server failed to sign: %v", err)
+		return
+	}
+
+	// Client builds a signature from the previous state and the blinded signature.
+	signature, err := state.Finalize(blindedSignature)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "client failed to obtain signature: %v", err)
+		return
+	}
+
+	// Client verifies the signature is valid.
+	ok := verifier.Verify(msg, signature)
+	fmt.Printf("Valid signature: %v", ok == nil)
+	// Output: Valid signature: true
 }
