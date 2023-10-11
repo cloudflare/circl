@@ -128,6 +128,9 @@ func verifyPSS(pub *keys.BigPublicKey, hash crypto.Hash, digest []byte, sig []by
 }
 
 var (
+	// ErrInvalidVariant is the error used if the variant request does not exist.
+	ErrInvalidVariant = errors.New("blindsign/blindrsa: invalid variant requested")
+
 	// ErrUnexpectedSize is the error used if the size of a parameter does not match its expected value.
 	ErrUnexpectedSize = errors.New("blindsign/blindrsa: unexpected input size")
 

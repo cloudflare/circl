@@ -2,7 +2,6 @@ package blindrsa
 
 import (
 	"bytes"
-	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -19,41 +18,14 @@ import (
 	"github.com/cloudflare/circl/internal/test"
 )
 
-// 2048-bit RSA private key
-var testPrivateKey = testingKey(`
------BEGIN RSA TESTING KEY-----
-MIIEowIBAAKCAQEAyxrta2qV9bHOATpM/KsluUsuZKIwNOQlCn6rQ8DfOowSmTrx
-KxEZCNS0cb7DHUtsmtnN2pBhKi7pA1I+beWiJNawLwnlw3TQz+Adj1KcUAp4ovZ5
-CPpoK1orQwyB6vGvcte155T8mKMTknaHl1fORTtSbvm/bOuZl5uEI7kPRGGiKvN6
-qwz1cz91l6vkTTHHMttooYHGy75gfYwOUuBlX9mZbcWE7KC+h6+814ozfRex26no
-KLvYHikTFxROf/ifVWGXCbCWy7nqR0zq0mTCBz/kl0DAHwDhCRBgZpg9IeX4Pwhu
-LoI8h5zUPO9wDSo1Kpur1hLQPK0C2xNLfiJaXwIDAQABAoIBAC8wm3c4tYz3efDJ
-Ffgi38n0kNvq3x5636xXj/1XA8a7otqdWklyWIm3uhEvjG/zBVHZRz4AC8NcUOFn
-q3+nOgwrIZZcS1klfBrAbL3PKOhj9nGOqMKQQ8HG2oRilJD9BJG/UtFyyVnBkhuW
-lJxyV0e4p8eHGZX6C56xEHuoVMbDKm9HR8XRwwTHRn1VsICqIzo6Uv/fJhFMu1Qf
-+mtpa3oJb43P9pygirWO+w+3U6pRhccwAWlrvOjAmeP0Ndy7/gXn26rSPbKmWcI6
-3VIUB/FQsa8tkFTEFkIp1oQLejKk+EgUk66JWc8K6o3vDDyfdbmjTHVxi3ByyNur
-F87+ykkCgYEA73MLD1FLwPWdmV/V+ZiMTEwTXRBc1W1D7iigNclp9VDAzXFI6ofs
-3v+5N8hcZIdEBd9W6utHi/dBiEogDuSjljPRCqPsQENm2itTHzmNRvvI8wV1KQbP
-eJOd0vPMl5iup8nYL+9ASfGYeX5FKlttKEm4ZIY0XUsx9pERoq4PlEsCgYEA2STJ
-68thMWv9xKuz26LMQDzImJ5OSQD0hsts9Ge01G/rh0Dv/sTzO5wtLsiyDA/ZWkzB
-8J+rO/y2xqBD9VkYKaGB/wdeJP0Z+n7sETetiKPbXPfgAi7VAe77Rmst/oEcGLUg
-tm+XnfJSInoLU5HmtIdLg0kcQLVbN5+ZMmtkPb0CgYBSbhczmbfrYGJ1p0FBIFvD
-9DiCRBzBOFE3TnMAsSqx0a/dyY7hdhN8HSqE4ouz68DmCKGiU4aYz3CW23W3ysvp
-7EKdWBr/cHSazGlcCXLyKcFer9VKX1bS2nZtZZJb6arOhjTPI5zNF8d2o5pp33lv
-chlxOaYTK8yyZfRdPXCNiwKBgQDV77oFV66dm7E9aJHerkmgbIKSYz3sDUXd3GSv
-c9Gkj9Q0wNTzZKXkMB4P/un0mlTh88gMQ7PYeUa28UWjX7E/qwFB+8dUmA1VUGFT
-IVEW06GXuhv46p0wt3zXx1dcbWX6LdJaDB4MHqevkiDAqHntmXLbmVd9pXCGn/a2
-xznO3QKBgHkPJPEiCzRugzgN9UxOT5tNQCSGMOwJUd7qP0TWgvsWHT1N07JLgC8c
-Yg0f1rCxEAQo5BVppiQFp0FA7W52DUnMEfBtiehZ6xArW7crO91gFRqKBWZ3Jjyz
-/JcS8m5UgQxC8mmb/2wLD5TDvWw+XCfjUgWmvqIi5dcJgmuTAn5X
------END RSA TESTING KEY-----`)
-
-func testingKey(s string) string { return strings.ReplaceAll(s, "TESTING KEY", "PRIVATE KEY") }
-
 func loadPrivateKey() (*rsa.PrivateKey, error) {
-	block, _ := pem.Decode([]byte(testPrivateKey))
-	if block == nil || block.Type != "RSA PRIVATE KEY" {
+	file, err := os.ReadFile("./testdata/test_rsa2048_rfc9500.json")
+	if err != nil {
+		return nil, err
+	}
+
+	block, _ := pem.Decode(file)
+	if block == nil || block.Type != "RSA TESTING KEY" {
 		return nil, fmt.Errorf("PEM private key decoding failed")
 	}
 
@@ -103,10 +75,15 @@ func loadStrongRSAKey() *rsa.PrivateKey {
 	return key
 }
 
-func runSignatureProtocol(signer Signer, verifier Verifier, message []byte, random io.Reader) ([]byte, error) {
-	blindedMsg, state, err := verifier.Blind(random, message)
+func runSignatureProtocol(signer Signer, client Client, message []byte, random io.Reader) ([]byte, error) {
+	inputMsg, err := client.Prepare(random, message)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("prepare failed: %w", err)
+	}
+
+	blindedMsg, state, err := client.Blind(random, inputMsg)
+	if err != nil {
+		return nil, fmt.Errorf("blind failed: %w", err)
 	}
 
 	kLen := (signer.sk.N.BitLen() + 7) / 8
@@ -116,21 +93,21 @@ func runSignatureProtocol(signer Signer, verifier Verifier, message []byte, rand
 
 	blindedSig, err := signer.BlindSign(blindedMsg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("blindSign failed: %w", err)
 	}
 
 	if len(blindedSig) != kLen {
 		return nil, fmt.Errorf("Protocol message (blind signature) length mismatch, expected %d, got %d", kLen, len(blindedMsg))
 	}
 
-	sig, err := state.Finalize(blindedSig)
+	sig, err := client.Finalize(state, blindedSig)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("finalize failed: %w", err)
 	}
 
-	err = verifier.Verify(message, sig)
+	err = client.Verify(inputMsg, sig)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("verification failed: %w", err)
 	}
 
 	return sig, nil
@@ -143,15 +120,27 @@ func TestRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	verifier := NewVerifier(&key.PublicKey, crypto.SHA512)
-	signer := NewSigner(key)
+	for _, variant := range []Variant{
+		SHA384PSSDeterministic,
+		SHA384PSSZeroDeterministic,
+		SHA384PSSRandomized,
+		SHA384PSSZeroRandomized,
+	} {
+		t.Run(variant.String(), func(tt *testing.T) {
+			client, err := NewClient(variant, &key.PublicKey)
+			if err != nil {
+				t.Fatal(err)
+			}
+			signer := NewSigner(key)
 
-	sig, err := runSignatureProtocol(signer, verifier, message, rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if sig == nil {
-		t.Fatal("nil signature output")
+			sig, err := runSignatureProtocol(signer, client, message, rand.Reader)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if sig == nil {
+				t.Fatal("nil signature output")
+			}
+		})
 	}
 }
 
@@ -162,10 +151,13 @@ func TestDeterministicRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	verifier := NewDeterministicVerifier(&key.PublicKey, crypto.SHA512)
+	client, err := NewClient(SHA384PSSDeterministic, &key.PublicKey)
+	if err != nil {
+		t.Fatal(err)
+	}
 	signer := NewSigner(key)
 
-	sig, err := runSignatureProtocol(signer, verifier, message, rand.Reader)
+	sig, err := runSignatureProtocol(signer, client, message, rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,10 +173,13 @@ func TestDeterministicBlindFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	verifier := NewDeterministicVerifier(&key.PublicKey, crypto.SHA512)
+	client, err := NewClient(SHA384PSSDeterministic, &key.PublicKey)
+	if err != nil {
+		t.Fatal(err)
+	}
 	signer := NewSigner(key)
 
-	_, err = runSignatureProtocol(signer, verifier, message, nil)
+	_, err = runSignatureProtocol(signer, client, message, nil)
 	if err == nil {
 		t.Fatal("Expected signature generation to fail with empty randomness")
 	}
@@ -197,14 +192,17 @@ func TestRandomSignVerify(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	verifier := NewVerifier(&key.PublicKey, crypto.SHA512)
-	signer := NewSigner(key)
-
-	sig1, err := runSignatureProtocol(signer, verifier, message, rand.Reader)
+	client, err := NewClient(SHA384PSSRandomized, &key.PublicKey)
 	if err != nil {
 		t.Fatal(err)
 	}
-	sig2, err := runSignatureProtocol(signer, verifier, message, rand.Reader)
+	signer := NewSigner(key)
+
+	sig1, err := runSignatureProtocol(signer, client, message, rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sig2, err := runSignatureProtocol(signer, client, message, rand.Reader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -236,16 +234,19 @@ func TestFixedRandomSignVerify(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	verifier := NewVerifier(&key.PublicKey, crypto.SHA512)
+	client, err := NewClient(SHA384PSSRandomized, &key.PublicKey)
+	if err != nil {
+		t.Fatal(err)
+	}
 	signer := NewSigner(key)
 
 	mockRand := &mockRandom{0}
-	sig1, err := runSignatureProtocol(signer, verifier, message, mockRand)
+	sig1, err := runSignatureProtocol(signer, client, message, mockRand)
 	if err != nil {
 		t.Fatal(err)
 	}
 	mockRand = &mockRandom{0}
-	sig2, err := runSignatureProtocol(signer, verifier, message, mockRand)
+	sig2, err := runSignatureProtocol(signer, client, message, mockRand)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -384,31 +385,29 @@ func verifyTestVector(t *testing.T, vector testVector) {
 		t.Fatal("Failed to compute blind inverse")
 	}
 
-	signer := NewSigner(key)
-
-	var verifier Verifier
+	var variant Variant
 	switch vector.name {
 	case "RSABSSA-SHA384-PSS-Deterministic":
-		verifier = NewVerifier(&key.PublicKey, crypto.SHA384)
+		variant = SHA384PSSDeterministic
 	case "RSABSSA-SHA384-PSSZERO-Deterministic":
-		verifier = NewDeterministicVerifier(&key.PublicKey, crypto.SHA384)
-	case "RSABSSA-SHA384-PSS-Randomized", "RSABSSA-SHA384-PSSZERO-Randomized":
-		t.Skipf("variant %v not supported yet", vector.name)
+		variant = SHA384PSSZeroDeterministic
+	case "RSABSSA-SHA384-PSS-Randomized":
+		variant = SHA384PSSRandomized
+	case "RSABSSA-SHA384-PSSZERO-Randomized":
+		variant = SHA384PSSZeroRandomized
 	default:
 		t.Fatal("variant not supported")
 	}
 
-	inputMsg := prepareMsg(vector.msg, vector.msgPrefix)
-	got := hex.EncodeToString(inputMsg)
-	want := hex.EncodeToString(vector.inputMsg)
-	if got != want {
-		test.ReportError(t, got, want)
-	}
+	signer := NewSigner(key)
 
-	blindedMsg, state, err := fixedBlind(inputMsg, vector.salt, r, rInv, &key.PublicKey, verifier.Hash())
+	client, err := NewClient(variant, &key.PublicKey)
+	test.CheckNoErr(t, err, "new client failed")
+
+	blindedMsg, state, err := client.fixedBlind(vector.inputMsg, vector.salt, r, rInv)
 	test.CheckNoErr(t, err, "fixedBlind failed")
-	got = hex.EncodeToString(blindedMsg)
-	want = hex.EncodeToString(vector.blindedMessage)
+	got := hex.EncodeToString(blindedMsg)
+	want := hex.EncodeToString(vector.blindedMessage)
 	if got != want {
 		test.ReportError(t, got, want)
 	}
@@ -421,7 +420,7 @@ func verifyTestVector(t *testing.T, vector testVector) {
 		test.ReportError(t, got, want)
 	}
 
-	sig, err := state.Finalize(blindSig)
+	sig, err := client.Finalize(state, blindSig)
 	test.CheckNoErr(t, err, "finalize failed")
 	got = hex.EncodeToString(sig)
 	want = hex.EncodeToString(vector.sig)
@@ -429,8 +428,10 @@ func verifyTestVector(t *testing.T, vector testVector) {
 		test.ReportError(t, got, want)
 	}
 
-	err = verifier.Verify(inputMsg, sig)
-	test.CheckNoErr(t, err, "verification failed")
+	verifier, err := NewVerifier(variant, &key.PublicKey)
+	test.CheckNoErr(t, err, "new verifier failed")
+
+	test.CheckNoErr(t, verifier.Verify(vector.inputMsg, sig), "verification failed")
 }
 
 func TestVectors(t *testing.T) {
@@ -455,46 +456,73 @@ func TestVectors(t *testing.T) {
 func BenchmarkBRSA(b *testing.B) {
 	message := []byte("hello world")
 	key := loadStrongRSAKey()
+	server := NewSigner(key)
 
-	verifier := NewVerifier(&key.PublicKey, crypto.SHA512)
-	signer := NewSigner(key)
-
-	var err error
-	var blindedMsg []byte
-	var state VerifierState
-	b.Run("Blind", func(b *testing.B) {
-		for n := 0; n < b.N; n++ {
-			blindedMsg, state, err = verifier.Blind(rand.Reader, message)
-			if err != nil {
-				b.Fatal(err)
-			}
-		}
-	})
-
-	var blindedSig []byte
-	b.Run("BlindSign", func(b *testing.B) {
-		for n := 0; n < b.N; n++ {
-			blindedSig, err = signer.BlindSign(blindedMsg)
-			if err != nil {
-				b.Fatal(err)
-			}
-		}
-	})
-
-	var sig []byte
-	b.Run("Finalize", func(b *testing.B) {
-		for n := 0; n < b.N; n++ {
-			sig, err = state.Finalize(blindedSig)
-			if err != nil {
-				b.Fatal(err)
-			}
-		}
-	})
-
-	err = verifier.Verify(message, sig)
+	client, err := NewClient(SHA384PSSRandomized, &key.PublicKey)
 	if err != nil {
 		b.Fatal(err)
 	}
+
+	inputMsg, err := client.Prepare(rand.Reader, message)
+	if err != nil {
+		b.Errorf("prepare failed: %v", err)
+	}
+
+	blindedMsg, state, err := client.Blind(rand.Reader, inputMsg)
+	if err != nil {
+		b.Errorf("blind failed: %v", err)
+	}
+
+	blindedSig, err := server.BlindSign(blindedMsg)
+	if err != nil {
+		b.Errorf("blindSign failed: %v", err)
+	}
+
+	sig, err := client.Finalize(state, blindedSig)
+	if err != nil {
+		b.Errorf("finalize failed: %v", err)
+	}
+
+	err = client.Verify(inputMsg, sig)
+	if err != nil {
+		b.Errorf("verification failed: %v", err)
+	}
+
+	b.Run("Blind", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			_, _, err := client.Blind(rand.Reader, inputMsg)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+
+	b.Run("BlindSign", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			_, err := server.BlindSign(blindedMsg)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+
+	b.Run("Finalize", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			_, err := client.Finalize(state, blindedSig)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+
+	b.Run("Verify", func(b *testing.B) {
+		for n := 0; n < b.N; n++ {
+			err := client.Verify(inputMsg, sig)
+			if err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
 }
 
 func Example_blindrsa() {
@@ -503,41 +531,53 @@ func Example_blindrsa() {
 	// Server: generate an RSA keypair.
 	sk, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to generate RSA key: %v", err)
+		fmt.Printf("failed to generate RSA key: %v", err)
 		return
 	}
 	pk := &sk.PublicKey
 	server := NewSigner(sk)
 
 	// Client: stores Server's public key.
-	verifier := NewVerifier(pk, crypto.SHA384)
+	client, err := NewClient(SHA384PSSRandomized, pk)
+	if err != nil {
+		fmt.Printf("failed to invoke a client: %v", err)
+		return
+	}
 
 	// Protocol (online)
 
-	// Client blinds a message.
+	// Client prepares the message to be signed.
 	msg := []byte("alice and bob")
-	blindedMsg, state, err := verifier.Blind(rand.Reader, msg)
+	preparedMessage, err := client.Prepare(rand.Reader, msg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "client failed to generate blinded message: %v", err)
+		fmt.Printf("client failed to prepare the message: %v", err)
+		return
+	}
+
+	// Client blinds a message.
+	blindedMsg, state, err := client.Blind(rand.Reader, preparedMessage)
+	if err != nil {
+		fmt.Printf("client failed to generate blinded message: %v", err)
 		return
 	}
 
 	// Server signs a blinded message, and produces a blinded signature.
 	blindedSignature, err := server.BlindSign(blindedMsg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "server failed to sign: %v", err)
+		fmt.Printf("server failed to sign: %v", err)
 		return
 	}
 
-	// Client builds a signature from the previous state and the blinded signature.
-	signature, err := state.Finalize(blindedSignature)
+	// Client build a signature from the previous state and blinded signature.
+	signature, err := client.Finalize(state, blindedSignature)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "client failed to obtain signature: %v", err)
+		fmt.Printf("client failed to obtain signature: %v", err)
 		return
 	}
 
-	// Client verifies the signature is valid.
-	ok := verifier.Verify(msg, signature)
+	// Client build a signature from the previous state and blinded signature.
+	ok := client.Verify(preparedMessage, signature)
+
 	fmt.Printf("Valid signature: %v", ok == nil)
 	// Output: Valid signature: true
 }
