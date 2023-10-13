@@ -4,7 +4,6 @@ import (
 	"crypto"
 	"crypto/rand"
 	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 	"math/big"
 
@@ -14,16 +13,37 @@ import (
 )
 
 var (
-	ciphersuiteID = []byte{0x00, 0x01}
+	// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bbs-signatures-03#name-bls12-381-sha-256
+	ciphersuiteID  = []byte("BBS_BLS12381G1_XMD:SHA-256_SSWU_RO_H2G_HM2S_")
+	octetScalarLen = 32
+	octetPointLen  = 48
+	h2cSuite       = []byte("BLS12381G1_XMD:SHA-256_SSWU_RO_")
+	expandLength   = uint(48)
 )
 
 func ciphersuiteString(suffix string) []byte {
+	// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bbs-signatures-03#name-ciphersuite-id
 	return append(ciphersuiteID, []byte(suffix)...)
+}
+
+func computeP1() *pairing.G1 {
+	generatorSeed := ciphersuiteString("BP_MESSAGE_GENERATOR_SEED")
+	p1 := hashToGenerators(1, generatorSeed)
+	return p1[0]
 }
 
 type Signature struct {
 	A *pairing.G1
 	e *pairing.Scalar
+}
+
+func (s Signature) Encode() []byte {
+	AEnc := s.A.BytesCompressed()
+	eEnc, err := s.e.MarshalBinary()
+	if err != nil {
+		panic(err)
+	}
+	return append(AEnc, eEnc...)
 }
 
 // (Abar, Bbar, r2^, r3^, (m^_j1, ..., m^_jU), c)
@@ -68,8 +88,8 @@ func publicKey(sk *pairing.Scalar) []byte {
 	W := pairing.G2Generator()
 	W.ScalarMult(sk, W)
 
-	// XXX(caw): point_to_octets_g2
-	return W.Bytes()
+	// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bbs-signatures-03#section-6.2.2-3
+	return W.BytesCompressed()
 }
 
 // Serialize
@@ -78,6 +98,7 @@ func publicKey(sk *pairing.Scalar) []byte {
 
 // Domain calculation
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bbs-signatures-03#name-domain-calculation
+// XXX(caw): this function needs test vectors for the draft
 func calculateDomain(pk []byte, Q1 *pairing.G1, hPoints []*pairing.G1, header []byte) *pairing.Scalar {
 	// XXX(caw): check for length of header
 
@@ -88,11 +109,9 @@ func calculateDomain(pk []byte, Q1 *pairing.G1, hPoints []*pairing.G1, header []
 
 	// 1. dom_array = (L, Q_1, H_1, ..., H_L)
 	// 2. dom_octs = serialize(dom_array) || ciphersuite_id
-	octets := make([]byte, 0)
-	octets = append(octets, lenBuffer...)
-	octets = append(octets, Q1.Bytes()...)
+	octets := append(lenBuffer, Q1.BytesCompressed()...)
 	for _, hi := range hPoints {
-		octets = append(octets, hi.Bytes()...)
+		octets = append(octets, hi.BytesCompressed()...)
 	}
 	octets = append(octets, ciphersuiteID...)
 
@@ -103,7 +122,7 @@ func calculateDomain(pk []byte, Q1 *pairing.G1, hPoints []*pairing.G1, header []
 	domInput = append(domInput, header...)
 
 	// 4. return hash_to_scalar(dom_input)
-	// XXX(caw): this should have an explicit DST
+	// XXX(caw): this should have an explicit DST and not default to nil
 	return hashToScalar(domInput, nil)
 }
 
@@ -114,7 +133,7 @@ func encodeInt(x int) []byte {
 }
 
 func concat(x, y []byte) []byte {
-	fmt.Println(hex.EncodeToString(y))
+	// fmt.Println(hex.EncodeToString(y))
 	return append(x, y...)
 }
 
@@ -168,25 +187,25 @@ func calculateChallenge(Abar, Bbar, C *pairing.G1, indexArray []int, msgArray []
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bbs-signatures-03#name-generators-calculation
 func createGenerators(count int, pk []byte) []*pairing.G1 {
 	// create_generators(count, PK) := hash_to_generator(count)
-	return hashToGenerators(count)
+	generatorSeed := ciphersuiteString("MESSAGE_GENERATOR_SEED")
+	return hashToGenerators(count, generatorSeed)
 }
 
-func hashToGenerators(count int) []*pairing.G1 {
+func hashToGenerators(count int, generatorSeed []byte) []*pairing.G1 {
 	// ABORT if:
 
 	// 1. count > 2^64 - 1
 
 	// Procedure:
 
-	expandLen := uint(256)
-	seedDst := []byte("TODO")
-	generatorSeed := []byte("TODO")
-	generatorDst := []byte("TODO")
+	seedDst := ciphersuiteString("SIG_GENERATOR_SEED_")
+	generatorDst := ciphersuiteString("SIG_GENERATOR_DST_")
 
+	// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-16#section-8.8.1
 	exp := expander.NewExpanderMD(crypto.SHA256, seedDst)
 
 	// 1. v = expand_message(generator_seed, seed_dst, expand_len)
-	v := exp.Expand(generatorSeed, expandLen)
+	v := exp.Expand(generatorSeed, expandLength)
 
 	lenBuffer := make([]byte, 8)
 
@@ -197,7 +216,7 @@ func hashToGenerators(count int) []*pairing.G1 {
 		expandInput := append(v, lenBuffer...)
 		// 3.    v = expand_message(v || I2OSP(i, 8), seed_dst, expand_len)
 		// 4.    generator_i = hash_to_curve_g1(v, generator_dst)
-		v = exp.Expand(expandInput, expandLen)
+		v = exp.Expand(expandInput, expandLength)
 		generators[i] = hashToCurveG1(v, generatorDst)
 	}
 
@@ -230,16 +249,32 @@ func rawSign(sk *pairing.Scalar, pk []byte, header []byte, messages [][]byte) (S
 	// 2. domain = calculate_domain(PK, Q_1, (H_1, ..., H_L), header)
 	domain := calculateDomain(pk, generators[0], generators[1:], header)
 
+	// e_input = serialize((SK, domain, msg_1, ..., msg_L))
+	skEnc, err := sk.MarshalBinary()
+	if err != nil {
+		return Signature{}, err
+	}
+	domainEnc, err := domain.MarshalBinary()
+	if err != nil {
+		return Signature{}, err
+	}
+	hashInput := append(skEnc, domainEnc...)
+	for i := 0; i < L; i++ {
+		msgEnc, err := msgs[i].MarshalBinary()
+		if err != nil {
+			return Signature{}, err
+		}
+		hashInput = append(hashInput, msgEnc...)
+	}
+
 	// 3. e = hash_to_scalar(serialize((SK, domain, msg_1, ..., msg_L)))
-	hashInput := []byte{} // XXX(caw)
-	hashDst := []byte{}
-	e := hashToScalar(hashInput, hashDst)
+	e := hashToScalar(hashInput, nil)
 
 	// 4. B = P1 + Q_1 * domain + H_1 * msg_1 + ... + H_L * msg_L
-	P1 := pairing.G1Generator()
+	P1 := computeP1()
 	B := &pairing.G1{}
-	B.Add(P1, generators[0])
-	B.ScalarMult(domain, B)
+	B.ScalarMult(domain, generators[0]) // Q_1 * domain
+	B.Add(P1, B)                        // P1 + Q_1 * domain
 	for i := 1; i <= L; i++ {
 		hi := generators[i]
 		v := &pairing.G1{}
@@ -267,16 +302,7 @@ func sign(sk *pairing.Scalar, pk []byte, header []byte, messages [][]byte) ([]by
 	if err != nil {
 		return nil, err
 	}
-	return signatureToOctets(sig)
-}
-
-func signatureToOctets(sig Signature) ([]byte, error) {
-	Aenc := sig.A.Bytes()
-	eEnc, err := sig.e.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
-	return append(Aenc, eEnc...), nil
+	return sig.Encode(), nil
 }
 
 func octetsToSignature(data []byte) (Signature, error) {
@@ -322,10 +348,10 @@ func rawVerify(pk []byte, signature Signature, header []byte, messages [][]byte)
 
 	// 3. B = P1 + Q_1 * domain + H_1 * msg_1 + ... + H_L * msg_L
 	// XXX(caw): this is shared between sign and verify, so pull it out into a function
-	P1 := pairing.G1Generator()
+	P1 := computeP1()
 	B := &pairing.G1{}
-	B.Add(P1, generators[0])
-	B.ScalarMult(domain, B)
+	B.ScalarMult(domain, generators[0]) // Q_1 * domain
+	B.Add(P1, B)                        // P1 + Q_1 * domain
 	for i := 1; i <= L; i++ {
 		hi := generators[i]
 		v := &pairing.G1{}
@@ -381,6 +407,30 @@ func calculateRandomScalars(count int) ([]*pairing.Scalar, error) {
 			return nil, err
 		}
 	}
+	return scalars, nil
+}
+
+// Mocked random scalars
+// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bbs-signatures-03#name-mocked-random-scalars
+func calculateFixedScalars(count int) ([]*pairing.Scalar, error) {
+	// 1. out_len = expand_len * count
+	expandLength := uint(256)
+	outLen := uint(int(expandLength) * count)
+	seed := []byte{0x00}
+
+	// 2. v = expand_message(SEED, dst, out_len)
+	dst := ciphersuiteString("MOCK_RANDOM_SCALARS_DST_")
+	exp := expander.NewExpanderMD(crypto.SHA256, dst)
+
+	uniformBytes := exp.Expand(seed, outLen)
+	scalars := make([]*pairing.Scalar, count)
+	for i := 0; i < count; i++ {
+		start := i * int(expandLength)
+		end := (i + 1) * int(expandLength)
+		scalars[i] = &pairing.Scalar{}
+		scalars[i].SetBytes(uniformBytes[start:end])
+	}
+
 	return scalars, nil
 }
 
@@ -463,7 +513,7 @@ func rawProofGen(pk []byte, signature Signature, header []byte, ph []byte, messa
 	}
 
 	// 7.  B = P1 + Q_1 * domain + H_1 * msg_1 + ... + H_L * msg_L
-	P1 := pairing.G1Generator()
+	P1 := computeP1()
 	Q1 := generators[0]
 	B := &pairing.G1{}
 	B.ScalarMult(domain, Q1)
@@ -587,7 +637,7 @@ func rawProofVerify(pk []byte, proof Proof, header []byte, ph []byte, disclosedM
 	D1 := &pairing.G1{}
 	D1.ScalarMult(domain, Q1) // Q_1 * domain
 	D := &pairing.G1{}
-	P1 := pairing.G1Generator()
+	P1 := computeP1()
 	D.Add(D1, P1) // P1 + Q_1 * domain
 	for i := 0; i < R; i++ {
 		msg := disclosedMsgs[i] // H_i1 * msg_i1
@@ -630,14 +680,14 @@ func rawProofVerify(pk []byte, proof Proof, header []byte, ph []byte, disclosedM
 	// 11. if e(Abar, W) * e(Bbar, -BP2) != Identity_GT, return INVALID
 	W := &pairing.G2{}
 	W.SetBytes(pk)
+	l := pairing.Pair(proof.Abar, W) // e(Abar, W)
 
 	rg2 := pairing.G2Generator()
 	rg2.Neg()
+	r := pairing.Pair(proof.Bbar, rg2) // e(Bbar, -BP2)
 
-	l := pairing.Pair(proof.Abar, W)
-	r := pairing.Pair(proof.Bbar, rg2)
 	target := &pairing.Gt{}
-	target.Mul(l, r)
+	target.Mul(l, r) // e(Abar, W) * e(Bbar, -BP2)
 	if !target.IsIdentity() {
 		return fmt.Errorf("bbs: invalid proof (pairing failure): %s", target.String())
 	}
@@ -660,7 +710,8 @@ func messagesToScalars(messages [][]byte) []*pairing.Scalar {
 func mapToScalar(msg []byte, index int) *pairing.Scalar {
 	// dst = ciphersuite_id || "MAP_MSG_TO_SCALAR_AS_HASH_", where ciphersuite_id is defined by the ciphersuite.
 	// XXX(caw): should MAP_MSG_TO_SCALAR_AS_HASH_ be MAP_TO_SCALAR_ID?, e.g., dst = ciphersuite_id || MAP_TO_SCALAR_ID
-	return hashToScalar(msg, []byte("TODO"))
+	dst := ciphersuiteString("MAP_MSG_TO_SCALAR_AS_HASH_")
+	return hashToScalar(msg, dst)
 }
 
 // XXX(caw): dst SHOULD NOT be optional with the same domain separation tag used everywhere in the spec
@@ -670,7 +721,9 @@ func hashToScalar(msg, dst []byte) *pairing.Scalar {
 	// uniform_bytes = expand_message(msg_octets, dst, expand_len)
 	// return OS2IP(uniform_bytes) mod r
 
-	expandLength := uint(256)
+	if dst == nil {
+		dst = ciphersuiteString("H2S_")
+	}
 
 	exp := expander.NewExpanderMD(crypto.SHA256, dst)
 	uniformBytes := exp.Expand(msg, expandLength)
