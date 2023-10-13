@@ -46,6 +46,45 @@ func (s Signature) Encode() []byte {
 	return append(AEnc, eEnc...)
 }
 
+// XXX(caw): rename this function
+func octetsToSignature(data []byte) (Signature, error) {
+	// 1.  expected_len = octet_point_length + octet_scalar_length
+	expectedLen := octetPointLen + octetScalarLen
+	// 2.  if length(signature_octets) != expected_len, return INVALID
+	if len(data) != expectedLen {
+		return Signature{}, fmt.Errorf("bbs: malformed signature")
+	}
+
+	// 3.  A_octets = signature_octets[0..(octet_point_length - 1)]
+	// 4.  A = octets_to_point_g1(A_octets)
+	AOctets := data[0:octetPointLen]
+	A := &pairing.G1{}
+	A.SetBytes(AOctets)
+
+	// 5.  if A is INVALID, return INVALID
+	if !A.IsOnG1() {
+		return Signature{}, fmt.Errorf("bbs: invalid A signature component (not in G1)")
+	}
+	// 6.  if A == Identity_G1, return INVALID
+	if A.IsIdentity() {
+		return Signature{}, fmt.Errorf("bbs: invalid A signature component (identity element)")
+	}
+
+	// 7.  index = octet_point_length
+	// 8.  end_index = index + octet_scalar_length - 1
+	// 9.  e = OS2IP(signature_octets[index..end_index])
+	e := &pairing.Scalar{}
+	e.SetBytes(data[octetPointLen:])
+
+	// 10. if e = 0 OR e >= r, return INVALID
+	// 11. return (A, e)
+
+	return Signature{
+		A: A,
+		e: e,
+	}, nil
+}
+
 // (Abar, Bbar, r2^, r3^, (m^_j1, ..., m^_jU), c)
 type Proof struct {
 	Abar        *pairing.G1
@@ -91,10 +130,6 @@ func publicKey(sk *pairing.Scalar) []byte {
 	// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bbs-signatures-03#section-6.2.2-3
 	return W.BytesCompressed()
 }
-
-// Serialize
-// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bbs-signatures-03#name-serialize
-// XXX(caw): this function feels too complicated and should instead be replaced separate serializeFunctions invoked directly
 
 // Domain calculation
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bbs-signatures-03#name-domain-calculation
@@ -305,33 +340,9 @@ func sign(sk *pairing.Scalar, pk []byte, header []byte, messages [][]byte) ([]by
 	return sig.Encode(), nil
 }
 
-func octetsToSignature(data []byte) (Signature, error) {
-	// 1.  expected_len = octet_point_length + octet_scalar_length
-	// 2.  if length(signature_octets) != expected_len, return INVALID
-	// 3.  A_octets = signature_octets[0..(octet_point_length - 1)]
-	// 4.  A = octets_to_point_g1(A_octets)
-	// 5.  if A is INVALID, return INVALID
-	// 6.  if A == Identity_G1, return INVALID
-	// 7.  index = octet_point_length
-	// 8.  end_index = index + octet_scalar_length - 1
-	// 9.  e = OS2IP(signature_octets[index..end_index])
-	// 10. if e = 0 OR e >= r, return INVALID
-	// 11. return (A, e)
-
-	// XXX(caw): writeme
-
-	return Signature{}, nil
-}
-
 // Signature verification
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bbs-signatures-03#name-signature-verification-veri
 func rawVerify(pk []byte, signature Signature, header []byte, messages [][]byte) error {
-	// 1. (Q_1, H_1, ..., H_L) = create_generators(L+1, PK)
-	// 2. domain = calculate_domain(PK, Q_1, (H_1, ..., H_L), header)
-	// 3. B = P1 + Q_1 * domain + H_1 * msg_1 + ... + H_L * msg_L
-	// 4. if e(A, W + BP2 * e) * e(B, -BP2) != Identity_GT, return INVALID
-	// 5. return VALID
-
 	// 1. L = length(messages)
 	L := len(messages)
 
