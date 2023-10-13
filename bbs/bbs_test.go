@@ -65,19 +65,16 @@ func TestKeyGen(t *testing.T) {
 	expectedSkEnc := mustDecodeHex("60e55110f76883a13d030b2f6bd11883422d5abde717569fc0731f51237169fc")
 	expectedPkEnc := mustDecodeHex("a820f230f6ae38503b86c70dc50b61c58a77e45c39ab25c0652bbaa8fa136f2851bd4781c9dcde39fc9d1d52c9e60268061e7d7632171d91aa8d460acee0e96f1e7c4cfb12d3ff9ab5d5dc91c277db75c845d649ef3c4f63aebc364cd55ded0c")
 
-	sk, err := keyGen(ikm, keyInfo, nil)
+	sk, err := KeyGen(ikm, keyInfo, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	skEnc, err := sk.MarshalBinary()
-	if err != nil {
-		t.Fatal(err)
-	}
+	skEnc := sk.Encode()
 	if !bytes.Equal(skEnc, expectedSkEnc) {
 		t.Fatalf("derived secret key mismatch, got %s, wanted %s", hex.EncodeToString(skEnc), hex.EncodeToString(expectedSkEnc))
 	}
 
-	pkEnc := publicKey(sk)
+	pkEnc := sk.Public()
 	if !bytes.Equal(pkEnc, expectedPkEnc) {
 		t.Fatalf("derived public key mismatch, got %s, wanted %s", hex.EncodeToString(pkEnc), hex.EncodeToString(expectedPkEnc))
 	}
@@ -158,12 +155,12 @@ func TestSingleMessageSignature(t *testing.T) {
 	ikm := mustDecodeHex("746869732d49532d6a7573742d616e2d546573742d494b4d2d746f2d67656e65726174652d246528724074232d6b6579")
 	keyInfo := mustDecodeHex("746869732d49532d736f6d652d6b65792d6d657461646174612d746f2d62652d757365642d696e2d746573742d6b65792d67656e")
 
-	sk, err := keyGen(ikm, keyInfo, nil)
+	sk, err := KeyGen(ikm, keyInfo, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	sig, err := rawSign(sk, publicKey(sk), header, messages)
+	sig, err := rawSign(sk, sk.Public(), header, messages)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,12 +180,12 @@ func TestMultiMessageSignature(t *testing.T) {
 	ikm := mustDecodeHex("746869732d49532d6a7573742d616e2d546573742d494b4d2d746f2d67656e65726174652d246528724074232d6b6579")
 	keyInfo := mustDecodeHex("746869732d49532d736f6d652d6b65792d6d657461646174612d746f2d62652d757365642d696e2d746573742d6b65792d67656e")
 
-	sk, err := keyGen(ikm, keyInfo, nil)
+	sk, err := KeyGen(ikm, keyInfo, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	sig, err := rawSign(sk, publicKey(sk), header, messages)
+	sig, err := rawSign(sk, sk.Public(), header, messages)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -199,12 +196,12 @@ func TestMultiMessageSignature(t *testing.T) {
 	}
 }
 
-func TestRoundTrip(t *testing.T) {
+func TestRawRoundTrip(t *testing.T) {
 	ikm := make([]byte, 32)
 	keyInfo := []byte{}
 	keyDst := []byte{}
 
-	sk, err := keyGen(ikm, keyInfo, keyDst)
+	sk, err := KeyGen(ikm, keyInfo, keyDst)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,12 +216,12 @@ func TestRoundTrip(t *testing.T) {
 	messages[1] = []byte("bar")
 	messages[1] = []byte("baz")
 
-	sig, err := rawSign(sk, publicKey(sk), header, messages)
+	sig, err := rawSign(sk, sk.Public(), header, messages)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = rawVerify(publicKey(sk), sig, header, messages)
+	err = rawVerify(sk.Public(), sig, header, messages)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,13 +231,59 @@ func TestRoundTrip(t *testing.T) {
 	for i := 0; i < len(disclosedIndexes); i++ {
 		disclosedMessages[i] = messages[disclosedIndexes[i]]
 	}
-	proof, err := rawProofGen(publicKey(sk), sig, header, ph, messages, disclosedIndexes)
+	proof, err := rawProofGen(sk.Public(), sig, header, ph, messages, disclosedIndexes)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	err = rawProofVerify(publicKey(sk), proof, header, ph, disclosedMessages, disclosedIndexes)
+	err = rawProofVerify(sk.Public(), proof, header, ph, disclosedMessages, disclosedIndexes)
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestRoundTrip(t *testing.T) {
+	ikm := make([]byte, 32)
+	keyInfo := []byte{}
+	keyDst := []byte{}
+
+	sk, err := KeyGen(ikm, keyInfo, keyDst)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	header := []byte("test header")
+
+	messages := make([][]byte, 5)
+	messages[0] = []byte("hello")
+	messages[1] = []byte("world")
+	messages[1] = []byte("foo")
+	messages[1] = []byte("bar")
+	messages[1] = []byte("baz")
+
+	sig, err := Sign(sk, sk.Public(), header, messages)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = Verify(sk.Public(), sig, header, messages)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// ph := []byte("presentation header")
+	// disclosedIndexes := []int{0, 1}
+	// disclosedMessages := make([][]byte, len(disclosedIndexes))
+	// for i := 0; i < len(disclosedIndexes); i++ {
+	// 	disclosedMessages[i] = messages[disclosedIndexes[i]]
+	// }
+	// proof, err := rawProofGen(sk.Public(), sig, header, ph, messages, disclosedIndexes)
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
+
+	// err = rawProofVerify(sk.Public(), proof, header, ph, disclosedMessages, disclosedIndexes)
+	// if err != nil {
+	// 	t.Fatal(err)
+	// }
 }
