@@ -46,8 +46,7 @@ func (s Signature) Encode() []byte {
 	return append(AEnc, eEnc...)
 }
 
-// XXX(caw): rename this function
-func octetsToSignature(data []byte) (Signature, error) {
+func UnmarshalSignature(data []byte) (Signature, error) {
 	// 1.  expected_len = octet_point_length + octet_scalar_length
 	expectedLen := octetPointLen + octetScalarLen
 	// 2.  if length(signature_octets) != expected_len, return INVALID
@@ -85,7 +84,6 @@ func octetsToSignature(data []byte) (Signature, error) {
 	}, nil
 }
 
-// (Abar, Bbar, r2^, r3^, (m^_j1, ..., m^_jU), c)
 type Proof struct {
 	Abar        *pairing.G1
 	Bbar        *pairing.G1
@@ -95,14 +93,66 @@ type Proof struct {
 	c           *pairing.Scalar
 }
 
+func (p Proof) Encode() []byte {
+	ABarEnc := p.Abar.BytesCompressed()
+	BBarEnc := p.Bbar.BytesCompressed()
+	r2hEnc, err := p.r2h.MarshalBinary()
+	if err != nil {
+		panic(err)
+	}
+	r3hEnc, err := p.r3h.MarshalBinary()
+	if err != nil {
+		panic(err)
+	}
+	cEnc, err := p.c.MarshalBinary()
+	if err != nil {
+		panic(err)
+	}
+
+	result := append(ABarEnc, BBarEnc...)
+	result = append(result, r2hEnc...)
+	result = append(result, r3hEnc...)
+	for i := 0; i < len(p.commitments); i++ {
+		commitmentEnc, err := p.commitments[i].MarshalBinary()
+		if err != nil {
+			panic(err)
+		}
+		result = append(result, commitmentEnc...)
+	}
+	result = append(result, cEnc...)
+	return result
+}
+
+type SecretKey struct {
+	sk *pairing.Scalar
+}
+
+type PublicKey []byte
+
+func (s SecretKey) Public() PublicKey {
+	W := pairing.G2Generator()
+	W.ScalarMult(s.sk, W)
+
+	// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bbs-signatures-03#section-6.2.2-3
+	return W.BytesCompressed()
+}
+
+func (s SecretKey) Encode() []byte {
+	enc, err := s.sk.MarshalBinary()
+	if err != nil {
+		panic(err)
+	}
+	return enc
+}
+
 // Key generation
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bbs-signatures-03#name-key-generation-operations
-func keyGen(ikm []byte, keyInfo, keyDst []byte) (*pairing.Scalar, error) {
+func KeyGen(ikm []byte, keyInfo, keyDst []byte) (SecretKey, error) {
 	if len(ikm) < 32 {
-		return nil, fmt.Errorf("bbs: invalid keyGen ikm")
+		return SecretKey{}, fmt.Errorf("bbs: invalid keyGen ikm")
 	}
 	if len(keyInfo) > 65535 {
-		return nil, fmt.Errorf("bbs: invalid keyGen keyInfo")
+		return SecretKey{}, fmt.Errorf("bbs: invalid keyGen keyInfo")
 	}
 	if keyDst == nil {
 		// keyDst = ciphersuite_id || "KEYGEN_DST_"
@@ -120,15 +170,9 @@ func keyGen(ikm []byte, keyInfo, keyDst []byte) (*pairing.Scalar, error) {
 	// if SK is INVALID, return INVALID
 	// XXX(caw): what does it mean for SK to be invalid if hash_to_scalar never returns an invalid scalar?
 
-	return sk, nil
-}
-
-func publicKey(sk *pairing.Scalar) []byte {
-	W := pairing.G2Generator()
-	W.ScalarMult(sk, W)
-
-	// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bbs-signatures-03#section-6.2.2-3
-	return W.BytesCompressed()
+	return SecretKey{
+		sk: sk,
+	}, nil
 }
 
 // Domain calculation
@@ -168,7 +212,6 @@ func encodeInt(x int) []byte {
 }
 
 func concat(x, y []byte) []byte {
-	// fmt.Println(hex.EncodeToString(y))
 	return append(x, y...)
 }
 
@@ -214,8 +257,8 @@ func calculateChallenge(Abar, Bbar, C *pairing.G1, indexArray []int, msgArray []
 	challengeInput = concat(challengeInput, encodeInt(len(ph)))
 	challengeInput = concat(challengeInput, ph)
 
-	dst := []byte("TODO")
-	return hashToScalar(challengeInput, dst), nil
+	// XXX(caw): this should have an explicit DST
+	return hashToScalar(challengeInput, nil), nil
 }
 
 // Generators calculation
@@ -230,6 +273,9 @@ func hashToGenerators(count int, generatorSeed []byte) []*pairing.G1 {
 	// ABORT if:
 
 	// 1. count > 2^64 - 1
+	if uint64(count) > ^uint64(0) {
+		panic("invalid invocation")
+	}
 
 	// Procedure:
 
@@ -267,7 +313,7 @@ func hashToCurveG1(seed []byte, dst []byte) *pairing.G1 {
 
 // Signature generation
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bbs-signatures-03#name-signature-generation-sign
-func rawSign(sk *pairing.Scalar, pk []byte, header []byte, messages [][]byte) (Signature, error) {
+func rawSign(sk SecretKey, pk []byte, header []byte, messages [][]byte) (Signature, error) {
 	// Deserialization:
 
 	// 1. L = length(messages)
@@ -285,7 +331,7 @@ func rawSign(sk *pairing.Scalar, pk []byte, header []byte, messages [][]byte) (S
 	domain := calculateDomain(pk, generators[0], generators[1:], header)
 
 	// e_input = serialize((SK, domain, msg_1, ..., msg_L))
-	skEnc, err := sk.MarshalBinary()
+	skEnc, err := sk.sk.MarshalBinary()
 	if err != nil {
 		return Signature{}, err
 	}
@@ -319,7 +365,7 @@ func rawSign(sk *pairing.Scalar, pk []byte, header []byte, messages [][]byte) (S
 
 	// 5. A = B * (1 / (SK + e))
 	skE := &pairing.Scalar{}
-	skE.Add(sk, e)
+	skE.Add(sk.sk, e)
 	skEInv := &pairing.Scalar{}
 	skEInv.Inv(skE)
 	A := &pairing.G1{}
@@ -332,7 +378,7 @@ func rawSign(sk *pairing.Scalar, pk []byte, header []byte, messages [][]byte) (S
 	}, nil
 }
 
-func sign(sk *pairing.Scalar, pk []byte, header []byte, messages [][]byte) ([]byte, error) {
+func Sign(sk SecretKey, pk []byte, header []byte, messages [][]byte) ([]byte, error) {
 	sig, err := rawSign(sk, pk, header, messages)
 	if err != nil {
 		return nil, err
@@ -392,19 +438,14 @@ func rawVerify(pk []byte, signature Signature, header []byte, messages [][]byte)
 
 }
 
-func verify(pk, signature, header []byte, messages [][]byte) error {
-	// Deserialization:
-
+func Verify(pk PublicKey, signature, header []byte, messages [][]byte) error {
 	// 1. signature_result = octets_to_signature(signature)
-	// 2. if signature_result is INVALID, return INVALID
-	// 3. (A, e) = signature_result
-	// 4. W = octets_to_pubkey(PK)
-	// 5. if W is INVALID, return INVALID
-	// 6. L = length(messages)
-	// 7. (msg_1, ..., msg_L) = messages_to_scalars(messages)
+	sig, err := UnmarshalSignature(signature)
+	if err != nil {
+		return err
+	}
 
-	// XXX(caw): invoke rawVerify with the deserialized values
-	return nil
+	return rawVerify(pk, sig, header, messages)
 }
 
 // Random scalars
