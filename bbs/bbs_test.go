@@ -168,11 +168,30 @@ func TestSingleMessageSignature(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// sigEEnc, err := sig.e.MarshalBinary()
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
-	// fmt.Println(hex.EncodeToString(sigEEnc))
+	sigEnc := sig.Encode()
+	if !bytes.Equal(sigEnc, expectedSigEnc) {
+		t.Fatalf("incorrect signature, got %s, wanted %s", hex.EncodeToString(sigEnc), hex.EncodeToString(expectedSigEnc))
+	}
+}
+
+// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bbs-signatures-03#name-valid-multi-message-signatur
+func TestMultiMessageSignature(t *testing.T) {
+	header := mustDecodeHex("11223344556677889900aabbccddeeff")
+	messages := testMessages()
+	expectedSigEnc := mustDecodeHex("895cd9c0ccb9aca4de913218655346d718711472f2bf1f3e68916de106a0d93cf2f47200819b45920bbda541db2d91480665df253fedab2843055bdc02535d83baddbbb2803ec3808e074f71f199751e")
+
+	ikm := mustDecodeHex("746869732d49532d6a7573742d616e2d546573742d494b4d2d746f2d67656e65726174652d246528724074232d6b6579")
+	keyInfo := mustDecodeHex("746869732d49532d736f6d652d6b65792d6d657461646174612d746f2d62652d757365642d696e2d746573742d6b65792d67656e")
+
+	sk, err := keyGen(ikm, keyInfo, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sig, err := rawSign(sk, publicKey(sk), header, messages)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	sigEnc := sig.Encode()
 	if !bytes.Equal(sigEnc, expectedSigEnc) {
