@@ -271,19 +271,19 @@ func TestRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// ph := []byte("presentation header")
-	// disclosedIndexes := []int{0, 1}
-	// disclosedMessages := make([][]byte, len(disclosedIndexes))
-	// for i := 0; i < len(disclosedIndexes); i++ {
-	// 	disclosedMessages[i] = messages[disclosedIndexes[i]]
-	// }
-	// proof, err := rawProofGen(sk.Public(), sig, header, ph, messages, disclosedIndexes)
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
+	ph := []byte("presentation header")
+	disclosedIndexes := []int{0, 1}
+	disclosedMessages := make([][]byte, len(disclosedIndexes))
+	for i := 0; i < len(disclosedIndexes); i++ {
+		disclosedMessages[i] = messages[disclosedIndexes[i]]
+	}
+	proof, err := ProofGen(sk.Public(), sig, header, ph, messages, disclosedIndexes)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	// err = rawProofVerify(sk.Public(), proof, header, ph, disclosedMessages, disclosedIndexes)
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
+	err = ProofVerify(sk.Public(), proof, header, ph, disclosedMessages, disclosedIndexes)
+	if err != nil {
+		t.Fatal(err)
+	}
 }

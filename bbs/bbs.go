@@ -123,6 +123,88 @@ func (p Proof) Encode() []byte {
 	return result
 }
 
+func unmarshalProof(data []byte) (Proof, error) {
+	proofLenFloor := 2*octetPointLen + 3*octetScalarLen
+	if len(data) < proofLenFloor {
+		return Proof{}, fmt.Errorf("bbs: malformed proof")
+	}
+
+	// // Points (i.e., (Abar, Bbar) in ProofGen) de-serialization.
+	// 3.  index = 0
+	// 4.  for i in range(0, 1):
+	// 5.      end_index = index + octet_point_length - 1
+	// 6.      A_i = octets_to_point_g1(proof_octets[index..end_index])
+	// 7.      if A_i is INVALID or Identity_G1, return INVALID
+	// 8.      index += octet_point_length
+	// index := 0
+
+	index := 0
+
+	// Abar
+	octets := data[index : index+octetPointLen]
+	Abar := &pairing.G1{}
+	Abar.SetBytes(octets)
+	index += octetPointLen
+
+	// Bbar
+	octets = data[index : index+octetPointLen]
+	Bbar := &pairing.G1{}
+	Bbar.SetBytes(octets)
+	index += octetPointLen
+
+	// Scalars (i.e., (r2^, r3^, m^_j1, ..., m^_jU, c) in
+	// r2h and r3h
+	r2h := &pairing.Scalar{}
+	r2h.SetBytes(data[index : index+octetScalarLen])
+	index += octetScalarLen
+	r3h := &pairing.Scalar{}
+	r3h.SetBytes(data[index : index+octetScalarLen])
+	index += octetScalarLen
+
+	i := 0
+	scalars := make([]*pairing.Scalar, 0)
+	for {
+		if index < len(data) {
+			// XXX(caw): need to check if there is enough data
+			scalars = append(scalars, &pairing.Scalar{})
+			scalars[i].SetBytes(data[index : index+octetScalarLen])
+			index += octetScalarLen
+			i += 1
+		} else {
+			if index != len(data) {
+				return Proof{}, fmt.Errorf("bbs: malformed proof")
+			}
+			if len(scalars) < 3 {
+				return Proof{}, fmt.Errorf("bbs: malformed proof")
+			}
+			return Proof{
+				Abar:        Abar,
+				Bbar:        Bbar,
+				r2h:         r2h,
+				r3h:         r3h,
+				commitments: scalars[0 : len(scalars)-1],
+				c:           scalars[len(scalars)-1],
+			}, nil
+		}
+	}
+
+	// // ProofGen) de-serialization.
+	// 9.  j = 0
+	// 10. while index < length(proof_octets):
+	// 11.     end_index = index + octet_scalar_length - 1
+	// 12.     s_j = OS2IP(proof_octets[index..end_index])
+	// 13.     if s_j = 0 or if s_j >= r, return INVALID
+	// 14.     index += octet_scalar_length
+	// 15.     j += 1
+
+	// 16. if index != length(proof_octets), return INVALID
+	// 17. msg_commitments = ()
+	// 18. If j > 3, set msg_commitments = (s_2, ..., s_(j-2))
+	// 19. return (A_0, A_1, s_0, s_1, msg_commitments, s_(j-1))
+
+	// return Proof{}, nil
+}
+
 type SecretKey struct {
 	sk *pairing.Scalar
 }
@@ -435,7 +517,6 @@ func rawVerify(pk []byte, signature Signature, header []byte, messages [][]byte)
 	}
 
 	return nil
-
 }
 
 func Verify(pk PublicKey, signature, header []byte, messages [][]byte) error {
@@ -511,7 +592,6 @@ func difference(x []int, count int) []int {
 
 // Proof generation
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bbs-signatures-03#name-proof-generation-proofgen
-// proof = ProofGen(PK, signature, header, ph, messages, disclosed_indexes)
 func rawProofGen(pk []byte, signature Signature, header []byte, ph []byte, messages [][]byte, disclosedIndexes []int) (Proof, error) {
 	// XXX(caw): need to validate the input disclosedIndexes value to make sure it doesn't have repeated indexes or whatever
 
@@ -649,6 +729,20 @@ func rawProofGen(pk []byte, signature Signature, header []byte, ph []byte, messa
 	return proof, nil
 }
 
+func ProofGen(pk PublicKey, signature []byte, header []byte, ph []byte, messages [][]byte, disclosedIndexes []int) ([]byte, error) {
+	// func rawProofGen(pk []byte, signature Signature, header []byte, ph []byte, messages [][]byte, disclosedIndexes []int) (Proof, error) {
+	sig, err := UnmarshalSignature(signature)
+	if err != nil {
+		return nil, err
+	}
+	proof, err := rawProofGen(pk, sig, header, ph, messages, disclosedIndexes)
+	if err != nil {
+		return nil, err
+	}
+
+	return proof.Encode(), nil
+}
+
 // Proof verification
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bbs-signatures-03#name-proof-verification-proofver
 func rawProofVerify(pk []byte, proof Proof, header []byte, ph []byte, disclosedMessages [][]byte, disclosedIndexes []int) error {
@@ -746,6 +840,15 @@ func rawProofVerify(pk []byte, proof Proof, header []byte, ph []byte, disclosedM
 
 	// 12. return VALID
 	return nil
+}
+
+func ProofVerify(pk, proof, header, ph []byte, disclosedMessages [][]byte, disclosedIndexes []int) error {
+	// func rawProofVerify(pk []byte, proof Proof, header []byte, ph []byte, disclosedMessages [][]byte, disclosedIndexes []int) error {
+	p, err := unmarshalProof(proof)
+	if err != nil {
+		return err
+	}
+	return rawProofVerify(pk, p, header, ph, disclosedMessages, disclosedIndexes)
 }
 
 // Hash-to-scalar
