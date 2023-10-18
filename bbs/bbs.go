@@ -17,7 +17,6 @@ var (
 	ciphersuiteID  = []byte("BBS_BLS12381G1_XMD:SHA-256_SSWU_RO_H2G_HM2S_")
 	octetScalarLen = 32
 	octetPointLen  = 48
-	h2cSuite       = []byte("BLS12381G1_XMD:SHA-256_SSWU_RO_")
 	expandLength   = uint(48)
 )
 
@@ -58,7 +57,10 @@ func UnmarshalSignature(data []byte) (Signature, error) {
 	// 4.  A = octets_to_point_g1(A_octets)
 	AOctets := data[0:octetPointLen]
 	A := &pairing.G1{}
-	A.SetBytes(AOctets)
+	err := A.SetBytes(AOctets)
+	if err != nil {
+		return Signature{}, fmt.Errorf("bbs: malformed signature")
+	}
 
 	// 5.  if A is INVALID, return INVALID
 	if !A.IsOnG1() {
@@ -143,13 +145,19 @@ func unmarshalProof(data []byte) (Proof, error) {
 	// Abar
 	octets := data[index : index+octetPointLen]
 	Abar := &pairing.G1{}
-	Abar.SetBytes(octets)
+	err := Abar.SetBytes(octets)
+	if err != nil {
+		return Proof{}, fmt.Errorf("bbs: malformed proof")
+	}
 	index += octetPointLen
 
 	// Bbar
 	octets = data[index : index+octetPointLen]
 	Bbar := &pairing.G1{}
-	Bbar.SetBytes(octets)
+	err = Bbar.SetBytes(octets)
+	if err != nil {
+		return Proof{}, fmt.Errorf("bbs: malformed proof")
+	}
 	index += octetPointLen
 
 	// Scalars (i.e., (r2^, r3^, m^_j1, ..., m^_jU, c) in
@@ -345,7 +353,7 @@ func calculateChallenge(Abar, Bbar, C *pairing.G1, indexArray []int, msgArray []
 
 // Generators calculation
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bbs-signatures-03#name-generators-calculation
-func createGenerators(count int, pk []byte) []*pairing.G1 {
+func createGenerators(count int) []*pairing.G1 {
 	// create_generators(count, PK) := hash_to_generator(count)
 	generatorSeed := ciphersuiteString("MESSAGE_GENERATOR_SEED")
 	return hashToGenerators(count, generatorSeed)
@@ -407,7 +415,7 @@ func rawSign(sk SecretKey, pk []byte, header []byte, messages [][]byte) (Signatu
 	// Procedure:
 
 	// 1. (Q_1, H_1, ..., H_L) = create_generators(L+1, PK)
-	generators := createGenerators(L+1, pk)
+	generators := createGenerators(L + 1)
 
 	// 2. domain = calculate_domain(PK, Q_1, (H_1, ..., H_L), header)
 	domain := calculateDomain(pk, generators[0], generators[1:], header)
@@ -480,7 +488,7 @@ func rawVerify(pk []byte, signature Signature, header []byte, messages [][]byte)
 	// Procedure:
 
 	// 1. (Q_1, H_1, ..., H_L) = create_generators(L+1, PK)
-	generators := createGenerators(L+1, pk)
+	generators := createGenerators(L + 1)
 
 	// 2. domain = calculate_domain(PK, Q_1, (H_1, ..., H_L), header)
 	domain := calculateDomain(pk, generators[0], generators[1:], header)
@@ -500,7 +508,10 @@ func rawVerify(pk []byte, signature Signature, header []byte, messages [][]byte)
 
 	// 4. if e(A, W + BP2 * e) * e(B, -BP2) != Identity_GT, return INVALID
 	W := &pairing.G2{}
-	W.SetBytes(pk)
+	err := W.SetBytes(pk)
+	if err != nil {
+		return fmt.Errorf("bbs: invalid signature")
+	}
 	lg2 := pairing.G2Generator()
 	lg2.ScalarMult(signature.e, lg2)
 	lg2.Add(lg2, W)
@@ -540,30 +551,6 @@ func calculateRandomScalars(count int) ([]*pairing.Scalar, error) {
 			return nil, err
 		}
 	}
-	return scalars, nil
-}
-
-// Mocked random scalars
-// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bbs-signatures-03#name-mocked-random-scalars
-func calculateFixedScalars(count int) ([]*pairing.Scalar, error) {
-	// 1. out_len = expand_len * count
-	expandLength := uint(256)
-	outLen := uint(int(expandLength) * count)
-	seed := []byte{0x00}
-
-	// 2. v = expand_message(SEED, dst, out_len)
-	dst := ciphersuiteString("MOCK_RANDOM_SCALARS_DST_")
-	exp := expander.NewExpanderMD(crypto.SHA256, dst)
-
-	uniformBytes := exp.Expand(seed, outLen)
-	scalars := make([]*pairing.Scalar, count)
-	for i := 0; i < count; i++ {
-		start := i * int(expandLength)
-		end := (i + 1) * int(expandLength)
-		scalars[i] = &pairing.Scalar{}
-		scalars[i].SetBytes(uniformBytes[start:end])
-	}
-
 	return scalars, nil
 }
 
@@ -620,7 +607,7 @@ func rawProofGen(pk []byte, signature Signature, header []byte, ph []byte, messa
 
 	// 1. (Q_1, MsgGenerators) = create_generators(L+1, PK) // XXX(Caw): inconsistent notation (Q1, MsgGEnerators) vs (Q1, H1, .... HL)
 	// 2.  (H_1, ..., H_L) = MsgGenerators
-	generators := createGenerators(L+1, pk)
+	generators := createGenerators(L + 1)
 	msgGenerators := generators[1:]
 
 	// 3.  (H_j1, ..., H_jU) = (MsgGenerators[j1], ..., MsgGenerators[jU])
@@ -755,7 +742,7 @@ func rawProofVerify(pk []byte, proof Proof, header []byte, ph []byte, disclosedM
 	disclosedMsgs := messagesToScalars(disclosedMessages)
 
 	// 1.  (Q_1, MsgGenerators) = create_generators(L+1, PK)
-	generators := createGenerators(L+1, pk)
+	generators := createGenerators(L + 1)
 	Q1 := generators[0]
 
 	// 2.  (H_1, ..., H_L) = MsgGenerators
@@ -825,7 +812,10 @@ func rawProofVerify(pk []byte, proof Proof, header []byte, ph []byte, disclosedM
 
 	// 11. if e(Abar, W) * e(Bbar, -BP2) != Identity_GT, return INVALID
 	W := &pairing.G2{}
-	W.SetBytes(pk)
+	err = W.SetBytes(pk)
+	if err != nil {
+		return fmt.Errorf("bbs: invalid proof")
+	}
 	l := pairing.Pair(proof.Abar, W) // e(Abar, W)
 
 	rg2 := pairing.G2Generator()
@@ -857,12 +847,12 @@ func ProofVerify(pk, proof, header, ph []byte, disclosedMessages [][]byte, discl
 func messagesToScalars(messages [][]byte) []*pairing.Scalar {
 	scalars := make([]*pairing.Scalar, len(messages))
 	for i, msg := range messages {
-		scalars[i] = mapToScalar(msg, i)
+		scalars[i] = mapToScalar(msg)
 	}
 	return scalars
 }
 
-func mapToScalar(msg []byte, index int) *pairing.Scalar {
+func mapToScalar(msg []byte) *pairing.Scalar {
 	// dst = ciphersuite_id || "MAP_MSG_TO_SCALAR_AS_HASH_", where ciphersuite_id is defined by the ciphersuite.
 	// XXX(caw): should MAP_MSG_TO_SCALAR_AS_HASH_ be MAP_TO_SCALAR_ID?, e.g., dst = ciphersuite_id || MAP_TO_SCALAR_ID
 	dst := ciphersuiteString("MAP_MSG_TO_SCALAR_AS_HASH_")
