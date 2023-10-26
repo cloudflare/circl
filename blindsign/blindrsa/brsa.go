@@ -1,6 +1,6 @@
-// Package blindrsa implements the RSA Blind Signature Protocol.
+// Package blindrsa implements the RSA Blind Signature Protocol as defined in [RFC9474].
 //
-// The RSA Blind Signature protocol, also called RSABSSA
+// The RSA Blind Signature protocol, and its variant RSABSSA
 // (RSA Blind Signature with Appendix) is a two-party protocol
 // between a Client and Server where they interact to compute
 //
@@ -114,7 +114,7 @@ func (v randomBRSAVerifier) Hash() hash.Hash {
 }
 
 func prepareMsg(message, prefix []byte) []byte {
-	return append(append([]byte{}, prefix...), message...)
+	return append(prefix, message...)
 }
 
 func fixedBlind(message, salt []byte, r, rInv *big.Int, pk *rsa.PublicKey, hash hash.Hash) ([]byte, VerifierState, error) {
