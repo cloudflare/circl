@@ -25,60 +25,114 @@ You can get CIRCL by fetching:
 go get -u github.com/cloudflare/circl
 ```
 
+Alternatively, look at the [Cloudflare Go](https://github.com/cloudflare/go/tree/cf) fork to see how to integrate CIRCL natively in Go.
+
 ## List of Algorithms
 
-#### Diffie-Hellman Protocol
-- [X25519](https://datatracker.ietf.org/doc/html/rfc7748/)
-- [X448](https://datatracker.ietf.org/doc/html/rfc7748/)
-- [Curve4Q](https://datatracker.ietf.org/doc/draft-ladd-cfrg-4q/)
+[RFC-7748]: https://doi.org/10.17487/RFC7748
+[RFC-8032]: https://doi.org/10.17487/RFC8032
+[RFC-8235]: https://doi.org/10.17487/RFC8235
+[RFC-9180]: https://doi.org/10.17487/RFC9180
+[RFC-9380]: https://doi.org/10.17487/RFC9380
+[RFC-9474]: https://doi.org/10.17487/RFC9474
+[RFC-9496]: https://doi.org/10.17487/RFC9496
+[RFC-9497]: https://doi.org/10.17487/RFC9497
+[FIPS 202]: https://doi.org/10.6028/NIST.FIPS.202
+[FIPS 186-5]: https://doi.org/10.6028/NIST.FIPS.186-5
+[BLS12-381]: https://electriccoin.co/blog/new-snark-curve/
+[ia.cr/2015/267]: https://ia.cr/2015/267
+[ia.cr/2019/966]: https://ia.cr/2019/966
 
-#### Digital Signature Schemes
-- [Ed25519](https://datatracker.ietf.org/doc/rfc8032/)
-- [Ed448](https://datatracker.ietf.org/doc/rfc8032/)
+### Elliptic Curve Cryptography
 
-#### Groups based on Elliptic Curves
- - P-256, P-384, P-521, [FIPS 186-4](https://doi.org/10.6028/NIST.FIPS.186-4)
- - [Ristretto](https://datatracker.ietf.org/doc/draft-irtf-cfrg-ristretto255-decaf448/01/)
- - [Hash to Curve](https://datatracker.ietf.org/doc/draft-irtf-cfrg-hash-to-curve/)
+| Diffie-Hellman Protocol |
+|:---:|
 
-#### High-Level Protocols
- - [HPKE](https://datatracker.ietf.org/doc/draft-irtf-cfrg-hpke/): Hybrid Public-Key Encryption
- - [VOPRF](https://datatracker.ietf.org/doc/draft-irtf-cfrg-voprf/): Verifiable Oblivious Pseudorandom function: OPRF, VOPRF and POPRF modes.
- - [BlindRSA](https://datatracker.ietf.org/doc/draft-irtf-cfrg-rsa-blind-signatures/): Blind RSA signatures.
- - [CPABE](./abe/cpabe): Ciphertext-policy Attribute-based Encryption.
+- [X25519](./dh/x25519) and [X448](./dh/x448) functions. ([RFC-7748])
+- [Curve4Q](./dh/curve4q) function based on FourQ curve. ([draft-ladd-cfrg-4q](https://datatracker.ietf.org/doc/draft-ladd-cfrg-4q/))
 
-#### Post-Quantum Key Encapsulation Methods
- - [CSIDH](https://csidh.isogeny.org/): Post-Quantum Commutative Group Action
- - [Kyber](https://pq-crystals.org/kyber/) KEM: modes 512, 768, 1024
- - [FrodoKEM](https://frodokem.org/) KEM: modes 640-SHAKE
- - (**insecure, deprecated**) [SIDH/SIKE](https://sike.org/): Supersingular Key Encapsulation with primes p434, p503, p751
+| Digital Signature Schemes |
+|:---:|
 
-#### Post-Quantum Public-Key Encryption
- - [Kyber](https://pq-crystals.org/kyber/) PKE: modes 512, 768, 1024
+- [Ed25519](./sign/ed25519) and [Ed448](./sign/ed448) signatures. ([RFC-8032])
 
-#### Post-Quantum Digital Signature Schemes
- - [Dilithium](https://pq-crystals.org/dilithium/): modes 2, 3, 5
+| Prime Groups |
+|:---:|
 
-#### Field Arithmetic
- - Fp25519, Fp448, Fp381
+ - [P-256, P-384, P-521](./group). ([FIPS 186-5])
+ - [Ristretto](./group) group. ([RFC-9496])
+ - [Bilinear pairings](./ecc/bls12381): with the [BLS12-381] curve, and hash to G1 and G2.
+ - [Hash to curve](./group), hash to field, XMD and XOF [expanders](./expander). ([RFC-9380])
 
-#### Elliptic Curves
+| High-Level Protocols |
+|:---:|
+
+ - [HPKE](./hpke): Hybrid Public-Key Encryption ([RFC-9180])
+ - [VOPRF](./oprf): Verifiable Oblivious Pseudorandom functions. ([RFC-9497])
+ - [RSA Blind Signatures](./blindsign/blindrsa). ([RFC-9474])
+ - [Partilly-blind](./blindsign/blindrsa/partiallyblindrsa/) Signatures. ([draft-cfrg-partially-blind-rsa](https://datatracker.ietf.org/doc/draft-amjad-cfrg-partially-blind-rsa/))
+ - [CPABE](./abe/cpabe): Ciphertext-Policy Attribute-Based Encryption. ([ia.cr/2019/966])
+ - [OT](./ot/simot): Simplest Oblivious Transfer ([ia.cr/2015/267]).
+ - [Threshold RSA](./tss/rsa) Signatures ([Shoup Eurocrypt 2000](https://www.iacr.org/archive/eurocrypt2000/1807/18070209-new.pdf)).
+
+### Post-Quantum Cryptography
+
+| KEM: Key Encapsulation Methods |
+|:---:|
+
+ - [CSIDH](./dh/csidh): Post-Quantum Commutative Group Action ([CSIDH](https://csidh.isogeny.org/)).
+ - [Kyber KEM](./kem/kyber): modes 512, 768, 1024 ([KYBER](https://pq-crystals.org/kyber/)).
+ - [FrodoKEM](./kem/frodo): modes 640-SHAKE. ([FrodoKEM](https://frodokem.org/))
+ - (**insecure, deprecated**) ~~[SIDH/SIKE](./kem/sike)~~: Supersingular Key Encapsulation with primes p434, p503, p751 ([SIKE](https://sike.org/)).
+
+| Digital Signature Schemes |
+|:---:|
+
+ - [Dilithium](./sign/dilithium): modes 2, 3, 5 ([Dilithium](https://pq-crystals.org/dilithium/)).
+
+### Zero-knowledge Proofs
+
+ - [Schnorr](./zk/dl): Prove knowledge of the Discrete Logarithm. ([RFC-8235])
+ - [DLEQ](./zk/dleq): Prove knowledge of the Discrete Logarithm Equality. ([RFC-9497])
+
+
+### Symmetric Cryptography
+
+| XOF: eXtendable Output Functions |
+|:---:|
+
+ - [SHAKE128 and SHAKE256](./xof) ([FIPS 202]).
+ - [BLAKE2X](./xof): BLAKE2XB and BLAKE2XS ([Blake2x](https://www.blake2.net/blake2x.pdf))
+ - [KangarooTwelve](./xof/k12): fast hashing based on Keccak-p. ([KangarooTwelve](https://keccak.team/kangarootwelve.html)).
+ - SIMD [Keccak](https://keccak.team/keccak_specs_summary.html) f1600 Permutation.
+
+| LWC: Lightweight Cryptography |
+|:---:|
+
+- [Ascon v1.2](./cipher/ascon): Family of AEAD block ciphers ([ASCON](https://ascon.iaik.tugraz.at/index.html))
+
+### Misc
+
+| Integers |
+|:---:|
+
+- Safe primes generation.
+- Integer encoding: wNAF, regular signed digit, mLSBSet representations.
+
+| Finite Fields |
+|:---:|
+
+ - Fp25519, Fp448, Fp511, Fp434, Fp503, Fp751.
+ - Fp381, and its quadratic, sextic and twelveth extensions.
+ - Polynomials in monomial and Lagrange basis.
+
+| Elliptic Curves |
+|:---:|
+
  - P-384 Curve
  - [FourQ](https://eprint.iacr.org/2015/565)
  - [Goldilocks](https://eprint.iacr.org/2015/625)
- - [BLS12-381](https://electriccoin.co/blog/new-snark-curve/): Bilinear pairings, hash to G1 and G2.
-
-#### Parallel SIMD
- - [Keccak](https://keccak.team/keccak_specs_summary.html) f1600 Permutation
-
-#### XOF: eXtendable Output Functions
- - [FIPS 202](https://doi.org/10.6028/NIST.FIPS.202): SHAKE128 and SHAKE256
- - [BLAKE2X](https://www.blake2.net/blake2x.pdf): BLAKE2XB and BLAKE2XS
- - [KangarooTwelve](https://keccak.team/kangarootwelve.html): KangarooTwelve
-
-#### Zero-knowledge Proofs
- - [Schnorr](./zk/dl): Prove knowledge of the Discrete Logarithm.
- - [DLEQ](./zk/dleq): Prove knowledge of the Discrete Logarithm Equality.
+ - [BLS12-381](https://electriccoin.co/blog/new-snark-curve/)
 
 ## Testing and Benchmarking
 
@@ -105,7 +159,7 @@ APA Style
 ```
 Faz-Hernández, A. and Kwiatkowski, K. (2019). Introducing CIRCL:
 An Advanced Cryptographic Library. Cloudflare. Available at
-https://github.com/cloudflare/circl. v1.3.3 Accessed May, 2023.
+https://github.com/cloudflare/circl. v1.3.6 Accessed Oct, 2023.
 ```
 
 Bibtex Source
@@ -120,7 +174,7 @@ Bibtex Source
                    of this library is to be used as a tool for experimental
                    deployment of cryptographic algorithms targeting Post-Quantum (PQ)
                    and Elliptic Curve Cryptography (ECC).}},
-  note         = {Available at \url{https://github.com/cloudflare/circl}. v1.3.3 Accessed May, 2023},
+  note         = {Available at \url{https://github.com/cloudflare/circl}. v1.3.6 Accessed Oct, 2023},
   month        = jun,
   year         = {2019}
 }
