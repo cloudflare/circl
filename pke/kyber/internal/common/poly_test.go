@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bytes"
 	"crypto/rand"
 	"fmt"
 	"testing"
@@ -271,5 +272,109 @@ func TestNormalizeAgainstGeneric(t *testing.T) {
 		if p1 != p2 {
 			t.Fatalf("Normalize(%v) = \n%v \n!= %v", a, p1, p2)
 		}
+	}
+}
+
+func (p *Poly) OldCompressTo(m []byte, d int) {
+	switch d {
+	case 4:
+		var t [8]uint16
+		idx := 0
+		for i := 0; i < N/8; i++ {
+			for j := 0; j < 8; j++ {
+				t[j] = uint16(((uint32(p[8*i+j])<<4)+uint32(Q)/2)/
+					uint32(Q)) & ((1 << 4) - 1)
+			}
+			m[idx] = byte(t[0]) | byte(t[1]<<4)
+			m[idx+1] = byte(t[2]) | byte(t[3]<<4)
+			m[idx+2] = byte(t[4]) | byte(t[5]<<4)
+			m[idx+3] = byte(t[6]) | byte(t[7]<<4)
+			idx += 4
+		}
+
+	case 5:
+		var t [8]uint16
+		idx := 0
+		for i := 0; i < N/8; i++ {
+			for j := 0; j < 8; j++ {
+				t[j] = uint16(((uint32(p[8*i+j])<<5)+uint32(Q)/2)/
+					uint32(Q)) & ((1 << 5) - 1)
+			}
+			m[idx] = byte(t[0]) | byte(t[1]<<5)
+			m[idx+1] = byte(t[1]>>3) | byte(t[2]<<2) | byte(t[3]<<7)
+			m[idx+2] = byte(t[3]>>1) | byte(t[4]<<4)
+			m[idx+3] = byte(t[4]>>4) | byte(t[5]<<1) | byte(t[6]<<6)
+			m[idx+4] = byte(t[6]>>2) | byte(t[7]<<3)
+			idx += 5
+		}
+
+	case 10:
+		var t [4]uint16
+		idx := 0
+		for i := 0; i < N/4; i++ {
+			for j := 0; j < 4; j++ {
+				t[j] = uint16(((uint32(p[4*i+j])<<10)+uint32(Q)/2)/
+					uint32(Q)) & ((1 << 10) - 1)
+			}
+			m[idx] = byte(t[0])
+			m[idx+1] = byte(t[0]>>8) | byte(t[1]<<2)
+			m[idx+2] = byte(t[1]>>6) | byte(t[2]<<4)
+			m[idx+3] = byte(t[2]>>4) | byte(t[3]<<6)
+			m[idx+4] = byte(t[3] >> 2)
+			idx += 5
+		}
+	case 11:
+		var t [8]uint16
+		idx := 0
+		for i := 0; i < N/8; i++ {
+			for j := 0; j < 8; j++ {
+				t[j] = uint16(((uint32(p[8*i+j])<<11)+uint32(Q)/2)/
+					uint32(Q)) & ((1 << 11) - 1)
+			}
+			m[idx] = byte(t[0])
+			m[idx+1] = byte(t[0]>>8) | byte(t[1]<<3)
+			m[idx+2] = byte(t[1]>>5) | byte(t[2]<<6)
+			m[idx+3] = byte(t[2] >> 2)
+			m[idx+4] = byte(t[2]>>10) | byte(t[3]<<1)
+			m[idx+5] = byte(t[3]>>7) | byte(t[4]<<4)
+			m[idx+6] = byte(t[4]>>4) | byte(t[5]<<7)
+			m[idx+7] = byte(t[5] >> 1)
+			m[idx+8] = byte(t[5]>>9) | byte(t[6]<<2)
+			m[idx+9] = byte(t[6]>>6) | byte(t[7]<<5)
+			m[idx+10] = byte(t[7] >> 3)
+			idx += 11
+		}
+	default:
+		panic("unsupported d")
+	}
+}
+
+func TestCompressFullInputFirstCoeff(t *testing.T) {
+	for _, d := range []int{4, 5, 10, 11} {
+		d := d
+		t.Run(fmt.Sprintf("d=%d", d), func(t *testing.T) {
+			var p, q Poly
+			bound := (Q + (1 << uint(d))) >> uint(d+1)
+			buf := make([]byte, (N*d-1)/8+1)
+			buf2 := make([]byte, len(buf))
+			for i := int16(0); i < Q; i++ {
+				p[0] = i
+				p.CompressTo(buf, d)
+				p.OldCompressTo(buf2, d)
+				if !bytes.Equal(buf, buf2) {
+					t.Fatalf("%d", i)
+				}
+				q.Decompress(buf, d)
+				diff := sModQ(p[0] - q[0])
+				if diff < 0 {
+					diff = -diff
+				}
+				if diff > bound {
+					t.Logf("%v\n", buf)
+					t.Fatalf("|%d - %d mod^± q| = %d > %d",
+						p[0], q[0], diff, bound)
+				}
+			}
+		})
 	}
 }
