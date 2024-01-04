@@ -26,6 +26,9 @@ import (
 	"github.com/cloudflare/circl/kem/kyber/kyber1024"
 	"github.com/cloudflare/circl/kem/kyber/kyber512"
 	"github.com/cloudflare/circl/kem/kyber/kyber768"
+	"github.com/cloudflare/circl/kem/mlkem/mlkem1024"
+	"github.com/cloudflare/circl/kem/mlkem/mlkem512"
+	"github.com/cloudflare/circl/kem/mlkem/mlkem768"
 )
 
 var allSchemes = [...]kem.Scheme{
@@ -38,6 +41,9 @@ var allSchemes = [...]kem.Scheme{
 	kyber512.Scheme(),
 	kyber768.Scheme(),
 	kyber1024.Scheme(),
+	mlkem512.Scheme(),
+	mlkem768.Scheme(),
+	mlkem1024.Scheme(),
 	hybrid.Kyber512X25519(),
 	hybrid.Kyber768X25519(),
 	hybrid.Kyber768X448(),

@@ -5,10 +5,14 @@
 // Code generated from pkg.templ.go. DO NOT EDIT.
 
 // Package {{.Pkg}} implements the IND-CCA2 secure key encapsulation mechanism
-// {{.Name}}.CCAKEM as submitted to round 3 of the NIST PQC competition and
+{{ if .NIST -}}
+// {{.KemName}} as defined in FIPS203.
+{{- else -}}
+// {{.KemName}} as submitted to round 3 of the NIST PQC competition and
 // described in
 //
 // https://pq-crystals.org/kyber/data/kyber-specification-round3.pdf
+{{- end }}
 package {{.Pkg}}
 
 import (
@@ -18,7 +22,7 @@ import (
 
 	"github.com/cloudflare/circl/internal/sha3"
 	"github.com/cloudflare/circl/kem"
-	cpapke "github.com/cloudflare/circl/pke/kyber/{{.Pkg}}"
+	cpapke "github.com/cloudflare/circl/pke/kyber/{{.PkePkg}}"
 	cryptoRand "crypto/rand"
 )
 
@@ -42,14 +46,14 @@ const (
 	PrivateKeySize = cpapke.PrivateKeySize + cpapke.PublicKeySize + 64
 )
 
-// Type of a {{.Name}}.CCAKEM public key
+// Type of a {{.KemName}} public key
 type PublicKey struct {
 	pk *cpapke.PublicKey
 
 	hpk [32]byte // H(pk)
 }
 
-// Type of a {{.Name}}.CCAKEM private key
+// Type of a {{.KemName}} private key
 type PrivateKey struct {
 	sk  *cpapke.PrivateKey
 	pk  *cpapke.PublicKey
@@ -69,7 +73,11 @@ func NewKeyFromSeed(seed []byte) (*PublicKey, *PrivateKey) {
 		panic("seed must be of length KeySeedSize")
 	}
 
+	{{ if .NIST -}}
+	pk.pk, sk.sk = cpapke.NewKeyFromSeedMLKEM(seed[:cpapke.KeySeedSize])
+	{{- else -}}
 	pk.pk, sk.sk = cpapke.NewKeyFromSeed(seed[:cpapke.KeySeedSize])
+	{{- end }}
 	sk.pk = pk.pk
 	copy(sk.z[:], seed[cpapke.KeySeedSize:])
 
@@ -127,11 +135,15 @@ func (pk *PublicKey) EncapsulateTo(ct, ss []byte, seed []byte) {
 		panic("ss must be of length SharedKeySize")
 	}
 
-	// m = H(seed)
 	var m [32]byte
+	{{ if .NIST -}}
+	copy(m[:], seed)
+	{{- else -}}
+	// m = H(seed), the hash of shame
 	h := sha3.New256()
-	h.Write(seed[:])
+	h.Write(seed)
 	h.Read(m[:])
+	{{- end }}
 
 	// (K', r) = G(m ‖ H(pk))
 	var kr [64]byte
@@ -143,6 +155,9 @@ func (pk *PublicKey) EncapsulateTo(ct, ss []byte, seed []byte) {
 	// c = Kyber.CPAPKE.Enc(pk, m, r)
 	pk.pk.EncryptTo(ct, m[:], kr[32:])
 
+	{{ if .NIST -}}
+	copy(ss, kr[:SharedKeySize])
+	{{- else -}}
 	// Compute H(c) and put in second slot of kr, which will be (K', H(c)).
 	h.Reset()
 	h.Write(ct[:CiphertextSize])
@@ -152,6 +167,7 @@ func (pk *PublicKey) EncapsulateTo(ct, ss []byte, seed []byte) {
 	kdf := sha3.NewShake256()
 	kdf.Write(kr[:])
 	kdf.Read(ss[:SharedKeySize])
+	{{- end }}
 }
 
 // DecapsulateTo computes the shared key which is encapsulated in ct
@@ -183,6 +199,24 @@ func (sk *PrivateKey) DecapsulateTo(ss, ct []byte) {
 	var ct2 [CiphertextSize]byte
 	sk.pk.EncryptTo(ct2[:], m2[:], kr2[32:])
 
+	{{ if .NIST -}}
+	var ss2 [SharedKeySize]byte
+
+	// Compute shared secret in case of rejection: ss₂ = PRF(z ‖ c)
+	prf := sha3.NewShake256()
+	prf.Write(sk.z[:])
+	prf.Write(ct[:CiphertextSize])
+	prf.Read(ss2[:])
+
+	// Set ss2 to the real shared secret if c = c'.
+	subtle.ConstantTimeCopy(
+		subtle.ConstantTimeCompare(ct, ct2[:]),
+		ss2[:],
+		kr2[:SharedKeySize],
+	)
+
+	copy(ss, ss2[:])
+	{{- else -}}
 	// Compute H(c) and put in second slot of kr2, which will be (K'', H(c)).
 	h := sha3.New256()
 	h.Write(ct[:CiphertextSize])
@@ -198,7 +232,8 @@ func (sk *PrivateKey) DecapsulateTo(ss, ct []byte) {
 	// K = KDF(K''/z, H(c))
 	kdf := sha3.NewShake256()
 	kdf.Write(kr2[:])
-	kdf.Read(ss[:SharedKeySize])
+	kdf.Read(ss)
+	{{- end }}
 }
 
 // Packs sk to buf.
@@ -249,19 +284,38 @@ func (pk *PublicKey) Pack(buf []byte) {
 
 // Unpacks pk from buf.
 //
+{{ if .NIST -}}
+// Returns an error if buf is not of size PublicKeySize, or the public key
+// is not normalized.
+func (pk *PublicKey) Unpack(buf []byte) error {
+	if len(buf) != PublicKeySize {
+		return kem.ErrPubKeySize
+	}
+{{- else -}}
 // Panics if buf is not of size PublicKeySize.
 func (pk *PublicKey) Unpack(buf []byte) {
 	if len(buf) != PublicKeySize {
 		panic("buf must be of length PublicKeySize")
 	}
+{{- end }}
 
 	pk.pk = new(cpapke.PublicKey)
+	{{ if .NIST -}}
+	if err := pk.pk.UnpackMLKEM(buf); err != nil {
+		return err
+	}
+	{{- else -}}
 	pk.pk.Unpack(buf)
+	{{- end }}
 
 	// Compute cached H(pk)
 	h := sha3.New256()
 	h.Write(buf)
 	h.Read(pk.hpk[:])
+
+	{{ if .NIST -}}
+	return nil
+	{{- end }}
 }
 
 // Boilerplate down below for the KEM scheme API.
@@ -390,11 +444,17 @@ func (*scheme) Decapsulate(sk kem.PrivateKey, ct []byte) ([]byte, error) {
 }
 
 func (*scheme) UnmarshalBinaryPublicKey(buf []byte) (kem.PublicKey, error) {
+	var ret PublicKey
+	{{ if .NIST -}}
+	if err := ret.Unpack(buf); err != nil {
+		return nil, err
+	}
+	{{- else -}}
 	if len(buf) != PublicKeySize {
 		return nil, kem.ErrPubKeySize
 	}
-	var ret PublicKey
 	ret.Unpack(buf)
+	{{- end }}
 	return &ret, nil
 }
 

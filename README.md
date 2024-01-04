@@ -82,6 +82,7 @@ Alternatively, look at the [Cloudflare Go](https://github.com/cloudflare/go/tree
 |:---:|
 
  - [CSIDH](./dh/csidh): Post-Quantum Commutative Group Action ([CSIDH](https://csidh.isogeny.org/)).
+ - [ML-KEM](./kem/mlkem): modes 512, 768, 1024 ([ML-KEM](https://nvlpubs.nist.gov/nistpubs/fips/nist.fips.203.pdf)).
  - [Kyber KEM](./kem/kyber): modes 512, 768, 1024 ([KYBER](https://pq-crystals.org/kyber/)).
  - [FrodoKEM](./kem/frodo): modes 640-SHAKE. ([FrodoKEM](https://frodokem.org/))
  - (**insecure, deprecated**) ~~[SIDH/SIKE](./kem/sike)~~: Supersingular Key Encapsulation with primes p434, p503, p751 ([SIKE](https://sike.org/)).

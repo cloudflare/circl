@@ -3,7 +3,10 @@
 package internal
 
 import (
+	"bytes"
+
 	"github.com/cloudflare/circl/internal/sha3"
+	"github.com/cloudflare/circl/kem"
 	"github.com/cloudflare/circl/pke/kyber/internal/common"
 )
 
@@ -36,6 +39,19 @@ func (sk *PrivateKey) Unpack(buf []byte) {
 func (pk *PublicKey) Pack(buf []byte) {
 	pk.th.Pack(buf)
 	copy(buf[K*common.PolySize:], pk.rho[:])
+}
+
+// Unpacks the public key from buf. Checks if the public key is normalized.
+func (pk *PublicKey) UnpackMLKEM(buf []byte) error {
+	pk.Unpack(buf)
+
+	// FIPS 203 §7.2 "encapsulation key check" (2).
+	var buf2 [K * common.PolySize]byte
+	pk.th.Pack(buf2[:])
+	if !bytes.Equal(buf[:len(buf2)], buf2[:]) {
+		return kem.ErrPubKey
+	}
+	return nil
 }
 
 // Unpacks the public key from buf.
