@@ -1,4 +1,4 @@
-// Code generated from modePkg.templ.go. DO NOT EDIT.
+// Code generated from pkg.templ.go. DO NOT EDIT.
 
 // kyber768 implements the IND-CPA-secure Public Key Encryption
 // scheme Kyber768.CPAPKE as submitted to round 3 of the NIST PQC competition
@@ -11,6 +11,7 @@ import (
 	cryptoRand "crypto/rand"
 	"io"
 
+	"github.com/cloudflare/circl/kem"
 	"github.com/cloudflare/circl/pke/kyber/kyber768/internal"
 )
 
@@ -57,12 +58,30 @@ func GenerateKey(rand io.Reader) (*PublicKey, *PrivateKey, error) {
 
 // NewKeyFromSeed derives a public/private key pair using the given seed.
 //
+// Note: does not include the domain separation of ML-KEM (line 1, algorithm 13
+// of FIPS 203). For that use NewKeyFromSeedMLKEM().
+//
 // Panics if seed is not of length KeySeedSize.
 func NewKeyFromSeed(seed []byte) (*PublicKey, *PrivateKey) {
 	if len(seed) != KeySeedSize {
 		panic("seed must be of length KeySeedSize")
 	}
 	pk, sk := internal.NewKeyFromSeed(seed)
+	return (*PublicKey)(pk), (*PrivateKey)(sk)
+}
+
+// NewKeyFromSeedMLKEM derives a public/private key pair using the given seed
+// using the domain separation of ML-KEM.
+//
+// Panics if seed is not of length KeySeedSize.
+func NewKeyFromSeedMLKEM(seed []byte) (*PublicKey, *PrivateKey) {
+	if len(seed) != KeySeedSize {
+		panic("seed must be of length KeySeedSize")
+	}
+	var seed2 [33]byte
+	copy(seed2[:32], seed)
+	seed2[32] = byte(internal.K)
+	pk, sk := internal.NewKeyFromSeed(seed2[:])
 	return (*PublicKey)(pk), (*PrivateKey)(sk)
 }
 
@@ -127,6 +146,17 @@ func (pk *PublicKey) Unpack(buf []byte) {
 		panic("buf must be of size PublicKeySize")
 	}
 	(*internal.PublicKey)(pk).Unpack(buf)
+}
+
+// Unpacks pk from the given buffer.
+//
+// Returns an error if the buffer is not of the right size, or the public
+// key is not normalized.
+func (pk *PublicKey) UnpackMLKEM(buf []byte) error {
+	if len(buf) != PublicKeySize {
+		return kem.ErrPubKeySize
+	}
+	return (*internal.PublicKey)(pk).UnpackMLKEM(buf)
 }
 
 // Unpacks sk from the given buffer.
