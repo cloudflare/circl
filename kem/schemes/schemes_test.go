@@ -160,4 +160,5 @@ func Example_schemes() {
 	// Kyber1024-X448
 	// P256Kyber768Draft00
 	// X25519MLKEM768
+	// X-Wing
 }
