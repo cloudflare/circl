@@ -29,6 +29,7 @@ import (
 	"github.com/cloudflare/circl/kem/mlkem/mlkem1024"
 	"github.com/cloudflare/circl/kem/mlkem/mlkem512"
 	"github.com/cloudflare/circl/kem/mlkem/mlkem768"
+	"github.com/cloudflare/circl/kem/xwing"
 )
 
 var allSchemes = [...]kem.Scheme{
@@ -49,6 +50,7 @@ var allSchemes = [...]kem.Scheme{
 	hybrid.Kyber768X448(),
 	hybrid.Kyber1024X448(),
 	hybrid.P256Kyber768Draft00(),
+	xwing.Scheme(),
 }
 
 var allSchemeNames map[string]kem.Scheme
