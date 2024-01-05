@@ -160,6 +160,7 @@ func BenchmarkHpkeRoundTrip(b *testing.B) {
 	}{
 		{hpke.KEM_X25519_HKDF_SHA256, hpke.KDF_HKDF_SHA256, hpke.AEAD_AES128GCM},
 		{hpke.KEM_X25519_KYBER768_DRAFT00, hpke.KDF_HKDF_SHA256, hpke.AEAD_AES128GCM},
+		{hpke.KEM_XWING, hpke.KDF_HKDF_SHA256, hpke.AEAD_AES128GCM},
 	}
 	for _, test := range tests {
 		runHpkeBenchmark(b, test.kem, test.kdf, test.aead)
