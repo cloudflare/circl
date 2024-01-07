@@ -29,7 +29,7 @@ type PublicKey struct {
 
 const (
 	// Size of a seed of a keypair
-	SeedSize = 32
+	SeedSize = 96
 
 	// Size of an X-Wing public key
 	PublicKeySize = 1216
@@ -38,7 +38,7 @@ const (
 	PrivateKeySize = 2432
 
 	// Size of the seed passed to EncapsulateTo
-	EncapsulationSeedSize = 32
+	EncapsulationSeedSize = 64
 
 	// Size of the established shared key
 	SharedKeySize = 32
@@ -101,10 +101,9 @@ func DeriveKeyPair(seed []byte) (*PrivateKey, *PublicKey) {
 		sk    PrivateKey
 		seedm [mlkem768.KeySeedSize]byte
 	)
-	h := sha3.NewShake128()
-	_, _ = h.Write(seed)
-	_, _ = h.Read(seedm[:])
-	_, _ = h.Read(sk.x[:])
+
+	copy(seedm[:], seed[:64])
+	copy(sk.x[:], seed[64:])
 
 	pkm, skm := mlkem768.NewKeyFromSeed(seedm[:])
 	sk.m = *skm
@@ -232,10 +231,8 @@ func (pk *PublicKey) EncapsulateTo(ct, ss, seed []byte) {
 		ssm   [mlkem768.SharedKeySize]byte
 	)
 
-	h := sha3.NewShake128()
-	_, _ = h.Write(seed)
-	_, _ = h.Read(seedm[:])
-	_, _ = h.Read(ekx[:])
+	copy(seedm[:], seed[:32])
+	copy(ekx[:], seed[32:])
 
 	x25519.KeyGen(&ctx, &ekx)
 	x25519.Shared(&ssx, &ekx, &pk.x)

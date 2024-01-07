@@ -66,7 +66,7 @@ func TestVectors(t *testing.T) {
 	var cs [32]byte
 	_, _ = h.Read(cs[:])
 	got := fmt.Sprintf("%x", cs)
-	want := "dff9d6258b66060ac402a8faa0114d6a8b683bfa8555eb630b764f2a3a709990"
+	want := "9d028dc61b89e10518a4e56bbc414b33becac69211b3d23131232a295dbd0a0f"
 	if got != want {
 		t.Fatalf("%s ≠ %s", got, want)
 	}
