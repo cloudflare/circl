@@ -107,6 +107,7 @@ func (v *vector) SetUpParties(t *testing.T) (id params, s commonServer, c common
 	suite, err := GetSuite(v.Identifier)
 	test.CheckNoErr(t, err, "suite id")
 	seed := toBytes(t, v.Seed, "seed for key derivation")
+	test.CheckOk(len(seed) == 32, ErrInvalidSeed.Error(), t)
 	keyInfo := toBytes(t, v.KeyInfo, "info for key derivation")
 	privateKey, err := DeriveKey(suite, v.Mode, seed, keyInfo)
 	test.CheckNoErr(t, err, "deriving key")
@@ -237,10 +238,9 @@ func (v *vector) test(t *testing.T) {
 }
 
 func TestVectors(t *testing.T) {
-	// Draft published at https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-voprf-10
+	// RFC-9497 published at https://www.rfc-editor.org/info/rfc9497
 	// Test vectors at https://github.com/cfrg/draft-irtf-cfrg-voprf
-	// Version supported: v10
-	v := readFile(t, "testdata/allVectors.json")
+	v := readFile(t, "testdata/rfc9497.json")
 
 	for i := range v {
 		suite, err := GetSuite(v[i].Identifier)

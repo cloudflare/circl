@@ -66,7 +66,7 @@ func GenerateKey(s Suite, rnd io.Reader) (*PrivateKey, error) {
 	return &PrivateKey{p, privateKey, nil}, nil
 }
 
-// DeriveKey generates a private key from a given seed and optional info string.
+// DeriveKey generates a private key from a 32-byte seed and an optional info string.
 func DeriveKey(s Suite, mode Mode, seed, info []byte) (*PrivateKey, error) {
 	const maxTries = 255
 	p, ok := s.(params)
@@ -75,6 +75,9 @@ func DeriveKey(s Suite, mode Mode, seed, info []byte) (*PrivateKey, error) {
 	}
 	if !isValidMode(mode) {
 		return nil, ErrInvalidMode
+	}
+	if len(seed) != 32 {
+		return nil, ErrInvalidSeed
 	}
 	p.m = mode
 

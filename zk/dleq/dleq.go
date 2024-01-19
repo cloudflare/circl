@@ -6,7 +6,7 @@
 //
 // References:
 //
-//	[1] draft-irtf-cfrg-voprf: https://datatracker.ietf.org/doc/draft-irtf-cfrg-voprf
+//	[1] RFC-9497: https://www.rfc-editor.org/info/rfc9497
 package dleq
 
 import (
