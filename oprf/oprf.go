@@ -4,7 +4,7 @@
 // computing the output of a PRF. One party (the server) holds the PRF secret
 // key, and the other (the client) holds the PRF input.
 //
-// This package is compatible with the OPRF specification at draft-irtf-cfrg-voprf [1].
+// This package is compatible with the OPRF specification at RFC-9497 [1].
 //
 // # Protocol Overview
 //
@@ -43,7 +43,7 @@
 //
 // # References
 //
-// [1] draft-irtf-cfrg-voprf: https://datatracker.ietf.org/doc/draft-irtf-cfrg-voprf
+// [1] RFC-9497: https://www.rfc-editor.org/info/rfc9497
 package oprf
 
 import (
@@ -237,19 +237,20 @@ func mustWrite(h io.Writer, bytes []byte) {
 		panic(err)
 	}
 	if len(bytes) != bytesLen {
-		panic("failed to write")
+		panic("oprf: failed to write")
 	}
 }
 
 var (
-	ErrInvalidSuite       = errors.New("invalid suite")
-	ErrInvalidMode        = errors.New("invalid mode")
-	ErrDeriveKeyPairError = errors.New("key pair derivation failed")
-	ErrInvalidInput       = errors.New("invalid input")
-	ErrInvalidInfo        = errors.New("invalid info")
-	ErrInvalidProof       = errors.New("proof verification failed")
-	ErrInverseZero        = errors.New("inverting a zero value")
-	ErrNoKey              = errors.New("must provide a key")
+	ErrInvalidSuite       = errors.New("oprf: invalid suite")
+	ErrInvalidMode        = errors.New("oprf: invalid mode")
+	ErrDeriveKeyPairError = errors.New("oprf: key pair derivation failed")
+	ErrInvalidInput       = errors.New("oprf: invalid input")
+	ErrInvalidSeed        = errors.New("oprf: invalid seed size")
+	ErrInvalidInfo        = errors.New("oprf: invalid info")
+	ErrInvalidProof       = errors.New("oprf: proof verification failed")
+	ErrInverseZero        = errors.New("oprf: inverting a zero value")
+	ErrNoKey              = errors.New("oprf: must provide a key")
 )
 
 type (
