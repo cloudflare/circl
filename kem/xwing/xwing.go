@@ -1,6 +1,8 @@
 // xwing implements the X-Wing PQ/T hybrid KEM
 //
 //	https://datatracker.ietf.org/doc/draft-connolly-cfrg-xwing-kem
+//
+// Currently implements what will likely be -01.
 package xwing
 
 import (
@@ -18,7 +20,7 @@ import (
 type PrivateKey struct {
 	m   mlkem768.PrivateKey
 	x   x25519.Key
-	xpk x25519.Key // cache to prevent recomputation during each decapsulation
+	xpk x25519.Key
 }
 
 // An X-Wing public key.
@@ -35,7 +37,7 @@ const (
 	PublicKeySize = 1216
 
 	// Size of an X-Wing private key
-	PrivateKeySize = 2432
+	PrivateKeySize = 2464
 
 	// Size of the seed passed to EncapsulateTo
 	EncapsulationSeedSize = 64
@@ -73,7 +75,8 @@ func (sk *PrivateKey) Pack(buf []byte) {
 		panic(kem.ErrPrivKeySize)
 	}
 	sk.m.Pack(buf[:mlkem768.PrivateKeySize])
-	copy(buf[mlkem768.PrivateKeySize:], sk.x[:])
+	copy(buf[mlkem768.PrivateKeySize:mlkem768.PrivateKeySize+32], sk.x[:])
+	copy(buf[mlkem768.PrivateKeySize+32:], sk.xpk[:])
 }
 
 // Packs pk to buf.
@@ -290,7 +293,7 @@ func (sk *PrivateKey) Unpack(buf []byte) {
 		panic(kem.ErrPrivKeySize)
 	}
 
-	copy(sk.x[:], buf[mlkem768.PrivateKeySize:])
-	x25519.KeyGen(&sk.xpk, &sk.x)
+	copy(sk.x[:], buf[mlkem768.PrivateKeySize:mlkem768.PrivateKeySize+32])
+	copy(sk.xpk[:], buf[mlkem768.PrivateKeySize+32:])
 	sk.m.Unpack(buf[:mlkem768.PrivateKeySize])
 }
