@@ -1,6 +1,6 @@
 module github.com/cloudflare/circl/sign/dilithium/internal/common/asm
 
-go 1.19
+go 1.21
 
 require (
 	github.com/cloudflare/circl v1.3.7

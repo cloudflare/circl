@@ -20,8 +20,8 @@ import (
 )
 
 // 2048-bit RSA private key
-const testPrivateKey = `
------BEGIN RSA PRIVATE KEY-----
+var testPrivateKey = testingKey(`
+-----BEGIN RSA TESTING KEY-----
 MIIEowIBAAKCAQEAyxrta2qV9bHOATpM/KsluUsuZKIwNOQlCn6rQ8DfOowSmTrx
 KxEZCNS0cb7DHUtsmtnN2pBhKi7pA1I+beWiJNawLwnlw3TQz+Adj1KcUAp4ovZ5
 CPpoK1orQwyB6vGvcte155T8mKMTknaHl1fORTtSbvm/bOuZl5uEI7kPRGGiKvN6
@@ -47,7 +47,9 @@ IVEW06GXuhv46p0wt3zXx1dcbWX6LdJaDB4MHqevkiDAqHntmXLbmVd9pXCGn/a2
 xznO3QKBgHkPJPEiCzRugzgN9UxOT5tNQCSGMOwJUd7qP0TWgvsWHT1N07JLgC8c
 Yg0f1rCxEAQo5BVppiQFp0FA7W52DUnMEfBtiehZ6xArW7crO91gFRqKBWZ3Jjyz
 /JcS8m5UgQxC8mmb/2wLD5TDvWw+XCfjUgWmvqIi5dcJgmuTAn5X
------END RSA PRIVATE KEY-----`
+-----END RSA TESTING KEY-----`)
+
+func testingKey(s string) string { return strings.ReplaceAll(s, "TESTING KEY", "PRIVATE KEY") }
 
 func loadPrivateKey() (*rsa.PrivateKey, error) {
 	block, _ := pem.Decode([]byte(testPrivateKey))

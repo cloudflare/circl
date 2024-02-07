@@ -13,18 +13,18 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        GOVER: ['1.21.1', '1.20.8']
+        GOVER: ['1.22', '1.21']
     steps:
       - name: Setup Go-${{ matrix.GOVER }}
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.GOVER }}
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Linting
         uses: golangci/golangci-lint-action@v3
         with:
-          version: v1.51.2
+          version: v1.56.1
           args: --config=./.etc/golangci.yml ./...
       - name: Check shadowing
         run: |
@@ -47,9 +47,9 @@ jobs:
     runs-on: ubuntu-22.04
     strategy:
       matrix:
-        CFG: [[arm64, arm64v8, '1.21.1']]
+        CFG: [[arm64, arm64v8, '1.22']]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Enabling Docker Experimental
         run: |
           echo $'{\n    "experimental": true\n}' | sudo tee /etc/docker/daemon.json
@@ -68,11 +68,11 @@ jobs:
     name: Testing Build Modes
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
-          go-version: '1.21.1'
+          go-version: '1.22'
       - name: Build as Static
         run: make circl_static
       - name: Build as Plugin
@@ -84,15 +84,15 @@ jobs:
     name: amd64/coverage
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
-          go-version: '1.21.1'
+          go-version: '1.22'
       - name: Produce Coverage
         run: go test -coverprofile=./coverage.txt ./...
       - name: Upload Codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v4
         with:
           file: ./coverage.txt
   osCompat:
@@ -101,14 +101,14 @@ jobs:
     name: Running on ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-11, windows-2019]
+        os: [macos-latest, windows-latest]
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v5
         with:
-          go-version: '1.21.1'
+          go-version: '1.22'
       - name: Building
         run: go build -v ./...
       - name: Testing
@@ -123,12 +123,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v2
+        uses: github/codeql-action/init@v3
         with:
           languages: go
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v2
+        uses: github/codeql-action/analyze@v3
         with:
           category: "/language:go"
