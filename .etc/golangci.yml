@@ -39,13 +39,28 @@ linters:
     - whitespace
 
 linters-settings:
+  depguard:
+    rules:
+      main:
+        files:
+          - $all
+        allow:
+          - $gostd
+          - github.com/bwesterb/go-ristretto
+          - github.com/cloudflare/circl
   funlen:
     lines: 120
     statements: 80
   nestif:
     min-complexity: 6
+  goconst:
+    ignore-tests: true
   govet:
     check-shadowing: true
+  staticcheck:
+    # TODO: replace deprecated elliptic.Marshal, elliptic.GenerateKey,
+    # elliptic.Unmarshal, params.ScalarBaseMult before re-enabling SA1019.
+    checks: ["*", "-SA1019"]
 
 issues:
   max-issues-per-linter: 0

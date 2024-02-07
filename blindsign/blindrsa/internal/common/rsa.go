@@ -88,8 +88,7 @@ func encrypt(c *big.Int, N *big.Int, e *big.Int, m *big.Int) *big.Int {
 func decrypt(random io.Reader, priv *keys.BigPrivateKey, c *big.Int) (m *big.Int, err error) {
 	// TODO(agl): can we get away with reusing blinds?
 	if c.Cmp(priv.Pk.N) > 0 {
-		err = rsa.ErrDecryption
-		return
+		return nil, rsa.ErrDecryption
 	}
 	if priv.Pk.N.Sign() == 0 {
 		return nil, rsa.ErrDecryption
@@ -107,7 +106,7 @@ func decrypt(random io.Reader, priv *keys.BigPrivateKey, c *big.Int) (m *big.Int
 		for {
 			r, err = rand.Int(random, priv.Pk.N)
 			if err != nil {
-				return
+				return nil, err
 			}
 			if r.Cmp(bigZero) == 0 {
 				r = bigOne

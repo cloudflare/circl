@@ -1,6 +1,6 @@
 module github.com/cloudflare/circl
 
-go 1.19
+go 1.21
 
 require (
 	github.com/bwesterb/go-ristretto v1.2.3
