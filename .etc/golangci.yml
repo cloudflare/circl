@@ -54,7 +54,7 @@ linters-settings:
   nestif:
     min-complexity: 6
   goconst:
-    ignore-tests: true
+    min-occurrences: 4
   govet:
     check-shadowing: true
   staticcheck:
