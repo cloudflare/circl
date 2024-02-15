@@ -9,15 +9,21 @@ package dilithium
 import (
 	"fmt"
 	"io"
-
-	"github.com/cloudflare/circl/sign/dilithium/internal/common"
+{{ if .NIST }}
+	"github.com/cloudflare/circl/sign/mldsa/{{.Pkg}}"
+{{ else }}
 	"github.com/cloudflare/circl/sign/dilithium/{{.Pkg}}"
+{{- end }}
+	common "github.com/cloudflare/circl/sign/internal/dilithium"
 )
 
 // {{.Impl}} implements the mode.Mode interface for {{.Name}}.
 type {{.Impl}} struct{}
-
+{{ if .NIST }}
+// {{.Mode}} is {{.Name}}.
+{{- else }}
 // {{.Mode}} is Dilithium in mode "{{.Name}}".
+{{- end }}
 var {{.Mode}} Mode = &{{.Impl}}{}
 
 func (m *{{.Impl}}) GenerateKey(rand io.Reader) (

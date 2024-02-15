@@ -6,24 +6,32 @@ package dilithium
 import (
 	"crypto/sha256"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/nist"
 )
 
 func TestPQCgenKATSign(t *testing.T) {
-	// Generated from reference implementation commit 61b51a71701b8ae9f546a1e5,
-	// which can be found at https://github.com/pq-crystals/dilithium
 	for _, tc := range []struct {
 		name string
 		want string
 	}{
+		// Generated from reference implementation commit 61b51a71701b8ae9f546a1e5,
+		// which can be found at https://github.com/pq-crystals/dilithium
 		{"Dilithium2", "38ed991c5ca11e39ab23945ca37af89e059d16c5474bf8ba96b15cb4e948af2a"},
 		{"Dilithium3", "8196b32212753f525346201ffec1c7a0a852596fa0b57bd4e2746231dab44d55"},
 		{"Dilithium5", "7ded97a6e6c809b43b54c248171d7504fa6a0cab651bf288bb00034782667481"},
 		{"Dilithium2-AES", "b6673f8da5bba7dfae63adbbdf559f4fcfb715d1f91da98d4b52e26203d69196"},
 		{"Dilithium3-AES", "482f4d672a9f1dc38cc8bcf8b1731b03fe99fcb6f2b73aa4a376b99faf89ccbe"},
 		{"Dilithium5-AES", "54dfa85013d1b3da4f1d7c6dd270bc91a083cfece3d320c97906da125fd2a48f"},
+
+		// Generated from reference implementation commit e7bed6258b9a3703ce78d4ec3,
+		// which can be found on the standard branch
+		// of https://github.com/pq-crystals/dilithium
+		{"ML-DSA-44", "4657f244d1204e5847b3cacea4fc6116579571bee8ac89b8cba6771f303ee260"},
+		{"ML-DSA-65", "99a95d7ef804020a666f455c5003232d0c0200dfc4f5df85dceb8f56256dcba8"},
+		{"ML-DSA-87", "3377835fffb7cf9aac52947225c8974335bc05532ddf672a8b706ab8991435a2"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			mode := ModeByName(tc.name)
@@ -38,7 +46,18 @@ func TestPQCgenKATSign(t *testing.T) {
 			}
 			f := sha256.New()
 			g := nist.NewDRBG(&seed)
-			fmt.Fprintf(f, "# %s\n\n", tc.name)
+			nameInKat := tc.name
+			if !strings.HasPrefix(tc.name, "Dilithium") {
+				switch tc.name {
+				case "ML-DSA-44":
+					nameInKat = "Dilithium2"
+				case "ML-DSA-65":
+					nameInKat = "Dilithium3"
+				case "ML-DSA-87":
+					nameInKat = "Dilithium5"
+				}
+			}
+			fmt.Fprintf(f, "# %s\n\n", nameInKat)
 			for i := 0; i < 100; i++ {
 				mlen := 33 * (i + 1)
 				g.Fill(seed[:])
