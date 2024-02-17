@@ -19,7 +19,7 @@ import (
 )
 
 func loadPrivateKey() (*rsa.PrivateKey, error) {
-	file, err := os.ReadFile("./testdata/test_rsa2048_rfc9500.json")
+	file, err := os.ReadFile("./testdata/testRSA2048.rfc9500.pem")
 	if err != nil {
 		return nil, err
 	}
