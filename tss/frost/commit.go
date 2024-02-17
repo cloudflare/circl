@@ -1,40 +1,30 @@
 package frost
 
 import (
-	"errors"
 	"fmt"
-	"io"
 	"sort"
 
 	"github.com/cloudflare/circl/group"
 )
 
 type Nonce struct {
-	ID              group.Scalar
-	hiding, binding group.Scalar
+	id      group.Scalar
+	hiding  group.Scalar
+	binding group.Scalar
 }
 
-func (s Suite) nonceGenerate(rnd io.Reader, secret group.Scalar) (group.Scalar, error) {
-	randomBytes := make([]byte, 32)
-	_, err := io.ReadFull(rnd, randomBytes)
-	if err != nil {
-		return nil, err
-	}
-	secretEnc, err := secret.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
-
-	return s.hasher.h3(append(randomBytes, secretEnc...)), nil
+func nonceGenerate(p params, randomBytes, secretEnc []byte) group.Scalar {
+	return p.h3(append(append([]byte{}, randomBytes...), secretEnc...))
 }
 
 type Commitment struct {
-	ID              group.Scalar
-	hiding, binding group.Element
+	id      group.Scalar
+	hiding  group.Element
+	binding group.Element
 }
 
 func (c Commitment) MarshalBinary() ([]byte, error) {
-	id, err := c.ID.MarshalBinary()
+	id, err := c.id.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
@@ -50,12 +40,11 @@ func (c Commitment) MarshalBinary() ([]byte, error) {
 	return append(append(id, h...), b...), nil
 }
 
-func encodeCommitments(coms []*Commitment) ([]byte, error) {
+func encodeCommitments(coms []Commitment) (out []byte, err error) {
 	sort.SliceStable(coms, func(i, j int) bool {
-		return coms[i].ID.(fmt.Stringer).String() < coms[j].ID.(fmt.Stringer).String()
+		return coms[i].id.(fmt.Stringer).String() < coms[j].id.(fmt.Stringer).String()
 	})
 
-	var out []byte
 	for i := range coms {
 		cEnc, err := coms[i].MarshalBinary()
 		if err != nil {
@@ -71,43 +60,48 @@ type bindingFactor struct {
 	factor group.Scalar
 }
 
-func (s Suite) getBindingFactorFromID(bindingFactors []bindingFactor, id group.Scalar) (group.Scalar, error) {
+func getBindingFactorFromID(bindingFactors []bindingFactor, id group.Scalar) (group.Scalar, error) {
 	for i := range bindingFactors {
 		if bindingFactors[i].ID.IsEqual(id) {
 			return bindingFactors[i].factor, nil
 		}
 	}
-	return nil, errors.New("frost: id not found")
+	return nil, fmt.Errorf("frost: id not found")
 }
 
-func (s Suite) getBindingFactors(coms []*Commitment, msg []byte) ([]bindingFactor, error) {
-	msgHash := s.hasher.h4(msg)
+func getBindingFactors(p params, msg []byte, groupPublicKey PublicKey, coms []Commitment) ([]bindingFactor, error) {
+	groupPublicKeyEnc, err := groupPublicKey.key.MarshalBinaryCompress()
+	if err != nil {
+		return nil, err
+	}
+
+	msgHash := p.h4(msg)
 	encodeComs, err := encodeCommitments(coms)
 	if err != nil {
 		return nil, err
 	}
-	encodeComsHash := s.hasher.h5(encodeComs)
-	rhoInputPrefix := append(msgHash, encodeComsHash...)
+	encodeComsHash := p.h5(encodeComs)
+	rhoInputPrefix := append(append(groupPublicKeyEnc, msgHash...), encodeComsHash...)
 
 	bindingFactors := make([]bindingFactor, len(coms))
 	for i := range coms {
-		id, err := coms[i].ID.MarshalBinary()
+		id, err := coms[i].id.MarshalBinary()
 		if err != nil {
 			return nil, err
 		}
 		rhoInput := append(append([]byte{}, rhoInputPrefix...), id...)
-		bf := s.hasher.h1(rhoInput)
-		bindingFactors[i] = bindingFactor{ID: coms[i].ID, factor: bf}
+		bf := p.h1(rhoInput)
+		bindingFactors[i] = bindingFactor{ID: coms[i].id, factor: bf}
 	}
 
 	return bindingFactors, nil
 }
 
-func (s Suite) getGroupCommitment(coms []*Commitment, bindingFactors []bindingFactor) (group.Element, error) {
-	gc := s.g.NewElement()
-	tmp := s.g.NewElement()
+func getGroupCommitment(g group.Group, coms []Commitment, bindingFactors []bindingFactor) (group.Element, error) {
+	gc := g.NewElement()
+	tmp := g.NewElement()
 	for i := range coms {
-		bf, err := s.getBindingFactorFromID(bindingFactors, coms[i].ID)
+		bf, err := getBindingFactorFromID(bindingFactors, coms[i].id)
 		if err != nil {
 			return nil, err
 		}
@@ -119,7 +113,7 @@ func (s Suite) getGroupCommitment(coms []*Commitment, bindingFactors []bindingFa
 	return gc, nil
 }
 
-func (s Suite) getChallenge(groupCom group.Element, pubKey *PublicKey, msg []byte) (group.Scalar, error) {
+func getChallenge(p params, groupCom group.Element, msg []byte, pubKey PublicKey) (group.Scalar, error) {
 	gcEnc, err := groupCom.MarshalBinaryCompress()
 	if err != nil {
 		return nil, err
@@ -130,5 +124,5 @@ func (s Suite) getChallenge(groupCom group.Element, pubKey *PublicKey, msg []byt
 	}
 	chInput := append(append(append([]byte{}, gcEnc...), pkEnc...), msg...)
 
-	return s.hasher.h2(chInput), nil
+	return p.h2(chInput), nil
 }

@@ -19,9 +19,7 @@ func testFrost(tt *testing.T, suite frost.Suite) {
 	t, n := uint(3), uint(5)
 
 	privKey := frost.GenerateKey(suite, rand.Reader)
-	pubKeyGroup := privKey.Public()
-	peers, keyShareCommits, err := privKey.Split(rand.Reader, t, n)
-	test.CheckNoErr(tt, err, "failed to split secret")
+	peers, groupPublicKey, keyShareCommits := privKey.Split(rand.Reader, t, n)
 
 	// every peer can validate its own keyShare.
 	for i := range peers {
@@ -32,39 +30,42 @@ func testFrost(tt *testing.T, suite frost.Suite) {
 	// Only k peers try to generate a signature.
 	for k := uint(0); k < n; k++ {
 		// round 1
-		nonces := make([]*frost.Nonce, k)
-		commits := make([]*frost.Commitment, k)
-		pkSigners := make([]*frost.PublicKey, k)
+		nonces := make([]frost.Nonce, k)
+		commits := make([]frost.Commitment, k)
+		pkSigners := make([]frost.PublicKey, k)
 		for i := range peers[:k] {
-			nonces[i], commits[i], err = peers[i].Commit(rand.Reader)
+			nonce, commit, err := peers[i].Commit(rand.Reader)
 			test.CheckNoErr(tt, err, "failed to commit")
-			pkSigners[i] = peers[i].Public()
+			pkSigners[i] = peers[i].PublicKey()
+			nonces[i] = *nonce
+			commits[i] = *commit
 		}
 
 		// round 2
 		msg := []byte("it's cold here")
-		signShares := make([]*frost.SignShare, k)
+		signShares := make([]frost.SignShare, k)
 		for i := range peers[:k] {
-			signShares[i], err = peers[i].Sign(msg, pubKeyGroup, nonces[i], commits)
+			sigShare, err := peers[i].Sign(msg, groupPublicKey, nonces[i], commits)
 			test.CheckNoErr(tt, err, "failed to create a sign share")
+			signShares[i] = *sigShare
 		}
 
-		// Combiner
-		combiner, err := frost.NewCombiner(suite, t, n)
+		// Coordinator
+		coordinator, err := frost.NewCoordinator(suite, t, n)
 		test.CheckNoErr(tt, err, "failed to create combiner")
 
-		valid := combiner.CheckSignShares(signShares, pkSigners, commits, pubKeyGroup, msg)
+		valid := coordinator.CheckSignShares(msg, groupPublicKey, signShares, commits, pkSigners)
 		if k > t {
 			test.CheckOk(valid == true, "invalid sign shares", tt)
 		} else {
 			test.CheckOk(valid == false, "must be invalid sign shares", tt)
 		}
 
-		signature, err := combiner.Sign(msg, commits, signShares)
+		signature, err := coordinator.Aggregate(msg, groupPublicKey, signShares, commits)
 		if k > t {
 			test.CheckNoErr(tt, err, "failed to produce signature")
 			// anyone can verify
-			valid := frost.Verify(suite, pubKeyGroup, msg, signature)
+			valid := frost.Verify(msg, groupPublicKey, signature)
 			test.CheckOk(valid == true, "invalid signature", tt)
 		} else {
 			test.CheckIsErr(tt, err, "should not produce a signature")
@@ -81,28 +82,39 @@ func BenchmarkFrost(b *testing.B) {
 
 func benchmarkFrost(b *testing.B, suite frost.Suite) {
 	t, n := uint(3), uint(5)
-
 	privKey := frost.GenerateKey(suite, rand.Reader)
-	peers, keyShareCommits, err := privKey.Split(rand.Reader, t, n)
-	test.CheckNoErr(b, err, "failed to split secret")
+	peers, groupPublicKey, keyShareCommits := privKey.Split(rand.Reader, t, n)
+
+	msg := []byte("it's cold here")
+	nonces := make([]frost.Nonce, len(peers))
+	commits := make([]frost.Commitment, len(peers))
+	pkSigners := make([]frost.PublicKey, len(peers))
+	for i := range peers {
+		nonce, commit, err := peers[i].Commit(rand.Reader)
+		test.CheckNoErr(b, err, "failed to commit")
+		pkSigners[i] = peers[i].PublicKey()
+		nonces[i] = *nonce
+		commits[i] = *commit
+	}
+
+	signShares := make([]frost.SignShare, len(peers))
+	for i := range peers {
+		sigShare, err := peers[i].Sign(msg, groupPublicKey, nonces[i], commits)
+		test.CheckNoErr(b, err, "failed to create a sign share")
+		signShares[i] = *sigShare
+	}
+	coordinator, err := frost.NewCoordinator(suite, t, n)
+	test.CheckNoErr(b, err, "failed to create combiner")
+	signature, err := coordinator.Aggregate(msg, groupPublicKey, signShares, commits)
+	test.CheckNoErr(b, err, "failed to aggregate")
+	valid := frost.Verify(msg, groupPublicKey, signature)
+	test.CheckOk(valid, "failed to verify", b)
 
 	b.Run("SplitKey", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			_, _, _ = privKey.Split(rand.Reader, t, n)
 		}
 	})
-
-	pubKeyGroup := privKey.Public()
-	msg := []byte("it's cold here")
-
-	nonces := make([]*frost.Nonce, len(peers))
-	commits := make([]*frost.Commitment, len(peers))
-	pkSigners := make([]*frost.PublicKey, len(peers))
-	for i := range peers {
-		nonces[i], commits[i], err = peers[i].Commit(rand.Reader)
-		test.CheckNoErr(b, err, "failed to commit")
-		pkSigners[i] = peers[i].Public()
-	}
 
 	b.Run("CheckKeyShare", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
@@ -118,36 +130,25 @@ func benchmarkFrost(b *testing.B, suite frost.Suite) {
 
 	b.Run("SignShare", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_, _ = peers[0].Sign(msg, pubKeyGroup, nonces[0], commits)
+			_, _ = peers[0].Sign(msg, groupPublicKey, nonces[0], commits)
 		}
 	})
-
-	signShares := make([]*frost.SignShare, len(peers))
-	for i := range peers {
-		signShares[i], err = peers[i].Sign(msg, pubKeyGroup, nonces[i], commits)
-		test.CheckNoErr(b, err, "failed to create a sign share")
-	}
-
-	combiner, err := frost.NewCombiner(suite, t, n)
-	test.CheckNoErr(b, err, "failed to create combiner")
 
 	b.Run("CheckSignShares", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_ = combiner.CheckSignShares(signShares, pkSigners, commits, pubKeyGroup, msg)
+			_ = coordinator.CheckSignShares(msg, groupPublicKey, signShares, commits, pkSigners)
 		}
 	})
 
-	b.Run("Sign", func(b *testing.B) {
+	b.Run("Aggregate", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_, _ = combiner.Sign(msg, commits, signShares)
+			_, _ = coordinator.Aggregate(msg, groupPublicKey, signShares, commits)
 		}
 	})
 
 	b.Run("Verify", func(b *testing.B) {
-		signature, _ := combiner.Sign(msg, commits, signShares)
-		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			_ = frost.Verify(suite, pubKeyGroup, msg, signature)
+			_ = frost.Verify(msg, groupPublicKey, signature)
 		}
 	})
 }

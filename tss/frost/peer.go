@@ -1,7 +1,6 @@
 package frost
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -13,89 +12,113 @@ import (
 
 type PeerSigner struct {
 	Suite
-	threshold  uint16
-	maxSigners uint16
-	keyShare   secretsharing.Share
-	myPubKey   *PublicKey
+	threshold      uint16
+	maxSigners     uint16
+	keyShare       secretsharing.Share
+	myPublicKey    *PublicKey
+	groupPublicKey PublicKey
 }
 
-func (p PeerSigner) Commit(rnd io.Reader) (*Nonce, *Commitment, error) {
-	hidingNonce, err := p.Suite.nonceGenerate(rnd, p.keyShare.Value)
+func (p *PeerSigner) Commit(rnd io.Reader) (*Nonce, *Commitment, error) {
+	var hidingNonceRandomness [32]byte
+	_, err := io.ReadFull(rnd, hidingNonceRandomness[:])
 	if err != nil {
 		return nil, nil, err
 	}
-	bindingNonce, err := p.Suite.nonceGenerate(rnd, p.keyShare.Value)
+
+	var bindingNonceRandomness [32]byte
+	_, err = io.ReadFull(rnd, bindingNonceRandomness[:])
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return p.commitWithNonce(hidingNonce, bindingNonce)
+	return p.commitWithRandomness(hidingNonceRandomness[:], bindingNonceRandomness[:])
 }
 
-func (p PeerSigner) commitWithNonce(hidingNonce, bindingNonce group.Scalar) (*Nonce, *Commitment, error) {
-	hidingNonceCom := p.Suite.g.NewElement().MulGen(hidingNonce)
-	bindingNonceCom := p.Suite.g.NewElement().MulGen(bindingNonce)
-	return &Nonce{p.keyShare.ID, hidingNonce, bindingNonce}, &Commitment{p.keyShare.ID, hidingNonceCom, bindingNonceCom}, nil
+func (p *PeerSigner) commitWithRandomness(hidingNonceRnd, bindingNonceRnd []byte) (*Nonce, *Commitment, error) {
+	secretEnc, err := p.keyShare.Value.MarshalBinary()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	pp := p.Suite.getParams()
+	g := pp.group()
+	hidingNonce := nonceGenerate(pp, hidingNonceRnd, secretEnc)
+	hidingNonceCom := g.NewElement().MulGen(hidingNonce)
+
+	bindingNonce := nonceGenerate(pp, bindingNonceRnd, secretEnc)
+	bindingNonceCom := g.NewElement().MulGen(bindingNonce)
+
+	return &Nonce{p.keyShare.ID, hidingNonce, bindingNonce},
+		&Commitment{p.keyShare.ID, hidingNonceCom, bindingNonceCom},
+		nil
 }
 
-func (p PeerSigner) CheckKeyShare(c secretsharing.SecretCommitment) bool {
+func (p *PeerSigner) CheckKeyShare(c secretsharing.SecretCommitment) bool {
 	return secretsharing.Verify(uint(p.threshold), p.keyShare, c)
 }
 
-func (p PeerSigner) Public() *PublicKey {
-	if p.myPubKey == nil {
-		p.myPubKey = &PublicKey{p.Suite, p.Suite.g.NewElement().MulGen(p.keyShare.Value)}
+func (p *PeerSigner) PublicKey() PublicKey {
+	if p.myPublicKey == nil {
+		g := p.Suite.getParams().group()
+		p.myPublicKey = &PublicKey{p.Suite, g.NewElement().MulGen(p.keyShare.Value)}
 	}
-	return p.myPubKey
+
+	return *p.myPublicKey
 }
 
-func (p PeerSigner) Sign(msg []byte, pubKey *PublicKey, nonce *Nonce, coms []*Commitment) (*SignShare, error) {
-	if !p.keyShare.ID.IsEqual(nonce.ID) {
-		return nil, errors.New("frost: bad id")
+func (p *PeerSigner) Sign(msg []byte, pubKey PublicKey, nonce Nonce, coms []Commitment) (*SignShare, error) {
+	if !p.keyShare.ID.IsEqual(nonce.id) {
+		return nil, fmt.Errorf("frost: bad id")
 	}
-	aux, err := p.Suite.common(p.keyShare.ID, msg, pubKey, coms)
+
+	pp := p.Suite.getParams()
+	aux, err := common(pp, p.keyShare.ID, msg, pubKey, coms)
 	if err != nil {
 		return nil, err
 	}
 
-	tmp := p.Suite.g.NewScalar().Mul(nonce.binding, aux.bindingFactor)
-	signShare := p.Suite.g.NewScalar().Add(nonce.hiding, tmp)
+	g := pp.group()
+	tmp := g.NewScalar().Mul(nonce.binding, aux.bindingFactor)
+	signShare := g.NewScalar().Add(nonce.hiding, tmp)
 	tmp.Mul(aux.lambdaID, p.keyShare.Value)
 	tmp.Mul(tmp, aux.challenge)
 	signShare.Add(signShare, tmp)
 
-	return &SignShare{s: secretsharing.Share{
-		ID:    p.keyShare.ID,
-		Value: signShare,
-	}}, nil
+	return &SignShare{
+		Suite: p.Suite,
+		s:     secretsharing.Share{ID: p.keyShare.ID, Value: signShare},
+	}, nil
 }
 
 type SignShare struct {
+	Suite
 	s secretsharing.Share
 }
 
-func (s *SignShare) Verify(
-	suite Suite,
-	pubKeySigner *PublicKey,
-	comSigner *Commitment,
-	coms []*Commitment,
-	pubKeyGroup *PublicKey,
+func (s SignShare) Verify(
 	msg []byte,
+	groupPublicKey PublicKey,
+	pubKeySigner PublicKey,
+	comSigner Commitment,
+	coms []Commitment,
 ) bool {
-	if s.s.ID != comSigner.ID || s.s.ID.IsZero() {
+	if s.s.ID != comSigner.id || s.s.ID.IsZero() {
 		return false
 	}
 
-	aux, err := suite.common(s.s.ID, msg, pubKeyGroup, coms)
+	pp := s.Suite.getParams()
+	aux, err := common(pp, s.s.ID, msg, groupPublicKey, coms)
 	if err != nil {
 		return false
 	}
 
-	comShare := suite.g.NewElement().Mul(coms[aux.idx].binding, aux.bindingFactor)
+	g := pp.group()
+	comShare := g.NewElement().Mul(coms[aux.idx].binding, aux.bindingFactor)
 	comShare.Add(comShare, coms[aux.idx].hiding)
 
-	l := suite.g.NewElement().MulGen(s.s.Value)
-	r := suite.g.NewElement().Mul(pubKeySigner.key, suite.g.NewScalar().Mul(aux.challenge, aux.lambdaID))
+	l := g.NewElement().MulGen(s.s.Value)
+	r := g.NewElement().Mul(pubKeySigner.key, g.NewScalar().Mul(aux.challenge, aux.lambdaID))
 	r.Add(r, comShare)
 
 	return l.IsEqual(r)
@@ -108,48 +131,49 @@ type commonAux struct {
 	bindingFactor group.Scalar
 }
 
-func (s Suite) common(id group.Scalar, msg []byte, pubKey *PublicKey, coms []*Commitment) (aux *commonAux, err error) {
+func common(p params, id group.Scalar, msg []byte, groupPublicKey PublicKey, coms []Commitment) (aux *commonAux, err error) {
 	if !sort.SliceIsSorted(coms,
 		func(i, j int) bool {
-			return coms[i].ID.(fmt.Stringer).String() < coms[j].ID.(fmt.Stringer).String()
+			return coms[i].id.(fmt.Stringer).String() < coms[j].id.(fmt.Stringer).String()
 		},
 	) {
-		return nil, errors.New("frost: commitments must be sorted")
+		return nil, fmt.Errorf("frost: commitments must be sorted")
 	}
 
 	idx := sort.Search(len(coms), func(j int) bool {
-		return coms[j].ID.(fmt.Stringer).String() >= id.(fmt.Stringer).String()
+		return coms[j].id.(fmt.Stringer).String() >= id.(fmt.Stringer).String()
 	})
-	if !(idx < len(coms) && coms[idx].ID.IsEqual(id)) {
-		return nil, errors.New("frost: commitment not present")
+	if !(idx < len(coms) && coms[idx].id.IsEqual(id)) {
+		return nil, fmt.Errorf("frost: commitment not present")
 	}
 
-	bindingFactors, err := s.getBindingFactors(coms, msg)
+	bindingFactors, err := getBindingFactors(p, msg, groupPublicKey, coms)
 	if err != nil {
 		return nil, err
 	}
 
-	bindingFactor, err := s.getBindingFactorFromID(bindingFactors, id)
+	bindingFactor, err := getBindingFactorFromID(bindingFactors, id)
 	if err != nil {
 		return nil, err
 	}
 
-	groupCom, err := s.getGroupCommitment(coms, bindingFactors)
+	g := p.group()
+	groupCom, err := getGroupCommitment(g, coms, bindingFactors)
 	if err != nil {
 		return nil, err
 	}
 
-	challenge, err := s.getChallenge(groupCom, pubKey, msg)
+	challenge, err := getChallenge(p, groupCom, msg, groupPublicKey)
 	if err != nil {
 		return nil, err
 	}
 
 	peers := make([]group.Scalar, len(coms))
 	for i := range coms {
-		peers[i] = coms[i].ID.Copy()
+		peers[i] = coms[i].id.Copy()
 	}
 
-	zero := s.g.NewScalar()
+	zero := g.NewScalar()
 	lambdaID := polynomial.LagrangeBase(uint(idx), peers, zero)
 
 	return &commonAux{

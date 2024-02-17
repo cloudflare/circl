@@ -1,11 +1,10 @@
 // Package frost provides the FROST threshold signature scheme for Schnorr signatures.
 //
-// References
+// FROST paper: https://eprint.iacr.org/2020/852
 //
-//	FROST paper: https://eprint.iacr.org/2020/852
-//	draft-irtf-cfrg-frost: https://datatracker.ietf.org/doc/draft-irtf-cfrg-frost
+// draft-irtf-cfrg-frost: https://datatracker.ietf.org/doc/draft-irtf-cfrg-frost
 //
-// Version supported: v11
+// Version supported: v15
 package frost
 
 import (
@@ -17,8 +16,8 @@ import (
 
 type PrivateKey struct {
 	Suite
-	key    group.Scalar
-	pubKey *PublicKey
+	key       group.Scalar
+	publicKey *PublicKey
 }
 
 type PublicKey struct {
@@ -26,53 +25,61 @@ type PublicKey struct {
 	key group.Element
 }
 
-func GenerateKey(s Suite, rnd io.Reader) *PrivateKey {
-	return &PrivateKey{s, s.g.RandomNonZeroScalar(rnd), nil}
+func GenerateKey(s Suite, rnd io.Reader) PrivateKey {
+	g := s.getParams().group()
+	return PrivateKey{s, g.RandomNonZeroScalar(rnd), nil}
 }
 
-func (k *PrivateKey) Public() *PublicKey {
-	return &PublicKey{k.Suite, k.Suite.g.NewElement().MulGen(k.key)}
+func (k *PrivateKey) PublicKey() PublicKey {
+	if k.publicKey == nil {
+		g := k.Suite.getParams().group()
+		k.publicKey = &PublicKey{k.Suite, g.NewElement().MulGen(k.key)}
+	}
+
+	return *k.publicKey
 }
 
 func (k *PrivateKey) Split(rnd io.Reader, threshold, maxSigners uint) (
-	[]PeerSigner, secretsharing.SecretCommitment, error,
+	peers []PeerSigner, groupPublicKey PublicKey, comm secretsharing.SecretCommitment,
 ) {
 	ss := secretsharing.New(rnd, threshold, k.key)
 	shares := ss.Share(maxSigners)
+	comm = ss.CommitSecret()
+	groupPublicKey = PublicKey{k.Suite, comm[0]}
 
-	peers := make([]PeerSigner, len(shares))
+	peers = make([]PeerSigner, len(shares))
 	for i := range shares {
 		peers[i] = PeerSigner{
-			Suite:      k.Suite,
-			threshold:  uint16(threshold),
-			maxSigners: uint16(maxSigners),
-			keyShare: secretsharing.Share{
-				ID:    shares[i].ID,
-				Value: shares[i].Value,
-			},
-			myPubKey: nil,
+			Suite:          k.Suite,
+			threshold:      uint16(threshold),
+			maxSigners:     uint16(maxSigners),
+			keyShare:       shares[i],
+			groupPublicKey: groupPublicKey,
+			myPublicKey:    nil,
 		}
 	}
 
-	return peers, ss.CommitSecret(), nil
+	return peers, groupPublicKey, comm
 }
 
-func Verify(s Suite, pubKey *PublicKey, msg, signature []byte) bool {
-	params := s.g.Params()
+func Verify(msg []byte, pubKey PublicKey, signature []byte) bool {
+	p := pubKey.Suite.getParams()
+	g := p.group()
+	params := g.Params()
 	Ne, Ns := params.CompressedElementLength, params.ScalarLength
 	if len(signature) < int(Ne+Ns) {
 		return false
 	}
 
 	REnc := signature[:Ne]
-	R := s.g.NewElement()
+	R := g.NewElement()
 	err := R.UnmarshalBinary(REnc)
 	if err != nil {
 		return false
 	}
 
 	zEnc := signature[Ne : Ne+Ns]
-	z := s.g.NewScalar()
+	z := g.NewScalar()
 	err = z.UnmarshalBinary(zEnc)
 	if err != nil {
 		return false
@@ -84,10 +91,10 @@ func Verify(s Suite, pubKey *PublicKey, msg, signature []byte) bool {
 	}
 
 	chInput := append(append(append([]byte{}, REnc...), pubKeyEnc...), msg...)
-	c := s.hasher.h2(chInput)
+	c := p.h2(chInput)
 
-	l := s.g.NewElement().MulGen(z)
-	r := s.g.NewElement().Mul(pubKey.key, c)
+	l := g.NewElement().MulGen(z)
+	r := g.NewElement().Mul(pubKey.key, c)
 	r.Add(r, R)
 
 	return l.IsEqual(r)

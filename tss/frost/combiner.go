@@ -1,30 +1,27 @@
 package frost
 
-import (
-	"errors"
-	"fmt"
-)
+import "fmt"
 
-type Combiner struct {
+type Coordinator struct {
 	Suite
 	threshold  uint
 	maxSigners uint
 }
 
-func NewCombiner(s Suite, threshold, maxSigners uint) (*Combiner, error) {
+func NewCoordinator(s Suite, threshold, maxSigners uint) (*Coordinator, error) {
 	if threshold > maxSigners {
-		return nil, errors.New("frost: invalid parameters")
+		return nil, fmt.Errorf("frost: invalid parameters")
 	}
 
-	return &Combiner{Suite: s, threshold: threshold, maxSigners: maxSigners}, nil
+	return &Coordinator{Suite: s, threshold: threshold, maxSigners: maxSigners}, nil
 }
 
-func (c Combiner) CheckSignShares(
-	signShares []*SignShare,
-	pubKeySigners []*PublicKey,
-	coms []*Commitment,
-	pubKeyGroup *PublicKey,
+func (c Coordinator) CheckSignShares(
 	msg []byte,
+	groupPublicKey PublicKey,
+	signShares []SignShare,
+	coms []Commitment,
+	pubKeySigners []PublicKey,
 ) bool {
 	if l := len(signShares); !(int(c.threshold) < l && l <= int(c.maxSigners)) {
 		return false
@@ -37,7 +34,7 @@ func (c Combiner) CheckSignShares(
 	}
 
 	for i := range signShares {
-		if !signShares[i].Verify(c.Suite, pubKeySigners[i], coms[i], coms, pubKeyGroup, msg) {
+		if !signShares[i].Verify(msg, groupPublicKey, pubKeySigners[i], coms[i], coms) {
 			return false
 		}
 	}
@@ -45,17 +42,24 @@ func (c Combiner) CheckSignShares(
 	return true
 }
 
-func (c Combiner) Sign(msg []byte, coms []*Commitment, signShares []*SignShare) ([]byte, error) {
+func (c Coordinator) Aggregate(
+	msg []byte,
+	groupPublicKey PublicKey,
+	signShares []SignShare,
+	coms []Commitment,
+) ([]byte, error) {
 	if l := len(coms); l <= int(c.threshold) {
 		return nil, fmt.Errorf("frost: only %v shares of %v required", l, c.threshold)
 	}
 
-	bindingFactors, err := c.Suite.getBindingFactors(coms, msg)
+	p := c.Suite.getParams()
+	bindingFactors, err := getBindingFactors(p, msg, groupPublicKey, coms)
 	if err != nil {
 		return nil, err
 	}
 
-	groupCom, err := c.Suite.getGroupCommitment(coms, bindingFactors)
+	g := p.group()
+	groupCom, err := getGroupCommitment(g, coms, bindingFactors)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +69,7 @@ func (c Combiner) Sign(msg []byte, coms []*Commitment, signShares []*SignShare) 
 		return nil, err
 	}
 
-	z := c.Suite.g.NewScalar()
+	z := g.NewScalar()
 	for i := range signShares {
 		z.Add(z, signShares[i].s.Value)
 	}

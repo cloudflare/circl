@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"testing"
 
@@ -16,65 +15,42 @@ import (
 
 type vector struct {
 	Config struct {
-		MAXPARTICIPANTS uint16 `json:"MAX_PARTICIPANTS,string"`
-		NUMPARTICIPANTS uint16 `json:"NUM_PARTICIPANTS,string"`
-		MINPARTICIPANTS uint16 `json:"MIN_PARTICIPANTS,string"`
-		Name            string `json:"name"`
-		Group           string `json:"group"`
-		Hash            string `json:"hash"`
+		MAXSIGNERS int    `json:"MAX_PARTICIPANTS,string"`
+		NUMSIGNERS int    `json:"NUM_PARTICIPANTS,string"`
+		MINSIGNERS int    `json:"MIN_PARTICIPANTS,string"`
+		Name       string `json:"name"`
+		Group      string `json:"group"`
+		Hash       string `json:"hash"`
 	} `json:"config"`
 	Inputs struct {
-		GroupSecretKey              string   `json:"group_secret_key"`
-		GroupPublicKey              string   `json:"group_public_key"`
-		Message                     string   `json:"message"`
-		SharePolynomialCoefficients []string `json:"share_polynomial_coefficients"`
-		Participants                struct {
-			Num1 struct {
-				ParticipantShare string `json:"participant_share"`
-			} `json:"1"`
-			Num2 struct {
-				ParticipantShare string `json:"participant_share"`
-			} `json:"2"`
-			Num3 struct {
-				ParticipantShare string `json:"participant_share"`
-			} `json:"3"`
-		} `json:"participants"`
+		GroupSecretKey string   `json:"group_secret_key"`
+		GroupPublicKey string   `json:"group_public_key"`
+		Message        string   `json:"message"`
+		PolyCoeffs     []string `json:"share_polynomial_coefficients"`
+		Signers        []int    `json:"participant_list"`
+		Shares         []struct {
+			ID          int    `json:"identifier"`
+			SignerShare string `json:"participant_share"`
+		} `json:"participant_shares"`
 	} `json:"inputs"`
 	RoundOneOutputs struct {
-		ParticipantList string `json:"participant_list"`
-		Participants    struct {
-			Num1 struct {
-				HidingNonceRandomness  string `json:"hiding_nonce_randomness"`
-				BindingNonceRandomness string `json:"binding_nonce_randomness"`
-				HidingNonce            string `json:"hiding_nonce"`
-				BindingNonce           string `json:"binding_nonce"`
-				HidingNonceCommitment  string `json:"hiding_nonce_commitment"`
-				BindingNonceCommitment string `json:"binding_nonce_commitment"`
-				BindingFactorInput     string `json:"binding_factor_input"`
-				BindingFactor          string `json:"binding_factor"`
-			} `json:"1"`
-			Num3 struct {
-				HidingNonceRandomness  string `json:"hiding_nonce_randomness"`
-				BindingNonceRandomness string `json:"binding_nonce_randomness"`
-				HidingNonce            string `json:"hiding_nonce"`
-				BindingNonce           string `json:"binding_nonce"`
-				HidingNonceCommitment  string `json:"hiding_nonce_commitment"`
-				BindingNonceCommitment string `json:"binding_nonce_commitment"`
-				BindingFactorInput     string `json:"binding_factor_input"`
-				BindingFactor          string `json:"binding_factor"`
-			} `json:"3"`
-		} `json:"participants"`
+		Outputs []struct {
+			ID                     int    `json:"identifier"`
+			HidingNonceRnd         string `json:"hiding_nonce_randomness"`
+			BindingNonceRnd        string `json:"binding_nonce_randomness"`
+			HidingNonce            string `json:"hiding_nonce"`
+			BindingNonce           string `json:"binding_nonce"`
+			HidingNonceCommitment  string `json:"hiding_nonce_commitment"`
+			BindingNonceCommitment string `json:"binding_nonce_commitment"`
+			BindingFactorInput     string `json:"binding_factor_input"`
+			BindingFactor          string `json:"binding_factor"`
+		} `json:"outputs"`
 	} `json:"round_one_outputs"`
 	RoundTwoOutputs struct {
-		ParticipantList string `json:"participant_list"`
-		Participants    struct {
-			Num1 struct {
-				SigShare string `json:"sig_share"`
-			} `json:"1"`
-			Num3 struct {
-				SigShare string `json:"sig_share"`
-			} `json:"3"`
-		} `json:"participants"`
+		Outputs []struct {
+			ID       int    `json:"identifier"`
+			SigShare string `json:"sig_share"`
+		} `json:"outputs"`
 	} `json:"round_two_outputs"`
 	FinalOutput struct {
 		Sig string `json:"sig"`
@@ -118,102 +94,103 @@ func toScalar(t *testing.T, g group.Group, s, errMsg string) group.Scalar {
 func compareBytes(t *testing.T, got, want []byte) {
 	t.Helper()
 	if !bytes.Equal(got, want) {
-		test.ReportError(t, got, want)
+		test.ReportError(t, fmt.Sprintf("%x", got), fmt.Sprintf("%x", want))
 	}
 }
 
-func (v *vector) test(t *testing.T, suite Suite) {
-	privKey := &PrivateKey{suite, toScalar(t, suite.g, v.Inputs.GroupSecretKey, "bad private key"), nil}
-	pubKeyGroup := privKey.Public()
-	compareBytes(t, toBytesElt(t, pubKeyGroup.key), fromHex(t, v.Inputs.GroupPublicKey, "bad public key"))
+func (v *vector) test(t *testing.T, s Suite) {
+	Threshold := v.Config.MINSIGNERS - 1
+	NumPeers := v.Config.NUMSIGNERS
+	MaxPeers := v.Config.MAXSIGNERS
 
-	p1 := PeerSigner{
-		Suite:      suite,
-		threshold:  v.Config.NUMPARTICIPANTS,
-		maxSigners: v.Config.MAXPARTICIPANTS,
-		keyShare: secretsharing.Share{
-			ID:    suite.g.NewScalar().SetUint64(1),
-			Value: toScalar(t, suite.g, v.Inputs.Participants.Num1.ParticipantShare, "signer share value"),
-		},
-		myPubKey: nil,
+	test.CheckOk(MaxPeers == len(v.Inputs.Shares), "bad number of shares", t)
+	test.CheckOk(NumPeers == len(v.Inputs.Signers), "bad number of signers", t)
+	test.CheckOk(NumPeers == len(v.RoundOneOutputs.Outputs), "bad number of outputs round one", t)
+	test.CheckOk(NumPeers == len(v.RoundTwoOutputs.Outputs), "bad number of outputs round two", t)
+
+	params := s.getParams()
+	g := params.group()
+	privKey := PrivateKey{s, toScalar(t, g, v.Inputs.GroupSecretKey, "bad private key"), nil}
+	groupPublicKey := privKey.PublicKey()
+	compareBytes(t, toBytesElt(t, groupPublicKey.key), fromHex(t, v.Inputs.GroupPublicKey, "bad public key"))
+
+	peers := make(map[int]PeerSigner)
+	for _, inputs := range v.Inputs.Shares {
+		keyShare := secretsharing.Share{
+			ID:    g.NewScalar().SetUint64(uint64(inputs.ID)),
+			Value: toScalar(t, g, inputs.SignerShare, "peer share"),
+		}
+		peers[inputs.ID] = PeerSigner{
+			Suite:          s,
+			threshold:      uint16(Threshold),
+			maxSigners:     uint16(MaxPeers),
+			keyShare:       keyShare,
+			groupPublicKey: groupPublicKey,
+			myPublicKey:    nil,
+		}
 	}
 
-	/*p2 := PeerSigner{
-		Suite:      suite,
-		threshold:  v.Config.NUMPARTICIPANTS,
-		maxSigners: v.Config.MAXPARTICIPANTS,
-		keyShare: secretsharing.Share{
-			ID: suite.g.NewScalar().SetUint64(2),
-			Value: toScalar(t, suite.g, v.Inputs.Participants.Num2.ParticipantShare, "signer share value"),
-		},
-		myPubKey: nil,
-	}*/
+	var commitList []Commitment
+	var pkSigners []PublicKey
+	nonces := make(map[int]Nonce)
 
-	p3 := PeerSigner{
-		Suite:      suite,
-		threshold:  v.Config.NUMPARTICIPANTS,
-		maxSigners: v.Config.MAXPARTICIPANTS,
-		keyShare: secretsharing.Share{
-			ID:    suite.g.NewScalar().SetUint64(3),
-			Value: toScalar(t, suite.g, v.Inputs.Participants.Num3.ParticipantShare, "signer share value"),
-		},
-		myPubKey: nil,
+	for _, roundOne := range v.RoundOneOutputs.Outputs {
+		peer := peers[roundOne.ID]
+		hnr := fromHex(t, roundOne.HidingNonceRnd, "hiding nonce rand")
+		bnr := fromHex(t, roundOne.BindingNonceRnd, "binding nonce rand")
+
+		nonce, commit, err := peer.commitWithRandomness(hnr, bnr)
+		test.CheckNoErr(t, err, "failed to commit")
+
+		compareBytes(t, toBytesScalar(t, nonce.hiding), fromHex(t, roundOne.HidingNonce, "hiding nonce"))
+		compareBytes(t, toBytesScalar(t, nonce.binding), fromHex(t, roundOne.BindingNonce, "binding nonce"))
+		compareBytes(t, toBytesElt(t, commit.hiding), fromHex(t, roundOne.HidingNonceCommitment, "hiding nonce commit"))
+		compareBytes(t, toBytesElt(t, commit.binding), fromHex(t, roundOne.BindingNonceCommitment, "binding nonce commit"))
+
+		nonces[roundOne.ID] = *nonce
+		commitList = append(commitList, *commit)
+		pkSigners = append(pkSigners, peer.PublicKey())
 	}
-
-	hn1 := toScalar(t, suite.g, v.RoundOneOutputs.Participants.Num1.HidingNonce, "hiding nonce")
-	bn1 := toScalar(t, suite.g, v.RoundOneOutputs.Participants.Num1.BindingNonce, "binding nonce")
-	nonce1, commit1, err := p1.commitWithNonce(hn1, bn1)
-	test.CheckNoErr(t, err, "failed to commit")
-
-	compareBytes(t, toBytesElt(t, commit1.hiding), fromHex(t, v.RoundOneOutputs.Participants.Num1.HidingNonceCommitment, "hiding nonce commit"))
-	compareBytes(t, toBytesElt(t, commit1.binding), fromHex(t, v.RoundOneOutputs.Participants.Num1.BindingNonceCommitment, "binding nonce commit"))
-
-	hn3 := toScalar(t, suite.g, v.RoundOneOutputs.Participants.Num3.HidingNonce, "hiding nonce")
-	bn3 := toScalar(t, suite.g, v.RoundOneOutputs.Participants.Num3.BindingNonce, "binding nonce")
-	nonce3, commit3, err := p3.commitWithNonce(hn3, bn3)
-	test.CheckNoErr(t, err, "failed to commit")
-
-	compareBytes(t, toBytesElt(t, commit3.hiding), fromHex(t, v.RoundOneOutputs.Participants.Num3.HidingNonceCommitment, "hiding nonce commit"))
-	compareBytes(t, toBytesElt(t, commit3.binding), fromHex(t, v.RoundOneOutputs.Participants.Num3.BindingNonceCommitment, "binding nonce commit"))
 
 	msg := fromHex(t, v.Inputs.Message, "bad msg")
-	commits := []*Commitment{commit1, commit3}
-	bindingFactors, err := suite.getBindingFactors(commits, msg)
+	bindingFactors, err := getBindingFactors(params, msg, groupPublicKey, commitList)
 	test.CheckNoErr(t, err, "failed to get binding factors")
 
-	compareBytes(t, toBytesScalar(t, bindingFactors[0].factor), fromHex(t, v.RoundOneOutputs.Participants.Num1.BindingFactor, "binding factor"))
-	compareBytes(t, toBytesScalar(t, bindingFactors[1].factor), fromHex(t, v.RoundOneOutputs.Participants.Num3.BindingFactor, "binding factor"))
+	for i := range bindingFactors {
+		compareBytes(t, toBytesScalar(t, bindingFactors[i].factor), fromHex(t, v.RoundOneOutputs.Outputs[i].BindingFactor, "binding factor"))
+	}
 
-	signShares1, err := p1.Sign(msg, pubKeyGroup, nonce1, commits)
-	test.CheckNoErr(t, err, "failed to sign share")
-	compareBytes(t, toBytesScalar(t, signShares1.s.Value), fromHex(t, v.RoundTwoOutputs.Participants.Num1.SigShare, "sign share"))
+	var signShareList []SignShare
+	for _, roundTwo := range v.RoundTwoOutputs.Outputs {
+		peer := peers[roundTwo.ID]
+		signShare, errr := peer.Sign(msg, groupPublicKey, nonces[roundTwo.ID], commitList)
+		test.CheckNoErr(t, errr, "failed to sign share")
 
-	signShares3, err := p3.Sign(msg, pubKeyGroup, nonce3, commits)
-	test.CheckNoErr(t, err, "failed to sign share")
-	compareBytes(t, toBytesScalar(t, signShares3.s.Value), fromHex(t, v.RoundTwoOutputs.Participants.Num3.SigShare, "sign share"))
+		compareBytes(t, toBytesScalar(t, signShare.s.ID), toBytesScalar(t, g.NewScalar().SetUint64(uint64(roundTwo.ID))))
+		compareBytes(t, toBytesScalar(t, signShare.s.Value), fromHex(t, roundTwo.SigShare, "sign share"))
 
-	combiner, err := NewCombiner(suite, uint(v.Config.MINPARTICIPANTS-1), uint(v.Config.MAXPARTICIPANTS))
+		signShareList = append(signShareList, *signShare)
+	}
+
+	coordinator, err := NewCoordinator(s, uint(Threshold), uint(MaxPeers))
 	test.CheckNoErr(t, err, "failed to create combiner")
 
-	signShares := []*SignShare{signShares1, signShares3}
-	signature, err := combiner.Sign(msg, commits, signShares)
+	ok := coordinator.CheckSignShares(msg, groupPublicKey, signShareList, commitList, pkSigners)
+	test.CheckOk(ok == true, "invalid signature shares", t)
+
+	signature, err := coordinator.Aggregate(msg, groupPublicKey, signShareList, commitList)
 	test.CheckNoErr(t, err, "failed to create signature")
 	compareBytes(t, signature, fromHex(t, v.FinalOutput.Sig, "signature"))
 
-	valid := Verify(suite, pubKeyGroup, msg, signature)
+	valid := Verify(msg, groupPublicKey, signature)
 	test.CheckOk(valid == true, "invalid signature", t)
 }
 
 func readFile(t *testing.T, fileName string) *vector {
 	t.Helper()
-	jsonFile, err := os.Open(fileName)
+	input, err := os.ReadFile(fileName)
 	if err != nil {
 		t.Fatalf("File %v can not be opened. Error: %v", fileName, err)
-	}
-	defer jsonFile.Close()
-	input, err := io.ReadAll(jsonFile)
-	if err != nil {
-		t.Fatalf("File %v can not be read. Error: %v", fileName, err)
 	}
 
 	var v vector
@@ -226,9 +203,9 @@ func readFile(t *testing.T, fileName string) *vector {
 }
 
 func TestVectors(t *testing.T) {
-	// Draft published at https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-frost-11
+	// Draft published at https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-frost-15
 	// Test vectors at https://github.com/cfrg/draft-irtf-cfrg-frost
-	// Version supported: v11
+	// Version supported: v15
 	suite, vector := P256, readFile(t, "testdata/frost_p256_sha256.json")
 	t.Run(fmt.Sprintf("%v", suite), func(tt *testing.T) { vector.test(tt, suite) })
 
