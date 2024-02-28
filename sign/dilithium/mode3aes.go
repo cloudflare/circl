@@ -57,7 +57,7 @@ func (m *implMode3AES) PublicKeyFromBytes(data []byte) PublicKey {
 func (m *implMode3AES) PrivateKeyFromBytes(data []byte) PrivateKey {
 	var ret mode3aes.PrivateKey
 	if len(data) != mode3aes.PrivateKeySize {
-		panic("packed public key must be of mode3aes.PrivateKeySize bytes")
+		panic("packed private key must be of mode3aes.PrivateKeySize bytes")
 	}
 	var buf [mode3aes.PrivateKeySize]byte
 	copy(buf[:], data)

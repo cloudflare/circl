@@ -58,7 +58,7 @@ func (m *implMLDSA65) PublicKeyFromBytes(data []byte) PublicKey {
 func (m *implMLDSA65) PrivateKeyFromBytes(data []byte) PrivateKey {
 	var ret mldsa65.PrivateKey
 	if len(data) != mldsa65.PrivateKeySize {
-		panic("packed public key must be of mldsa65.PrivateKeySize bytes")
+		panic("packed private key must be of mldsa65.PrivateKeySize bytes")
 	}
 	var buf [mldsa65.PrivateKeySize]byte
 	copy(buf[:], data)

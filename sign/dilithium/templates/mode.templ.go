@@ -67,7 +67,7 @@ func (m *{{.Impl}}) PublicKeyFromBytes(data []byte) PublicKey {
 func (m *{{.Impl}}) PrivateKeyFromBytes(data []byte) PrivateKey {
 	var ret {{.Pkg}}.PrivateKey
 	if len(data) != {{.Pkg}}.PrivateKeySize {
-		panic("packed public key must be of {{.Pkg}}.PrivateKeySize bytes")
+		panic("packed private key must be of {{.Pkg}}.PrivateKeySize bytes")
 	}
 	var buf [{{.Pkg}}.PrivateKeySize]byte
 	copy(buf[:], data)

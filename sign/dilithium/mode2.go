@@ -57,7 +57,7 @@ func (m *implMode2) PublicKeyFromBytes(data []byte) PublicKey {
 func (m *implMode2) PrivateKeyFromBytes(data []byte) PrivateKey {
 	var ret mode2.PrivateKey
 	if len(data) != mode2.PrivateKeySize {
-		panic("packed public key must be of mode2.PrivateKeySize bytes")
+		panic("packed private key must be of mode2.PrivateKeySize bytes")
 	}
 	var buf [mode2.PrivateKeySize]byte
 	copy(buf[:], data)
