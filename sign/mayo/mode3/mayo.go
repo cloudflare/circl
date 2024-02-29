@@ -15,6 +15,7 @@ import (
 	"errors"
 	"io"
 
+	"github.com/cloudflare/circl/sign"
 	"github.com/cloudflare/circl/sign/mayo/mode3/internal"
 )
 
@@ -37,6 +38,9 @@ type PublicKey internal.PublicKey
 
 // PrivateKey is the type of Mayo1 private key
 type PrivateKey internal.PrivateKey
+
+func (sk *PrivateKey) Scheme() sign.Scheme { return sch }
+func (pk *PublicKey) Scheme() sign.Scheme  { return sch }
 
 // GenerateKey generates a public/private key pair using entropy from rand.
 // If rand is nil, crypto/rand.Reader will be used.
@@ -91,17 +95,17 @@ func (pk *PublicKey) UnmarshalBinary(data []byte) error {
 	if len(data) != PublicKeySize {
 		return errors.New("packed public key must be of mode3.PublicKeySize bytes")
 	}
-	self := (*(*[PublicKeySize]byte)(pk))
+	self := (*[PublicKeySize]byte)(pk)
 	copy(self[:], data[:])
 	return nil
 }
 
 // Unpacks the private key from data.
 func (sk *PrivateKey) UnmarshalBinary(data []byte) error {
-	if len(data) != PublicKeySize {
+	if len(data) != PrivateKeySize {
 		return errors.New("packed private key must be of mode3.PrivateKeySize bytes")
 	}
-	self := (*(*[PrivateKeySize]byte)(sk))
+	self := (*[PrivateKeySize]byte)(sk)
 	copy(self[:], data[:])
 	return nil
 }
