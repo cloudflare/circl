@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cloudflare/circl/sign/mayo/internal/common/nist"
+	"github.com/cloudflare/circl/internal/nist"
 )
 
 func TestNewKey(t *testing.T) {

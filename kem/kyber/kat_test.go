@@ -47,7 +47,7 @@ func testPQCgenKATKem(t *testing.T, name, expected string) {
 	g := nist.NewDRBG(&seed)
 	fmt.Fprintf(f, "# %s\n\n", name)
 	for i := 0; i < 100; i++ {
-		g.Fill(seed[:])
+		g.Read(seed[:])
 		fmt.Fprintf(f, "count = %d\n", i)
 		fmt.Fprintf(f, "seed = %X\n", seed)
 		g2 := nist.NewDRBG(&seed)
@@ -55,10 +55,10 @@ func testPQCgenKATKem(t *testing.T, name, expected string) {
 		// This is not equivalent to g2.Fill(kseed[:]).  As the reference
 		// implementation calls randombytes twice generating the keypair,
 		// we have to do that as well.
-		g2.Fill(kseed[:32])
-		g2.Fill(kseed[32:])
+		g2.Read(kseed[:32])
+		g2.Read(kseed[32:])
 
-		g2.Fill(eseed)
+		g2.Read(eseed)
 		pk, sk := scheme.DeriveKeyPair(kseed)
 		ppk, _ := pk.MarshalBinary()
 		psk, _ := sk.MarshalBinary()

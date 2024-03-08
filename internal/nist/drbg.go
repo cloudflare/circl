@@ -3,6 +3,7 @@ package nist
 
 import (
 	"crypto/aes"
+	"io"
 )
 
 // See NIST's PQCgenKAT.c.
@@ -10,6 +11,8 @@ type DRBG struct {
 	key [32]byte
 	v   [16]byte
 }
+
+var _ io.Reader = (*DRBG)(nil)
 
 func (g *DRBG) incV() {
 	for j := 15; j >= 0; j-- {
@@ -46,8 +49,10 @@ func NewDRBG(seed *[48]byte) (g DRBG) {
 }
 
 // randombytes.
-func (g *DRBG) Fill(x []byte) {
+func (g *DRBG) Read(x []byte) (n int, err error) {
 	var block [16]byte
+
+	n, err = len(x), nil
 
 	b, _ := aes.NewCipher(g.key[:])
 	for len(x) > 0 {
@@ -61,4 +66,6 @@ func (g *DRBG) Fill(x []byte) {
 		x = x[16:]
 	}
 	g.update(nil)
+
+	return
 }

@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/cloudflare/circl/sign/mayo/internal/common/nist"
+	"github.com/cloudflare/circl/internal/nist"
 )
 
 func TestNewKey(t *testing.T) {
@@ -80,6 +80,32 @@ func TestVerify(t *testing.T) {
 				t.Fatal("should not verify")
 			}
 		})
+	}
+}
+
+func TestSampleSolution(t *testing.T) {
+	if Mode != "MAYO_1" {
+		t.Skip()
+	}
+
+	// This particular seed will trigger re-sampling (first try yields non-full rank)
+	seed := [48]byte{0x27, 0x38, 0x46, 0x8a, 0x02, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	g := nist.NewDRBG(&seed)
+
+	msg := [32]byte{0xe}
+
+	pk, sk, err := GenerateKey(&g)
+	if err != nil {
+		t.Fatal()
+	}
+
+	sig, err := Sign(msg[:], sk.Expand(), &g)
+	if err != nil {
+		t.Fatal()
+	}
+
+	if !Verify(msg[:], sig[:], pk.Expand()) {
+		t.Fatal()
 	}
 }
 
