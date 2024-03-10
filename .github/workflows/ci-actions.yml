@@ -22,9 +22,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Linting
-        uses: golangci/golangci-lint-action@v3
+        uses: golangci/golangci-lint-action@v4
         with:
-          version: v1.56.1
+          version: v1.56.2
           args: --config=./.etc/golangci.yml ./...
       - name: Check shadowing
         run: |
