@@ -371,6 +371,11 @@ func extract(in []uint64, index int) byte {
 	return byte((in[leg] >> (offset * 4)) & 0xF)
 }
 
+// The following code to compute echelon form is taken from the reference code:
+// https://github.com/PQCMayo/MAYO-C/tree/nibbling-mayo/src
+//
+// As of the time of this writing, a formally verified implementation is still in progress by scholars.
+
 // put matrix in row echelon form with ones on first nonzero entries *in constant time*
 func ef(A []byte, nrows, ncols int) {
 	// ncols is actually always K*O + 1
@@ -635,15 +640,17 @@ func Verify(msg []byte, sig []byte, epk *ExpandedPublicKey) bool {
 	// compute P * S^t = [ P1  P2 ] * [S1] = [P1*S1 + P2*S2]
 	//                   [  0  P3 ]   [S2]   [        P3*S2]
 	var pst [M * N * K / 16]uint64
+	// Constant time apprach:
 	// mulAddMMatXMatTrans(pst[:], P1, s[:], V, V, K, N, true)
 	// mulAddMMatXMatTrans(pst[:], P2, s[V:], V, O, K, N, false)
 	// mulAddMMatXMatTrans(pst[M*V*K/16:], P3, s[V:], O, O, K, N, true)
-	variableTime(pst[:], P1, P2, P3, s[:])
+	// Variable time approach with table access where index depends on input:
+	calculatePStVarTime(pst[:], P1, P2, P3, s[:])
 
 	// compute S * PST
 	var sps [M * K * K / 16]uint64
 	// mulAddMatXMMat(sps[:], s[:], pst[:], K, N, K)
-	variableTime2(sps[:], s[:], pst[:])
+	calculateSPstVarTime(sps[:], s[:], pst[:])
 
 	emulsifyInto(sps[:], t[:])
 

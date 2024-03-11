@@ -154,11 +154,13 @@ func upper(in []uint64, out []uint64, size int) {
 	}
 }
 
-func variableTime(sps []uint64, p1 []uint64, p2 []uint64, p3 []uint64, s []uint8) {
+// The variable time technique is describe in the "Nibbling" paper (https://eprint.iacr.org/2023/1683.pdf)
+// Section 4 (and Figure 2).
+func calculatePStVarTime(sps []uint64, p1 []uint64, p2 []uint64, p3 []uint64, s []uint8) {
 	var accumulator [K * N][P * 16]uint64
 
-	// compute P * S^t = [ P1  P2 ] * [S1] = [P1*S1 + P2*S2]
-	//                   [  0  P3 ]   [S2]   [        P3*S2]
+	// compute P * S^t = [ P1  P2 ] * [S1^t] = [P1*S1^t + P2*S2^t]
+	//                   [  0  P3 ]   [S2^t]   [          P3*S2^t]
 
 	// Note that S = S1||S2 is strided at N=V+O
 
@@ -167,7 +169,7 @@ func variableTime(sps []uint64, p1 []uint64, p2 []uint64, p3 []uint64, s []uint8
 	for r := 0; r < V; r++ {
 		for c := r; c < V; c++ {
 			for k := 0; k < K; k++ {
-				vecAddPacked(P, p1[P*pos:], accumulator[r*K+k][P*int(s[k*N+c]):])
+				vecAddPacked(p1[P*pos:], accumulator[r*K+k][P*int(s[k*N+c]):])
 			}
 			pos++
 		}
@@ -178,7 +180,7 @@ func variableTime(sps []uint64, p1 []uint64, p2 []uint64, p3 []uint64, s []uint8
 	for r := 0; r < V; r++ {
 		for c := 0; c < O; c++ {
 			for k := 0; k < K; k++ {
-				vecAddPacked(P, p2[P*pos:], accumulator[r*K+k][P*int(s[k*N+V+c]):])
+				vecAddPacked(p2[P*pos:], accumulator[r*K+k][P*int(s[k*N+V+c]):])
 			}
 			pos++
 		}
@@ -189,50 +191,51 @@ func variableTime(sps []uint64, p1 []uint64, p2 []uint64, p3 []uint64, s []uint8
 	for r := 0; r < O; r++ {
 		for c := r; c < O; c++ {
 			for k := 0; k < K; k++ {
-				vecAddPacked(P, p3[P*pos:], accumulator[(r+V)*K+k][P*int(s[k*N+V+c]):])
+				vecAddPacked(p3[P*pos:], accumulator[(r+V)*K+k][P*int(s[k*N+V+c]):])
 			}
 			pos++
 		}
 	}
 
 	for i := 0; i < K*N; i++ {
-		aggregate(P, accumulator[i], sps[P*i:])
+		accumulate(P, accumulator[i], sps[P*i:])
 	}
 }
 
-func variableTime2(sps []uint64, s []uint8, pst []uint64) {
+func calculateSPstVarTime(sps []uint64, s []uint8, pst []uint64) {
 	var accumulator [K * K][P * 16]uint64
 
 	// S * PST : KxN * N*K
 	for r := 0; r < K; r++ {
 		for c := 0; c < N; c++ {
 			for k := 0; k < K; k++ {
-				vecAddPacked(P, pst[P*(c*K+k):], accumulator[r*K+k][P*int(s[r*N+c]):])
+				vecAddPacked(pst[P*(c*K+k):], accumulator[r*K+k][P*int(s[r*N+c]):])
 			}
 		}
 	}
 
 	for i := 0; i < K*K; i++ {
-		aggregate(P, accumulator[i], sps[P*i:])
+		accumulate(P, accumulator[i], sps[P*i:])
 	}
 }
 
-// p is always P, but is still kept to be consistent with other functions
-//
-//nolint:unparam
-func vecAddPacked(p int, in []uint64, acc []uint64) {
-	for i := 0; i < p; i++ {
+func vecAddPacked(in []uint64, acc []uint64) {
+	for i := 0; i < P; i++ {
 		acc[i] ^= in[i]
 	}
 }
 
-func aggregate(p int, bins [P * 16]uint64, out []uint64) {
-	// The following two methods are mathematically equivalent, but the second one is slightly faster.
+func accumulate(p int, bins [P * 16]uint64, out []uint64) {
+	// The following two approches are mathematically equivalent, but the second one is slightly faster.
 
+	// Here we chose to multiply by x^-1 all the way through,
+	// unlike Method 3 in Figure 2 (see paper) which interleaves *x and *x^-1
+	// which probably gives more parallelism on more complex CPUs.
+	//
+	// Also, on M1 Pro, Method 2 in Figure 2 is not faster then Approach 2 coded here.
+
+	// Approach 1. Multiplying by x all the way through:
 	// the powers of x mod x^4+x+1, represented as integers, are 1,2,4,8,3,..,13,9
-	// out = bins[9]*x^14 + bins[13]*x^13 + bins[15]*x^12 ... + bin[4]*x^2 + bins[2]*x + bins[1]
-	//     = ((bins[9]x+bins[13])x+bins[15])x + ... bins[4])x+bins[2])x+bins[1]
-
 	// vecMulAddPackedByX(p, bins[P*9:], bins[P*13:])
 	// vecMulAddPackedByX(p, bins[P*13:], bins[P*15:])
 	// vecMulAddPackedByX(p, bins[P*15:], bins[P*14:])
@@ -249,8 +252,8 @@ func aggregate(p int, bins [P * 16]uint64, out []uint64) {
 	// vecMulAddPackedByX(p, bins[P*2:], bins[P*1:])
 	// copy(out[:P], bins[P*1:])
 
-	// In the reversed order of the above, because /x turns out to be slightly faster than *x.
-	// out = ((bins[2]x^-1+bins[4])x^-1+bins[8])x^-1 + ... bins[13])x^-1+bins[9])x^-1+bins[1]
+	// Approach 2. Multiplying by x^-1 all the way through:
+	// In the reversed order of the first approach, because /x turns out to be slightly faster than *x.
 	vecMulAddPackedByInvX(p, bins[P*2:], bins[P*4:])
 	vecMulAddPackedByInvX(p, bins[P*4:], bins[P*8:])
 	vecMulAddPackedByInvX(p, bins[P*8:], bins[P*3:])
@@ -278,7 +281,9 @@ func aggregate(p int, bins [P * 16]uint64, out []uint64) {
 // 	}
 // }
 
+// It can be seen by comparison to the commented code above that this requires fewer instructions.
 func vecMulAddPackedByInvX(p int, in []uint64, acc []uint64) {
+	// Equivalently:
 	// vecMulAddPacked(p, in, 9, acc)
 
 	lsb := uint64(0x1111111111111111)
