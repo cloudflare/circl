@@ -1,12 +1,13 @@
 package internal
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	cryptoRand "crypto/rand"
 	"crypto/subtle"
+	"encoding/binary"
 	"io"
-	"unsafe"
 
 	"github.com/cloudflare/circl/internal/sha3"
 )
@@ -40,7 +41,8 @@ type ExpandedPrivateKey struct {
 func (pk *PublicKey) Expand() *ExpandedPublicKey {
 	seedPk := pk[:PublicKeySeedSize]
 
-	var nonce [16]byte // zero-initialized
+	var nonce [16]byte
+	// TODO there are unnecessary allocations
 	block, _ := aes.NewCipher(seedPk[:])
 	ctr := cipher.NewCTR(block, nonce[:])
 
@@ -54,10 +56,10 @@ func (pk *PublicKey) Expand() *ExpandedPublicKey {
 }
 
 func (sk *PrivateKey) Expand() *ExpandedPrivateKey {
-	var epk ExpandedPrivateKey
+	var esk ExpandedPrivateKey
 
 	seed := (*sk)[:KeySeedSize]
-	copy(epk.seed[:], seed)
+	copy(esk.seed[:], seed)
 
 	var seedPk [PublicKeySeedSize]byte
 	var o [OSize]byte
@@ -67,31 +69,28 @@ func (sk *PrivateKey) Expand() *ExpandedPrivateKey {
 	_, _ = h.Read(seedPk[:])
 	_, _ = h.Read(o[:])
 
-	var nonce [16]byte // zero-initialized
+	var nonce [16]byte
+	// TODO there are unnecessary allocations
 	block, _ := aes.NewCipher(seedPk[:])
 	ctr := cipher.NewCTR(block, nonce[:])
 
 	var p12 [P1Size + P2Size]byte
 	ctr.XORKeyStream(p12[:], p12[:])
 
-	decode(o[:], epk.o[:])
+	decode(esk.o[:], o[:])
 
-	p1Tri := viewBytesAsUint64Slice(p12[:P1Size])
-	p2 := viewBytesAsUint64Slice(p12[P1Size:])
-
-	// TODO: this copy can be saved by reusing buffers but ugly
-	copy(epk.p1[:], p1Tri)
-	copy(epk.l[:], p2)
+	copyBytesToUint64SliceLE(esk.p1[:P1Size/8], p12[:P1Size])
+	copyBytesToUint64SliceLE(esk.l[:], p12[P1Size:])
 
 	// compute L_i = (P1 + P1^t)*O + P2
-	mulAddMUpperTriangularWithTransposeMatXMat(epk.l[:], p1Tri, epk.o[:], V, O)
+	mulAddMUpperTriangularWithTransposeMatXMat(esk.l[:], esk.p1[:], esk.o[:], V, O)
 
-	return &epk
+	return &esk
 }
 
-// decode unpacks N bytes from src to N*2 nibbles to dst.
+// decode unpacks N bytes from src to N*2 nibbles of dst.
 // The length is determined by len(dst)
-func decode(src []byte, dst []byte) {
+func decode(dst []byte, src []byte) {
 	i := 0
 	for ; i < len(dst)/2; i++ {
 		dst[i*2] = src[i] & 0xf
@@ -99,30 +98,36 @@ func decode(src []byte, dst []byte) {
 	}
 
 	// Account for odd length
-	if len(dst)%2 == 1 {
+	if len(dst)&1 == 1 {
 		dst[i*2] = src[i] & 0xf
 	}
 }
 
 // encode packs N=length low nibbles from src to (N+1)/2 bytes in dst.
-func encode(src []byte, dst []byte, length int) {
+func encode(dst []byte, src []byte, length int) {
 	var i int
 	for i = 0; i+1 < length; i += 2 {
 		dst[i/2] = (src[i+0] << 0) | (src[i+1] << 4)
 	}
-	if length%2 == 1 {
+	if length&1 == 1 {
 		dst[i/2] = (src[i+0] << 0)
 	}
 }
 
-func viewBytesAsUint64Slice(data []byte) []uint64 {
-	numUint64 := len(data) / 8
-	return unsafe.Slice((*uint64)(unsafe.Pointer(&data[0])), numUint64)
+// Assumes len(dst) * 8 == len(src). Loop size depends on len(dst).
+func copyBytesToUint64SliceLE(dst []uint64, src []byte) {
+	for i := range dst {
+		dst[i] = binary.LittleEndian.Uint64(src)
+		src = src[8:]
+	}
 }
 
-func viewUint64SliceAsBytes(data []uint64) []byte {
-	numByte := len(data) * 8
-	return unsafe.Slice((*uint8)(unsafe.Pointer(&data[0])), numByte)
+// Assumes len(dst) == len(src) * 8. Loop size depends on len(src).
+func copyUint64SliceToBytesLE(dst []byte, src []uint64) {
+	for _, s := range src {
+		binary.LittleEndian.PutUint64(dst, s)
+		dst = dst[8:]
+	}
 }
 
 // GenerateKey generates a public/private key pair using entropy from rand.
@@ -157,7 +162,8 @@ func (sk *PrivateKey) Public() *PublicKey {
 	_, _ = h.Read(seedPk[:])
 	_, _ = h.Read(o[:])
 
-	var nonce [16]byte // zero-initialized
+	var nonce [16]byte
+	// TODO there are unnecessary allocations
 	block, _ := aes.NewCipher(seedPk[:])
 	ctr := cipher.NewCTR(block, nonce[:])
 
@@ -165,21 +171,22 @@ func (sk *PrivateKey) Public() *PublicKey {
 	ctr.XORKeyStream(p12[:], p12[:])
 
 	var oo [V * O]byte
-	decode(o[:], oo[:])
+	decode(oo[:], o[:])
 
-	p1Tri := viewBytesAsUint64Slice(p12[:P1Size])
-	p1OP2 := viewBytesAsUint64Slice(p12[P1Size:])
+	var p1Tri [P1Size / 8]uint64
+	var p1OP2 [P2Size / 8]uint64
+	copyBytesToUint64SliceLE(p1Tri[:], p12[:P1Size])
+	copyBytesToUint64SliceLE(p1OP2[:], p12[P1Size:])
 
 	var p3full [M * O * O / 16]uint64
 	var p3 [P3Size / 8]uint64
 
-	mulAddMUpperTriangularMatXMat(p1OP2, p1Tri, oo[:], V, O)
-	mulAddMatTransXMMat(p3full[:], oo[:], p1OP2, V, O, O)
+	mulAddMUpperTriangularMatXMat(p1OP2[:], p1Tri[:], oo[:], V, O)
+	mulAddMatTransXMMat(p3full[:], oo[:], p1OP2[:], V, O, O)
 
 	upper(p3full[:], p3[:], O)
 
-	xx := viewUint64SliceAsBytes(p3[:])
-	copy(pk[PublicKeySeedSize:], xx[:])
+	copyUint64SliceToBytesLE(pk[PublicKeySeedSize:], p3[:])
 
 	return &pk
 }
@@ -216,7 +223,7 @@ func Sign(msg []byte, sk *ExpandedPrivateKey, rand io.Reader) ([]byte, error) {
 	_, _ = h.Read(tenc[:])
 
 	var t [M]byte
-	decode(tenc[:], t[:])
+	decode(t[:], tenc[:])
 
 	var v [K * V]byte
 	var x [K*O + 1]byte // + 1 for buffer
@@ -236,9 +243,9 @@ func Sign(msg []byte, sk *ExpandedPrivateKey, rand io.Reader) ([]byte, error) {
 		var r [K * O]byte
 
 		for i := 0; i < K; i++ {
-			decode(venc[i*VSize:], v[i*V:(i+1)*V])
+			decode(v[i*V:(i+1)*V], venc[i*VSize:])
 		}
-		decode(renc[:], r[:])
+		decode(r[:], renc[:])
 
 		// M = vL
 		var m [M * K * O / 16]uint64
@@ -274,7 +281,7 @@ func Sign(msg []byte, sk *ExpandedPrivateKey, rand io.Reader) ([]byte, error) {
 	}
 
 	var sig [(K*N+1)/2 + SaltSize]byte
-	encode(s[:], sig[:], K*N)
+	encode(sig[:], s[:], K*N)
 	copy(sig[(K*N+1)/2:], salt[:])
 
 	return sig[:], nil
@@ -366,7 +373,7 @@ func ctCompare8(a, b byte) byte {
 
 func extract(in []uint64, index int) byte {
 	leg := index / 16
-	offset := index % 16
+	offset := index & 15
 
 	return byte((in[leg] >> (offset * 4)) & 0xF)
 }
@@ -389,10 +396,12 @@ func ef(A []byte, nrows, ncols int) {
 	// nibbleslice the matrix A
 	var packedAbyte [((K*O + 1 + 15) / 16) * M * 8]byte
 	for i := 0; i < nrows; i++ {
-		encode(A[i*ncols:], packedAbyte[i*rowLen*8:], ncols)
+		encode(packedAbyte[i*rowLen*8:], A[i*ncols:], ncols)
 	}
 
-	packedA := viewBytesAsUint64Slice(packedAbyte[:])
+	// packing into uint64 to gain some bitwise parallelism over uint8
+	var packedA [((K*O + 1 + 15) / 16) * M]uint64
+	copyBytesToUint64SliceLE(packedA[:], packedAbyte[:])
 
 	// pivot row is secret, pivot col is not
 	pivotRow := 0
@@ -456,8 +465,10 @@ func ef(A []byte, nrows, ncols int) {
 	var temp [(O*K + 1 + 15)]byte
 
 	// unnibbleslice the matrix A
+	copyUint64SliceToBytesLE(packedAbyte[:], packedA[:])
+
 	for i := 0; i < nrows; i++ {
-		decode(packedAbyte[i*rowLen*8:], temp[:rowLen*16])
+		decode(temp[:rowLen*16], packedAbyte[i*rowLen*8:])
 		for j := 0; j < ncols; j++ {
 			A[i*ncols+j] = temp[j]
 		}
@@ -546,25 +557,28 @@ func computeA(m []uint64, _a []byte) {
 
 	for c := 0; c < OKpadded; c += 16 {
 		for r := M; r < M+(K+1)*K/2; r++ {
-			pos := (r/16)*OKpadded + c + (r % 16)
+			pos := (r/16)*OKpadded + c + (r & 15)
 			t0 := a[pos] & lsb
 			t1 := (a[pos] >> 1) & lsb
 			t2 := (a[pos] >> 2) & lsb
 			t3 := (a[pos] >> 3) & lsb
 			for t := 0; t < len(Tail); t++ {
-				a[((r+t-M)/16)*OKpadded+c+((r+t)%16)] ^= t0*uint64(tab[4*t+0]) ^ t1*uint64(tab[4*t+1]) ^ t2*uint64(tab[4*t+2]) ^ t3*uint64(tab[4*t+3])
+				a[((r+t-M)/16)*OKpadded+c+((r+t)&15)] ^= t0*uint64(tab[4*t+0]) ^ t1*uint64(tab[4*t+1]) ^ t2*uint64(tab[4*t+2]) ^ t3*uint64(tab[4*t+3])
 			}
 		}
 	}
 
 	// transform the temporary matrix into the desired form of A matrix
+	var aInBytes [M * OKpadded]byte
+	copyUint64SliceToBytesLE(aInBytes[:], a[:])
+
 	KO1 := K*O + 1
 	for r := 0; r < M; r += 16 {
 		for c := 0; c < KO1-1; c += 16 {
 			for i := 0; i < 16; i++ {
-				src := viewUint64SliceAsBytes(a[r/16*OKpadded+c+i:])
+				src := aInBytes[(r/16*OKpadded+c+i)*8:]
 				offset := KO1*(r+i) + c
-				decode(src, _a[offset:offset+min(16, KO1-1-c)])
+				decode(_a[offset:offset+min(16, KO1-1-c)], src)
 			}
 		}
 	}
@@ -608,10 +622,13 @@ func transpose16x16Nibbles(m []uint64) {
 	}
 }
 
-func Verify(msg []byte, sig []byte, epk *ExpandedPublicKey) bool {
+func Verify(epk *ExpandedPublicKey, msg []byte, sig []byte) bool {
 	if len(sig) != SignatureSize {
-		panic("sig must be of length SignatureSize")
+		return false
 	}
+
+	senc := sig[:SignatureSize-SaltSize]
+	salt := sig[SignatureSize-SaltSize : SignatureSize]
 
 	var digest [DigestSize]byte
 
@@ -621,20 +638,23 @@ func Verify(msg []byte, sig []byte, epk *ExpandedPublicKey) bool {
 
 	h.Reset()
 	_, _ = h.Write(digest[:])
-	_, _ = h.Write(sig[SignatureSize-SaltSize : SignatureSize])
+	_, _ = h.Write(salt[:])
 
 	var tenc [M / 2]byte
 	_, _ = h.Read(tenc[:])
 
 	var t [M]byte
-	decode(tenc[:], t[:])
+	decode(t[:], tenc[:])
 
 	var s [K * N]byte
-	decode(sig[:(K*N+1)/2], s[:])
+	decode(s[:], senc[:])
 
-	P1 := viewBytesAsUint64Slice(epk.p1[:])
-	P2 := viewBytesAsUint64Slice(epk.p2[:])
-	P3 := viewBytesAsUint64Slice(epk.p3[:])
+	var P1 [P1Size / 8]uint64
+	var P2 [P2Size / 8]uint64
+	var P3 [P3Size / 8]uint64
+	copyBytesToUint64SliceLE(P1[:], epk.p1[:])
+	copyBytesToUint64SliceLE(P2[:], epk.p2[:])
+	copyBytesToUint64SliceLE(P3[:], epk.p3[:])
 
 	// Note: the variable time approach is overall about 30% faster
 	// compute P * S^t = [ P1  P2 ] * [S1] = [P1*S1 + P2*S2]
@@ -645,7 +665,7 @@ func Verify(msg []byte, sig []byte, epk *ExpandedPublicKey) bool {
 	// mulAddMMatXMatTrans(pst[:], P2, s[V:], V, O, K, N, false)
 	// mulAddMMatXMatTrans(pst[M*V*K/16:], P3, s[V:], O, O, K, N, true)
 	// Variable time approach with table access where index depends on input:
-	calculatePStVarTime(pst[:], P1, P2, P3, s[:])
+	calculatePStVarTime(pst[:], P1[:], P2[:], P3[:], s[:])
 
 	// compute S * PST
 	var sps [M * K * K / 16]uint64
@@ -655,7 +675,7 @@ func Verify(msg []byte, sig []byte, epk *ExpandedPublicKey) bool {
 	emulsifyInto(sps[:], t[:])
 
 	var zeros [M]byte
-	return subtle.ConstantTimeCompare(t[:], zeros[:]) == 1
+	return bytes.Equal(t[:], zeros[:])
 }
 
 // GF(16) multiplication mod x^4 + x + 1
@@ -698,7 +718,6 @@ func inverse(a byte) byte {
 
 func emulsifyInto(sps []uint64, y []uint8) {
 	var acc [M / 16]uint64
-	accBytes := viewUint64SliceAsBytes(acc[:])
 
 	for i := K - 1; i >= 0; i-- {
 		for j := i; j < K; j++ {
@@ -710,13 +729,11 @@ func emulsifyInto(sps []uint64, y []uint8) {
 				acc[k] <<= 4
 			}
 
-			for k := 0; k < len(Tail); k++ {
-				if k%2 == 0 {
-					accBytes[k/2] ^= mul(top, Tail[k])
-				} else {
-					accBytes[k/2] ^= mul(top, Tail[k]) << 4
-				}
-			}
+			acc[0] ^= uint64(mul(top, Tail[0]))
+			acc[0] ^= uint64(mul(top, Tail[1])) << 4
+			acc[0] ^= uint64(mul(top, Tail[2])) << 8
+			acc[0] ^= uint64(mul(top, Tail[3])) << 12
+			acc[0] ^= uint64(mul(top, Tail[4])) << 16
 
 			for k := 0; k < M/16; k++ {
 				acc[k] ^= sps[(i*K+j)*(M/16)+k]
@@ -728,8 +745,11 @@ func emulsifyInto(sps []uint64, y []uint8) {
 	}
 
 	// add to y
-	for i := 0; i < M; i += 2 {
-		y[i] ^= accBytes[i/2] & 0xF
-		y[i+1] ^= accBytes[i/2] >> 4
+	for i := 0; i < M; i += 16 {
+		a := acc[i/16]
+		for k := 0; k < 16; k++ {
+			y[i+k] ^= uint8(a & 0xF)
+			a >>= 4
+		}
 	}
 }

@@ -68,9 +68,9 @@ func Sign(sk *PrivateKey, msg []byte, rand io.Reader) ([]byte, error) {
 // Verify checks whether the given signature by pk on msg is valid.
 func Verify(pk *PublicKey, msg []byte, signature []byte) bool {
 	return internal.Verify(
+		(*internal.PublicKey)(pk).Expand(),
 		msg,
 		signature,
-		(*internal.PublicKey)(pk).Expand(),
 	)
 }
 

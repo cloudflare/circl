@@ -8,4 +8,8 @@
 // This implemented the nibble-sliced version as proposed in
 //
 //	https://eprint.iacr.org/2023/1683
+//
+// and the code is written with heavy reference to
+//
+//	https://github.com/PQCMayo/MAYO-C/tree/nibbling-mayo
 package mayo

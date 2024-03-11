@@ -71,12 +71,12 @@ func TestVerify(t *testing.T) {
 			pk, _ := NewKeyFromSeed(seed)
 			epk := pk.Expand()
 
-			if !Verify(m, s, epk) {
+			if !Verify(epk, m, s) {
 				t.Fatal("should verify")
 			}
 
 			epk.p1[0] ^= 1
-			if Verify(m, s, epk) {
+			if Verify(epk, m, s) {
 				t.Fatal("should not verify")
 			}
 		})
@@ -104,7 +104,7 @@ func TestSampleSolution(t *testing.T) {
 		t.Fatal()
 	}
 
-	if !Verify(msg[:], sig[:], pk.Expand()) {
+	if !Verify(pk.Expand(), msg[:], sig[:]) {
 		t.Fatal()
 	}
 }
@@ -161,7 +161,7 @@ func TestPQCgenKATSign(t *testing.T) {
 
 				fmt.Fprintf(f, "sm = %X%X\n\n", sig, msg)
 
-				if !Verify(msg[:], sig, pk.Expand()) {
+				if !Verify(pk.Expand(), msg[:], sig) {
 					t.Fatal()
 				}
 			}
@@ -201,7 +201,7 @@ func BenchmarkVerify(b *testing.B) {
 	sig, _ := Sign(msg[:], sk.Expand(), nil)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = Verify(msg[:], sig[:], pk.Expand())
+		_ = Verify(pk.Expand(), msg[:], sig[:])
 	}
 }
 
@@ -213,7 +213,7 @@ func BenchmarkVerifyExpandedKey(b *testing.B) {
 	epk := pk.Expand()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = Verify(msg[:], sig[:], epk)
+		_ = Verify(epk, msg[:], sig[:])
 	}
 }
 
