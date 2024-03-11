@@ -1,4 +1,4 @@
-// Code generated from modePkg.templ.go. DO NOT EDIT.
+// Code generated from signapi.templ.go. DO NOT EDIT.
 
 package mode2
 

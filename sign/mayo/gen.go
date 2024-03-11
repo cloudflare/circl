@@ -88,6 +88,7 @@ func main() {
 	generateModePackageFiles()
 	generateParamsFiles()
 	generateSourceFiles()
+	generateSignApiFiles()
 }
 
 // Generates modeX/internal/params.go from templates/params.templ.go
@@ -144,6 +145,32 @@ func generateModePackageFiles() {
 			panic("Missing template warning in modePkg.templ.go")
 		}
 		err = os.WriteFile(mode.Pkg()+"/mayo.go", []byte(res[offset:]), 0o644)
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
+// Generates modeX/signapi.go from templates/signapi.templ.go
+func generateSignApiFiles() {
+	tl, err := template.ParseFiles("templates/signapi.templ.go")
+	if err != nil {
+		panic(err)
+	}
+
+	for _, mode := range Modes {
+		buf := new(bytes.Buffer)
+		err := tl.Execute(buf, mode)
+		if err != nil {
+			panic(err)
+		}
+
+		res := buf.String()
+		offset := strings.Index(res, TemplateWarning)
+		if offset == -1 {
+			panic("Missing template warning in signapi.templ.go")
+		}
+		err = os.WriteFile(mode.Pkg()+"/signapi.go", []byte(res[offset:]), 0o644)
 		if err != nil {
 			panic(err)
 		}

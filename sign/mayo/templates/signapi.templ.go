@@ -2,7 +2,7 @@
 // The previous line (and this one up to the warning below) is removed by the
 // template generator.
 
-// Code generated from modePkg.templ.go. DO NOT EDIT.
+// Code generated from signapi.templ.go. DO NOT EDIT.
 
 package {{.Pkg}}
 
