@@ -6,7 +6,7 @@ import (
 	"encoding/binary"
 
 	"github.com/cloudflare/circl/internal/sha3"
-	"github.com/cloudflare/circl/sign/dilithium/internal/common"
+	common "github.com/cloudflare/circl/sign/internal/dilithium"
 	"github.com/cloudflare/circl/simd/keccakf1600"
 )
 
@@ -246,12 +246,12 @@ func PolyDeriveUniformLeGamma1(p *common.Poly, seed *[64]byte, nonce uint16) {
 // Can only be called when DeriveX4Available is true.
 //
 // This function is currently not used (yet).
-func PolyDeriveUniformBallX4(ps [4]*common.Poly, seed *[32]byte) {
+func PolyDeriveUniformBallX4(ps [4]*common.Poly, seed []byte) {
 	var perm keccakf1600.StateX4
 	state := perm.Initialize(false)
 
 	// Absorb the seed in the four states
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 32/8; i++ {
 		v := binary.LittleEndian.Uint64(seed[8*i : 8*(i+1)])
 		for j := 0; j < 4; j++ {
 			state[i*4+j] = v
@@ -260,7 +260,7 @@ func PolyDeriveUniformBallX4(ps [4]*common.Poly, seed *[32]byte) {
 
 	// SHAKE256 domain separator and padding
 	for j := 0; j < 4; j++ {
-		state[4*4+j] ^= 0x1f
+		state[(32/8)*4+j] ^= 0x1f
 		state[16*4+j] ^= 0x80 << 56
 	}
 	perm.Permute()
@@ -327,7 +327,7 @@ func PolyDeriveUniformBallX4(ps [4]*common.Poly, seed *[32]byte) {
 // Samples p uniformly with τ non-zero coefficients in {q-1,1}.
 //
 // The polynomial p will be normalized.
-func PolyDeriveUniformBall(p *common.Poly, seed *[32]byte) {
+func PolyDeriveUniformBall(p *common.Poly, seed []byte) {
 	var buf [136]byte // SHAKE-256 rate is 136
 
 	h := sha3.NewShake256()

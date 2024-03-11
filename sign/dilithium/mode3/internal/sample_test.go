@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"testing"
 
-	"github.com/cloudflare/circl/sign/dilithium/internal/common"
+	common "github.com/cloudflare/circl/sign/internal/dilithium"
 )
 
 func TestVectorDeriveUniform(t *testing.T) {
@@ -153,7 +153,7 @@ func TestDeriveUniformBall(t *testing.T) {
 	var seed [32]byte
 	for i := 0; i < 100; i++ {
 		binary.LittleEndian.PutUint64(seed[:], uint64(i))
-		PolyDeriveUniformBall(&p, &seed)
+		PolyDeriveUniformBall(&p, seed[:])
 		nonzero := 0
 		for j := 0; j < common.N; j++ {
 			if p[j] != 0 {
@@ -201,10 +201,10 @@ func TestDeriveUniformBallX4(t *testing.T) {
 	var seed [32]byte
 	PolyDeriveUniformBallX4(
 		[4]*common.Poly{&ps[0], &ps[1], &ps[2], &ps[3]},
-		&seed,
+		seed[:],
 	)
 	for j := 0; j < 4; j++ {
-		PolyDeriveUniformBall(&p, &seed)
+		PolyDeriveUniformBall(&p, seed[:])
 		if ps[j] != p {
 			t.Fatalf("%d\n%v\n%v", j, ps[j], p)
 		}
@@ -217,7 +217,7 @@ func BenchmarkPolyDeriveUniformBall(b *testing.B) {
 	var w1 VecK
 	for i := 0; i < b.N; i++ {
 		w1[0][0] = uint32(i)
-		PolyDeriveUniformBall(&p, &seed)
+		PolyDeriveUniformBall(&p, seed[:])
 	}
 }
 
@@ -229,7 +229,7 @@ func BenchmarkPolyDeriveUniformBallX4(b *testing.B) {
 		w1[0][0] = uint32(i)
 		PolyDeriveUniformBallX4(
 			[4]*common.Poly{&p, &p, &p, &p},
-			&seed,
+			seed[:],
 		)
 	}
 }

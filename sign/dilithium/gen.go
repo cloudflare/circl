@@ -14,12 +14,11 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/cloudflare/circl/sign/dilithium/internal/common/params"
+	"github.com/cloudflare/circl/sign/internal/dilithium/params"
 )
 
 type Mode struct {
 	Name          string
-	UseAES        bool
 	K             int
 	L             int
 	Eta           int
@@ -28,10 +27,20 @@ type Mode struct {
 	Tau           int
 	Gamma1Bits    int
 	Gamma2        int
+	TRSize        int
+	CTildeSize    int
 }
 
 func (m Mode) Pkg() string {
 	return strings.ToLower(m.Mode())
+}
+
+func (m Mode) PkgPath() string {
+	if m.NIST() {
+		return path.Join("..", "mldsa", m.Pkg())
+	}
+
+	return m.Pkg()
 }
 
 func (m Mode) Impl() string {
@@ -39,15 +48,26 @@ func (m Mode) Impl() string {
 }
 
 func (m Mode) Mode() string {
+	if m.NIST() {
+		return strings.ReplaceAll(m.Name, "-", "")
+	}
+
 	return strings.ReplaceAll(strings.ReplaceAll(m.Name,
 		"Dilithium", "Mode"), "-AES", "AES")
+}
+
+func (m Mode) UseAES() bool {
+	return strings.HasSuffix(m.Name, "-AES")
+}
+
+func (m Mode) NIST() bool {
+	return strings.HasPrefix(m.Name, "ML-DSA-")
 }
 
 var (
 	Modes = []Mode{
 		{
 			Name:          "Dilithium2",
-			UseAES:        false,
 			K:             4,
 			L:             4,
 			Eta:           2,
@@ -56,10 +76,11 @@ var (
 			Tau:           39,
 			Gamma1Bits:    17,
 			Gamma2:        (params.Q - 1) / 88,
+			TRSize:        32,
+			CTildeSize:    32,
 		},
 		{
 			Name:          "Dilithium2-AES",
-			UseAES:        true,
 			K:             4,
 			L:             4,
 			Eta:           2,
@@ -68,10 +89,11 @@ var (
 			Tau:           39,
 			Gamma1Bits:    17,
 			Gamma2:        (params.Q - 1) / 88,
+			TRSize:        32,
+			CTildeSize:    32,
 		},
 		{
 			Name:          "Dilithium3",
-			UseAES:        false,
 			K:             6,
 			L:             5,
 			Eta:           4,
@@ -80,10 +102,11 @@ var (
 			Tau:           49,
 			Gamma1Bits:    19,
 			Gamma2:        (params.Q - 1) / 32,
+			TRSize:        32,
+			CTildeSize:    32,
 		},
 		{
 			Name:          "Dilithium3-AES",
-			UseAES:        true,
 			K:             6,
 			L:             5,
 			Eta:           4,
@@ -92,10 +115,11 @@ var (
 			Tau:           49,
 			Gamma1Bits:    19,
 			Gamma2:        (params.Q - 1) / 32,
+			TRSize:        32,
+			CTildeSize:    32,
 		},
 		{
 			Name:          "Dilithium5",
-			UseAES:        false,
 			K:             8,
 			L:             7,
 			Eta:           2,
@@ -104,10 +128,11 @@ var (
 			Tau:           60,
 			Gamma1Bits:    19,
 			Gamma2:        (params.Q - 1) / 32,
+			TRSize:        32,
+			CTildeSize:    32,
 		},
 		{
 			Name:          "Dilithium5-AES",
-			UseAES:        true,
 			K:             8,
 			L:             7,
 			Eta:           2,
@@ -116,6 +141,47 @@ var (
 			Tau:           60,
 			Gamma1Bits:    19,
 			Gamma2:        (params.Q - 1) / 32,
+			TRSize:        32,
+			CTildeSize:    32,
+		},
+		{
+			Name:          "ML-DSA-44",
+			K:             4,
+			L:             4,
+			Eta:           2,
+			DoubleEtaBits: 3,
+			Omega:         80,
+			Tau:           39,
+			Gamma1Bits:    17,
+			Gamma2:        (params.Q - 1) / 88,
+			TRSize:        64,
+			CTildeSize:    32,
+		},
+		{
+			Name:          "ML-DSA-65",
+			K:             6,
+			L:             5,
+			Eta:           4,
+			DoubleEtaBits: 4,
+			Omega:         55,
+			Tau:           49,
+			Gamma1Bits:    19,
+			Gamma2:        (params.Q - 1) / 32,
+			TRSize:        64,
+			CTildeSize:    48,
+		},
+		{
+			Name:          "ML-DSA-87",
+			K:             8,
+			L:             7,
+			Eta:           2,
+			DoubleEtaBits: 3,
+			Omega:         75,
+			Tau:           60,
+			Gamma1Bits:    19,
+			Gamma2:        (params.Q - 1) / 32,
+			TRSize:        64,
+			CTildeSize:    64,
 		},
 	}
 	TemplateWarning = "// Code generated from"
@@ -153,7 +219,7 @@ func generateParamsFiles() {
 		if offset == -1 {
 			panic("Missing template warning in params.templ.go")
 		}
-		err = os.WriteFile(mode.Pkg()+"/internal/params.go",
+		err = os.WriteFile(mode.PkgPath()+"/internal/params.go",
 			[]byte(res[offset:]), 0o644)
 		if err != nil {
 			panic(err)
@@ -206,7 +272,7 @@ func generateModePackageFiles() {
 		if offset == -1 {
 			panic("Missing template warning in modePkg.templ.go")
 		}
-		err = os.WriteFile(mode.Pkg()+"/dilithium.go", []byte(res[offset:]), 0o644)
+		err = os.WriteFile(mode.PkgPath()+"/dilithium.go", []byte(res[offset:]), 0o644)
 		if err != nil {
 			panic(err)
 		}
@@ -246,10 +312,10 @@ func generateSourceFiles() {
 			continue
 		}
 
-		fs, err = os.ReadDir(path.Join(mode.Pkg(), "internal"))
+		fs, err = os.ReadDir(path.Join(mode.PkgPath(), "internal"))
 		for _, f := range fs {
 			name := f.Name()
-			fn := path.Join(mode.Pkg(), "internal", name)
+			fn := path.Join(mode.PkgPath(), "internal", name)
 			if ignored(name) {
 				continue
 			}
@@ -273,7 +339,7 @@ func generateSourceFiles() {
 			}
 		}
 		for name, expected := range files {
-			fn := path.Join(mode.Pkg(), "internal", name)
+			fn := path.Join(mode.PkgPath(), "internal", name)
 			expected = []byte(fmt.Sprintf(
 				"%s mode3/internal/%s by gen.go\n\n%s",
 				TemplateWarning,

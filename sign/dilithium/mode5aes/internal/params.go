@@ -13,4 +13,7 @@ const (
 	Tau           = 60
 	Gamma1Bits    = 19
 	Gamma2        = 261888
+	NIST          = false
+	TRSize        = 32
+	CTildeSize    = 32
 )

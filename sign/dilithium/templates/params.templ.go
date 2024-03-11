@@ -17,4 +17,7 @@ const (
 	Tau           = {{.Tau}}
 	Gamma1Bits    = {{.Gamma1Bits}}
 	Gamma2        = {{.Gamma2}}
+	NIST          = {{.NIST}}
+	TRSize        = {{.TRSize}}
+	CTildeSize    = {{.CTildeSize}}
 )

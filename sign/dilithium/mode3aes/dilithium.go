@@ -1,9 +1,11 @@
 // Code generated from modePkg.templ.go. DO NOT EDIT.
 
+
 // mode3aes implements the CRYSTALS-Dilithium signature scheme Dilithium3-AES
 // as submitted to round3 of the NIST PQC competition and described in
 //
 // https://pq-crystals.org/dilithium/data/dilithium-specification-round3-20210208.pdf
+
 package mode3aes
 
 import (
@@ -11,8 +13,10 @@ import (
 	"errors"
 	"io"
 
-	"github.com/cloudflare/circl/sign/dilithium/internal/common"
+	common "github.com/cloudflare/circl/sign/internal/dilithium"
+
 	"github.com/cloudflare/circl/sign/dilithium/mode3aes/internal"
+
 )
 
 const (

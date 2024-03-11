@@ -51,6 +51,6 @@ func Example() {
 	fmt.Printf("O.K.")
 
 	// Output:
-	// Supported modes: [Dilithium2 Dilithium2-AES Dilithium3 Dilithium3-AES Dilithium5 Dilithium5-AES]
+	// Supported modes: [Dilithium2 Dilithium2-AES Dilithium3 Dilithium3-AES Dilithium5 Dilithium5-AES ML-DSA-44 ML-DSA-65 ML-DSA-87]
 	// O.K.
 }

@@ -1,9 +1,11 @@
 // Code generated from modePkg.templ.go. DO NOT EDIT.
 
+
 // mode2 implements the CRYSTALS-Dilithium signature scheme Dilithium2
 // as submitted to round3 of the NIST PQC competition and described in
 //
 // https://pq-crystals.org/dilithium/data/dilithium-specification-round3-20210208.pdf
+
 package mode2
 
 import (
@@ -11,8 +13,10 @@ import (
 	"errors"
 	"io"
 
-	"github.com/cloudflare/circl/sign/dilithium/internal/common"
+	common "github.com/cloudflare/circl/sign/internal/dilithium"
+
 	"github.com/cloudflare/circl/sign/dilithium/mode2/internal"
+
 )
 
 const (

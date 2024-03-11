@@ -4,10 +4,14 @@
 
 // Code generated from modePkg.templ.go. DO NOT EDIT.
 
+{{ if .NIST }}
+// {{.Pkg}} implements NIST signature scheme {{.Name}} as defined in FIPS204.
+{{ else }}
 // {{.Pkg}} implements the CRYSTALS-Dilithium signature scheme {{.Name}}
 // as submitted to round3 of the NIST PQC competition and described in
 //
 // https://pq-crystals.org/dilithium/data/dilithium-specification-round3-20210208.pdf
+{{ end }}
 package {{.Pkg}}
 
 import (
@@ -15,8 +19,12 @@ import (
 	"errors"
 	"io"
 
-	"github.com/cloudflare/circl/sign/dilithium/internal/common"
+	common "github.com/cloudflare/circl/sign/internal/dilithium"
+{{ if .NIST }}
+	"github.com/cloudflare/circl/sign/mldsa/{{.Pkg}}/internal"
+{{ else }}
 	"github.com/cloudflare/circl/sign/dilithium/{{.Pkg}}/internal"
+{{ end }}
 )
 
 const (

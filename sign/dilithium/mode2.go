@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/cloudflare/circl/sign/dilithium/internal/common"
 	"github.com/cloudflare/circl/sign/dilithium/mode2"
+	common "github.com/cloudflare/circl/sign/internal/dilithium"
 )
 
 // implMode2 implements the mode.Mode interface for Dilithium2.
@@ -57,7 +57,7 @@ func (m *implMode2) PublicKeyFromBytes(data []byte) PublicKey {
 func (m *implMode2) PrivateKeyFromBytes(data []byte) PrivateKey {
 	var ret mode2.PrivateKey
 	if len(data) != mode2.PrivateKeySize {
-		panic("packed public key must be of mode2.PrivateKeySize bytes")
+		panic("packed private key must be of mode2.PrivateKeySize bytes")
 	}
 	var buf [mode2.PrivateKeySize]byte
 	copy(buf[:], data)

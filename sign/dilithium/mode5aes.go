@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/cloudflare/circl/sign/dilithium/internal/common"
 	"github.com/cloudflare/circl/sign/dilithium/mode5aes"
+	common "github.com/cloudflare/circl/sign/internal/dilithium"
 )
 
 // implMode5AES implements the mode.Mode interface for Dilithium5-AES.
@@ -57,7 +57,7 @@ func (m *implMode5AES) PublicKeyFromBytes(data []byte) PublicKey {
 func (m *implMode5AES) PrivateKeyFromBytes(data []byte) PrivateKey {
 	var ret mode5aes.PrivateKey
 	if len(data) != mode5aes.PrivateKeySize {
-		panic("packed public key must be of mode5aes.PrivateKeySize bytes")
+		panic("packed private key must be of mode5aes.PrivateKeySize bytes")
 	}
 	var buf [mode5aes.PrivateKeySize]byte
 	copy(buf[:], data)
