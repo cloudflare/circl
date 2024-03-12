@@ -30,7 +30,7 @@ func TestNewKey(t *testing.T) {
 			var seed [KeySeedSize]byte
 			_, _ = hex.Decode(seed[:], []byte(tc.seed))
 
-			pk, sk := NewKeyFromSeed(seed)
+			pk, sk := NewKeyFromSeed(&seed)
 
 			var pk2 [PublicKeySize]byte
 			var sk2 [PrivateKeySize]byte
@@ -70,7 +70,7 @@ func TestVerify(t *testing.T) {
 			m, _ := hex.DecodeString(tc.message)
 			s, _ := hex.DecodeString(tc.signature)
 
-			pk, _ := NewKeyFromSeed(seed)
+			pk, _ := NewKeyFromSeed(&seed)
 
 			if !Verify(pk, m, s) {
 				t.Fatal("should verify")
@@ -146,7 +146,7 @@ func TestPQCgenKATSign(t *testing.T) {
 
 				g2 := nist.NewDRBG(&seed)
 				_, _ = g2.Read(eseed[:])
-				pk, sk := NewKeyFromSeed(eseed)
+				pk, sk := NewKeyFromSeed(&eseed)
 
 				var pk2 [PublicKeySize]byte
 				var sk2 [PrivateKeySize]byte
@@ -180,7 +180,7 @@ func BenchmarkKeyGen(b *testing.B) {
 	var seed [KeySeedSize]byte
 	for i := 0; i < b.N; i++ {
 		binary.LittleEndian.PutUint64(seed[:], uint64(i))
-		_, _ = NewKeyFromSeed(seed)
+		_, _ = NewKeyFromSeed(&seed)
 	}
 }
 
@@ -200,7 +200,7 @@ func BenchmarkMatMul(b *testing.B) {
 func BenchmarkVerify(b *testing.B) {
 	var seed [KeySeedSize]byte
 	var msg [8]byte
-	pk, sk := NewKeyFromSeed(seed)
+	pk, sk := NewKeyFromSeed(&seed)
 	sig, _ := Sign(msg[:], sk, nil)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -220,7 +220,7 @@ func (zeroReader) Read(buf []byte) (int, error) {
 func BenchmarkSign(b *testing.B) {
 	var seed [KeySeedSize]byte
 	var msg [8]byte
-	_, sk := NewKeyFromSeed(seed)
+	_, sk := NewKeyFromSeed(&seed)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		binary.LittleEndian.PutUint64(msg[:], uint64(i))

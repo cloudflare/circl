@@ -149,13 +149,13 @@ func GenerateKey(rand io.Reader) (*PublicKey, *PrivateKey, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	pk, sk := NewKeyFromSeed(seed)
+	pk, sk := NewKeyFromSeed(&seed)
 	return pk, sk, nil
 }
 
-func NewKeyFromSeed(seed [KeySeedSize]byte) (*PublicKey, *PrivateKey) {
+func NewKeyFromSeed(seed *[KeySeedSize]byte) (*PublicKey, *PrivateKey) {
 	var sk PrivateKey
-	sk.Unpack(&seed)
+	sk.Unpack(seed)
 
 	return sk.Public(), &sk
 }

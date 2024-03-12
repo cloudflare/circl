@@ -50,7 +50,7 @@ func GenerateKey(rand io.Reader) (*PublicKey, *PrivateKey, error) {
 }
 
 // NewKeyFromSeed derives a public/private key pair using the given seed.
-func NewKeyFromSeed(seed [SeedSize]byte) (*PublicKey, *PrivateKey) {
+func NewKeyFromSeed(seed *[SeedSize]byte) (*PublicKey, *PrivateKey) {
 	pk, sk := internal.NewKeyFromSeed(seed)
 	return (*PublicKey)(pk), (*PrivateKey)(sk)
 }

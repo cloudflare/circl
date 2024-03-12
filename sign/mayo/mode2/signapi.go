@@ -65,7 +65,7 @@ func (*scheme) DeriveKey(seed []byte) (sign.PublicKey, sign.PrivateKey) {
 	}
 	var tmp [SeedSize]byte
 	copy(tmp[:], seed)
-	return NewKeyFromSeed(tmp)
+	return NewKeyFromSeed(&tmp)
 }
 
 func (*scheme) UnmarshalBinaryPublicKey(buf []byte) (sign.PublicKey, error) {
