@@ -14,60 +14,70 @@ import (
 	"github.com/cloudflare/circl/internal/sha3"
 )
 
-type (
-	PrivateKey [PrivateKeySize]byte
-	PublicKey  [PublicKeySize]byte
-)
+type PublicKey struct {
+	seed [PublicKeySeedSize]byte
+	p3   [P3Size / 8]uint64
+
+	// P1 and P2 are expanded from seed
+	p1 [P1Size / 8]uint64
+	p2 [P2Size / 8]uint64
+}
+
+type PrivateKey struct {
+	seed [KeySeedSize]byte
+
+	p1 [P1Size / 8]uint64
+	o  [V * O]byte
+	l  [M * V * O / 16]uint64
+}
 
 func (pk *PublicKey) Equal(other *PublicKey) bool {
-	return *pk == *other
+	return pk.seed == other.seed && pk.p3 == other.p3
 }
 
 func (sk *PrivateKey) Equal(other *PrivateKey) bool {
-	return subtle.ConstantTimeCompare((*sk)[:], (*other)[:]) == 1
+	return subtle.ConstantTimeCompare(sk.seed[:], other.seed[:]) == 1
 }
 
-type ExpandedPublicKey struct {
-	p1 [P1Size]byte
-	p2 [P2Size]byte
-	p3 [P3Size]byte
+// Packs the public key into buf.
+func (pk *PublicKey) Pack(buf *[PublicKeySize]byte) {
+	copy(buf[:PublicKeySeedSize], pk.seed[:])
+	copyUint64SliceToBytesLE(buf[PublicKeySeedSize:], pk.p3[:])
 }
 
-type ExpandedPrivateKey struct {
-	seed [KeySeedSize]byte
-	o    [V * O]byte
-	p1   [M * V * V / 16]uint64
-	l    [M * V * O / 16]uint64
-}
-
-func (pk *PublicKey) Expand() *ExpandedPublicKey {
-	seedPk := pk[:PublicKeySeedSize]
+// Sets pk to the public key encoded in buf.
+func (pk *PublicKey) Unpack(buf *[PublicKeySize]byte) {
+	copy(pk.seed[:], buf[:PublicKeySeedSize])
 
 	var nonce [16]byte
 	// TODO there are unnecessary allocations
-	block, _ := aes.NewCipher(seedPk[:])
+	block, _ := aes.NewCipher(pk.seed[:])
 	ctr := cipher.NewCTR(block, nonce[:])
 
-	epk := ExpandedPublicKey{}
-	ctr.XORKeyStream(epk.p1[:], epk.p1[:])
-	ctr.XORKeyStream(epk.p2[:], epk.p2[:])
+	var p1 [P1Size]byte
+	var p2 [P2Size]byte
+	ctr.XORKeyStream(p1[:], p1[:])
+	ctr.XORKeyStream(p2[:], p2[:])
 
-	copy(epk.p3[:], pk[PublicKeySeedSize:])
-
-	return &epk
+	copyBytesToUint64SliceLE(pk.p1[:], p1[:])
+	copyBytesToUint64SliceLE(pk.p2[:], p2[:])
+	copyBytesToUint64SliceLE(pk.p3[:], buf[PublicKeySeedSize:])
 }
 
-func (sk *PrivateKey) Expand() *ExpandedPrivateKey {
-	var esk ExpandedPrivateKey
+// Packs the private key into buf.
+func (sk *PrivateKey) Pack(buf *[PrivateKeySize]byte) {
+	copy(buf[:], sk.seed[:])
+}
 
-	seed := (*sk)[:KeySeedSize]
-	copy(esk.seed[:], seed)
+// Sets sk to the private key encoded in buf.
+func (sk *PrivateKey) Unpack(buf *[PrivateKeySize]byte) {
+	copy(sk.seed[:], buf[:])
 
 	var seedPk [PublicKeySeedSize]byte
 	var o [OSize]byte
 
 	h := sha3.NewShake256()
-	_, _ = h.Write(seed[:])
+	_, _ = h.Write(sk.seed[:])
 	_, _ = h.Read(seedPk[:])
 	_, _ = h.Read(o[:])
 
@@ -79,15 +89,13 @@ func (sk *PrivateKey) Expand() *ExpandedPrivateKey {
 	var p12 [P1Size + P2Size]byte
 	ctr.XORKeyStream(p12[:], p12[:])
 
-	decode(esk.o[:], o[:])
+	decode(sk.o[:], o[:])
 
-	copyBytesToUint64SliceLE(esk.p1[:P1Size/8], p12[:P1Size])
-	copyBytesToUint64SliceLE(esk.l[:], p12[P1Size:])
+	copyBytesToUint64SliceLE(sk.p1[:P1Size/8], p12[:P1Size])
+	copyBytesToUint64SliceLE(sk.l[:], p12[P1Size:])
 
 	// compute L_i = (P1 + P1^t)*O + P2
-	mulAddMUpperTriangularWithTransposeMatXMat(esk.l[:], esk.p1[:], esk.o[:], V, O)
-
-	return &esk
+	mulAddMUpperTriangularWithTransposeMatXMat(sk.l[:], sk.p1[:], sk.o[:], V, O)
 }
 
 // decode unpacks N bytes from src to N*2 nibbles of dst.
@@ -105,7 +113,7 @@ func decode(dst []byte, src []byte) {
 	}
 }
 
-// encode packs N=length low nibbles from src to (N+1)/2 bytes in dst.
+// encode packs N=length low nibbles from src to ceil(N/2) bytes in dst.
 func encode(dst []byte, src []byte, length int) {
 	var i int
 	for i = 0; i+1 < length; i += 2 {
@@ -149,51 +157,49 @@ func GenerateKey(rand io.Reader) (*PublicKey, *PrivateKey, error) {
 
 func NewKeyFromSeed(seed [KeySeedSize]byte) (*PublicKey, *PrivateKey) {
 	var sk PrivateKey
-	copy(sk[:], seed[:])
+	sk.Unpack(&seed)
 
 	return sk.Public(), &sk
 }
 
 func (sk *PrivateKey) Public() *PublicKey {
 	var pk PublicKey
-	seedPk := pk[:PublicKeySeedSize]
 	var o [OSize]byte
 
 	h := sha3.NewShake256()
-	_, _ = h.Write(sk[:])
-	_, _ = h.Read(seedPk[:])
+	_, _ = h.Write(sk.seed[:])
+	_, _ = h.Read(pk.seed[:])
 	_, _ = h.Read(o[:])
 
 	var nonce [16]byte
 	// TODO there are unnecessary allocations
-	block, _ := aes.NewCipher(seedPk[:])
+	block, _ := aes.NewCipher(pk.seed[:])
 	ctr := cipher.NewCTR(block, nonce[:])
 
-	var p12 [P1Size + P2Size]byte
-	ctr.XORKeyStream(p12[:], p12[:])
+	var p1 [P1Size]byte
+	var p2 [P2Size]byte
+	ctr.XORKeyStream(p1[:], p1[:])
+	ctr.XORKeyStream(p2[:], p2[:])
+
+	copyBytesToUint64SliceLE(pk.p1[:], p1[:])
+	copyBytesToUint64SliceLE(pk.p2[:], p2[:])
 
 	var oo [V * O]byte
 	decode(oo[:], o[:])
 
-	var p1Tri [P1Size / 8]uint64
 	var p1OP2 [P2Size / 8]uint64
-	copyBytesToUint64SliceLE(p1Tri[:], p12[:P1Size])
-	copyBytesToUint64SliceLE(p1OP2[:], p12[P1Size:])
+	copy(p1OP2[:], pk.p2[:])
 
 	var p3full [M * O * O / 16]uint64
-	var p3 [P3Size / 8]uint64
-
-	mulAddMUpperTriangularMatXMat(p1OP2[:], p1Tri[:], oo[:], V, O)
+	mulAddMUpperTriangularMatXMat(p1OP2[:], pk.p1[:], oo[:], V, O)
 	mulAddMatTransXMMat(p3full[:], oo[:], p1OP2[:], V, O, O)
 
-	upper(p3full[:], p3[:], O)
-
-	copyUint64SliceToBytesLE(pk[PublicKeySeedSize:], p3[:])
+	upper(p3full[:], pk.p3[:], O)
 
 	return &pk
 }
 
-func Sign(msg []byte, sk *ExpandedPrivateKey, rand io.Reader) ([]byte, error) {
+func Sign(msg []byte, sk *PrivateKey, rand io.Reader) ([]byte, error) {
 	if rand == nil {
 		rand = cryptoRand.Reader
 	}
@@ -624,7 +630,7 @@ func transpose16x16Nibbles(m []uint64) {
 	}
 }
 
-func Verify(epk *ExpandedPublicKey, msg []byte, sig []byte) bool {
+func Verify(pk *PublicKey, msg []byte, sig []byte) bool {
 	if len(sig) != SignatureSize {
 		return false
 	}
@@ -651,13 +657,6 @@ func Verify(epk *ExpandedPublicKey, msg []byte, sig []byte) bool {
 	var s [K * N]byte
 	decode(s[:], senc[:])
 
-	var P1 [P1Size / 8]uint64
-	var P2 [P2Size / 8]uint64
-	var P3 [P3Size / 8]uint64
-	copyBytesToUint64SliceLE(P1[:], epk.p1[:])
-	copyBytesToUint64SliceLE(P2[:], epk.p2[:])
-	copyBytesToUint64SliceLE(P3[:], epk.p3[:])
-
 	// Note: the variable time approach is overall about 30% faster
 	// compute P * S^t = [ P1  P2 ] * [S1] = [P1*S1 + P2*S2]
 	//                   [  0  P3 ]   [S2]   [        P3*S2]
@@ -667,7 +666,7 @@ func Verify(epk *ExpandedPublicKey, msg []byte, sig []byte) bool {
 	// mulAddMMatXMatTrans(pst[:], P2, s[V:], V, O, K, N, false)
 	// mulAddMMatXMatTrans(pst[M*V*K/16:], P3, s[V:], O, O, K, N, true)
 	// Variable time approach with table access where index depends on input:
-	calculatePStVarTime(pst[:], P1[:], P2[:], P3[:], s[:])
+	calculatePStVarTime(pst[:], pk.p1[:], pk.p2[:], pk.p3[:], s[:])
 
 	// compute S * PST
 	var sps [M * K * K / 16]uint64

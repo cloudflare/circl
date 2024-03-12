@@ -30,8 +30,10 @@ func TestNewKey(t *testing.T) {
 
 			pk, sk := NewKeyFromSeed(seed)
 
-			pk2 := [PublicKeySize]byte(*pk)
-			sk2 := [PrivateKeySize]byte(*sk)
+			var pk2 [PublicKeySize]byte
+			var sk2 [PrivateKeySize]byte
+			pk.Pack(&pk2)
+			sk.Pack(&sk2)
 
 			if hex.EncodeToString(pk2[:]) != tc.expectedPk {
 				t.Fatal()
@@ -67,14 +69,13 @@ func TestVerify(t *testing.T) {
 			s, _ := hex.DecodeString(tc.signature)
 
 			pk, _ := NewKeyFromSeed(seed)
-			epk := pk.Expand()
 
-			if !Verify(epk, m, s) {
+			if !Verify(pk, m, s) {
 				t.Fatal("should verify")
 			}
 
-			epk.p1[0] ^= 1
-			if Verify(epk, m, s) {
+			pk.p1[0] ^= 1
+			if Verify(pk, m, s) {
 				t.Fatal("should not verify")
 			}
 		})
@@ -97,12 +98,12 @@ func TestSampleSolution(t *testing.T) {
 		t.Fatal()
 	}
 
-	sig, err := Sign(msg[:], sk.Expand(), &g)
+	sig, err := Sign(msg[:], sk, &g)
 	if err != nil {
 		t.Fatal()
 	}
 
-	if !Verify(pk.Expand(), msg[:], sig[:]) {
+	if !Verify(pk, msg[:], sig[:]) {
 		t.Fatal()
 	}
 }
@@ -145,21 +146,23 @@ func TestPQCgenKATSign(t *testing.T) {
 				_, _ = g2.Read(eseed[:])
 				pk, sk := NewKeyFromSeed(eseed)
 
-				pk2 := [PublicKeySize]byte(*pk)
-				sk2 := [PrivateKeySize]byte(*sk)
+				var pk2 [PublicKeySize]byte
+				var sk2 [PrivateKeySize]byte
+				pk.Pack(&pk2)
+				sk.Pack(&sk2)
 
 				fmt.Fprintf(f, "pk = %X\n", pk2)
 				fmt.Fprintf(f, "sk = %X\n", sk2)
 				fmt.Fprintf(f, "smlen = %d\n", mlen+SignatureSize)
 
-				sig, err := Sign(msg[:], sk.Expand(), &g2)
+				sig, err := Sign(msg[:], sk, &g2)
 				if err != nil {
 					t.Fatal()
 				}
 
 				fmt.Fprintf(f, "sm = %X%X\n\n", sig, msg)
 
-				if !Verify(pk.Expand(), msg[:], sig) {
+				if !Verify(pk, msg[:], sig) {
 					t.Fatal()
 				}
 			}
@@ -196,22 +199,10 @@ func BenchmarkVerify(b *testing.B) {
 	var seed [KeySeedSize]byte
 	var msg [8]byte
 	pk, sk := NewKeyFromSeed(seed)
-	sig, _ := Sign(msg[:], sk.Expand(), nil)
+	sig, _ := Sign(msg[:], sk, nil)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = Verify(pk.Expand(), msg[:], sig[:])
-	}
-}
-
-func BenchmarkVerifyExpandedKey(b *testing.B) {
-	var seed [KeySeedSize]byte
-	var msg [8]byte
-	pk, sk := NewKeyFromSeed(seed)
-	sig, _ := Sign(msg[:], sk.Expand(), nil)
-	epk := pk.Expand()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_ = Verify(epk, msg[:], sig[:])
+		_ = Verify(pk, msg[:], sig[:])
 	}
 }
 
@@ -231,18 +222,6 @@ func BenchmarkSign(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		binary.LittleEndian.PutUint64(msg[:], uint64(i))
-		_, _ = Sign(msg[:], sk.Expand(), zeroReader{})
-	}
-}
-
-func BenchmarkSignExpandedKey(b *testing.B) {
-	var seed [KeySeedSize]byte
-	var msg [8]byte
-	_, sk := NewKeyFromSeed(seed)
-	esk := sk.Expand()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		binary.LittleEndian.PutUint64(msg[:], uint64(i))
-		_, _ = Sign(msg[:], esk, zeroReader{})
+		_, _ = Sign(msg[:], sk, zeroReader{})
 	}
 }

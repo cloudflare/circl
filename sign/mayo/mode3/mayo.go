@@ -60,7 +60,7 @@ func NewKeyFromSeed(seed [SeedSize]byte) (*PublicKey, *PrivateKey) {
 func Sign(sk *PrivateKey, msg []byte, rand io.Reader) ([]byte, error) {
 	return internal.Sign(
 		msg,
-		(*internal.PrivateKey)(sk).Expand(),
+		(*internal.PrivateKey)(sk),
 		rand,
 	)
 }
@@ -68,26 +68,54 @@ func Sign(sk *PrivateKey, msg []byte, rand io.Reader) ([]byte, error) {
 // Verify checks whether the given signature by pk on msg is valid.
 func Verify(pk *PublicKey, msg []byte, signature []byte) bool {
 	return internal.Verify(
-		(*internal.PublicKey)(pk).Expand(),
+		(*internal.PublicKey)(pk),
 		msg,
 		signature,
 	)
 }
 
+// Sets pk to the public key encoded in buf.
+func (pk *PublicKey) Unpack(buf *[PublicKeySize]byte) {
+	(*internal.PublicKey)(pk).Unpack(buf)
+}
+
+// Sets sk to the private key encoded in buf.
+func (sk *PrivateKey) Unpack(buf *[PrivateKeySize]byte) {
+	(*internal.PrivateKey)(sk).Unpack(buf)
+}
+
+// Packs the public key into buf.
+func (pk *PublicKey) Pack(buf *[PublicKeySize]byte) {
+	(*internal.PublicKey)(pk).Pack(buf)
+}
+
+// Packs the private key into buf.
+func (sk *PrivateKey) Pack(buf *[PrivateKeySize]byte) {
+	(*internal.PrivateKey)(sk).Pack(buf)
+}
+
+// Packs the public key.
+func (pk *PublicKey) Bytes() []byte {
+	var buf [PublicKeySize]byte
+	pk.Pack(&buf)
+	return buf[:]
+}
+
+// Packs the private key.
+func (sk *PrivateKey) Bytes() []byte {
+	var buf [PrivateKeySize]byte
+	sk.Pack(&buf)
+	return buf[:]
+}
+
 // Packs the public key.
 func (pk *PublicKey) MarshalBinary() ([]byte, error) {
-	var buf [PublicKeySize]byte
-	b := [PublicKeySize]byte(*pk)
-	copy(buf[:], b[:])
-	return buf[:], nil
+	return pk.Bytes(), nil
 }
 
 // Packs the private key.
 func (sk *PrivateKey) MarshalBinary() ([]byte, error) {
-	var buf [PrivateKeySize]byte
-	b := [PrivateKeySize]byte(*sk)
-	copy(buf[:], b[:])
-	return buf[:], nil
+	return sk.Bytes(), nil
 }
 
 // Unpacks the public key from data.
@@ -95,8 +123,9 @@ func (pk *PublicKey) UnmarshalBinary(data []byte) error {
 	if len(data) != PublicKeySize {
 		return errors.New("packed public key must be of mode3.PublicKeySize bytes")
 	}
-	self := (*[PublicKeySize]byte)(pk)
-	copy(self[:], data[:])
+	var buf [PublicKeySize]byte
+	copy(buf[:], data)
+	pk.Unpack(&buf)
 	return nil
 }
 
@@ -105,8 +134,9 @@ func (sk *PrivateKey) UnmarshalBinary(data []byte) error {
 	if len(data) != PrivateKeySize {
 		return errors.New("packed private key must be of mode3.PrivateKeySize bytes")
 	}
-	self := (*[PrivateKeySize]byte)(sk)
-	copy(self[:], data[:])
+	var buf [PrivateKeySize]byte
+	copy(buf[:], data)
+	sk.Unpack(&buf)
 	return nil
 }
 
