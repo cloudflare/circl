@@ -84,6 +84,8 @@ func Example() {
 	if err != nil {
 		log.Fatalf("%s", err)
 	}
+	fmt.Printf("plaintext size: %v bytes\n", len(msgStr))
+	fmt.Printf("ciphertext size: %v bytes\n", len(ct))
 
 	// generate secret key for certain set of attributes
 	wrongAttrs := cpabe.Attributes{}
@@ -127,6 +129,9 @@ func Example() {
 		log.Fatalf("recovered plaintext: %s is not equal to original msg: %s", pt, msgStr)
 	}
 	fmt.Println("Successfully recovered plaintext")
-	// Output: (occupation:doctor and country:US)
+	// Output:
+	// (occupation:doctor and country:US)
+	// plaintext size: 27 bytes
+	// ciphertext size: 2735 bytes
 	// Successfully recovered plaintext
 }
