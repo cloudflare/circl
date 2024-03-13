@@ -117,8 +117,8 @@ func EncryptCCA(rand io.Reader, public *PublicParams, policy *Policy, msg []byte
 	if err != nil {
 		return nil, err
 	}
-	macData := appendLenPrefixed(nil, C1)
-	macData = appendLenPrefixed(macData, env)
+	macData := appendLen32Prefixed(nil, C1)
+	macData = appendLen32Prefixed(macData, env)
 
 	tag, err := blakeMac(macKey, macData)
 	if err != nil {
@@ -126,7 +126,7 @@ func EncryptCCA(rand io.Reader, public *PublicParams, policy *Policy, msg []byte
 	}
 
 	ret := appendLenPrefixed(nil, id)
-	ret = appendLenPrefixed(ret, macData)
+	ret = appendLen32Prefixed(ret, macData)
 	ret = appendLenPrefixed(ret, tag)
 
 	return ret, nil
@@ -137,7 +137,7 @@ func DecryptCCA(ciphertext []byte, key *AttributesKey) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	macData, rest, err := removeLenPrefixed(rest)
+	macData, rest, err := removeLen32Prefixed(rest)
 	if err != nil {
 		return nil, err
 	}
@@ -145,11 +145,11 @@ func DecryptCCA(ciphertext []byte, key *AttributesKey) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	C1, envRaw, err := removeLenPrefixed(macData)
+	C1, envRaw, err := removeLen32Prefixed(macData)
 	if err != nil {
 		return nil, err
 	}
-	env, _, err := removeLenPrefixed(envRaw)
+	env, _, err := removeLen32Prefixed(envRaw)
 	if err != nil {
 		return nil, err
 	}
@@ -212,11 +212,11 @@ func CouldDecrypt(ciphertext []byte, a *Attributes) bool {
 	if err != nil {
 		return false
 	}
-	macData, _, err := removeLenPrefixed(rest)
+	macData, _, err := removeLen32Prefixed(rest)
 	if err != nil {
 		return false
 	}
-	C1, _, err := removeLenPrefixed(macData)
+	C1, _, err := removeLen32Prefixed(macData)
 	if err != nil {
 		return false
 	}
@@ -241,11 +241,11 @@ func (p *Policy) ExtractFromCiphertext(ct []byte) error {
 	if err != nil {
 		return fmt.Errorf("invalid ciphertext")
 	}
-	macData, _, err := removeLenPrefixed(rest)
+	macData, _, err := removeLen32Prefixed(rest)
 	if err != nil {
 		return fmt.Errorf("invalid ciphertext")
 	}
-	C1, _, err := removeLenPrefixed(macData)
+	C1, _, err := removeLen32Prefixed(macData)
 	if err != nil {
 		return fmt.Errorf("invalid ciphertext")
 	}

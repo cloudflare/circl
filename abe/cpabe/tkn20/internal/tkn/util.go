@@ -42,14 +42,14 @@ func HashStringToScalar(key []byte, value string) *pairing.Scalar {
 	return s
 }
 
-func appendLenPrefixed(a []byte, b []byte) []byte {
+func appendLen16Prefixed(a []byte, b []byte) []byte {
 	a = append(a, 0, 0)
 	binary.LittleEndian.PutUint16(a[len(a)-2:], uint16(len(b)))
 	a = append(a, b...)
 	return a
 }
 
-func removeLenPrefixed(data []byte) (next []byte, remainder []byte, err error) {
+func removeLen16Prefixed(data []byte) (next []byte, remainder []byte, err error) {
 	if len(data) < 2 {
 		return nil, nil, fmt.Errorf("data too short")
 	}
@@ -58,6 +58,29 @@ func removeLenPrefixed(data []byte) (next []byte, remainder []byte, err error) {
 		return nil, nil, fmt.Errorf("data too short")
 	}
 	return data[2 : 2+itemLen], data[2+itemLen:], nil
+}
+
+var (
+	appendLenPrefixed = appendLen16Prefixed
+	removeLenPrefixed = removeLen16Prefixed
+)
+
+func appendLen32Prefixed(a []byte, b []byte) []byte {
+	a = append(a, 0, 0, 0, 0)
+	binary.LittleEndian.PutUint32(a[len(a)-4:], uint32(len(b)))
+	a = append(a, b...)
+	return a
+}
+
+func removeLen32Prefixed(data []byte) (next []byte, remainder []byte, err error) {
+	if len(data) < 4 {
+		return nil, nil, fmt.Errorf("data too short")
+	}
+	itemLen := int(binary.LittleEndian.Uint32(data))
+	if (4 + itemLen) > len(data) {
+		return nil, nil, fmt.Errorf("data too short")
+	}
+	return data[4 : 4+itemLen], data[4+itemLen:], nil
 }
 
 func marshalBinarySortedMapMatrixG1(m map[string]*matrixG1) ([]byte, error) {
