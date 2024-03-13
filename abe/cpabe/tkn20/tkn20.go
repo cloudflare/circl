@@ -8,6 +8,15 @@
 // attribute-based encryption. In A. Kiayias, M. Kohlweiss, P. Wallden, and
 // V. Zikas, editors, PKC, volume 12110 of Lecture Notes in Computer Science,
 // pages 3–33. Springer, 2020. https://eprint.iacr.org/2019/966
+//
+// # Update v1.3.8
+//
+// As of v1.3.8, ciphertext format changed to use wider prefixes.
+// Ciphertexts in the previous format are still decryptable.
+// The following functions are backwards-compatible:
+//   - [AttributeKey.Decrypt]
+//   - [Attributes.CouldDecrypt]
+//   - [Policy.ExtractFromCiphertext]
 package tkn20
 
 import (

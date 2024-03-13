@@ -41,8 +41,23 @@ func TestAttributeKeyFormat(t *testing.T) {
 	}
 }
 
+func TestCiphertext_v137(t *testing.T) {
+	// As of v1.3.8 ciphertext format changed to use wider prefixes.
+	// Ciphertexts in the previous format are still decryptable.
+	// The following functions are backwards-compatible:
+	// - AttributeKey.Decrypt
+	// - Attributes.CouldDecrypt
+	// - Policy.ExtractFromCiphertext
+	testCiphertext(t, "testdata/ciphertext_v137")
+}
+
 func TestCiphertext(t *testing.T) {
-	ciphertext, err := os.ReadFile("testdata/ciphertext")
+	testCiphertext(t, "testdata/ciphertext")
+}
+
+func testCiphertext(t *testing.T, ctName string) {
+	t.Logf("Checking ciphertext: %v\n", ctName)
+	ciphertext, err := os.ReadFile(ctName)
 	if err != nil {
 		t.Fatalf("Unable to read ciphertext data")
 	}

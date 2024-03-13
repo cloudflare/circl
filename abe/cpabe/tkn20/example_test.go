@@ -132,6 +132,6 @@ func Example() {
 	// Output:
 	// (occupation:doctor and country:US)
 	// plaintext size: 27 bytes
-	// ciphertext size: 2735 bytes
+	// ciphertext size: 2747 bytes
 	// Successfully recovered plaintext
 }
