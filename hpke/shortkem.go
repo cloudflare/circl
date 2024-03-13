@@ -44,9 +44,6 @@ func (s shortKEM) calcDH(dh []byte, sk kem.PrivateKey, pk kem.PublicKey) error {
 func (s shortKEM) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 	// Implementation based on
 	// https://www.ietf.org/archive/id/draft-irtf-cfrg-hpke-07.html#name-derivekeypair
-	if len(seed) != s.SeedSize() {
-		panic(kem.ErrSeedSize)
-	}
 
 	bitmask := byte(0xFF)
 	if s.Params().BitSize == 521 {
