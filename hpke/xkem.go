@@ -58,13 +58,14 @@ func (x xKEM) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 	if len(seed) != x.SeedSize() {
 		panic(kem.ErrSeedSize)
 	}
-	sk := &xKEMPrivKey{scheme: x, priv: make([]byte, x.size)}
+	Nsk := x.PrivateKeySize()
+	sk := &xKEMPrivKey{scheme: x, priv: make([]byte, Nsk)}
 	dkpPrk := x.labeledExtract([]byte(""), []byte("dkp_prk"), seed)
 	bytes := x.labeledExpand(
 		dkpPrk,
 		[]byte("sk"),
 		nil,
-		uint16(x.PrivateKeySize()),
+		uint16(Nsk),
 	)
 	copy(sk.priv, bytes)
 	return sk.Public(), sk
@@ -81,8 +82,8 @@ func (x xKEM) GenerateKeyPair() (kem.PublicKey, kem.PrivateKey, error) {
 
 func (x xKEM) UnmarshalBinaryPrivateKey(data []byte) (kem.PrivateKey, error) {
 	l := x.PrivateKeySize()
-	if len(data) < l {
-		return nil, ErrInvalidKEMPrivateKey
+	if len(data) != l {
+		return nil, kem.ErrPrivKeySize
 	}
 	sk := &xKEMPrivKey{x, make([]byte, l), nil}
 	copy(sk.priv, data[:l])
@@ -94,8 +95,8 @@ func (x xKEM) UnmarshalBinaryPrivateKey(data []byte) (kem.PrivateKey, error) {
 
 func (x xKEM) UnmarshalBinaryPublicKey(data []byte) (kem.PublicKey, error) {
 	l := x.PublicKeySize()
-	if len(data) < l {
-		return nil, ErrInvalidKEMPublicKey
+	if len(data) != l {
+		return nil, kem.ErrPubKeySize
 	}
 	pk := &xKEMPubKey{x, make([]byte, l)}
 	copy(pk.pub, data[:l])
