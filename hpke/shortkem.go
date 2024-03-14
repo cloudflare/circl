@@ -53,6 +53,7 @@ func (s shortKEM) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 		bitmask = 0x01
 	}
 
+	Nsk := s.PrivateKeySize()
 	dkpPrk := s.labeledExtract([]byte(""), []byte("dkp_prk"), seed)
 	var bytes []byte
 	ctr := 0
@@ -64,14 +65,12 @@ func (s shortKEM) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 			dkpPrk,
 			[]byte("candidate"),
 			[]byte{byte(ctr)},
-			uint16(s.byteSize()),
+			uint16(Nsk),
 		)
 		bytes[0] &= bitmask
 		skBig.SetBytes(bytes)
 	}
-	l := s.PrivateKeySize()
-	sk := &shortKEMPrivKey{s, make([]byte, l), nil}
-	copy(sk.priv[l-len(bytes):], bytes)
+	sk := &shortKEMPrivKey{s, bytes, nil}
 	return sk.Public(), sk
 }
 
@@ -87,7 +86,7 @@ func (s shortKEM) UnmarshalBinaryPrivateKey(data []byte) (kem.PrivateKey, error)
 		return nil, ErrInvalidKEMPrivateKey
 	}
 	sk := &shortKEMPrivKey{s, make([]byte, l), nil}
-	copy(sk.priv[l-len(data):l], data[:l])
+	copy(sk.priv, data[:l])
 	if !sk.validate() {
 		return nil, ErrInvalidKEMPrivateKey
 	}
@@ -96,7 +95,11 @@ func (s shortKEM) UnmarshalBinaryPrivateKey(data []byte) (kem.PrivateKey, error)
 }
 
 func (s shortKEM) UnmarshalBinaryPublicKey(data []byte) (kem.PublicKey, error) {
-	x, y := elliptic.Unmarshal(s, data)
+	l := s.PublicKeySize()
+	if len(data) < l {
+		return nil, ErrInvalidKEMPublicKey
+	}
+	x, y := elliptic.Unmarshal(s, data[:l])
 	if x == nil {
 		return nil, ErrInvalidKEMPublicKey
 	}
