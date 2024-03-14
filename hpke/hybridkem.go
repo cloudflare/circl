@@ -200,11 +200,13 @@ func (h hybridKEM) GenerateKeyPair() (kem.PublicKey, kem.PrivateKey, error) {
 }
 
 func (h hybridKEM) UnmarshalBinaryPrivateKey(data []byte) (kem.PrivateKey, error) {
-	skA, err := h.kemA.UnmarshalBinaryPrivateKey(data[0:h.kemA.PrivateKeySize()])
+	lenA := h.kemA.PrivateKeySize()
+	skA, err := h.kemA.UnmarshalBinaryPrivateKey(data[0:lenA])
 	if err != nil {
 		return nil, err
 	}
-	skB, err := h.kemB.UnmarshalBinaryPrivateKey(data[h.kemA.PrivateKeySize():])
+	lenB := h.kemB.PrivateKeySize()
+	skB, err := h.kemB.UnmarshalBinaryPrivateKey(data[lenA : lenA+lenB])
 	if err != nil {
 		return nil, err
 	}
@@ -216,11 +218,13 @@ func (h hybridKEM) UnmarshalBinaryPrivateKey(data []byte) (kem.PrivateKey, error
 }
 
 func (h hybridKEM) UnmarshalBinaryPublicKey(data []byte) (kem.PublicKey, error) {
-	pkA, err := h.kemA.UnmarshalBinaryPublicKey(data[0:h.kemA.PublicKeySize()])
+	lenA := h.kemA.PublicKeySize()
+	pkA, err := h.kemA.UnmarshalBinaryPublicKey(data[0:lenA])
 	if err != nil {
 		return nil, err
 	}
-	pkB, err := h.kemB.UnmarshalBinaryPublicKey(data[h.kemA.PublicKeySize():])
+	lenB := h.kemB.PublicKeySize()
+	pkB, err := h.kemB.UnmarshalBinaryPublicKey(data[lenA : lenA+lenB])
 	if err != nil {
 		return nil, err
 	}
