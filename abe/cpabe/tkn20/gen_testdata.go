@@ -6,11 +6,10 @@ package main
 
 import (
 	"encoding"
-	mrand "math/rand"
 	"os"
-	"path/filepath"
 
 	cpabe "github.com/cloudflare/circl/abe/cpabe/tkn20"
+	"github.com/cloudflare/circl/xof"
 )
 
 func writeToFile(name string, data []byte) {
@@ -30,13 +29,9 @@ func dumpToFile(name string, m encoding.BinaryMarshaler) {
 
 func main() {
 	// Using fixed PRNG for reproducibility,
-	fixedSeed := int64(0xC1C1C1C1)
-	prng := mrand.New(mrand.NewSource(fixedSeed))
-	if prng == nil {
-		panic("failed to create PRNG")
-	}
+	prng := xof.SHAKE128.New()
 
-	err := os.MkdirAll(filepath.Join(".", "testdata"), 0o755)
+	err := os.MkdirAll("testdata", 0o755)
 	if err != nil {
 		panic(err)
 	}
