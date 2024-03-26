@@ -1147,7 +1147,7 @@ func normalizeAVX2() {
 }
 
 func main() {
-	ConstraintExpr("amd64")
+	ConstraintExpr("amd64,!purego")
 
 	addAVX2()
 	subAVX2()

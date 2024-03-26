@@ -1,5 +1,5 @@
-//go:build (!noasm && arm64) || (!noasm && amd64)
-// +build !noasm,arm64 !noasm,amd64
+//go:build (!purego && arm64) || (!purego && amd64)
+// +build !purego,arm64 !purego,amd64
 
 package p384
 

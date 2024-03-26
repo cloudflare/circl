@@ -1,5 +1,5 @@
-//go:build (!amd64 && !arm64) || (arm64 && !go1.16)
-// +build !amd64,!arm64 arm64,!go1.16
+//go:build (!amd64 && !arm64) || (arm64 && !go1.16) || purego
+// +build !amd64,!arm64 arm64,!go1.16 purego
 
 package keccakf1600
 

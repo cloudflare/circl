@@ -1054,7 +1054,7 @@ func mulBy2toDAVX2() {
 }
 
 func main() {
-	ConstraintExpr("amd64")
+	ConstraintExpr("amd64,!purego")
 
 	nttAVX2()
 	invNttAVX2()

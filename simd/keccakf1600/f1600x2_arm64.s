@@ -1,4 +1,4 @@
-// +build arm64,go1.16
+// +build arm64,go1.16,!purego
 
 // Taken from https://github.com/bwesterb/armed-keccak
 
