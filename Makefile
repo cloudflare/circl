@@ -16,7 +16,7 @@ GOARCH       ?=
 BUILD_ARCH   = $(shell $(GO) env GOARCH)
 
 ifeq ($(NOASM),1)
-	OPTS+=--tags noasm
+	OPTS+=--tags purego
 endif
 
 ifeq ($(V),1)
