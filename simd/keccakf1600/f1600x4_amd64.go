@@ -1,3 +1,6 @@
+//go:build amd64 && !purego
+// +build amd64,!purego
+
 package keccakf1600
 
 import "github.com/cloudflare/circl/internal/sha3"

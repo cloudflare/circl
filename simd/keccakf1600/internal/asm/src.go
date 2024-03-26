@@ -11,7 +11,7 @@ import (
 
 // nolint:funlen
 func main() {
-	ConstraintExpr("amd64")
+	ConstraintExpr("amd64,!purego")
 
 	// Must be called on 32 byte aligned memory.
 	TEXT("f1600x4AVX2", NOSPLIT, "func(state *uint64, rc *[24]uint64, turbo bool)")
