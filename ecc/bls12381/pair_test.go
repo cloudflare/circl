@@ -79,6 +79,52 @@ func TestProdPairFrac(t *testing.T) {
 	}
 }
 
+func TestInputs(t *testing.T) {
+	t.Run("Pair", func(t *testing.T) {
+		P := *randomG1(t)
+		Q := *randomG2(t)
+		oldP := P
+		oldQ := Q
+		_ = Pair(&P, &Q)
+		test.CheckOk(P == oldP, "the point P was overwritten", t)
+		test.CheckOk(Q == oldQ, "the point Q was overwritten", t)
+	})
+
+	t.Run("ProdPair", func(t *testing.T) {
+		P0, P1 := *randomG1(t), *randomG1(t)
+		Q0, Q1 := *randomG2(t), *randomG2(t)
+		n0, n1 := *randomScalar(t), *randomScalar(t)
+
+		oldP0, oldP1 := P0, P1
+		oldQ0, oldQ1 := Q0, Q1
+		oldn0, oldn1 := n0, n1
+
+		_ = ProdPair([]*G1{&P0, &P1}, []*G2{&Q0, &Q1}, []*Scalar{&n0, &n1})
+
+		test.CheckOk(P0 == oldP0, "the point P0 was overwritten", t)
+		test.CheckOk(P1 == oldP1, "the point P1 was overwritten", t)
+		test.CheckOk(Q0 == oldQ0, "the point Q0 was overwritten", t)
+		test.CheckOk(Q1 == oldQ1, "the point Q1 was overwritten", t)
+		test.CheckOk(n0 == oldn0, "the scalar n0 was overwritten", t)
+		test.CheckOk(n1 == oldn1, "the scalar n1 was overwritten", t)
+	})
+
+	t.Run("ProdPairFrac", func(t *testing.T) {
+		P0, P1 := *randomG1(t), *randomG1(t)
+		Q0, Q1 := *randomG2(t), *randomG2(t)
+
+		oldP0, oldP1 := P0, P1
+		oldQ0, oldQ1 := Q0, Q1
+
+		_ = ProdPairFrac([]*G1{&P0, &P1}, []*G2{&Q0, &Q1}, []int{1, -1})
+
+		test.CheckOk(P0 == oldP0, "the point P0 was overwritten", t)
+		test.CheckOk(P1 == oldP1, "the point P1 was overwritten", t)
+		test.CheckOk(Q0 == oldQ0, "the point Q0 was overwritten", t)
+		test.CheckOk(Q1 == oldQ1, "the point Q1 was overwritten", t)
+	})
+}
+
 func TestPairBilinear(t *testing.T) {
 	testTimes := 1 << 5
 	for i := 0; i < testTimes; i++ {
