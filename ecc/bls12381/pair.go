@@ -4,9 +4,10 @@ import "github.com/cloudflare/circl/ecc/bls12381/ff"
 
 // Pair calculates the ate-pairing of P and Q.
 func Pair(P *G1, Q *G2) *Gt {
-	P.toAffine()
+	affP := *P
+	affP.toAffine()
 	mi := &ff.Fp12{}
-	miller(mi, P, Q)
+	miller(mi, &affP, Q)
 	e := &Gt{}
 	finalExp(e, mi)
 	return e
@@ -82,9 +83,9 @@ func ProdPair(P []*G1, Q []*G2, n []*Scalar) *Gt {
 	out := new(ff.Fp12)
 	out.SetOne()
 
-	affinize(P)
-	for i := range P {
-		miller(mi, P[i], Q[i])
+	affineP := affinize(P)
+	for i := range affineP {
+		miller(mi, &affineP[i], Q[i])
 		nb, _ := n[i].MarshalBinary()
 		ei.Exp(mi, nb)
 		out.Mul(out, ei)
@@ -105,13 +106,12 @@ func ProdPairFrac(P []*G1, Q []*G2, signs []int) *Gt {
 	out := new(ff.Fp12)
 	out.SetOne()
 
-	affinize(P)
-	for i := range P {
-		g := *P[i]
+	affineP := affinize(P)
+	for i := range affineP {
 		if signs[i] == -1 {
-			g.Neg()
+			affineP[i].Neg()
 		}
-		miller(mi, &g, Q[i])
+		miller(mi, &affineP[i], Q[i])
 		out.Mul(mi, out)
 	}
 
