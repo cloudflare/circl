@@ -392,7 +392,8 @@ func G1Generator() *G1 {
 }
 
 // affinize converts an entire slice to affine at once
-func affinize(points []*G1) {
+func affinize(points []*G1) (out []G1) {
+	out = make([]G1, len(points))
 	if len(points) == 0 {
 		return
 	}
@@ -410,8 +411,9 @@ func affinize(points []*G1) {
 		zinv.Mul(w, &ws[i])
 		w.Mul(w, &points[i].z)
 
-		points[i].x.Mul(&points[i].x, zinv)
-		points[i].y.Mul(&points[i].y, zinv)
-		points[i].z.SetOne()
+		out[i].x.Mul(&points[i].x, zinv)
+		out[i].y.Mul(&points[i].y, zinv)
+		out[i].z.SetOne()
 	}
+	return
 }
