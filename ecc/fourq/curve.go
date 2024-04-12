@@ -81,6 +81,65 @@ func (P *Point) ScalarBaseMult(k *[Size]byte) {
 	P.fromR1(&_P)
 }
 
+// ScalarMult2 calculates P = k*Q, where Q is an N-torsion point. Allows for not clearing the cofactor.
+func (P *Point) ScalarMult2(k *[Size]byte, Q *Point, clearCofactor bool) {
+	var _P, _Q pointR1
+	Q.toR1(&_Q)
+
+	if clearCofactor {
+		_Q.ClearCofactor()
+	}
+	_P.ScalarMult(k, &_Q)
+	P.fromR1(&_P)
+}
+
+// DoubleScalarMult calculates P = k*G + l*Q, where the G is the generator.
+func (P *Point) DoubleScalarMult(k *[Size]byte, Q *Point, l *[Size]byte) {
+
+	//Based on FourQLib's no endomorphism ecc_mul_double:
+
+	/*
+		point_t A;
+		point_extproj_t T;
+		point_extproj_precomp_t S;
+
+		if (ecc_mul(Q, l, A, false) == false) {
+			return false;
+		}
+		point_setup(A, T);
+		R1_to_R2(T, S);
+
+		ecc_mul_fixed(k, A);
+		point_setup(A, T);
+		eccadd(S, T);
+		eccnorm(T, R);
+	*/
+
+	var _A Point
+	var _T pointR1
+	var _S pointR2
+
+	// _A = q * l, don't clear cofactor
+	_A.ScalarMult2(l, Q, false)
+
+	// _A -> _T
+	_A.toR1(&_T)
+
+	// _T -> _S
+	_S.FromR1(&_T)
+
+	// _A = k * G
+	_A.ScalarBaseMult(k)
+
+	// _A -> _T
+	_A.toR1(&_T)
+
+	// _T = _T * _S
+	_T.add(&_S)
+
+	P.fromR1(&_T)
+}
+
 func (P *Point) fromR1(Q *pointR1) {
 	Q.ToAffine()
 	P.X = Q.X
