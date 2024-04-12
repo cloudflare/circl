@@ -81,8 +81,8 @@ func (P *Point) ScalarBaseMult(k *[Size]byte) {
 	P.fromR1(&_P)
 }
 
-// ScalarMult2 calculates P = k*Q, where Q is an N-torsion point. Allows for not clearing the cofactor.
-func (P *Point) ScalarMult2(k *[Size]byte, Q *Point, clearCofactor bool) {
+// ScalarMultCofactor calculates P = k*Q, where Q is an N-torsion point. Allows for not clearing the cofactor.
+func (P *Point) ScalarMultCofactor(k *[Size]byte, Q *Point, clearCofactor bool) {
 	var _P, _Q pointR1
 	Q.toR1(&_Q)
 
@@ -120,7 +120,7 @@ func (P *Point) DoubleScalarMult(k *[Size]byte, Q *Point, l *[Size]byte) {
 	var _S pointR2
 
 	// _A = q * l, don't clear cofactor
-	_A.ScalarMult2(l, Q, false)
+	_A.ScalarMultCofactor(l, Q, false)
 
 	// _A -> _T
 	_A.toR1(&_T)
