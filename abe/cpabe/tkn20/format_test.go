@@ -46,14 +46,32 @@ func TestCiphertext(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unable to read ciphertext data")
 	}
-	policyKey, err := os.ReadFile("testdata/attributeKey")
+	attributeKey, err := os.ReadFile("testdata/attributeKey")
 	if err != nil {
 		t.Fatalf("Unable to read secret key")
 	}
 	sk := AttributeKey{}
-	err = sk.UnmarshalBinary(policyKey)
+	err = sk.UnmarshalBinary(attributeKey)
 	if err != nil {
 		t.Fatalf("unable to parse secret key")
+	}
+	attrs := Attributes{}
+	attrs.FromMap(map[string]string{"country": "NL", "EU": "true"})
+	if !attrs.CouldDecrypt(ciphertext) {
+		t.Fatal("these attributes will be unable to decrypt message")
+	}
+	policy := Policy{}
+	err = policy.FromString("EU: true")
+	if err != nil {
+		t.Fatal("error creating policy from string")
+	}
+	gotPolicy := new(Policy)
+	err = gotPolicy.ExtractFromCiphertext(ciphertext)
+	if err != nil {
+		t.Fatal("error extracting policy from ciphertext")
+	}
+	if !policy.Equal(gotPolicy) {
+		t.Fatal("ciphertext's policy mismatches the original policy")
 	}
 	msg, err := sk.Decrypt(ciphertext)
 	if err != nil {
