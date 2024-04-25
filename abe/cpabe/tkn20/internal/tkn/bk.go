@@ -1,6 +1,7 @@
 package tkn
 
 import (
+	"bytes"
 	"crypto/subtle"
 	"fmt"
 	"io"
@@ -19,6 +20,9 @@ import (
 // whereas we require a seed size of 576 bits to ensure a 2^(-65) statistical difference
 // for our output size of 256 bits.
 const macKeySeedSize = 72
+
+// As of v1.3.8, ciphertexts are prefixed with this string.
+const CiphertextVersion = "v1.3.8"
 
 func blakeEncrypt(key []byte, msg []byte) ([]byte, error) {
 	xof, err := blake2b.NewXOF(blake2b.OutputLengthUnknown, key)
@@ -117,27 +121,39 @@ func EncryptCCA(rand io.Reader, public *PublicParams, policy *Policy, msg []byte
 	if err != nil {
 		return nil, err
 	}
-	macData := appendLenPrefixed(nil, C1)
-	macData = appendLenPrefixed(macData, env)
+	macData := appendLen32Prefixed(nil, C1)
+	macData = appendLen32Prefixed(macData, env)
 
 	tag, err := blakeMac(macKey, macData)
 	if err != nil {
 		return nil, err
 	}
 
-	ret := appendLenPrefixed(nil, id)
-	ret = appendLenPrefixed(ret, macData)
+	ret := append([]byte{}, []byte(CiphertextVersion)...)
+	ret = appendLenPrefixed(ret, id)
+	ret = appendLen32Prefixed(ret, macData)
 	ret = appendLenPrefixed(ret, tag)
 
 	return ret, nil
 }
 
+type rmLenPref = func([]byte) ([]byte, []byte, error)
+
+func checkCiphertextFormat(ciphertext []byte) (ct []byte, fn rmLenPref) {
+	const N = len(CiphertextVersion)
+	if bytes.Equal(ciphertext[0:N], []byte(CiphertextVersion)) {
+		return ciphertext[N:], removeLen32Prefixed
+	}
+	return ciphertext, removeLenPrefixed
+}
+
 func DecryptCCA(ciphertext []byte, key *AttributesKey) ([]byte, error) {
-	id, rest, err := removeLenPrefixed(ciphertext)
+	rest, removeLenPrefixedVar := checkCiphertextFormat(ciphertext)
+	id, rest, err := removeLenPrefixed(rest)
 	if err != nil {
 		return nil, err
 	}
-	macData, rest, err := removeLenPrefixed(rest)
+	macData, rest, err := removeLenPrefixedVar(rest)
 	if err != nil {
 		return nil, err
 	}
@@ -145,11 +161,11 @@ func DecryptCCA(ciphertext []byte, key *AttributesKey) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	C1, envRaw, err := removeLenPrefixed(macData)
+	C1, envRaw, err := removeLenPrefixedVar(macData)
 	if err != nil {
 		return nil, err
 	}
-	env, _, err := removeLenPrefixed(envRaw)
+	env, _, err := removeLenPrefixedVar(envRaw)
 	if err != nil {
 		return nil, err
 	}
@@ -208,15 +224,16 @@ func DecryptCCA(ciphertext []byte, key *AttributesKey) ([]byte, error) {
 }
 
 func CouldDecrypt(ciphertext []byte, a *Attributes) bool {
-	id, rest, err := removeLenPrefixed(ciphertext)
+	rest, removeLenPrefixedVar := checkCiphertextFormat(ciphertext)
+	id, rest, err := removeLenPrefixed(rest)
 	if err != nil {
 		return false
 	}
-	macData, _, err := removeLenPrefixed(rest)
+	macData, _, err := removeLenPrefixedVar(rest)
 	if err != nil {
 		return false
 	}
-	C1, _, err := removeLenPrefixed(macData)
+	C1, _, err := removeLenPrefixedVar(macData)
 	if err != nil {
 		return false
 	}
@@ -237,15 +254,16 @@ func CouldDecrypt(ciphertext []byte, a *Attributes) bool {
 }
 
 func (p *Policy) ExtractFromCiphertext(ct []byte) error {
-	_, rest, err := removeLenPrefixed(ct)
+	rest, removeLenPrefixedVar := checkCiphertextFormat(ct)
+	_, rest, err := removeLenPrefixed(rest)
 	if err != nil {
 		return fmt.Errorf("invalid ciphertext")
 	}
-	macData, _, err := removeLenPrefixed(rest)
+	macData, _, err := removeLenPrefixedVar(rest)
 	if err != nil {
 		return fmt.Errorf("invalid ciphertext")
 	}
-	C1, _, err := removeLenPrefixed(macData)
+	C1, _, err := removeLenPrefixedVar(macData)
 	if err != nil {
 		return fmt.Errorf("invalid ciphertext")
 	}
