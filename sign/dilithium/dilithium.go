@@ -40,7 +40,7 @@ type PublicKey interface {
 	Bytes() []byte
 }
 
-// PrivateKey is a Dilithium public key.
+// PrivateKey is a Dilithium private key.
 //
 // The structure contains values precomputed during unpacking/key generation
 // and is therefore significantly larger than a packed private key.
