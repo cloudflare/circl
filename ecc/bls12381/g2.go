@@ -32,6 +32,12 @@ func (g *G2) SetBytes(b []byte) error {
 		return errInputLength
 	}
 
+	// Check for invalid prefixes
+	switch b[0] & 0xE0 {
+	case 0x20, 0x60, 0xE0:
+		return errEncoding
+	}
+
 	isCompressed := int((b[0] >> 7) & 0x1)
 	isInfinity := int((b[0] >> 6) & 0x1)
 	isBigYCoord := int((b[0] >> 5) & 0x1)
