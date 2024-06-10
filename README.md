@@ -55,6 +55,7 @@ Alternatively, look at the [Cloudflare Go](https://github.com/cloudflare/go/tree
 |:---:|
 
 - [Ed25519](./sign/ed25519) and [Ed448](./sign/ed448) signatures. ([RFC-8032])
+- [BLS](./sign/bls) signatures. ([draft-irtf-cfrg-bls-signature](https://datatracker.ietf.org/doc/draft-irtf-cfrg-bls-signature/))
 
 | Prime Groups |
 |:---:|
@@ -94,7 +95,7 @@ Alternatively, look at the [Cloudflare Go](https://github.com/cloudflare/go/tree
 
  - [Schnorr](./zk/dl): Prove knowledge of the Discrete Logarithm. ([RFC-8235])
  - [DLEQ](./zk/dleq): Prove knowledge of the Discrete Logarithm Equality. ([RFC-9497])
- - [DLEQ in Qn](./zk/qndleq): Prove knowledge of the Discrete Logarithm Equality for subgroup of squares in (Z/nZ)*.
+ - [DLEQ in Qn](./zk/qndleq): Prove knowledge of the Discrete Logarithm Equality for subgroup of squares in (Z/nZ)\*.
 
 ### Symmetric Cryptography
 
@@ -159,7 +160,7 @@ APA Style
 ```
 Faz-Hernández, A. and Kwiatkowski, K. (2019). Introducing CIRCL:
 An Advanced Cryptographic Library. Cloudflare. Available at
-https://github.com/cloudflare/circl. v1.3.7 Accessed Dec, 2023.
+https://github.com/cloudflare/circl. v1.3.9 Accessed Jun, 2024.
 ```
 
 Bibtex Source
@@ -174,7 +175,7 @@ Bibtex Source
                    of this library is to be used as a tool for experimental
                    deployment of cryptographic algorithms targeting Post-Quantum (PQ)
                    and Elliptic Curve Cryptography (ECC).}},
-  note         = {Available at \url{https://github.com/cloudflare/circl}. v1.3.7 Accessed Dec, 2023},
+  note         = {Available at \url{https://github.com/cloudflare/circl}. v1.3.9 Accessed Jun, 2024},
   month        = jun,
   year         = {2019}
 }
