@@ -42,7 +42,7 @@ func (g *G2) SetBytes(b []byte) error {
 			l = G2SizeCompressed
 		}
 		zeros := make([]byte, l-1)
-		if (b[0]&0x1F) != 0 || subtle.ConstantTimeCompare(b[1:], zeros) != 1 {
+		if (b[0]&0x1F) != 0 || subtle.ConstantTimeCompare(b[1:l], zeros) != 1 {
 			return errEncoding
 		}
 		g.SetIdentity()

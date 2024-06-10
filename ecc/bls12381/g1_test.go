@@ -143,6 +143,13 @@ func TestG1Serial(t *testing.T) {
 			want = *randomG1(t)
 		}
 	})
+	t.Run("badPrefix", func(t *testing.T) {
+		q := new(G1)
+		b := make([]byte, G1Size)
+		for _, b[0] = range []byte{0x20, 0x60, 0xE0} {
+			test.CheckIsErr(t, q.SetBytes(b), mustErr)
+		}
+	})
 	t.Run("badLength", func(t *testing.T) {
 		q := new(G1)
 		p := randomG1(t)
