@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/nist"
@@ -22,6 +23,11 @@ func TestPQCgenKATKem(t *testing.T) {
 		{"Kyber1024", "89248f2f33f7f4f7051729111f3049c409a933ec904aedadf035f30fa5646cd5"},
 		{"Kyber768", "a1e122cad3c24bc51622e4c242d8b8acbcd3f618fee4220400605ca8f9ea02c2"},
 		{"Kyber512", "e9c2bd37133fcb40772f81559f14b1f58dccd1c816701be9ba6214d43baf4547"},
+
+		// Computed from reference implementation standard branch
+		{"ML-KEM-512", "4b88ac7643ff60209af1175e025f354272e88df827a0ce1c056e403629b88e04"},
+		{"ML-KEM-768", "21b4a1e1ea34a13c26a9da5eeb9325afb5ca11596ca6f3704c3f2637e3ea7524"},
+		{"ML-KEM-1024", "6471398b0a728ee1ef39e93bb89b526fbf59587a3662edadbcfc6c88a512cd71"},
 	}
 	for _, kat := range kats {
 		kat := kat
@@ -45,18 +51,26 @@ func testPQCgenKATKem(t *testing.T, name, expected string) {
 	}
 	f := sha256.New()
 	g := nist.NewDRBG(&seed)
-	fmt.Fprintf(f, "# %s\n\n", name)
+
+	// The "standard" branch reference implementation still uses Kyber
+	// as name instead of ML-KEM.
+	fmt.Fprintf(f, "# %s\n\n", strings.ReplaceAll(name, "ML-KEM-", "Kyber"))
 	for i := 0; i < 100; i++ {
 		g.Fill(seed[:])
 		fmt.Fprintf(f, "count = %d\n", i)
 		fmt.Fprintf(f, "seed = %X\n", seed)
 		g2 := nist.NewDRBG(&seed)
 
-		// This is not equivalent to g2.Fill(kseed[:]).  As the reference
-		// implementation calls randombytes twice generating the keypair,
-		// we have to do that as well.
-		g2.Fill(kseed[:32])
-		g2.Fill(kseed[32:])
+		if strings.HasPrefix(name, "ML-KEM") {
+			// https://github.com/pq-crystals/kyber/commit/830e0ba1a7fdba6cde03f8139b0d41ad2102b860
+			g2.Fill(kseed[:])
+		} else {
+			// This is not equivalent to g2.Fill(kseed[:]).  As the reference
+			// implementation calls randombytes twice generating the keypair,
+			// we have to do that as well.
+			g2.Fill(kseed[:32])
+			g2.Fill(kseed[32:])
+		}
 
 		g2.Fill(eseed)
 		pk, sk := scheme.DeriveKeyPair(kseed)
@@ -73,6 +87,6 @@ func testPQCgenKATKem(t *testing.T, name, expected string) {
 		fmt.Fprintf(f, "ss = %X\n\n", ss)
 	}
 	if fmt.Sprintf("%x", f.Sum(nil)) != expected {
-		t.Fatal()
+		t.Fatalf("%s %x %s", name, f.Sum(nil), expected)
 	}
 }
