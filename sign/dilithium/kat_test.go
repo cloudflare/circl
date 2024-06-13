@@ -41,9 +41,9 @@ func TestPQCgenKATSign(t *testing.T) {
 			fmt.Fprintf(f, "# %s\n\n", tc.name)
 			for i := 0; i < 100; i++ {
 				mlen := 33 * (i + 1)
-				g.Fill(seed[:])
+				g.Read(seed[:])
 				msg := make([]byte, mlen)
-				g.Fill(msg[:])
+				g.Read(msg[:])
 
 				fmt.Fprintf(f, "count = %d\n", i)
 				fmt.Fprintf(f, "seed = %X\n", seed)
@@ -51,7 +51,7 @@ func TestPQCgenKATSign(t *testing.T) {
 				fmt.Fprintf(f, "msg = %X\n", msg)
 
 				g2 := nist.NewDRBG(&seed)
-				g2.Fill(eseed[:])
+				g2.Read(eseed[:])
 				pk, sk := mode.NewKeyFromSeed(eseed[:])
 
 				fmt.Fprintf(f, "pk = %X\n", pk.Bytes())
