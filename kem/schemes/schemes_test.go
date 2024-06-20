@@ -160,4 +160,16 @@ func Example_schemes() {
 	// Kyber768-X448
 	// Kyber1024-X448
 	// P256Kyber768Draft00
+	// ntrulpr653
+	// ntrulpr761
+	// ntrulpr857
+	// ntrulpr953
+	// ntrulpr1013
+	// ntrulpr1277
+	// sntrup653
+	// sntrup761
+	// sntrup857
+	// sntrup953
+	// sntrup1013
+	// sntrup1277
 }
