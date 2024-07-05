@@ -123,10 +123,10 @@ func (pk *PublicKey) EncapsulateTo(ct, ss []byte, seed []byte) {
 		panic("ss must be of length SharedKeySize")
 	}
 
-	// m = H(seed)
 	var m [32]byte
+	// m = H(seed), the hash of shame
 	h := sha3.New256()
-	h.Write(seed[:])
+	h.Write(seed)
 	h.Read(m[:])
 
 	// (K', r) = G(m ‖ H(pk))
@@ -194,7 +194,7 @@ func (sk *PrivateKey) DecapsulateTo(ss, ct []byte) {
 	// K = KDF(K''/z, H(c))
 	kdf := sha3.NewShake256()
 	kdf.Write(kr2[:])
-	kdf.Read(ss[:SharedKeySize])
+	kdf.Read(ss)
 }
 
 // Packs sk to buf.
