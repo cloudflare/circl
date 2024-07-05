@@ -162,7 +162,7 @@ func (sk *PrivateKey) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary the public key from data.
 func (pk *PublicKey) UnmarshalBinary(data []byte) error {
 	if len(data) != PublicKeySize {
-		return errors.New("packed public key must be of eddilithium4.PublicKeySize bytes")
+		return errors.New("packed public key must be of eddilithium3.PublicKeySize bytes")
 	}
 	var buf [PublicKeySize]byte
 	copy(buf[:], data)
@@ -173,7 +173,7 @@ func (pk *PublicKey) UnmarshalBinary(data []byte) error {
 // UnmarshalBinary unpacks the private key from data.
 func (sk *PrivateKey) UnmarshalBinary(data []byte) error {
 	if len(data) != PrivateKeySize {
-		return errors.New("packed private key must be of eddilithium4.PrivateKeySize bytes")
+		return errors.New("packed private key must be of eddilithium3.PrivateKeySize bytes")
 	}
 	var buf [PrivateKeySize]byte
 	copy(buf[:], data)
@@ -215,7 +215,7 @@ func (sk *PrivateKey) Sign(
 	var sig [SignatureSize]byte
 
 	if opts.HashFunc() != crypto.Hash(0) {
-		return nil, errors.New("eddilithium4: cannot sign hashed message")
+		return nil, errors.New("eddilithium3: cannot sign hashed message")
 	}
 
 	SignTo(sk, msg, sig[:])
