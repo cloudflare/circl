@@ -203,12 +203,11 @@ func readFile(t *testing.T, fileName string) *vector {
 }
 
 func TestVectors(t *testing.T) {
-	// Draft published at https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-frost-15
+	// RFC 9519: https://www.rfc-editor.org/rfc/rfc9591
 	// Test vectors at https://github.com/cfrg/draft-irtf-cfrg-frost
-	// Version supported: v15
-	suite, vector := P256, readFile(t, "testdata/frost_p256_sha256.json")
+	suite, vector := P256, readFile(t, "testdata/rfc9591_frost_p256_sha256.json")
 	t.Run(fmt.Sprintf("%v", suite), func(tt *testing.T) { vector.test(tt, suite) })
 
-	suite, vector = Ristretto255, readFile(t, "testdata/frost_ristretto255_sha512.json")
+	suite, vector = Ristretto255, readFile(t, "testdata/rfc9591_frost_ristretto255_sha512.json")
 	t.Run(fmt.Sprintf("%v", suite), func(tt *testing.T) { vector.test(tt, suite) })
 }
