@@ -117,6 +117,10 @@ func Example() {
 	// Ed448
 	// Ed25519-Dilithium2
 	// Ed448-Dilithium3
+	// MAYO_1
+	// MAYO_2
+	// MAYO_3
+	// MAYO_5
 }
 
 func BenchmarkGenerateKeyPair(b *testing.B) {
