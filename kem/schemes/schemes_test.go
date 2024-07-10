@@ -155,6 +155,16 @@ func Example_schemes() {
 	// Kyber512
 	// Kyber768
 	// Kyber1024
+	// mceliece348864
+	// mceliece348864f
+	// mceliece460896
+	// mceliece460896f
+	// mceliece6688128
+	// mceliece6688128f
+	// mceliece6960119
+	// mceliece6960119f
+	// mceliece8192128
+	// mceliece8192128f
 	// Kyber512-X25519
 	// Kyber768-X25519
 	// Kyber768-X448
