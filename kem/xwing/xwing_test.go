@@ -13,8 +13,8 @@ func writeHex(w io.Writer, prefix string, val interface{}) {
 	indent := "  "
 	width := 74
 	hex := fmt.Sprintf("%x", val)
-	if len(prefix)+len(hex)+1 < width {
-		fmt.Fprintf(w, "%s %s\n", prefix, hex)
+	if len(prefix)+len(hex)+5 < width {
+		fmt.Fprintf(w, "%s     %s\n", prefix, hex)
 		return
 	}
 	fmt.Fprintf(w, "%s\n", prefix)
@@ -38,19 +38,22 @@ func TestVectors(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		var seed [SeedSize]byte
 		_, _ = h.Read(seed[:])
-		writeHex(w, "seed  ", seed)
+		writeHex(w, "seed", seed)
 
 		sk, pk := DeriveKeyPairPacked(seed[:])
-		writeHex(w, "sk    ", sk)
-		writeHex(w, "pk    ", pk)
+		writeHex(w, "sk", sk)
+		writeHex(w, "pk", pk)
 
 		var eseed [EncapsulationSeedSize]byte
 		_, _ = h.Read(eseed[:])
-		writeHex(w, "eseed ", eseed)
+		writeHex(w, "eseed", eseed)
 
-		ss, ct := Encapsulate(pk, eseed[:])
-		writeHex(w, "ct    ", ct)
-		writeHex(w, "ss    ", ss)
+		ss, ct, err := Encapsulate(pk, eseed[:])
+		if err != nil {
+			t.Fatal(err)
+		}
+		writeHex(w, "ct", ct)
+		writeHex(w, "ss", ss)
 
 		ss2 := Decapsulate(ct, sk)
 		if !bytes.Equal(ss, ss2) {
@@ -66,7 +69,7 @@ func TestVectors(t *testing.T) {
 	var cs [32]byte
 	_, _ = h.Read(cs[:])
 	got := fmt.Sprintf("%x", cs)
-	want := "1b2fd3a79ad0a82d814dcdf5da62a3830bc5f48e392dfe01ac1c3f9bb37ff86e"
+	want := "0e414d1453095f77f7959da8ddba81559e9d62508c2f665a004467420d5d0c51"
 	if got != want {
 		t.Fatalf("%s ≠ %s", got, want)
 	}

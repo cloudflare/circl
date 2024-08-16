@@ -62,7 +62,9 @@ func (*scheme) UnmarshalBinaryPublicKey(buf []byte) (kem.PublicKey, error) {
 		return nil, kem.ErrPubKeySize
 	}
 
-	pk.Unpack(buf)
+	if err := pk.Unpack(buf); err != nil {
+		return nil, err
+	}
 	return &pk, nil
 }
 

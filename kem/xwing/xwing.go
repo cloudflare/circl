@@ -2,7 +2,7 @@
 //
 //	https://datatracker.ietf.org/doc/draft-connolly-cfrg-xwing-kem
 //
-// Currently implements what will likely be -01.
+// Currently implements -04.
 package xwing
 
 import (
@@ -18,9 +18,10 @@ import (
 
 // An X-Wing private key.
 type PrivateKey struct {
-	m   mlkem768.PrivateKey
-	x   x25519.Key
-	xpk x25519.Key
+	seed [32]byte
+	m    mlkem768.PrivateKey
+	x    x25519.Key
+	xpk  x25519.Key
 }
 
 // An X-Wing public key.
@@ -31,13 +32,13 @@ type PublicKey struct {
 
 const (
 	// Size of a seed of a keypair
-	SeedSize = 96
+	SeedSize = 32
 
 	// Size of an X-Wing public key
 	PublicKeySize = 1216
 
 	// Size of an X-Wing private key
-	PrivateKeySize = 2464
+	PrivateKeySize = 32
 
 	// Size of the seed passed to EncapsulateTo
 	EncapsulationSeedSize = 64
@@ -74,9 +75,7 @@ func (sk *PrivateKey) Pack(buf []byte) {
 	if len(buf) != PrivateKeySize {
 		panic(kem.ErrPrivKeySize)
 	}
-	sk.m.Pack(buf[:mlkem768.PrivateKeySize])
-	copy(buf[mlkem768.PrivateKeySize:mlkem768.PrivateKeySize+32], sk.x[:])
-	copy(buf[mlkem768.PrivateKeySize+32:], sk.xpk[:])
+	copy(buf, sk.seed[:])
 }
 
 // Packs pk to buf.
@@ -95,18 +94,29 @@ func (pk *PublicKey) Pack(buf []byte) {
 //
 // Panics if seed is not of length SeedSize.
 func DeriveKeyPair(seed []byte) (*PrivateKey, *PublicKey) {
+	var (
+		sk PrivateKey
+		pk PublicKey
+	)
+
+	deriveKeyPair(seed, &sk, &pk)
+
+	return &sk, &pk
+}
+
+func deriveKeyPair(seed []byte, sk *PrivateKey, pk *PublicKey) {
 	if len(seed) != SeedSize {
 		panic(kem.ErrSeedSize)
 	}
 
-	var (
-		pk    PublicKey
-		sk    PrivateKey
-		seedm [mlkem768.KeySeedSize]byte
-	)
+	var seedm [mlkem768.KeySeedSize]byte
 
-	copy(seedm[:], seed[:64])
-	copy(sk.x[:], seed[64:])
+	copy(sk.seed[:], seed)
+
+	h := sha3.NewShake128()
+	_, _ = h.Write(seed)
+	_, _ = h.Read(seedm[:])
+	_, _ = h.Read(sk.x[:])
 
 	pkm, skm := mlkem768.NewKeyFromSeed(seedm[:])
 	sk.m = *skm
@@ -114,8 +124,6 @@ func DeriveKeyPair(seed []byte) (*PrivateKey, *PublicKey) {
 
 	x25519.KeyGen(&pk.x, &sk.x)
 	sk.xpk = pk.x
-
-	return &sk, &pk
 }
 
 // DeriveKeyPairPacked derives a keypair like DeriveKeyPair, and
@@ -170,15 +178,19 @@ func GenerateKeyPairPacked(rand io.Reader) ([]byte, []byte, error) {
 // Warning: note that the order of the returned ss and ct matches the
 // X-Wing standard, which is the reverse of the Circl KEM API.
 //
+// Returns ErrPubKey if ML-KEM encapsulation key check fails.
+//
 // Panics if pk is not of size PublicKeySize, or randomness could not
-// be read from crypto/rand.Reader
-func Encapsulate(pk, seed []byte) (ss, ct []byte) {
+// be read from crypto/rand.Reader.
+func Encapsulate(pk, seed []byte) (ss, ct []byte, err error) {
 	var pub PublicKey
-	pub.Unpack(pk)
+	if err := pub.Unpack(pk); err != nil {
+		return nil, nil, err
+	}
 	ct = make([]byte, CiphertextSize)
 	ss = make([]byte, SharedKeySize)
 	pub.EncapsulateTo(ct, ss, seed)
-	return ss, ct
+	return ss, ct, nil
 }
 
 // Decapsulate computes the shared key which is encapsulated in ct
@@ -276,24 +288,21 @@ func (sk *PrivateKey) DecapsulateTo(ss, ct []byte) {
 // Unpacks pk from buf.
 //
 // Panics if buf is not of size PublicKeySize.
-func (pk *PublicKey) Unpack(buf []byte) {
+//
+// Returns ErrPubKey if pk fails the ML-KEM encapsulation key check.
+func (pk *PublicKey) Unpack(buf []byte) error {
 	if len(buf) != PublicKeySize {
 		panic(kem.ErrPubKeySize)
 	}
 
 	copy(pk.x[:], buf[mlkem768.PublicKeySize:])
-	pk.m.Unpack(buf[:mlkem768.PublicKeySize])
+	return pk.m.Unpack(buf[:mlkem768.PublicKeySize])
 }
 
 // Unpacks sk from buf.
 //
 // Panics if buf is not of size PrivateKeySize.
 func (sk *PrivateKey) Unpack(buf []byte) {
-	if len(buf) != PrivateKeySize {
-		panic(kem.ErrPrivKeySize)
-	}
-
-	copy(sk.x[:], buf[mlkem768.PrivateKeySize:mlkem768.PrivateKeySize+32])
-	copy(sk.xpk[:], buf[mlkem768.PrivateKeySize+32:])
-	sk.m.Unpack(buf[:mlkem768.PrivateKeySize])
+	var pk PublicKey
+	deriveKeyPair(buf, sk, &pk)
 }
