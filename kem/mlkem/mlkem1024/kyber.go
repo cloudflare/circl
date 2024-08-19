@@ -203,9 +203,12 @@ func (sk *PrivateKey) Pack(buf []byte) {
 // Unpacks sk from buf.
 //
 // Panics if buf is not of size PrivateKeySize.
-func (sk *PrivateKey) Unpack(buf []byte) {
+//
+// Returns an error if buf is not of size PrivateKeySize, or private key
+// doesn't pass the ML-KEM decapsulation key check.
+func (sk *PrivateKey) Unpack(buf []byte) error {
 	if len(buf) != PrivateKeySize {
-		panic("buf must be of length PrivateKeySize")
+		return kem.ErrPrivKeySize
 	}
 
 	sk.sk = new(cpapke.PrivateKey)
@@ -213,9 +216,17 @@ func (sk *PrivateKey) Unpack(buf []byte) {
 	buf = buf[cpapke.PrivateKeySize:]
 	sk.pk = new(cpapke.PublicKey)
 	sk.pk.Unpack(buf[:cpapke.PublicKeySize])
+	var hpk [32]byte
+	h := sha3.New256()
+	h.Write(buf[:cpapke.PublicKeySize])
+	h.Read(hpk[:])
 	buf = buf[cpapke.PublicKeySize:]
 	copy(sk.hpk[:], buf[:32])
 	copy(sk.z[:], buf[32:])
+	if !bytes.Equal(hpk[:], sk.hpk[:]) {
+		return kem.ErrPrivKey
+	}
+	return nil
 }
 
 // Packs pk to buf.
@@ -389,6 +400,8 @@ func (*scheme) UnmarshalBinaryPrivateKey(buf []byte) (kem.PrivateKey, error) {
 		return nil, kem.ErrPrivKeySize
 	}
 	var ret PrivateKey
-	ret.Unpack(buf)
+	if err := ret.Unpack(buf); err != nil {
+		return nil, err
+	}
 	return &ret, nil
 }

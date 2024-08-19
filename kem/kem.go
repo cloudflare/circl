@@ -113,6 +113,9 @@ var (
 	// ErrPubKey is the error used if the provided public key is invalid.
 	ErrPubKey = errors.New("invalid public key")
 
+	// ErrPrivKey is the error used if the provided private key is invalid.
+	ErrPrivKey = errors.New("invalid private key")
+
 	// ErrCipherText is the error used if the provided ciphertext is invalid.
 	ErrCipherText = errors.New("invalid ciphertext")
 )
