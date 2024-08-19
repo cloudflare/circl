@@ -95,6 +95,8 @@ jobs:
         uses: codecov/codecov-action@v4
         with:
           file: ./coverage.txt
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
   osCompat:
     runs-on: ${{ matrix.os }}
     needs: [amd64_job]

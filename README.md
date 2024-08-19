@@ -81,10 +81,10 @@ Alternatively, look at the [Cloudflare Go](https://github.com/cloudflare/go/tree
 | KEM: Key Encapsulation Methods |
 |:---:|
 
- - [CSIDH](./dh/csidh): Post-Quantum Commutative Group Action ([CSIDH](https://csidh.isogeny.org/)).
- - [ML-KEM](./kem/mlkem): modes 512, 768, 1024 ([ML-KEM](https://nvlpubs.nist.gov/nistpubs/fips/nist.fips.203.pdf)).
+ - [ML-KEM](./kem/mlkem): modes 512, 768, 1024 ([FIPS-203](https://doi.org/10.6028/NIST.FIPS.203)).
  - [Kyber KEM](./kem/kyber): modes 512, 768, 1024 ([KYBER](https://pq-crystals.org/kyber/)).
  - [FrodoKEM](./kem/frodo): modes 640-SHAKE. ([FrodoKEM](https://frodokem.org/))
+ - [CSIDH](./dh/csidh): Post-Quantum Commutative Group Action ([CSIDH](https://csidh.isogeny.org/)).
  - (**insecure, deprecated**) ~~[SIDH/SIKE](./kem/sike)~~: Supersingular Key Encapsulation with primes p434, p503, p751 ([SIKE](https://sike.org/)).
 
 | Digital Signature Schemes |
@@ -159,9 +159,9 @@ To cite CIRCL, use one of the following formats and update the version and date 
 APA Style
 
 ```
-Faz-Hernández, A. and Kwiatkowski, K. (2019). Introducing CIRCL:
+Faz-Hernandez, A. and Kwiatkowski, K. (2019). Introducing CIRCL:
 An Advanced Cryptographic Library. Cloudflare. Available at
-https://github.com/cloudflare/circl. v1.3.9 Accessed Jun, 2024.
+https://github.com/cloudflare/circl. v1.4.0 Accessed Aug, 2024.
 ```
 
 Bibtex Source
@@ -169,14 +169,14 @@ Bibtex Source
 ```bibtex
 @manual{circl,
   title        = {Introducing CIRCL: An Advanced Cryptographic Library},
-  author       = {Armando Faz-Hern\'{a}ndez and Kris Kwiatkowski},
+  author       = {Armando Faz-Hernandez and Kris Kwiatkowski},
   organization = {Cloudflare},
   abstract     = {{CIRCL (Cloudflare Interoperable, Reusable Cryptographic Library) is
                    a collection of cryptographic primitives written in Go. The goal
                    of this library is to be used as a tool for experimental
                    deployment of cryptographic algorithms targeting Post-Quantum (PQ)
                    and Elliptic Curve Cryptography (ECC).}},
-  note         = {Available at \url{https://github.com/cloudflare/circl}. v1.3.9 Accessed Jun, 2024},
+  note         = {Available at \url{https://github.com/cloudflare/circl}. v1.4.0 Accessed Aug, 2024},
   month        = jun,
   year         = {2019}
 }
