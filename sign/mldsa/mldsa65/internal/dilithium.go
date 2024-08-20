@@ -244,7 +244,10 @@ func (sk *PrivateKey) computeT0andT1(t0, t1 *VecK) {
 }
 
 // Verify checks whether the given signature by pk on msg is valid.
-func Verify(pk *PublicKey, msg []byte, signature []byte) bool {
+//
+// For Dilithium this is the top-level verification function.
+// In ML-DSA, this is ML-DSA.Verify_internal.
+func Verify(pk *PublicKey, msg func(io.Writer), signature []byte) bool {
 	var sig unpackedSignature
 	var mu [64]byte
 	var zh VecL
@@ -262,7 +265,7 @@ func Verify(pk *PublicKey, msg []byte, signature []byte) bool {
 	// μ = CRH(tr ‖ msg)
 	h := sha3.NewShake256()
 	_, _ = h.Write(pk.tr[:])
-	_, _ = h.Write(msg)
+	msg(&h)
 	_, _ = h.Read(mu[:])
 
 	// Compute Az
@@ -279,7 +282,7 @@ func Verify(pk *PublicKey, msg []byte, signature []byte) bool {
 	// which is small enough for NTT().
 	Az2dct1.MulBy2toD(&pk.t1)
 	Az2dct1.NTT()
-	PolyDeriveUniformBall(&ch, sig.c[:32])
+	PolyDeriveUniformBall(&ch, sig.c[:])
 	ch.NTT()
 	for i := 0; i < K; i++ {
 		Az2dct1[i].MulHat(&Az2dct1[i], &ch)
@@ -307,8 +310,11 @@ func Verify(pk *PublicKey, msg []byte, signature []byte) bool {
 
 // SignTo signs the given message and writes the signature into signature.
 //
+// For Dilithium this is the top-level signing function. For ML-DSA
+// this is ML-DSA.Sign_internal.
+//
 //nolint:funlen
-func SignTo(sk *PrivateKey, msg []byte, signature []byte) {
+func SignTo(sk *PrivateKey, msg func(io.Writer), rnd [32]byte, signature []byte) {
 	var mu, rhop [64]byte
 	var w1Packed [PolyW1Size * K]byte
 	var y, yh VecL
@@ -324,16 +330,14 @@ func SignTo(sk *PrivateKey, msg []byte, signature []byte) {
 	//  μ = CRH(tr ‖ msg)
 	h := sha3.NewShake256()
 	_, _ = h.Write(sk.tr[:])
-	_, _ = h.Write(msg)
+	msg(&h)
 	_, _ = h.Read(mu[:])
 
 	// ρ' = CRH(key ‖ μ)
 	h.Reset()
 	_, _ = h.Write(sk.key[:])
 	if NIST {
-		// We implement the deterministic variant  where rnd is all zeroes.
-		// TODO expose randomized variant?
-		_, _ = h.Write(make([]byte, 32))
+		_, _ = h.Write(rnd[:])
 	}
 	_, _ = h.Write(mu[:])
 	_, _ = h.Read(rhop[:])
@@ -373,7 +377,7 @@ func SignTo(sk *PrivateKey, msg []byte, signature []byte) {
 		_, _ = h.Write(w1Packed[:])
 		_, _ = h.Read(sig.c[:])
 
-		PolyDeriveUniformBall(&ch, sig.c[:32])
+		PolyDeriveUniformBall(&ch, sig.c[:])
 		ch.NTT()
 
 		// Ensure ‖ w₀ - c·s2 ‖_∞ < γ₂ - β.

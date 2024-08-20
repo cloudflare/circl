@@ -4,7 +4,6 @@ package internal
 
 const (
 	Name          = "Dilithium5"
-	UseAES        = false
 	K             = 8
 	L             = 7
 	Eta           = 2

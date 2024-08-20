@@ -1,19 +1,17 @@
-// Code generated from modePkg.templ.go. DO NOT EDIT.
-
+// Code generated from pkg.templ.go. DO NOT EDIT.
 
 // mldsa87 implements NIST signature scheme ML-DSA-87 as defined in FIPS204.
-
 package mldsa87
 
 import (
 	"crypto"
+	cryptoRand "crypto/rand"
 	"errors"
 	"io"
 
+	"github.com/cloudflare/circl/sign"
 	common "github.com/cloudflare/circl/sign/internal/dilithium"
-
 	"github.com/cloudflare/circl/sign/mldsa/mldsa87/internal"
-
 )
 
 const (
@@ -51,20 +49,59 @@ func NewKeyFromSeed(seed *[SeedSize]byte) (*PublicKey, *PrivateKey) {
 
 // SignTo signs the given message and writes the signature into signature.
 // It will panic if signature is not of length at least SignatureSize.
-func SignTo(sk *PrivateKey, msg []byte, signature []byte) {
+//
+// ctx is the optional context string. Errors if ctx is larger than 255 bytes.
+// A nil context string is equivalent to an empty context string.
+func SignTo(sk *PrivateKey, msg, ctx []byte, randomized bool, sig []byte) error {
+	var rnd [32]byte
+	if randomized {
+		_, err := cryptoRand.Read(rnd[:])
+		if err != nil {
+			return err
+		}
+	}
+
+	if len(ctx) > 255 {
+		return sign.ErrContextTooLong
+	}
+
 	internal.SignTo(
 		(*internal.PrivateKey)(sk),
-		msg,
-		signature,
+		func(w io.Writer) {
+			_, _ = w.Write([]byte{0})
+			_, _ = w.Write([]byte{byte(len(ctx))})
+
+			if ctx != nil {
+				_, _ = w.Write(ctx)
+			}
+			w.Write(msg)
+		},
+		rnd,
+		sig,
 	)
+	return nil
 }
 
 // Verify checks whether the given signature by pk on msg is valid.
-func Verify(pk *PublicKey, msg []byte, signature []byte) bool {
+//
+// ctx is the optional context string. Fails if ctx is larger than 255 bytes.
+// A nil context string is equivalent to an empty context string.
+func Verify(pk *PublicKey, msg, ctx, sig []byte) bool {
+	if len(ctx) > 255 {
+		return false
+	}
 	return internal.Verify(
 		(*internal.PublicKey)(pk),
-		msg,
-		signature,
+		func(w io.Writer) {
+			_, _ = w.Write([]byte{0})
+			_, _ = w.Write([]byte{byte(len(ctx))})
+
+			if ctx != nil {
+				_, _ = w.Write(ctx)
+			}
+			_, _ = w.Write(msg)
+		},
+		sig,
 	)
 }
 
@@ -144,15 +181,17 @@ func (sk *PrivateKey) UnmarshalBinary(data []byte) error {
 // interface.  The package-level SignTo function might be more convenient
 // to use.
 func (sk *PrivateKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) (
-	signature []byte, err error) {
-	var sig [SignatureSize]byte
+	sig []byte, err error) {
+	var ret [SignatureSize]byte
 
 	if opts.HashFunc() != crypto.Hash(0) {
 		return nil, errors.New("dilithium: cannot sign hashed message")
 	}
+	if err = SignTo(sk, msg, nil, false, ret[:]); err != nil {
+		return nil, err
+	}
 
-	SignTo(sk, msg, sig[:])
-	return sig[:], nil
+	return ret[:], nil
 }
 
 // Computes the public key corresponding to this private key.
@@ -179,4 +218,115 @@ func (pk *PublicKey) Equal(other crypto.PublicKey) bool {
 		return false
 	}
 	return (*internal.PublicKey)(pk).Equal((*internal.PublicKey)(castOther))
+}
+
+// Boilerplate for generic signatures API
+
+type scheme struct{}
+
+var sch sign.Scheme = &scheme{}
+
+// Scheme returns a generic signature interface for ML-DSA-87.
+func Scheme() sign.Scheme { return sch }
+
+func (*scheme) Name() string        { return "ML-DSA-87" }
+func (*scheme) PublicKeySize() int  { return PublicKeySize }
+func (*scheme) PrivateKeySize() int { return PrivateKeySize }
+func (*scheme) SignatureSize() int  { return SignatureSize }
+func (*scheme) SeedSize() int       { return SeedSize }
+
+// TODO TLSIdentifier() and OID()
+
+func (*scheme) SupportsContext() bool {
+	return true
+}
+
+func (*scheme) GenerateKey() (sign.PublicKey, sign.PrivateKey, error) {
+	return GenerateKey(nil)
+}
+
+func (*scheme) Sign(
+	sk sign.PrivateKey,
+	msg []byte,
+	opts *sign.SignatureOpts,
+) []byte {
+	var ctx []byte
+	sig := make([]byte, SignatureSize)
+
+	priv, ok := sk.(*PrivateKey)
+	if !ok {
+		panic(sign.ErrTypeMismatch)
+	}
+	if opts != nil && opts.Context != "" {
+		ctx = []byte(opts.Context)
+	}
+	err := SignTo(priv, msg, ctx, false, sig)
+	if err != nil {
+		panic(err)
+	}
+
+	return sig
+}
+
+func (*scheme) Verify(
+	pk sign.PublicKey,
+	msg, sig []byte,
+	opts *sign.SignatureOpts,
+) bool {
+	var ctx []byte
+	pub, ok := pk.(*PublicKey)
+	if !ok {
+		panic(sign.ErrTypeMismatch)
+	}
+	if opts != nil && opts.Context != "" {
+		ctx = []byte(opts.Context)
+	}
+	return Verify(pub, msg, ctx, sig)
+}
+
+func (*scheme) DeriveKey(seed []byte) (sign.PublicKey, sign.PrivateKey) {
+	if len(seed) != SeedSize {
+		panic(sign.ErrSeedSize)
+	}
+	var seed2 [SeedSize]byte
+	copy(seed2[:], seed)
+	return NewKeyFromSeed(&seed2)
+}
+
+func (*scheme) UnmarshalBinaryPublicKey(buf []byte) (sign.PublicKey, error) {
+	if len(buf) != PublicKeySize {
+		return nil, sign.ErrPubKeySize
+	}
+
+	var (
+		buf2 [PublicKeySize]byte
+		ret  PublicKey
+	)
+
+	copy(buf2[:], buf)
+	ret.Unpack(&buf2)
+	return &ret, nil
+}
+
+func (*scheme) UnmarshalBinaryPrivateKey(buf []byte) (sign.PrivateKey, error) {
+	if len(buf) != PrivateKeySize {
+		return nil, sign.ErrPrivKeySize
+	}
+
+	var (
+		buf2 [PrivateKeySize]byte
+		ret  PrivateKey
+	)
+
+	copy(buf2[:], buf)
+	ret.Unpack(&buf2)
+	return &ret, nil
+}
+
+func (sk *PrivateKey) Scheme() sign.Scheme {
+	return sch
+}
+
+func (sk *PublicKey) Scheme() sign.Scheme {
+	return sch
 }

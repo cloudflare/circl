@@ -8,7 +8,6 @@ package internal
 
 const (
 	Name          = "{{.Name}}"
-	UseAES        = {{.UseAES}}
 	K             = {{.K}}
 	L             = {{.L}}
 	Eta           = {{.Eta}}

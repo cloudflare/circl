@@ -91,6 +91,7 @@ Alternatively, look at the [Cloudflare Go](https://github.com/cloudflare/go/tree
 |:---:|
 
  - [Dilithium](./sign/dilithium): modes 2, 3, 5 ([Dilithium](https://pq-crystals.org/dilithium/)).
+ - [ML-DSA](./sign/mldsa): modes 44, 65, 87 ([FIPS 204](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.204.pdf)).
 
 ### Zero-knowledge Proofs
 

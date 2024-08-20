@@ -4,7 +4,6 @@ package internal
 
 const (
 	Name          = "ML-DSA-44"
-	UseAES        = false
 	K             = 4
 	L             = 4
 	Eta           = 2

@@ -12,7 +12,7 @@ import (
 
 // DeriveX4Available indicates whether the system supports the quick fourway
 // sampling variants like PolyDeriveUniformX4.
-var DeriveX4Available = keccakf1600.IsEnabledX4() && !UseAES
+var DeriveX4Available = keccakf1600.IsEnabledX4()
 
 // For each i, sample ps[i] uniformly from the given seed and nonces[i].
 // ps[i] may be nil and is ignored in that case.
@@ -91,13 +91,9 @@ func PolyDeriveUniformX4(ps [4]*common.Poly, seed *[32]byte, nonces [4]uint16) {
 // p will be normalized.
 func PolyDeriveUniform(p *common.Poly, seed *[32]byte, nonce uint16) {
 	var i, length int
-	var buf [12 * 16]byte // fits 168B SHAKE-128 rate and 12 16B AES blocks
+	var buf [12 * 16]byte // fits 168B SHAKE-128 rate
 
-	if UseAES {
-		length = 12 * 16
-	} else {
-		length = 168
-	}
+	length = 168
 
 	sample := func() {
 		// Note that 3 divides into 168 and 12*16, so we use up buf completely.
@@ -113,25 +109,16 @@ func PolyDeriveUniform(p *common.Poly, seed *[32]byte, nonce uint16) {
 		}
 	}
 
-	if UseAES {
-		h := common.NewAesStream128(seed, nonce)
+	var iv [32 + 2]byte // 32 byte seed + uint16 nonce
+	h := sha3.NewShake128()
+	copy(iv[:32], seed[:])
+	iv[32] = uint8(nonce)
+	iv[33] = uint8(nonce >> 8)
+	_, _ = h.Write(iv[:])
 
-		for i < common.N {
-			h.SqueezeInto(buf[:length])
-			sample()
-		}
-	} else {
-		var iv [32 + 2]byte // 32 byte seed + uint16 nonce
-		h := sha3.NewShake128()
-		copy(iv[:32], seed[:])
-		iv[32] = uint8(nonce)
-		iv[33] = uint8(nonce >> 8)
-		_, _ = h.Write(iv[:])
-
-		for i < common.N {
-			_, _ = h.Read(buf[:168])
-			sample()
-		}
+	for i < common.N {
+		_, _ = h.Read(buf[:168])
+		sample()
 	}
 }
 
@@ -142,13 +129,9 @@ func PolyDeriveUniform(p *common.Poly, seed *[32]byte, nonce uint16) {
 func PolyDeriveUniformLeqEta(p *common.Poly, seed *[64]byte, nonce uint16) {
 	// Assumes 2 < η < 8.
 	var i, length int
-	var buf [9 * 16]byte // fits 136B SHAKE-256 rate and 9 16B AES blocks
+	var buf [9 * 16]byte // fits 136B SHAKE-256 rate
 
-	if UseAES {
-		length = 9 * 16
-	} else {
-		length = 136
-	}
+	length = 136
 
 	sample := func() {
 		// We use rejection sampling
@@ -181,28 +164,19 @@ func PolyDeriveUniformLeqEta(p *common.Poly, seed *[64]byte, nonce uint16) {
 		}
 	}
 
-	if UseAES {
-		h := common.NewAesStream256(seed, nonce)
+	var iv [64 + 2]byte // 64 byte seed + uint16 nonce
 
-		for i < common.N {
-			h.SqueezeInto(buf[:length])
-			sample()
-		}
-	} else {
-		var iv [64 + 2]byte // 64 byte seed + uint16 nonce
+	h := sha3.NewShake256()
+	copy(iv[:64], seed[:])
+	iv[64] = uint8(nonce)
+	iv[65] = uint8(nonce >> 8)
 
-		h := sha3.NewShake256()
-		copy(iv[:64], seed[:])
-		iv[64] = uint8(nonce)
-		iv[65] = uint8(nonce >> 8)
+	// 136 is SHAKE-256 rate
+	_, _ = h.Write(iv[:])
 
-		// 136 is SHAKE-256 rate
-		_, _ = h.Write(iv[:])
-
-		for i < common.N {
-			_, _ = h.Read(buf[:136])
-			sample()
-		}
+	for i < common.N {
+		_, _ = h.Read(buf[:136])
+		sample()
 	}
 }
 
@@ -223,18 +197,13 @@ func VecLDeriveUniformLeGamma1(v *VecL, seed *[64]byte, nonce uint16) {
 func PolyDeriveUniformLeGamma1(p *common.Poly, seed *[64]byte, nonce uint16) {
 	var buf [PolyLeGamma1Size]byte
 
-	if UseAES {
-		h := common.NewAesStream256(seed, nonce)
-		h.SqueezeInto(buf[:])
-	} else {
-		var iv [66]byte
-		h := sha3.NewShake256()
-		copy(iv[:64], seed[:])
-		iv[64] = uint8(nonce)
-		iv[65] = uint8(nonce >> 8)
-		_, _ = h.Write(iv[:])
-		_, _ = h.Read(buf[:])
-	}
+	var iv [66]byte
+	h := sha3.NewShake256()
+	copy(iv[:64], seed[:])
+	iv[64] = uint8(nonce)
+	iv[65] = uint8(nonce >> 8)
+	_, _ = h.Write(iv[:])
+	_, _ = h.Read(buf[:])
 
 	PolyUnpackLeGamma1(p, buf[:])
 }
@@ -251,7 +220,7 @@ func PolyDeriveUniformBallX4(ps [4]*common.Poly, seed []byte) {
 	state := perm.Initialize(false)
 
 	// Absorb the seed in the four states
-	for i := 0; i < 32/8; i++ {
+	for i := 0; i < CTildeSize/8; i++ {
 		v := binary.LittleEndian.Uint64(seed[8*i : 8*(i+1)])
 		for j := 0; j < 4; j++ {
 			state[i*4+j] = v
@@ -260,7 +229,7 @@ func PolyDeriveUniformBallX4(ps [4]*common.Poly, seed []byte) {
 
 	// SHAKE256 domain separator and padding
 	for j := 0; j < 4; j++ {
-		state[(32/8)*4+j] ^= 0x1f
+		state[(CTildeSize/8)*4+j] ^= 0x1f
 		state[16*4+j] ^= 0x80 << 56
 	}
 	perm.Permute()

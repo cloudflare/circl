@@ -52,12 +52,7 @@ func (m Mode) Mode() string {
 		return strings.ReplaceAll(m.Name, "-", "")
 	}
 
-	return strings.ReplaceAll(strings.ReplaceAll(m.Name,
-		"Dilithium", "Mode"), "-AES", "AES")
-}
-
-func (m Mode) UseAES() bool {
-	return strings.HasSuffix(m.Name, "-AES")
+	return strings.ReplaceAll(m.Name, "Dilithium", "Mode")
 }
 
 func (m Mode) NIST() bool {
@@ -68,19 +63,6 @@ var (
 	Modes = []Mode{
 		{
 			Name:          "Dilithium2",
-			K:             4,
-			L:             4,
-			Eta:           2,
-			DoubleEtaBits: 3,
-			Omega:         80,
-			Tau:           39,
-			Gamma1Bits:    17,
-			Gamma2:        (params.Q - 1) / 88,
-			TRSize:        32,
-			CTildeSize:    32,
-		},
-		{
-			Name:          "Dilithium2-AES",
 			K:             4,
 			L:             4,
 			Eta:           2,
@@ -106,33 +88,7 @@ var (
 			CTildeSize:    32,
 		},
 		{
-			Name:          "Dilithium3-AES",
-			K:             6,
-			L:             5,
-			Eta:           4,
-			DoubleEtaBits: 4,
-			Omega:         55,
-			Tau:           49,
-			Gamma1Bits:    19,
-			Gamma2:        (params.Q - 1) / 32,
-			TRSize:        32,
-			CTildeSize:    32,
-		},
-		{
 			Name:          "Dilithium5",
-			K:             8,
-			L:             7,
-			Eta:           2,
-			DoubleEtaBits: 3,
-			Omega:         75,
-			Tau:           60,
-			Gamma1Bits:    19,
-			Gamma2:        (params.Q - 1) / 32,
-			TRSize:        32,
-			CTildeSize:    32,
-		},
-		{
-			Name:          "Dilithium5-AES",
 			K:             8,
 			L:             7,
 			Eta:           2,
@@ -189,7 +145,6 @@ var (
 
 func main() {
 	generateModePackageFiles()
-	generateModeToplevelFiles()
 	generateParamsFiles()
 	generateSourceFiles()
 }
@@ -227,35 +182,9 @@ func generateParamsFiles() {
 	}
 }
 
-// Generates modeX.go from templates/mode.templ.go
-func generateModeToplevelFiles() {
-	tl, err := template.ParseFiles("templates/mode.templ.go")
-	if err != nil {
-		panic(err)
-	}
-
-	for _, mode := range Modes {
-		buf := new(bytes.Buffer)
-		err := tl.Execute(buf, mode)
-		if err != nil {
-			panic(err)
-		}
-
-		res := string(buf.Bytes())
-		offset := strings.Index(res, TemplateWarning)
-		if offset == -1 {
-			panic("Missing template warning in mode.templ.go")
-		}
-		err = os.WriteFile(mode.Pkg()+".go", []byte(res[offset:]), 0o644)
-		if err != nil {
-			panic(err)
-		}
-	}
-}
-
-// Generates modeX/dilithium.go from templates/modePkg.templ.go
+// Generates modeX/dilithium.go from templates/pkg.templ.go
 func generateModePackageFiles() {
-	tl, err := template.ParseFiles("templates/modePkg.templ.go")
+	tl, err := template.ParseFiles("templates/pkg.templ.go")
 	if err != nil {
 		panic(err)
 	}
@@ -267,12 +196,16 @@ func generateModePackageFiles() {
 			panic(err)
 		}
 
-		res := string(buf.Bytes())
-		offset := strings.Index(res, TemplateWarning)
-		if offset == -1 {
-			panic("Missing template warning in modePkg.templ.go")
+		res, err := format.Source(buf.Bytes())
+		if err != nil {
+			panic("error formating code")
 		}
-		err = os.WriteFile(mode.PkgPath()+"/dilithium.go", []byte(res[offset:]), 0o644)
+
+		offset := strings.Index(string(res), TemplateWarning)
+		if offset == -1 {
+			panic("Missing template warning in pkg.templ.go")
+		}
+		err = os.WriteFile(mode.PkgPath()+"/dilithium.go", res[offset:], 0o644)
 		if err != nil {
 			panic(err)
 		}

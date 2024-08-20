@@ -4,6 +4,7 @@ package internal
 
 import (
 	"encoding/binary"
+	"io"
 	"testing"
 
 	common "github.com/cloudflare/circl/sign/internal/dilithium"
@@ -36,32 +37,38 @@ func BenchmarkVerify(b *testing.B) {
 	// Note that the expansion of the matrix A is done at Unpacking/Keygen
 	// instead of at the moment of verification (as in the reference
 	// implementation.)
-	var seed [32]byte
-	var msg [8]byte
-	var sig [SignatureSize]byte
+	var (
+		seed [32]byte
+		msg  [8]byte
+		sig  [SignatureSize]byte
+		rnd  [32]byte
+	)
 	pk, sk := NewKeyFromSeed(&seed)
-	SignTo(sk, msg[:], sig[:])
+	SignTo(sk, func(w io.Writer) { _, _ = w.Write(msg[:]) }, rnd, sig[:])
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		// We should generate a new signature for every verify attempt,
 		// as this influences the time a little bit.  This difference, however,
 		// is small and generating a new signature in between creates a lot
 		// pressure on the allocator which makes an accurate measurement hard.
-		Verify(pk, msg[:], sig[:])
+		Verify(pk, func(w io.Writer) { _, _ = w.Write(msg[:]) }, sig[:])
 	}
 }
 
 func BenchmarkSign(b *testing.B) {
 	// Note that the expansion of the matrix A is done at Unpacking/Keygen
 	// instead of at the moment of signing (as in the reference implementation.)
-	var seed [32]byte
-	var msg [8]byte
-	var sig [SignatureSize]byte
+	var (
+		seed [32]byte
+		msg  [8]byte
+		sig  [SignatureSize]byte
+		rnd  [32]byte
+	)
 	_, sk := NewKeyFromSeed(&seed)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		binary.LittleEndian.PutUint64(msg[:], uint64(i))
-		SignTo(sk, msg[:], sig[:])
+		SignTo(sk, func(w io.Writer) { _, _ = w.Write(msg[:]) }, rnd, sig[:])
 	}
 }
 
@@ -85,13 +92,16 @@ func BenchmarkPublicFromPrivate(b *testing.B) {
 }
 
 func TestSignThenVerifyAndPkSkPacking(t *testing.T) {
-	var seed [common.SeedSize]byte
-	var sig [SignatureSize]byte
-	var msg [8]byte
-	var pkb [PublicKeySize]byte
-	var skb [PrivateKeySize]byte
-	var pk2 PublicKey
-	var sk2 PrivateKey
+	var (
+		seed [common.SeedSize]byte
+		sig  [SignatureSize]byte
+		msg  [8]byte
+		pkb  [PublicKeySize]byte
+		skb  [PrivateKeySize]byte
+		pk2  PublicKey
+		sk2  PrivateKey
+		rnd  [32]byte
+	)
 	for i := uint64(0); i < 100; i++ {
 		binary.LittleEndian.PutUint64(seed[:], i)
 		pk, sk := NewKeyFromSeed(&seed)
@@ -100,8 +110,8 @@ func TestSignThenVerifyAndPkSkPacking(t *testing.T) {
 		}
 		for j := uint64(0); j < 10; j++ {
 			binary.LittleEndian.PutUint64(msg[:], j)
-			SignTo(sk, msg[:], sig[:])
-			if !Verify(pk, msg[:], sig[:]) {
+			SignTo(sk, func(w io.Writer) { _, _ = w.Write(msg[:]) }, rnd, sig[:])
+			if !Verify(pk, func(w io.Writer) { _, _ = w.Write(msg[:]) }, sig[:]) {
 				t.Fatal()
 			}
 		}
