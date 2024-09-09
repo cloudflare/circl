@@ -49,6 +49,7 @@ var allSchemes = [...]kem.Scheme{
 	hybrid.Kyber768X448(),
 	hybrid.Kyber1024X448(),
 	hybrid.P256Kyber768Draft00(),
+	hybrid.X25519MLKEM768(),
 }
 
 var allSchemeNames map[string]kem.Scheme
