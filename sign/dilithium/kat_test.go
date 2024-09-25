@@ -24,14 +24,13 @@ func TestPQCgenKATSign(t *testing.T) {
 		{"Dilithium3", "8196b32212753f525346201ffec1c7a0a852596fa0b57bd4e2746231dab44d55"},
 		{"Dilithium5", "7ded97a6e6c809b43b54c248171d7504fa6a0cab651bf288bb00034782667481"},
 
-		// TODO Update to final FIPS 204 standard. Test vectors below are for the IPD.
-		//
-		// Generated from reference implementation commit e7bed6258b9a3703ce78d4ec3,
-		// which can be found on the standard branch
-		// of https://github.com/pq-crystals/dilithium
-		// {"ML-DSA-44", "4657f244d1204e5847b3cacea4fc6116579571bee8ac89b8cba6771f303ee260"},
-		// {"ML-DSA-65", "99a95d7ef804020a666f455c5003232d0c0200dfc4f5df85dceb8f56256dcba8"},
-		// {"ML-DSA-87", "3377835fffb7cf9aac52947225c8974335bc05532ddf672a8b706ab8991435a2"},
+		// Generated from reference implementation commit cbcd8753a43402885c90343c
+		// which can be found at https://github.com/pq-crystals/dilithium
+		// with the DILITHIUM_RANDOMIZED_SIGNING macro unset in ref/config.h
+		// to disable randomized signing.
+		{"ML-DSA-44", "14f92c48abc0d63ea263cce3c83183c8360c6ede7cbd5b65bd7c6f31e38f0ea5"},
+		{"ML-DSA-65", "595a8eff6988159c94eb5398294458c5d27d21c994fb64cadbee339173abcf63"},
+		{"ML-DSA-87", "35e2ce3d88b3311517bf8d41aa2cd24aa0fbda2bb8052ca8af4ad8d7c7344074"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			mode := schemes.ByName(tc.name)

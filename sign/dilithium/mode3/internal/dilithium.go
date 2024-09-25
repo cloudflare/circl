@@ -178,6 +178,11 @@ func NewKeyFromSeed(seed *[common.SeedSize]byte) (*PublicKey, *PrivateKey) {
 
 	h := sha3.NewShake256()
 	_, _ = h.Write(seed[:])
+
+	if NIST {
+		_, _ = h.Write([]byte{byte(K), byte(L)})
+	}
+
 	_, _ = h.Read(eSeed[:])
 
 	copy(pk.rho[:], eSeed[:32])
