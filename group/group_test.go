@@ -20,7 +20,6 @@ var allGroups = []group.Group{
 func TestGroup(t *testing.T) {
 	const testTimes = 1 << 7
 	for _, g := range allGroups {
-		g := g
 		n := g.(fmt.Stringer).String()
 		t.Run(n+"/Add", func(tt *testing.T) { testAdd(tt, testTimes, g) })
 		t.Run(n+"/Neg", func(tt *testing.T) { testNeg(tt, testTimes, g) })

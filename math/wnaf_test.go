@@ -63,7 +63,6 @@ func BenchmarkOmegaNAF(b *testing.B) {
 	Two128.Lsh(Two128, 128)
 
 	for w := uint(2); w < 6; w++ {
-		w := w // pin variable
 		b.Run(fmt.Sprintf("%v", w), func(b *testing.B) {
 			x, _ := rand.Int(rand.Reader, Two128)
 			b.ResetTimer()
@@ -79,7 +78,6 @@ func BenchmarkOmegaNAFRegular(b *testing.B) {
 	Two128.Lsh(Two128, 128)
 
 	for w := uint(2); w < 6; w++ {
-		w := w // pin variable
 		b.Run(fmt.Sprintf("%v", w), func(b *testing.B) {
 			x, _ := rand.Int(rand.Reader, Two128)
 			x.SetBit(x, 0, uint(1)) // odd-numbers

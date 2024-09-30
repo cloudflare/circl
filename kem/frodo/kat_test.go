@@ -23,7 +23,6 @@ func TestPQCgenKATKem(t *testing.T) {
 		{"FrodoKEM-640-SHAKE", "604a10cfc871dfaed9cb5b057c644ab03b16852cea7f39bc7f9831513b5b1cfa"},
 	}
 	for _, kat := range kats {
-		kat := kat
 		t.Run(kat.name, func(t *testing.T) {
 			testPQCgenKATKem(t, kat.name, kat.want)
 		})

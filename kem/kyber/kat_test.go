@@ -31,7 +31,6 @@ func TestPQCgenKATKem(t *testing.T) {
 		{"ML-KEM-1024", "3fba7327d0320cb6134badf2a1bcb963a5b3c0026c7dece8f00d6a6155e47b33"},
 	}
 	for _, kat := range kats {
-		kat := kat
 		t.Run(kat.name, func(t *testing.T) {
 			testPQCgenKATKem(t, kat.name, kat.want)
 		})

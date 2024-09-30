@@ -115,7 +115,6 @@ type vector struct {
 
 func BenchmarkHash(b *testing.B) {
 	for _, g := range allGroups {
-		g := g
 		name := g.(fmt.Stringer).String()
 		b.Run(name+"/HashToElement", func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
