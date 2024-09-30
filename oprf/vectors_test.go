@@ -245,7 +245,7 @@ func TestVectors(t *testing.T) {
 	for i := range v {
 		suite, err := GetSuite(v[i].Identifier)
 		if err != nil {
-			t.Logf(v[i].Identifier + " not supported yet")
+			t.Log(v[i].Identifier + " not supported yet")
 			continue
 		}
 		t.Run(fmt.Sprintf("%v/Mode%v", suite, v[i].Mode), v[i].test)

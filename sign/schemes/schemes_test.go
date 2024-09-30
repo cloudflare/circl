@@ -17,7 +17,6 @@ func TestCaseSensitivity(t *testing.T) {
 func TestApi(t *testing.T) {
 	allSchemes := schemes.All()
 	for _, scheme := range allSchemes {
-		scheme := scheme
 		t.Run(scheme.Name(), func(t *testing.T) {
 			if scheme == nil {
 				t.Fatal()
@@ -122,7 +121,6 @@ func Example() {
 func BenchmarkGenerateKeyPair(b *testing.B) {
 	allSchemes := schemes.All()
 	for _, scheme := range allSchemes {
-		scheme := scheme
 		b.Run(scheme.Name(), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				_, _, _ = scheme.GenerateKey()
@@ -136,7 +134,6 @@ func BenchmarkSign(b *testing.B) {
 	opts := &sign.SignatureOpts{}
 	for _, scheme := range allSchemes {
 		msg := []byte(fmt.Sprintf("Signing with %s", scheme.Name()))
-		scheme := scheme
 		_, sk, _ := scheme.GenerateKey()
 		b.Run(scheme.Name(), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
@@ -151,7 +148,6 @@ func BenchmarkVerify(b *testing.B) {
 	opts := &sign.SignatureOpts{}
 	for _, scheme := range allSchemes {
 		msg := []byte(fmt.Sprintf("Signing with %s", scheme.Name()))
-		scheme := scheme
 		pk, sk, _ := scheme.GenerateKey()
 		sig := scheme.Sign(sk, msg, opts)
 		b.Run(scheme.Name(), func(b *testing.B) {

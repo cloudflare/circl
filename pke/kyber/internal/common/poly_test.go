@@ -44,7 +44,6 @@ func TestDecompressMessage(t *testing.T) {
 
 func TestCompress(t *testing.T) {
 	for _, d := range []int{4, 5, 10, 11} {
-		d := d
 		t.Run(fmt.Sprintf("d=%d", d), func(t *testing.T) {
 			var p, q Poly
 			bound := (Q + (1 << uint(d))) >> uint(d+1)
@@ -351,7 +350,6 @@ func (p *Poly) OldCompressTo(m []byte, d int) {
 
 func TestCompressFullInputFirstCoeff(t *testing.T) {
 	for _, d := range []int{4, 5, 10, 11} {
-		d := d
 		t.Run(fmt.Sprintf("d=%d", d), func(t *testing.T) {
 			var p, q Poly
 			bound := (Q + (1 << uint(d))) >> uint(d+1)

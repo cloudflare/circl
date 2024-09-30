@@ -9,7 +9,6 @@ import (
 
 func TestPEM(t *testing.T) {
 	for _, scheme := range schemes.All() {
-		scheme := scheme
 		t.Run(scheme.Name(), func(t *testing.T) {
 			if scheme == nil {
 				t.Fatal()

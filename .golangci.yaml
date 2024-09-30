@@ -12,11 +12,12 @@ linters:
     # - structcheck (deprecated since v1.49.0)
     # - varcheck    (deprecated since v1.49.0)
     # - deadcode    (deprecated since v1.49.0)
+    # - exportloopref (deprecated since v1.60.2)
     - bodyclose
+    - copyloopvar
     - depguard
     - dogsled
     - errcheck
-    - exportloopref
     - forbidigo
     - funlen
     - goconst
@@ -56,15 +57,17 @@ linters-settings:
   goconst:
     min-occurrences: 4
   govet:
-    check-shadowing: true
+    enable-all: true
+    disable:
+      - fieldalignment
   staticcheck:
     # TODO: replace deprecated elliptic.Marshal, elliptic.GenerateKey,
     # elliptic.Unmarshal, params.ScalarBaseMult before re-enabling SA1019.
     checks: ["*", "-SA1019"]
+  gosec:
+    excludes:
+      - G115
 
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
-
-output:
-  format: github-actions

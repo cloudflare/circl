@@ -16,7 +16,7 @@ func ReportError(t testing.TB, got, want interface{}, inputs ...interface{}) {
 	}
 	fmt.Fprintf(b, "got:  %v\nwant: %v", got, want)
 	t.Helper()
-	t.Fatalf(b.String())
+	t.Fatal(b.String())
 }
 
 // CheckOk fails the test if result == false.

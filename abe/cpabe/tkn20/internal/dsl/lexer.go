@@ -1,6 +1,7 @@
 package dsl
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -58,7 +59,7 @@ func (l *Lexer) scanTokens() error {
 	}
 	l.addToken(EOF)
 	if l.hadError {
-		return fmt.Errorf(strings.TrimSpace(errMsg))
+		return errors.New(strings.TrimSpace(errMsg))
 	}
 	return nil
 }

@@ -17,7 +17,6 @@ func TestCaseSensitivity(t *testing.T) {
 func BenchmarkGenerateKeyPair(b *testing.B) {
 	allSchemes := schemes.All()
 	for _, scheme := range allSchemes {
-		scheme := scheme
 		b.Run(scheme.Name(), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				_, _, _ = scheme.GenerateKeyPair()
@@ -29,7 +28,6 @@ func BenchmarkGenerateKeyPair(b *testing.B) {
 func BenchmarkEncapsulate(b *testing.B) {
 	allSchemes := schemes.All()
 	for _, scheme := range allSchemes {
-		scheme := scheme
 		pk, _, _ := scheme.GenerateKeyPair()
 		b.Run(scheme.Name(), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
@@ -42,7 +40,6 @@ func BenchmarkEncapsulate(b *testing.B) {
 func BenchmarkDecapsulate(b *testing.B) {
 	allSchemes := schemes.All()
 	for _, scheme := range allSchemes {
-		scheme := scheme
 		pk, sk, _ := scheme.GenerateKeyPair()
 		ct, _, _ := scheme.Encapsulate(pk)
 		b.Run(scheme.Name(), func(b *testing.B) {
@@ -56,7 +53,6 @@ func BenchmarkDecapsulate(b *testing.B) {
 func TestApi(t *testing.T) {
 	allSchemes := schemes.All()
 	for _, scheme := range allSchemes {
-		scheme := scheme
 		t.Run(scheme.Name(), func(t *testing.T) {
 			if scheme == nil {
 				t.Fatal()
