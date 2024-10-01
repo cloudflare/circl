@@ -41,6 +41,8 @@ jobs:
         run: go build -v ./...
       - name: Testing
         run: go test -v -count=1 ./...
+      - name: Testing with data race detector
+        run: go test -v -count=1 ./xof/k12
   exotic_job:
     name: Go-${{matrix.CFG[2]}}/${{matrix.CFG[0]}}
     needs: [amd64_job]
