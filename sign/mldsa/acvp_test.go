@@ -12,16 +12,6 @@ import (
 	"github.com/cloudflare/circl/sign/schemes"
 )
 
-// Implemented by ML-DSA's private key. Allows us to access the internal
-// signing function.
-type mldsaSigner interface {
-	SignTo(
-		msg func(io.Writer),
-		rnd [32]byte,
-		signature []byte,
-	)
-}
-
 // []byte but is encoded in hex for JSON
 type HexBytes []byte
 
