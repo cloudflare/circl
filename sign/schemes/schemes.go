@@ -30,7 +30,6 @@ var allSchemes = [...]sign.Scheme{
 	ed448.Scheme(),
 	eddilithium2.Scheme(),
 	eddilithium3.Scheme(),
-
 	dilithium2.Scheme(),
 	dilithium3.Scheme(),
 	dilithium5.Scheme(),
