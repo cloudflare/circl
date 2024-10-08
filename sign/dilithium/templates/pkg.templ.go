@@ -114,6 +114,22 @@ func SignTo(sk *PrivateKey, msg, sig []byte) {
 	{{- end }}
 }
 
+{{- if .NIST }}
+// Do not use. Implements ML-DSA.Sign_internal used for compatibility tests.
+func (sk *PrivateKey) UnsafeSignInternal(msg []byte, rnd [32]byte) []byte {
+	var ret [SignatureSize]byte
+	internal.SignTo(
+		(*internal.PrivateKey)(sk),
+		func (w io.Writer) {
+			w.Write(msg)
+		},
+		rnd,
+		ret[:],
+	)
+	return ret[:]
+}
+{{- end }}
+
 // Verify checks whether the given signature by pk on msg is valid.
 {{- if .NIST }}
 //
