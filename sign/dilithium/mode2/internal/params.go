@@ -4,7 +4,6 @@ package internal
 
 const (
 	Name          = "Dilithium2"
-	UseAES        = false
 	K             = 4
 	L             = 4
 	Eta           = 2
@@ -13,4 +12,7 @@ const (
 	Tau           = 39
 	Gamma1Bits    = 17
 	Gamma2        = 95232
+	NIST          = false
+	TRSize        = 32
+	CTildeSize    = 32
 )

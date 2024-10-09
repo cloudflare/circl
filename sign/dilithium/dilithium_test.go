@@ -4,6 +4,8 @@ import (
 	"encoding/hex"
 	"testing"
 
+	"github.com/cloudflare/circl/sign/schemes"
+
 	"github.com/cloudflare/circl/internal/sha3"
 )
 
@@ -34,29 +36,26 @@ func TestNewKeyFromSeed(t *testing.T) {
 			"Dilithium5", "3956d812a7961af6e5dad16af15c736c",
 			"665388291aa01e12e7f94bdc7769db18",
 		},
-		{
-			"Dilithium2-AES", "8466a752b0a09e63e42f66d3174a6471",
-			"c3f8e705a0d8dfd489b98b205670f393",
-		},
-		{
-			"Dilithium3-AES", "2bb713ba7cb15f3ebf05c4c1fbb1b03c",
-			"eb2bd8d98630835a3b18594ac436368b",
-		},
-		{
-			"Dilithium5-AES", "a613a08b564ee8717ba4f5ccfddc2693",
-			"2f541bf6fedd12854d06a6b80090932a",
-		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			mode := ModeByName(tc.name)
+			mode := schemes.ByName(tc.name)
 			if mode == nil {
 				t.Fatal()
 			}
 			var seed [32]byte
-			pk, sk := mode.NewKeyFromSeed(seed[:])
+			pk, sk := mode.DeriveKey(seed[:])
 
-			pkh := hexHash(pk.Bytes())
-			skh := hexHash(sk.Bytes())
+			ppk, err := pk.MarshalBinary()
+			if err != nil {
+				t.Fatal(err)
+			}
+			psk, err := sk.MarshalBinary()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			pkh := hexHash(ppk)
+			skh := hexHash(psk)
 			if pkh != tc.epk {
 				t.Fatalf("%s expected pk %s, got %s", tc.name, tc.epk, pkh)
 			}

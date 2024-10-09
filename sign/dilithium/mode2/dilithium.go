@@ -1,4 +1,4 @@
-// Code generated from modePkg.templ.go. DO NOT EDIT.
+// Code generated from pkg.templ.go. DO NOT EDIT.
 
 // mode2 implements the CRYSTALS-Dilithium signature scheme Dilithium2
 // as submitted to round3 of the NIST PQC competition and described in
@@ -11,8 +11,9 @@ import (
 	"errors"
 	"io"
 
-	"github.com/cloudflare/circl/sign/dilithium/internal/common"
+	"github.com/cloudflare/circl/sign"
 	"github.com/cloudflare/circl/sign/dilithium/mode2/internal"
+	common "github.com/cloudflare/circl/sign/internal/dilithium"
 )
 
 const (
@@ -50,20 +51,27 @@ func NewKeyFromSeed(seed *[SeedSize]byte) (*PublicKey, *PrivateKey) {
 
 // SignTo signs the given message and writes the signature into signature.
 // It will panic if signature is not of length at least SignatureSize.
-func SignTo(sk *PrivateKey, msg []byte, signature []byte) {
+func SignTo(sk *PrivateKey, msg, sig []byte) {
+	var rnd [32]byte
+
 	internal.SignTo(
 		(*internal.PrivateKey)(sk),
-		msg,
-		signature,
+		func(w io.Writer) {
+			w.Write(msg)
+		},
+		rnd,
+		sig,
 	)
 }
 
 // Verify checks whether the given signature by pk on msg is valid.
-func Verify(pk *PublicKey, msg []byte, signature []byte) bool {
+func Verify(pk *PublicKey, msg, sig []byte) bool {
 	return internal.Verify(
 		(*internal.PublicKey)(pk),
-		msg,
-		signature,
+		func(w io.Writer) {
+			_, _ = w.Write(msg)
+		},
+		sig,
 	)
 }
 
@@ -143,15 +151,15 @@ func (sk *PrivateKey) UnmarshalBinary(data []byte) error {
 // interface.  The package-level SignTo function might be more convenient
 // to use.
 func (sk *PrivateKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) (
-	signature []byte, err error) {
-	var sig [SignatureSize]byte
+	sig []byte, err error) {
+	var ret [SignatureSize]byte
 
 	if opts.HashFunc() != crypto.Hash(0) {
 		return nil, errors.New("dilithium: cannot sign hashed message")
 	}
+	SignTo(sk, msg, ret[:])
 
-	SignTo(sk, msg, sig[:])
-	return sig[:], nil
+	return ret[:], nil
 }
 
 // Computes the public key corresponding to this private key.
@@ -178,4 +186,110 @@ func (pk *PublicKey) Equal(other crypto.PublicKey) bool {
 		return false
 	}
 	return (*internal.PublicKey)(pk).Equal((*internal.PublicKey)(castOther))
+}
+
+// Boilerplate for generic signatures API
+
+type scheme struct{}
+
+var sch sign.Scheme = &scheme{}
+
+// Scheme returns a generic signature interface for Dilithium2.
+func Scheme() sign.Scheme { return sch }
+
+func (*scheme) Name() string        { return "Dilithium2" }
+func (*scheme) PublicKeySize() int  { return PublicKeySize }
+func (*scheme) PrivateKeySize() int { return PrivateKeySize }
+func (*scheme) SignatureSize() int  { return SignatureSize }
+func (*scheme) SeedSize() int       { return SeedSize }
+
+// TODO TLSIdentifier() and OID()
+
+func (*scheme) SupportsContext() bool {
+	return false
+}
+
+func (*scheme) GenerateKey() (sign.PublicKey, sign.PrivateKey, error) {
+	return GenerateKey(nil)
+}
+
+func (*scheme) Sign(
+	sk sign.PrivateKey,
+	msg []byte,
+	opts *sign.SignatureOpts,
+) []byte {
+	sig := make([]byte, SignatureSize)
+
+	priv, ok := sk.(*PrivateKey)
+	if !ok {
+		panic(sign.ErrTypeMismatch)
+	}
+	if opts != nil && opts.Context != "" {
+		panic(sign.ErrContextNotSupported)
+	}
+	SignTo(priv, msg, sig)
+
+	return sig
+}
+
+func (*scheme) Verify(
+	pk sign.PublicKey,
+	msg, sig []byte,
+	opts *sign.SignatureOpts,
+) bool {
+	pub, ok := pk.(*PublicKey)
+	if !ok {
+		panic(sign.ErrTypeMismatch)
+	}
+	if opts != nil && opts.Context != "" {
+		panic(sign.ErrContextNotSupported)
+	}
+	return Verify(pub, msg, sig)
+}
+
+func (*scheme) DeriveKey(seed []byte) (sign.PublicKey, sign.PrivateKey) {
+	if len(seed) != SeedSize {
+		panic(sign.ErrSeedSize)
+	}
+	var seed2 [SeedSize]byte
+	copy(seed2[:], seed)
+	return NewKeyFromSeed(&seed2)
+}
+
+func (*scheme) UnmarshalBinaryPublicKey(buf []byte) (sign.PublicKey, error) {
+	if len(buf) != PublicKeySize {
+		return nil, sign.ErrPubKeySize
+	}
+
+	var (
+		buf2 [PublicKeySize]byte
+		ret  PublicKey
+	)
+
+	copy(buf2[:], buf)
+	ret.Unpack(&buf2)
+	return &ret, nil
+}
+
+func (*scheme) UnmarshalBinaryPrivateKey(buf []byte) (sign.PrivateKey, error) {
+	if len(buf) != PrivateKeySize {
+		return nil, sign.ErrPrivKeySize
+	}
+
+	var (
+		buf2 [PrivateKeySize]byte
+		ret  PrivateKey
+	)
+
+	copy(buf2[:], buf)
+	ret.Unpack(&buf2)
+	return &ret, nil
+}
+
+func (sk *PrivateKey) Scheme() sign.Scheme {
+	return sch
+}
+
+func (sk *PublicKey) Scheme() sign.Scheme {
+	return sch
 }

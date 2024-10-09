@@ -16,6 +16,13 @@ import (
 	"github.com/cloudflare/circl/sign/ed448"
 	"github.com/cloudflare/circl/sign/eddilithium2"
 	"github.com/cloudflare/circl/sign/eddilithium3"
+
+	dilithium2 "github.com/cloudflare/circl/sign/dilithium/mode2"
+	dilithium3 "github.com/cloudflare/circl/sign/dilithium/mode3"
+	dilithium5 "github.com/cloudflare/circl/sign/dilithium/mode5"
+	"github.com/cloudflare/circl/sign/mldsa/mldsa44"
+	"github.com/cloudflare/circl/sign/mldsa/mldsa65"
+	"github.com/cloudflare/circl/sign/mldsa/mldsa87"
 )
 
 var allSchemes = [...]sign.Scheme{
@@ -23,6 +30,12 @@ var allSchemes = [...]sign.Scheme{
 	ed448.Scheme(),
 	eddilithium2.Scheme(),
 	eddilithium3.Scheme(),
+	dilithium2.Scheme(),
+	dilithium3.Scheme(),
+	dilithium5.Scheme(),
+	mldsa44.Scheme(),
+	mldsa65.Scheme(),
+	mldsa87.Scheme(),
 }
 
 var allSchemeNames map[string]sign.Scheme

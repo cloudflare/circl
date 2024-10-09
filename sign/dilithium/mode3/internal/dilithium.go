@@ -6,7 +6,7 @@ import (
 	"io"
 
 	"github.com/cloudflare/circl/internal/sha3"
-	"github.com/cloudflare/circl/sign/dilithium/internal/common"
+	common "github.com/cloudflare/circl/sign/internal/dilithium"
 )
 
 const (
@@ -27,13 +27,13 @@ const (
 	Alpha = 2 * Gamma2
 
 	// Size of a packed private key
-	PrivateKeySize = 32 + 32 + 32 + PolyLeqEtaSize*(L+K) + common.PolyT0Size*K
+	PrivateKeySize = 32 + 32 + TRSize + PolyLeqEtaSize*(L+K) + common.PolyT0Size*K
 
 	// Size of a packed public key
 	PublicKeySize = 32 + common.PolyT1Size*K
 
 	// Size of a packed signature
-	SignatureSize = L*PolyLeGamma1Size + Omega + K + 32
+	SignatureSize = L*PolyLeGamma1Size + Omega + K + CTildeSize
 
 	// Size of packed w₁
 	PolyW1Size = (common.N * (common.QBits - Gamma1Bits)) / 8
@@ -47,7 +47,7 @@ type PublicKey struct {
 	// Cached values
 	t1p [common.PolyT1Size * K]byte
 	A   *Mat
-	tr  *[32]byte
+	tr  *[TRSize]byte
 }
 
 // PrivateKey is the type of Dilithium private keys.
@@ -57,7 +57,7 @@ type PrivateKey struct {
 	s1  VecL
 	s2  VecK
 	t0  VecK
-	tr  [32]byte
+	tr  [TRSize]byte
 
 	// Cached values
 	A   Mat  // ExpandA(ρ)
@@ -69,14 +69,14 @@ type PrivateKey struct {
 type unpackedSignature struct {
 	z    VecL
 	hint VecK
-	c    [32]byte
+	c    [CTildeSize]byte
 }
 
 // Packs the signature into buf.
 func (sig *unpackedSignature) Pack(buf []byte) {
 	copy(buf[:], sig.c[:])
-	sig.z.PackLeGamma1(buf[32:])
-	sig.hint.PackHint(buf[32+L*PolyLeGamma1Size:])
+	sig.z.PackLeGamma1(buf[CTildeSize:])
+	sig.hint.PackHint(buf[CTildeSize+L*PolyLeGamma1Size:])
 }
 
 // Sets sig to the signature encoded in the buffer.
@@ -87,11 +87,11 @@ func (sig *unpackedSignature) Unpack(buf []byte) bool {
 		return false
 	}
 	copy(sig.c[:], buf[:])
-	sig.z.UnpackLeGamma1(buf[32:])
+	sig.z.UnpackLeGamma1(buf[CTildeSize:])
 	if sig.z.Exceeds(Gamma1 - Beta) {
 		return false
 	}
-	if !sig.hint.UnpackHint(buf[32+L*PolyLeGamma1Size:]) {
+	if !sig.hint.UnpackHint(buf[CTildeSize+L*PolyLeGamma1Size:]) {
 		return false
 	}
 	return true
@@ -113,7 +113,7 @@ func (pk *PublicKey) Unpack(buf *[PublicKeySize]byte) {
 	pk.A.Derive(&pk.rho)
 
 	// tr = CRH(ρ ‖ t1) = CRH(pk)
-	pk.tr = new([32]byte)
+	pk.tr = new([TRSize]byte)
 	h := sha3.NewShake256()
 	_, _ = h.Write(buf[:])
 	_, _ = h.Read(pk.tr[:])
@@ -123,8 +123,8 @@ func (pk *PublicKey) Unpack(buf *[PublicKeySize]byte) {
 func (sk *PrivateKey) Pack(buf *[PrivateKeySize]byte) {
 	copy(buf[:32], sk.rho[:])
 	copy(buf[32:64], sk.key[:])
-	copy(buf[64:96], sk.tr[:])
-	offset := 96
+	copy(buf[64:64+TRSize], sk.tr[:])
+	offset := 64 + TRSize
 	sk.s1.PackLeqEta(buf[offset:])
 	offset += PolyLeqEtaSize * L
 	sk.s2.PackLeqEta(buf[offset:])
@@ -136,8 +136,8 @@ func (sk *PrivateKey) Pack(buf *[PrivateKeySize]byte) {
 func (sk *PrivateKey) Unpack(buf *[PrivateKeySize]byte) {
 	copy(sk.rho[:], buf[:32])
 	copy(sk.key[:], buf[32:64])
-	copy(sk.tr[:], buf[64:96])
-	offset := 96
+	copy(sk.tr[:], buf[64:64+TRSize])
+	offset := 64 + TRSize
 	sk.s1.UnpackLeqEta(buf[offset:])
 	offset += PolyLeqEtaSize * L
 	sk.s2.UnpackLeqEta(buf[offset:])
@@ -178,6 +178,11 @@ func NewKeyFromSeed(seed *[common.SeedSize]byte) (*PublicKey, *PrivateKey) {
 
 	h := sha3.NewShake256()
 	_, _ = h.Write(seed[:])
+
+	if NIST {
+		_, _ = h.Write([]byte{byte(K), byte(L)})
+	}
+
 	_, _ = h.Read(eSeed[:])
 
 	copy(pk.rho[:], eSeed[:32])
@@ -242,13 +247,16 @@ func (sk *PrivateKey) computeT0andT1(t0, t1 *VecK) {
 }
 
 // Verify checks whether the given signature by pk on msg is valid.
-func Verify(pk *PublicKey, msg []byte, signature []byte) bool {
+//
+// For Dilithium this is the top-level verification function.
+// In ML-DSA, this is ML-DSA.Verify_internal.
+func Verify(pk *PublicKey, msg func(io.Writer), signature []byte) bool {
 	var sig unpackedSignature
 	var mu [64]byte
 	var zh VecL
 	var Az, Az2dct1, w1 VecK
 	var ch common.Poly
-	var cp [32]byte
+	var cp [CTildeSize]byte
 	var w1Packed [PolyW1Size * K]byte
 
 	// Note that Unpack() checked whether ‖z‖_∞ < γ₁ - β
@@ -260,7 +268,7 @@ func Verify(pk *PublicKey, msg []byte, signature []byte) bool {
 	// μ = CRH(tr ‖ msg)
 	h := sha3.NewShake256()
 	_, _ = h.Write(pk.tr[:])
-	_, _ = h.Write(msg)
+	msg(&h)
 	_, _ = h.Read(mu[:])
 
 	// Compute Az
@@ -277,7 +285,7 @@ func Verify(pk *PublicKey, msg []byte, signature []byte) bool {
 	// which is small enough for NTT().
 	Az2dct1.MulBy2toD(&pk.t1)
 	Az2dct1.NTT()
-	PolyDeriveUniformBall(&ch, &sig.c)
+	PolyDeriveUniformBall(&ch, sig.c[:])
 	ch.NTT()
 	for i := 0; i < K; i++ {
 		Az2dct1[i].MulHat(&Az2dct1[i], &ch)
@@ -305,8 +313,11 @@ func Verify(pk *PublicKey, msg []byte, signature []byte) bool {
 
 // SignTo signs the given message and writes the signature into signature.
 //
+// For Dilithium this is the top-level signing function. For ML-DSA
+// this is ML-DSA.Sign_internal.
+//
 //nolint:funlen
-func SignTo(sk *PrivateKey, msg []byte, signature []byte) {
+func SignTo(sk *PrivateKey, msg func(io.Writer), rnd [32]byte, signature []byte) {
 	var mu, rhop [64]byte
 	var w1Packed [PolyW1Size * K]byte
 	var y, yh VecL
@@ -322,12 +333,15 @@ func SignTo(sk *PrivateKey, msg []byte, signature []byte) {
 	//  μ = CRH(tr ‖ msg)
 	h := sha3.NewShake256()
 	_, _ = h.Write(sk.tr[:])
-	_, _ = h.Write(msg)
+	msg(&h)
 	_, _ = h.Read(mu[:])
 
 	// ρ' = CRH(key ‖ μ)
 	h.Reset()
 	_, _ = h.Write(sk.key[:])
+	if NIST {
+		_, _ = h.Write(rnd[:])
+	}
 	_, _ = h.Write(mu[:])
 	_, _ = h.Read(rhop[:])
 
@@ -366,7 +380,7 @@ func SignTo(sk *PrivateKey, msg []byte, signature []byte) {
 		_, _ = h.Write(w1Packed[:])
 		_, _ = h.Read(sig.c[:])
 
-		PolyDeriveUniformBall(&ch, &sig.c)
+		PolyDeriveUniformBall(&ch, sig.c[:])
 		ch.NTT()
 
 		// Ensure ‖ w₀ - c·s2 ‖_∞ < γ₂ - β.
