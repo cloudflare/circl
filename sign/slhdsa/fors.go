@@ -46,6 +46,10 @@ func (s *statePriv) forsSkGen(addr address, idx uint32) forsPrivateKey {
 }
 
 // See FIPS 205 -- Section 8.2 -- Algorithm 15 -- Iterative version.
+//
+// This is a stack-based implementation that computes the tree leaves
+// in order (from the left to the right).
+// Its recursive version can be found at fors_test.go file.
 func (s *statePriv) forsNodeIter(
 	stack stackNode, root []byte, i, z uint32, addr address,
 ) {
@@ -103,7 +107,8 @@ func (s *statePriv) forsSign(sig forsSignature, digest []byte, addr address) {
 
 		bits -= s.a
 		indicesI := (total >> bits) & maskA
-		forsSk := s.forsSkGen(addr, (i<<s.a)+indicesI)
+		treeIdx := (i << s.a) + indicesI
+		forsSk := s.forsSkGen(addr, treeIdx)
 		copy(sig[i].sk, forsSk)
 
 		for j := uint32(0); j < s.a; j++ {
@@ -115,7 +120,7 @@ func (s *statePriv) forsSign(sig forsSignature, digest []byte, addr address) {
 
 // See FIPS 205 -- Section 8.4 -- Algorithm 17.
 func (s *state) forsPkFromSig(
-	digest []byte, sig forsSignature, addr address,
+	sig forsSignature, digest []byte, addr address,
 ) (pk forsPublicKey) {
 	pk = make([]byte, s.forsPkSize())
 
@@ -130,7 +135,7 @@ func (s *state) forsPkFromSig(
 	s.T.Reset()
 
 	in, bits, total := 0, uint32(0), uint32(0)
-	maskB := (uint32(1) << s.a) - 1
+	maskA := (uint32(1) << s.a) - 1
 
 	for i := uint32(0); i < s.k; i++ {
 		for bits < s.a {
@@ -140,7 +145,7 @@ func (s *state) forsPkFromSig(
 		}
 
 		bits -= s.a
-		indicesI := (total >> bits) & maskB
+		indicesI := (total >> bits) & maskA
 		treeIdx := (i << s.a) + indicesI
 		s.F.address.SetTreeIndex(treeIdx)
 		s.F.SetMessage(sig[i].sk)

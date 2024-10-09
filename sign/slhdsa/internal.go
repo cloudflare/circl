@@ -86,7 +86,7 @@ func slhSignInternal(
 	defer s.Clear()
 
 	s.forsSign(sig.forsSig, md, addr)
-	pkFors := s.forsPkFromSig(md, sig.forsSig, addr)
+	pkFors := s.forsPkFromSig(sig.forsSig, md, addr)
 	s.htSign(sig.htSig, pkFors, idxTree, idxLeaf)
 
 	return sigBytes, nil
@@ -114,7 +114,7 @@ func slhVerifyInternal(
 	s := p.NewStatePub(pub.seed)
 	defer s.Clear()
 
-	pkFors := s.forsPkFromSig(md, sig.forsSig, addr)
+	pkFors := s.forsPkFromSig(sig.forsSig, md, addr)
 	return s.htVerify(pkFors, pub.root, idxTree, idxLeaf, sig.htSig)
 }
 
