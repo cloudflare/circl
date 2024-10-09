@@ -180,8 +180,6 @@ func testVerify(t *testing.T) {
 }
 
 func acvpKeygen(t *testing.T, paramSet string, in *keygenInput) {
-	t.Parallel()
-
 	id, err := ParamIDByName(paramSet)
 	test.CheckNoErr(t, err, "invalid param name")
 
@@ -226,8 +224,6 @@ func acvpSign(
 	wantSignature []byte,
 	deterministic bool,
 ) {
-	t.Parallel()
-
 	id, err := ParamIDByName(paramSet)
 	test.CheckNoErr(t, err, "invalid param name")
 

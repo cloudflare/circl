@@ -22,10 +22,10 @@ func (ws *wotsSignature) fromBytes(p *params, c *cursor) {
 }
 
 // See FIPS 205 -- Section 5 -- Algorithm 5.
-func (s *state) chain(x []byte, index, step uint32, addr address) (out []byte) {
+func (s *state) chain(x []byte, index, steps uint32, addr address) (out []byte) {
 	out = x
 	s.F.address.Set(addr)
-	for j := index; j < index+step; j++ {
+	for j := index; j < index+steps; j++ {
 		s.F.address.SetHashAddress(j)
 		s.F.SetMessage(out)
 		out = s.F.Final()
@@ -60,6 +60,10 @@ func (s *statePriv) wotsPkGen(addr address) wotsPublicKey {
 
 // See FIPS 205 -- Section 5.2 -- Algorithm 7.
 func (s *statePriv) wotsSign(sig wotsSignature, msg []byte, addr address) {
+	if len(msg) != int(s.wotsLen1()/2) {
+		panic(ErrMsgLen)
+	}
+
 	curSig := cursor(sig)
 	wotsLen1 := s.wotsLen1()
 	csum := wotsLen1 * (wotsW - 1)
@@ -68,6 +72,7 @@ func (s *statePriv) wotsSign(sig wotsSignature, msg []byte, addr address) {
 	s.PRF.address.SetTypeAndClear(addressWotsPrf)
 	s.PRF.address.SetKeyPairAddress(addr.GetKeyPairAddress())
 
+	// Signs every nibble of the message and computes the checksum.
 	for i := uint32(0); i < wotsLen1; i++ {
 		s.PRF.address.SetChainAddress(i)
 		sk := s.PRF.Final()
@@ -79,6 +84,7 @@ func (s *statePriv) wotsSign(sig wotsSignature, msg []byte, addr address) {
 		csum -= msgi
 	}
 
+	// Lastly, every nibble of the checksum is also signed.
 	for i := uint32(0); i < wotsLen2; i++ {
 		s.PRF.address.SetChainAddress(wotsLen1 + i)
 		sk := s.PRF.Final()
@@ -94,6 +100,10 @@ func (s *statePriv) wotsSign(sig wotsSignature, msg []byte, addr address) {
 func (s *state) wotsPkFromSig(
 	sig wotsSignature, msg []byte, addr address,
 ) wotsPublicKey {
+	if len(msg) != int(s.wotsLen1()/2) {
+		panic(ErrMsgLen)
+	}
+
 	wotsLen1 := s.wotsLen1()
 	csum := wotsLen1 * (wotsW - 1)
 
@@ -104,6 +114,8 @@ func (s *state) wotsPkFromSig(
 	s.T.Reset()
 	curSig := cursor(sig)
 
+	// Signs every nibble of the message, computes the checksum, and
+	// feeds each signature to the T function.
 	for i := uint32(0); i < wotsLen1; i++ {
 		addr.SetChainAddress(i)
 		msgi := uint32((msg[i/2] >> ((1 - (i & 1)) << 2)) & 0xF)
@@ -113,6 +125,8 @@ func (s *state) wotsPkFromSig(
 		csum -= msgi
 	}
 
+	// Every nibble of the checksum is also signed feeding the signature
+	// to the T function.
 	for i := uint32(0); i < wotsLen2; i++ {
 		addr.SetChainAddress(wotsLen1 + i)
 		csumi := (csum >> (8 - 4*i)) & 0xF
@@ -121,5 +135,6 @@ func (s *state) wotsPkFromSig(
 		s.T.WriteMessage(sigi)
 	}
 
+	// Generates the public key as the output of the T function.
 	return s.T.Final()
 }

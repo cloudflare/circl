@@ -24,6 +24,10 @@ func (xs *xmssSignature) fromBytes(p *params, c *cursor) {
 }
 
 // See FIPS 205 -- Section 6.1 -- Algorithm 9 -- Iterative version.
+//
+// This is a stack-based implementation that computes the tree leaves
+// in order (from the left to the right).
+// Its recursive version can be found at xmss_test.go file.
 func (s *statePriv) xmssNodeIter(
 	stack stackNode, root []byte, i, z uint32, addr address,
 ) {

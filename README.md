@@ -38,6 +38,7 @@ Alternatively, look at the [Cloudflare Go](https://github.com/cloudflare/go/tree
 [RFC-9496]: https://doi.org/10.17487/RFC9496
 [RFC-9497]: https://doi.org/10.17487/RFC9497
 [FIPS 202]: https://doi.org/10.6028/NIST.FIPS.202
+[FIPS 204]: https://doi.org/10.6028/NIST.FIPS.204
 [FIPS 205]: https://doi.org/10.6028/NIST.FIPS.205
 [FIPS 186-5]: https://doi.org/10.6028/NIST.FIPS.186-5
 [BLS12-381]: https://electriccoin.co/blog/new-snark-curve/
@@ -94,7 +95,7 @@ Alternatively, look at the [Cloudflare Go](https://github.com/cloudflare/go/tree
 |:---:|
 
  - [Dilithium](./sign/dilithium): modes 2, 3, 5 ([Dilithium](https://pq-crystals.org/dilithium/)).
- - [ML-DSA](./sign/mldsa): modes 44, 65, 87 ([FIPS 204](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.204.pdf)).
+ - [ML-DSA](./sign/mldsa): modes 44, 65, 87 ([FIPS 204]).
  - [SLH-DSA](./sign/slhdsa): twelve parameter sets, pure and pre-hash signing ([FIPS 205]).
 
 ### Zero-knowledge Proofs
