@@ -53,6 +53,7 @@ func TestACVP(t *testing.T) {
 	for _, sub := range []string{
 		"keyGen",
 		"sigGen",
+		"sigVer",
 	} {
 		t.Run(sub, func(t *testing.T) {
 			testACVP(t, sub)
@@ -254,7 +255,7 @@ func testACVP(t *testing.T, sub string) {
 					t.Fatal(err)
 				}
 
-				passed2 := scheme.Verify(pk, test.Message, test.Signature, nil)
+				passed2 := unsafeVerifyInternal(pk.(*PublicKey), test.Message, test.Signature)
 				if passed2 != result.TestPassed {
 					t.Fatalf("verification %v ≠ %v", passed2, result.TestPassed)
 				}
