@@ -26,10 +26,10 @@ endif
 all: build
 
 lint:
-	$(GOLANGCILINT) run --config $(ETC_DIR)/golangci.yml ./...
+	$(GOLANGCILINT) run
 
 lint-fix:
-	$(GOLANGCILINT) run --config $(ETC_DIR)/golangci.yml --fix ./...
+	$(GOLANGCILINT) run --fix
 
 build:
 	$(GO) build ./...
