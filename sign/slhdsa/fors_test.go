@@ -65,8 +65,7 @@ func testFors(t *testing.T, p *params) {
 	curSig := cursor(make([]byte, p.forsSigSize()))
 	sig.fromBytes(p, &curSig)
 	state.forsSign(sig, msg, addr)
-
-	pkFors := state.forsPkFromSig(msg, sig, addr)
+	pkFors := state.forsPkFromSig(sig, msg, addr)
 
 	var htSig hyperTreeSignature
 	curHtSig := cursor(make([]byte, p.hyperTreeSigSize()))
@@ -111,7 +110,7 @@ func benchmarkFors(b *testing.B, p *params) {
 	})
 	b.Run("PkFromSig", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_ = state.forsPkFromSig(msg, sig, addr)
+			_ = state.forsPkFromSig(sig, msg, addr)
 		}
 	})
 }

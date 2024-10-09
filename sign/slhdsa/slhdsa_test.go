@@ -37,8 +37,6 @@ func TestSlhdsa(t *testing.T) {
 		id := supportedParameters[i]
 
 		t.Run(id.Name(), func(t *testing.T) {
-			t.Parallel()
-
 			t.Run("Keys", func(t *testing.T) { testKeys(t, id) })
 
 			for j := range supportedPrehashIDs {
