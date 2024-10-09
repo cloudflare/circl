@@ -11,8 +11,6 @@ func TestInner(t *testing.T) {
 		param := &supportedParams[i]
 
 		t.Run(param.name, func(t *testing.T) {
-			t.Parallel()
-
 			t.Run("Wots", func(t *testing.T) { testWotsPlus(t, param) })
 			t.Run("Xmss", func(t *testing.T) { testXmss(t, param) })
 			t.Run("Ht", func(tt *testing.T) { testHyperTree(tt, param) })

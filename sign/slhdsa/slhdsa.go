@@ -274,6 +274,7 @@ func readRandom(random io.Reader, size uint32) (out []byte, err error) {
 
 var (
 	ErrContext  = fmt.Errorf("sign/slhdsa: context is larger than MaxContextSize=%v bytes", MaxContextSize)
+	ErrMsgLen   = errors.New("sign/slhdsa: invalid message length")
 	ErrParam    = errors.New("sign/slhdsa: invalid SLH-DSA parameter")
 	ErrPreHash  = errors.New("sign/slhdsa: invalid prehash function")
 	ErrSigParse = errors.New("sign/slhdsa: failed to decode the signature")
