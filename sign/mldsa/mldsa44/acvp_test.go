@@ -1,4 +1,6 @@
-package mldsa
+// Code generated from acvp.templ.go. DO NOT EDIT.
+
+package mldsa44
 
 import (
 	"bytes"
@@ -8,8 +10,6 @@ import (
 	"io"
 	"os"
 	"testing"
-
-	"github.com/cloudflare/circl/sign/schemes"
 )
 
 // []byte but is encoded in hex for JSON
@@ -58,7 +58,7 @@ func TestACVP(t *testing.T) {
 
 // nolint:funlen,gocyclo
 func testACVP(t *testing.T, sub string) {
-	buf, err := readGzip("testdata/ML-DSA-" + sub + "-FIPS204/prompt.json.gz")
+	buf, err := readGzip("../testdata/ML-DSA-" + sub + "-FIPS204/prompt.json.gz")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func testACVP(t *testing.T, sub string) {
 		t.Fatal(err)
 	}
 
-	buf, err = readGzip("testdata/ML-DSA-" + sub + "-FIPS204/expectedResults.json.gz")
+	buf, err = readGzip("../testdata/ML-DSA-" + sub + "-FIPS204/expectedResults.json.gz")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,6 +107,8 @@ func testACVP(t *testing.T, sub string) {
 		}
 	}
 
+	scheme := Scheme()
+
 	for _, rawGroup := range prompt.TestGroups {
 		var abstractGroup struct {
 			TestType string `json:"testType"`
@@ -128,9 +130,8 @@ func testACVP(t *testing.T, sub string) {
 				t.Fatal(err)
 			}
 
-			scheme := schemes.ByName(group.ParameterSet)
-			if scheme == nil {
-				t.Fatalf("No such scheme: %s", group.ParameterSet)
+			if group.ParameterSet != scheme.Name() {
+				continue
 			}
 
 			for _, test := range group.Tests {
@@ -180,9 +181,8 @@ func testACVP(t *testing.T, sub string) {
 				t.Fatal(err)
 			}
 
-			scheme := schemes.ByName(group.ParameterSet)
-			if scheme == nil {
-				t.Fatalf("No such scheme: %s", group.ParameterSet)
+			if group.ParameterSet != scheme.Name() {
+				continue
 			}
 
 			for _, test := range group.Tests {
@@ -207,10 +207,7 @@ func testACVP(t *testing.T, sub string) {
 					copy(rnd[:], test.Rnd)
 				}
 
-				isk := sk.(interface {
-					UnsafeSignInternal(msg []byte, rnd [32]byte) []byte
-				})
-				sig2 := isk.UnsafeSignInternal(test.Message, rnd)
+				sig2 := sk.(*PrivateKey).unsafeSignInternal(test.Message, rnd)
 
 				if !bytes.Equal(sig2, result.Signature) {
 					t.Fatalf("signature doesn't match: %x ≠ %x",
@@ -232,9 +229,8 @@ func testACVP(t *testing.T, sub string) {
 				t.Fatal(err)
 			}
 
-			scheme := schemes.ByName(group.ParameterSet)
-			if scheme == nil {
-				t.Fatalf("No such scheme: %s", group.ParameterSet)
+			if group.ParameterSet != scheme.Name() {
+				continue
 			}
 
 			pk, err := scheme.UnmarshalBinaryPublicKey(group.Pk)

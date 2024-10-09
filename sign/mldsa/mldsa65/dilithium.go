@@ -83,7 +83,7 @@ func SignTo(sk *PrivateKey, msg, ctx []byte, randomized bool, sig []byte) error 
 }
 
 // Do not use. Implements ML-DSA.Sign_internal used for compatibility tests.
-func (sk *PrivateKey) UnsafeSignInternal(msg []byte, rnd [32]byte) []byte {
+func (sk *PrivateKey) unsafeSignInternal(msg []byte, rnd [32]byte) []byte {
 	var ret [SignatureSize]byte
 	internal.SignTo(
 		(*internal.PrivateKey)(sk),

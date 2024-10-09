@@ -116,7 +116,7 @@ func SignTo(sk *PrivateKey, msg, sig []byte) {
 
 {{- if .NIST }}
 // Do not use. Implements ML-DSA.Sign_internal used for compatibility tests.
-func (sk *PrivateKey) UnsafeSignInternal(msg []byte, rnd [32]byte) []byte {
+func (sk *PrivateKey) unsafeSignInternal(msg []byte, rnd [32]byte) []byte {
 	var ret [SignatureSize]byte
 	internal.SignTo(
 		(*internal.PrivateKey)(sk),
@@ -386,7 +386,7 @@ func (*scheme) UnmarshalBinaryPublicKey(buf []byte) (sign.PublicKey, error) {
 		buf2 [PublicKeySize]byte
 		ret PublicKey
 	)
-	
+
 	copy(buf2[:], buf)
 	ret.Unpack(&buf2)
 	return &ret, nil
@@ -401,7 +401,7 @@ func (*scheme) UnmarshalBinaryPrivateKey(buf []byte) (sign.PrivateKey, error) {
 		buf2 [PrivateKeySize]byte
 		ret PrivateKey
 	)
-	
+
 	copy(buf2[:], buf)
 	ret.Unpack(&buf2)
 	return &ret, nil
