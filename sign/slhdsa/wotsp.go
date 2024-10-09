@@ -22,7 +22,9 @@ func (ws *wotsSignature) fromBytes(p *params, c *cursor) {
 }
 
 // See FIPS 205 -- Section 5 -- Algorithm 5.
-func (s *state) chain(x []byte, index, steps uint32, addr address) (out []byte) {
+func (s *state) chain(
+	x []byte, index, steps uint32, addr address,
+) (out []byte) {
 	out = x
 	s.F.address.Set(addr)
 	for j := index; j < index+steps; j++ {

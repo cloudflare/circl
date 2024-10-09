@@ -2,6 +2,7 @@ package slhdsa_test
 
 import (
 	"crypto/rand"
+	"flag"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/sha3"
@@ -32,26 +33,32 @@ var supportedPrehashIDs = [5]slhdsa.PreHashID{
 	slhdsa.PreHashSHAKE256,
 }
 
-func TestSlhdsa(t *testing.T) {
-	for i := range supportedParameters {
-		id := supportedParameters[i]
+// Indicates whether long tests should be run
+var runLongTest = flag.Bool("long", false, "runs longer tests")
 
-		t.Run(id.Name(), func(t *testing.T) {
-			t.Run("Keys", func(t *testing.T) { testKeys(t, id) })
+func TestSlhdsaLong(t *testing.T) {
+	if !*runLongTest {
+		t.Skip("Skipped one long test, add -long flag to run longer tests")
+	}
 
-			for j := range supportedPrehashIDs {
-				ph := supportedPrehashIDs[j]
-				msg := []byte("Alice and Bob")
-				ctx := []byte("this is a context string")
-				pub, priv, err := slhdsa.GenerateKey(rand.Reader, id)
-				test.CheckNoErr(t, err, "keygen failed")
+	for _, paramID := range supportedParameters {
+		t.Run(paramID.Name(), func(t *testing.T) {
+			t.Run("Keys", func(t *testing.T) { testKeys(t, paramID) })
 
-				t.Run("Sign/"+ph.String(), func(t *testing.T) {
-					testSign(t, &pub, &priv, msg, ctx, ph)
-				})
+			for _, ph := range supportedPrehashIDs {
+				t.Run(ph.String(), func(t *testing.T) { testSign(t, paramID, ph) })
 			}
 		})
 	}
+}
+
+func TestSlhdsa(t *testing.T) {
+	t.Run("Keys", func(t *testing.T) {
+		testKeys(t, slhdsa.ParamIDSHA2Fast128)
+	})
+	t.Run("PreHashSHA256", func(t *testing.T) {
+		testSign(t, slhdsa.ParamIDSHA2Fast128, slhdsa.PreHashSHA256)
+	})
 }
 
 func testKeys(t *testing.T, id slhdsa.ParamID) {
@@ -79,13 +86,13 @@ func testKeys(t *testing.T, id slhdsa.ParamID) {
 	test.CheckOk(pub2.Equal(pub3), "public key not equal", t)
 }
 
-func testSign(
-	t *testing.T,
-	pk *slhdsa.PublicKey,
-	sk *slhdsa.PrivateKey,
-	msg, ctx []byte,
-	ph slhdsa.PreHashID,
-) {
+func testSign(t *testing.T, id slhdsa.ParamID, ph slhdsa.PreHashID) {
+	msg := []byte("Alice and Bob")
+	ctx := []byte("this is a context string")
+
+	pk, sk, err := slhdsa.GenerateKey(rand.Reader, id)
+	test.CheckNoErr(t, err, "keygen failed")
+
 	m, err := slhdsa.NewMessageWithPreHash(ph)
 	test.CheckNoErr(t, err, "NewMessageWithPreHash failed")
 
@@ -95,13 +102,13 @@ func testSign(
 	sig, err := sk.SignRandomized(rand.Reader, &m, ctx)
 	test.CheckNoErr(t, err, "SignRandomized failed")
 
-	valid := slhdsa.Verify(pk, &m, ctx, sig)
+	valid := slhdsa.Verify(&pk, &m, ctx, sig)
 	test.CheckOk(valid, "Verify failed", t)
 
 	sig, err = sk.SignDeterministic(&m, ctx)
 	test.CheckNoErr(t, err, "SignDeterministic failed")
 
-	valid = slhdsa.Verify(pk, &m, ctx, sig)
+	valid = slhdsa.Verify(&pk, &m, ctx, sig)
 	test.CheckOk(valid, "Verify failed", t)
 }
 
