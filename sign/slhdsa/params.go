@@ -5,6 +5,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/sha512"
+	"encoding/asn1"
 	"encoding/binary"
 	"hash"
 	"io"
@@ -95,6 +96,20 @@ func (id ParamID) UnmarshalBinaryPrivateKey(b []byte) (sign.PrivateKey, error) {
 	return &k, nil
 }
 
+func (id ParamID) Oid() asn1.ObjectIdentifier {
+	// Source https://csrc.nist.gov/Projects/computer-security-objects-register/algorithm-registration
+	return asn1.ObjectIdentifier{
+		2,               // joint-iso-ccitt(2)
+		16,              // country(16)
+		840,             // us(840)
+		1,               // organization(1)
+		101,             // gov(101)
+		3,               // csor(3)
+		4,               // nistAlgorithm(4)
+		id.params().oid, // sigAlgs(oid)
+	}
+}
+
 // params contains all the relevant constants of a parameter set.
 type params struct {
 	n      uint32  // Length of WOTS+ messages.
@@ -107,22 +122,23 @@ type params struct {
 	isSHA2 bool    // True, if the hash function is SHA2, otherwise is SHAKE.
 	name   string  // Name of the parameter set.
 	id     ParamID // Identifier of the parameter set.
+	oid    int     // Object Identifier.
 }
 
 // Stores all the supported (read-only) parameter sets.
 var supportedParams = [_MaxParams - 1]params{
-	{id: ParamIDSHA2Small128, n: 16, h: 63, d: 7, hPrime: 9, a: 12, k: 14, m: 30, isSHA2: true, name: "SLH-DSA-SHA2-128s"},
-	{id: ParamIDSHAKESmall128, n: 16, h: 63, d: 7, hPrime: 9, a: 12, k: 14, m: 30, isSHA2: false, name: "SLH-DSA-SHAKE-128s"},
-	{id: ParamIDSHA2Fast128, n: 16, h: 66, d: 22, hPrime: 3, a: 6, k: 33, m: 34, isSHA2: true, name: "SLH-DSA-SHA2-128f"},
-	{id: ParamIDSHAKEFast128, n: 16, h: 66, d: 22, hPrime: 3, a: 6, k: 33, m: 34, isSHA2: false, name: "SLH-DSA-SHAKE-128f"},
-	{id: ParamIDSHA2Small192, n: 24, h: 63, d: 7, hPrime: 9, a: 14, k: 17, m: 39, isSHA2: true, name: "SLH-DSA-SHA2-192s"},
-	{id: ParamIDSHAKESmall192, n: 24, h: 63, d: 7, hPrime: 9, a: 14, k: 17, m: 39, isSHA2: false, name: "SLH-DSA-SHAKE-192s"},
-	{id: ParamIDSHA2Fast192, n: 24, h: 66, d: 22, hPrime: 3, a: 8, k: 33, m: 42, isSHA2: true, name: "SLH-DSA-SHA2-192f"},
-	{id: ParamIDSHAKEFast192, n: 24, h: 66, d: 22, hPrime: 3, a: 8, k: 33, m: 42, isSHA2: false, name: "SLH-DSA-SHAKE-192f"},
-	{id: ParamIDSHA2Small256, n: 32, h: 64, d: 8, hPrime: 8, a: 14, k: 22, m: 47, isSHA2: true, name: "SLH-DSA-SHA2-256s"},
-	{id: ParamIDSHAKESmall256, n: 32, h: 64, d: 8, hPrime: 8, a: 14, k: 22, m: 47, isSHA2: false, name: "SLH-DSA-SHAKE-256s"},
-	{id: ParamIDSHA2Fast256, n: 32, h: 68, d: 17, hPrime: 4, a: 9, k: 35, m: 49, isSHA2: true, name: "SLH-DSA-SHA2-256f"},
-	{id: ParamIDSHAKEFast256, n: 32, h: 68, d: 17, hPrime: 4, a: 9, k: 35, m: 49, isSHA2: false, name: "SLH-DSA-SHAKE-256f"},
+	{id: ParamIDSHA2Small128, n: 16, h: 63, d: 7, hPrime: 9, a: 12, k: 14, m: 30, isSHA2: true, oid: 20, name: "SLH-DSA-SHA2-128s"},
+	{id: ParamIDSHAKESmall128, n: 16, h: 63, d: 7, hPrime: 9, a: 12, k: 14, m: 30, isSHA2: false, oid: 26, name: "SLH-DSA-SHAKE-128s"},
+	{id: ParamIDSHA2Fast128, n: 16, h: 66, d: 22, hPrime: 3, a: 6, k: 33, m: 34, isSHA2: true, oid: 21, name: "SLH-DSA-SHA2-128f"},
+	{id: ParamIDSHAKEFast128, n: 16, h: 66, d: 22, hPrime: 3, a: 6, k: 33, m: 34, isSHA2: false, oid: 27, name: "SLH-DSA-SHAKE-128f"},
+	{id: ParamIDSHA2Small192, n: 24, h: 63, d: 7, hPrime: 9, a: 14, k: 17, m: 39, isSHA2: true, oid: 22, name: "SLH-DSA-SHA2-192s"},
+	{id: ParamIDSHAKESmall192, n: 24, h: 63, d: 7, hPrime: 9, a: 14, k: 17, m: 39, isSHA2: false, oid: 28, name: "SLH-DSA-SHAKE-192s"},
+	{id: ParamIDSHA2Fast192, n: 24, h: 66, d: 22, hPrime: 3, a: 8, k: 33, m: 42, isSHA2: true, oid: 23, name: "SLH-DSA-SHA2-192f"},
+	{id: ParamIDSHAKEFast192, n: 24, h: 66, d: 22, hPrime: 3, a: 8, k: 33, m: 42, isSHA2: false, oid: 29, name: "SLH-DSA-SHAKE-192f"},
+	{id: ParamIDSHA2Small256, n: 32, h: 64, d: 8, hPrime: 8, a: 14, k: 22, m: 47, isSHA2: true, oid: 24, name: "SLH-DSA-SHA2-256s"},
+	{id: ParamIDSHAKESmall256, n: 32, h: 64, d: 8, hPrime: 8, a: 14, k: 22, m: 47, isSHA2: false, oid: 30, name: "SLH-DSA-SHAKE-256s"},
+	{id: ParamIDSHA2Fast256, n: 32, h: 68, d: 17, hPrime: 4, a: 9, k: 35, m: 49, isSHA2: true, oid: 25, name: "SLH-DSA-SHA2-256f"},
+	{id: ParamIDSHAKEFast256, n: 32, h: 68, d: 17, hPrime: 4, a: 9, k: 35, m: 49, isSHA2: false, oid: 31, name: "SLH-DSA-SHAKE-256f"},
 }
 
 // See FIPS-205, Section 11.1 and Section 11.2.
