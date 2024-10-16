@@ -61,6 +61,7 @@ func (m Mode) NIST() bool {
 	return strings.HasPrefix(m.Name, "ML-DSA-")
 }
 
+// https://csrc.nist.gov/Projects/computer-security-objects-register/algorithm-registration
 func (m Mode) OidGo() string {
 	ret := "asn1.ObjectIdentifier{"
 	first := true
