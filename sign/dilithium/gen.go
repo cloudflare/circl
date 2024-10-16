@@ -7,6 +7,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/asn1"
 	"fmt"
 	"go/format"
 	"os"
@@ -29,6 +30,7 @@ type Mode struct {
 	Gamma2        int
 	TRSize        int
 	CTildeSize    int
+	Oid           asn1.ObjectIdentifier
 }
 
 func (m Mode) Pkg() string {
@@ -57,6 +59,20 @@ func (m Mode) Mode() string {
 
 func (m Mode) NIST() bool {
 	return strings.HasPrefix(m.Name, "ML-DSA-")
+}
+
+func (m Mode) OidGo() string {
+	ret := "asn1.ObjectIdentifier{"
+	first := true
+	for _, b := range m.Oid {
+		if first {
+			first = false
+		} else {
+			ret += ", "
+		}
+		ret += fmt.Sprintf("%d", b)
+	}
+	return ret + "}"
 }
 
 var (
@@ -112,6 +128,7 @@ var (
 			Gamma2:        (params.Q - 1) / 88,
 			TRSize:        64,
 			CTildeSize:    32,
+			Oid:           asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 17},
 		},
 		{
 			Name:          "ML-DSA-65",
@@ -125,6 +142,7 @@ var (
 			Gamma2:        (params.Q - 1) / 32,
 			TRSize:        64,
 			CTildeSize:    48,
+			Oid:           asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 18},
 		},
 		{
 			Name:          "ML-DSA-87",
@@ -138,6 +156,7 @@ var (
 			Gamma2:        (params.Q - 1) / 32,
 			TRSize:        64,
 			CTildeSize:    64,
+			Oid:           asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 19},
 		},
 	}
 	TemplateWarning = "// Code generated from"

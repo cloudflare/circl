@@ -17,6 +17,9 @@ package {{.Pkg}}
 import (
 	"crypto"
 	"errors"
+{{- if .Oid }}
+	"encoding/asn1"
+{{- end }}
 	"io"
 
 {{- if .NIST }}
@@ -305,7 +308,13 @@ func (*scheme) PublicKeySize() int { return PublicKeySize }
 func (*scheme) PrivateKeySize() int { return PrivateKeySize }
 func (*scheme) SignatureSize() int { return SignatureSize }
 func (*scheme) SeedSize() int { return SeedSize }
-// TODO TLSIdentifier() and OID()
+// TODO TLSIdentifier()
+
+{{- if .Oid }}
+func (*scheme) Oid() asn1.ObjectIdentifier {
+	return {{ .OidGo }}
+}
+{{- end }}
 
 func (*scheme) SupportsContext() bool {
 	{{- if .NIST }}
