@@ -6,6 +6,7 @@ package mldsa44
 import (
 	"crypto"
 	cryptoRand "crypto/rand"
+	"encoding/asn1"
 	"errors"
 	"io"
 
@@ -260,7 +261,10 @@ func (*scheme) PrivateKeySize() int { return PrivateKeySize }
 func (*scheme) SignatureSize() int  { return SignatureSize }
 func (*scheme) SeedSize() int       { return SeedSize }
 
-// TODO TLSIdentifier() and OID()
+// TODO TLSIdentifier()
+func (*scheme) Oid() asn1.ObjectIdentifier {
+	return asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 17}
+}
 
 func (*scheme) SupportsContext() bool {
 	return true
