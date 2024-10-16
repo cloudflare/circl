@@ -203,7 +203,7 @@ func (*scheme) PrivateKeySize() int { return PrivateKeySize }
 func (*scheme) SignatureSize() int  { return SignatureSize }
 func (*scheme) SeedSize() int       { return SeedSize }
 
-// TODO TLSIdentifier() and OID()
+// TODO TLSIdentifier()
 
 func (*scheme) SupportsContext() bool {
 	return false
