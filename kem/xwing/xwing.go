@@ -2,7 +2,7 @@
 //
 //	https://datatracker.ietf.org/doc/draft-connolly-cfrg-xwing-kem
 //
-// Currently implements -04.
+// Implements the final version (-05).
 package xwing
 
 import (
@@ -58,13 +58,15 @@ func combiner(
 	pkx *x25519.Key,
 ) {
 	h := sha3.New256()
-	//   \./
-	//   /^\
-	_, _ = h.Write([]byte(`\.//^\`))
 	_, _ = h.Write(ssm[:])
 	_, _ = h.Write(ssx[:])
 	_, _ = h.Write(ctx[:])
 	_, _ = h.Write(pkx[:])
+
+	//   \./
+	//   /^\
+	_, _ = h.Write([]byte(`\.//^\`))
+
 	_, _ = h.Read(out[:])
 }
 
@@ -113,7 +115,7 @@ func deriveKeyPair(seed []byte, sk *PrivateKey, pk *PublicKey) {
 
 	copy(sk.seed[:], seed)
 
-	h := sha3.NewShake128()
+	h := sha3.NewShake256()
 	_, _ = h.Write(seed)
 	_, _ = h.Read(seedm[:])
 	_, _ = h.Read(sk.x[:])

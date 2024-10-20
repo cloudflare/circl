@@ -69,7 +69,10 @@ func TestVectors(t *testing.T) {
 	var cs [32]byte
 	_, _ = h.Read(cs[:])
 	got := fmt.Sprintf("%x", cs)
-	want := "0e414d1453095f77f7959da8ddba81559e9d62508c2f665a004467420d5d0c51"
+
+	// shake128 of spec/test-vectors.txt from X-Wing spec at
+	// https://github.com/dconnolly/draft-connolly-cfrg-xwing-kem
+	want := "1bcd0057d861d6b866239936cadcaeee1ec0164dedc181c386e9e54fe46156fe"
 	if got != want {
 		t.Fatalf("%s ≠ %s", got, want)
 	}
