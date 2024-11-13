@@ -20,24 +20,33 @@ type acvpHeader struct {
 	IsSample  bool   `json:"isSample"`
 }
 
-type acvpKeygenVector struct {
+type acvpKeyGenPrompt struct {
 	acvpHeader
 	TestGroups []struct {
 		TgID         int           `json:"tgId"`
 		TestType     string        `json:"testType"`
 		ParameterSet string        `json:"parameterSet"`
-		Tests        []keygenInput `json:"tests"`
+		Tests        []keyGenInput `json:"tests"`
 	} `json:"testGroups"`
 }
 
-type keygenInput struct {
-	TcID     int      `json:"tcId"`
-	Deferred bool     `json:"deferred"`
-	SkSeed   hexBytes `json:"skSeed"`
-	SkPrf    hexBytes `json:"skPrf"`
-	PkSeed   hexBytes `json:"pkSeed"`
-	Sk       hexBytes `json:"sk"`
-	Pk       hexBytes `json:"pk"`
+type keyGenInput struct {
+	TcID   int `json:"tcId"`
+	SkSeed Hex `json:"skSeed"`
+	SkPrf  Hex `json:"skPrf"`
+	PkSeed Hex `json:"pkSeed"`
+}
+
+type acvpKeyGenResult struct {
+	acvpHeader
+	TestGroups []struct {
+		TgID  int `json:"tgId"`
+		Tests []struct {
+			TcID int `json:"tcId"`
+			Sk   Hex `json:"sk"`
+			Pk   Hex `json:"pk"`
+		} `json:"tests"`
+	} `json:"testGroups"`
 }
 
 type acvpSigGenPrompt struct {
@@ -52,11 +61,11 @@ type acvpSigGenPrompt struct {
 }
 
 type signInput struct {
-	TcID    int      `json:"tcId"`
-	Sk      hexBytes `json:"sk"`
-	MsgLen  int      `json:"messageLength"`
-	Msg     hexBytes `json:"message"`
-	AddRand hexBytes `json:"additionalRandomness,omitempty"`
+	TcID    int `json:"tcId"`
+	Sk      Hex `json:"sk"`
+	MsgLen  int `json:"messageLength"`
+	Msg     Hex `json:"message"`
+	AddRand Hex `json:"additionalRandomness,omitempty"`
 }
 
 type acvpSigGenResult struct {
@@ -64,8 +73,8 @@ type acvpSigGenResult struct {
 	TestGroups []struct {
 		TgID  int `json:"tgId"`
 		Tests []struct {
-			TcID      int      `json:"tcId"`
-			Signature hexBytes `json:"signature"`
+			TcID      int `json:"tcId"`
+			Signature Hex `json:"signature"`
 		} `json:"tests"`
 	} `json:"testGroups"`
 }
@@ -81,12 +90,12 @@ type acvpVerifyInput struct {
 }
 
 type verifyInput struct {
-	TcID          int      `json:"tcId"`
-	Pk            hexBytes `json:"pk"`
-	MessageLength int      `json:"messageLength"`
-	Message       hexBytes `json:"message"`
-	Signature     hexBytes `json:"signature"`
-	Reason        string   `json:"reason"`
+	TcID          int    `json:"tcId"`
+	Pk            Hex    `json:"pk"`
+	MessageLength int    `json:"messageLength"`
+	Message       Hex    `json:"message"`
+	Signature     Hex    `json:"signature"`
+	Reason        string `json:"reason"`
 }
 
 type acvpVerifyResult struct {
@@ -107,23 +116,34 @@ func TestACVP(t *testing.T) {
 }
 
 func testKeygen(t *testing.T) {
-	// https://github.com/usnistgov/ACVP-Server/tree/v1.1.0.35/gen-val/json-files/SLH-DSA-keyGen-FIPS205
-	inputs := new(acvpKeygenVector)
-	readVector(t, "testdata/keygen.json.zip", inputs)
+	// https://github.com/usnistgov/ACVP-Server/tree/v1.1.0.37/gen-val/json-files/SLH-DSA-keyGen-FIPS205
+	inputs := new(acvpKeyGenPrompt)
+	readVector(t, "testdata/keyGen_prompt.json.zip", inputs)
+	outputs := new(acvpKeyGenResult)
+	readVector(t, "testdata/keyGen_results.json.zip", outputs)
 
-	for _, group := range inputs.TestGroups {
+	for gi, group := range inputs.TestGroups {
 		t.Run(fmt.Sprintf("TgID_%v", group.TgID), func(t *testing.T) {
 			for ti := range group.Tests {
-				t.Run(fmt.Sprintf("TcID_%v", group.Tests[ti].TcID), func(t *testing.T) {
-					acvpKeygen(t, group.ParameterSet, &group.Tests[ti])
-				})
+				test.CheckOk(
+					group.Tests[ti].TcID == outputs.TestGroups[gi].Tests[ti].TcID,
+					"mismatch of TcID", t,
+				)
+
+				t.Run(fmt.Sprintf("TcID_%v", group.Tests[ti].TcID),
+					func(t *testing.T) {
+						acvpKeygen(t, group.ParameterSet, &group.Tests[ti],
+							outputs.TestGroups[gi].Tests[ti].Sk,
+							outputs.TestGroups[gi].Tests[ti].Pk,
+						)
+					})
 			}
 		})
 	}
 }
 
 func testSign(t *testing.T) {
-	// https://github.com/usnistgov/ACVP-Server/tree/v1.1.0.35/gen-val/json-files/SLH-DSA-sigGen-FIPS205
+	// https://github.com/usnistgov/ACVP-Server/tree/v1.1.0.37/gen-val/json-files/SLH-DSA-sigGen-FIPS205
 	inputs := new(acvpSigGenPrompt)
 	readVector(t, "testdata/sigGen_prompt.json.zip", inputs)
 	outputs := new(acvpSigGenResult)
@@ -139,20 +159,20 @@ func testSign(t *testing.T) {
 					"mismatch of TcID", t,
 				)
 
-				t.Run(fmt.Sprintf("TcID_%v", group.Tests[ti].TcID), func(t *testing.T) {
-					acvpSign(
-						t, group.ParameterSet, &group.Tests[ti],
-						outputs.TestGroups[gi].Tests[ti].Signature,
-						group.Deterministic,
-					)
-				})
+				t.Run(fmt.Sprintf("TcID_%v", group.Tests[ti].TcID),
+					func(t *testing.T) {
+						acvpSign(t, group.ParameterSet, &group.Tests[ti],
+							outputs.TestGroups[gi].Tests[ti].Signature,
+							group.Deterministic,
+						)
+					})
 			}
 		})
 	}
 }
 
 func testVerify(t *testing.T) {
-	// https://github.com/usnistgov/ACVP-Server/tree/v1.1.0.35/gen-val/json-files/SLH-DSA-sigVer-FIPS205
+	// https://github.com/usnistgov/ACVP-Server/tree/v1.1.0.37/gen-val/json-files/SLH-DSA-sigVer-FIPS205
 	inputs := new(acvpVerifyInput)
 	readVector(t, "testdata/verify_prompt.json.zip", inputs)
 	outputs := new(acvpVerifyResult)
@@ -168,18 +188,18 @@ func testVerify(t *testing.T) {
 					"mismatch of TcID", t,
 				)
 
-				t.Run(fmt.Sprintf("TcID_%v", group.Tests[ti].TcID), func(t *testing.T) {
-					acvpVerify(
-						t, group.ParameterSet, &group.Tests[ti],
-						outputs.TestGroups[gi].Tests[ti].TestPassed,
-					)
-				})
+				t.Run(fmt.Sprintf("TcID_%v", group.Tests[ti].TcID),
+					func(t *testing.T) {
+						acvpVerify(t, group.ParameterSet, &group.Tests[ti],
+							outputs.TestGroups[gi].Tests[ti].TestPassed,
+						)
+					})
 			}
 		})
 	}
 }
 
-func acvpKeygen(t *testing.T, paramSet string, in *keygenInput) {
+func acvpKeygen(t *testing.T, paramSet string, in *keyGenInput, wantSk, wantPk []byte) {
 	id, err := ParamIDByName(paramSet)
 	test.CheckNoErr(t, err, "invalid param name")
 
@@ -189,12 +209,12 @@ func acvpKeygen(t *testing.T, paramSet string, in *keygenInput) {
 	skGot, err := sk.MarshalBinary()
 	test.CheckNoErr(t, err, "PrivateKey.MarshalBinary failed")
 
-	if !bytes.Equal(skGot, in.Sk) {
-		test.ReportError(t, skGot, in.Sk)
+	if !bytes.Equal(skGot, wantSk) {
+		test.ReportError(t, skGot, wantSk)
 	}
 
 	skWant := &PrivateKey{ParamID: id}
-	err = skWant.UnmarshalBinary(in.Sk)
+	err = skWant.UnmarshalBinary(wantSk)
 	test.CheckNoErr(t, err, "PrivateKey.UnmarshalBinary failed")
 
 	if !sk.Equal(skWant) {
@@ -204,12 +224,12 @@ func acvpKeygen(t *testing.T, paramSet string, in *keygenInput) {
 	pkGot, err := pk.MarshalBinary()
 	test.CheckNoErr(t, err, "PublicKey.MarshalBinary failed")
 
-	if !bytes.Equal(pkGot, in.Pk) {
-		test.ReportError(t, pkGot, in.Pk)
+	if !bytes.Equal(pkGot, wantPk) {
+		test.ReportError(t, pkGot, wantPk)
 	}
 
 	pkWant := &PublicKey{ParamID: id}
-	err = pkWant.UnmarshalBinary(in.Pk)
+	err = pkWant.UnmarshalBinary(wantPk)
 	test.CheckNoErr(t, err, "PublicKey.UnmarshalBinary failed")
 
 	if !pk.Equal(pkWant) {
@@ -267,9 +287,9 @@ func acvpVerify(t *testing.T, paramSet string, in *verifyInput, want bool) {
 	}
 }
 
-type hexBytes []byte
+type Hex []byte
 
-func (b *hexBytes) UnmarshalJSON(data []byte) (err error) {
+func (b *Hex) UnmarshalJSON(data []byte) (err error) {
 	var s string
 	err = json.Unmarshal(data, &s)
 	if err != nil {
