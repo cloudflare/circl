@@ -1,0 +1,25 @@
+// +build ignore
+// The previous line (and this one up to the warning below) is removed by the
+// template generator.
+
+// Code generated from ./templates/field_test.go.tmpl. DO NOT EDIT.
+
+package arith
+
+import (
+	"testing"
+
+	"github.com/cloudflare/circl/vdaf/prio3/arith/{{.Name | ToLower}}"
+)
+
+func Test{{.Name}}(t *testing.T) {
+	t.Run("Fp",  testFp[{{.Name | ToLower}}.Fp])
+    t.Run("Vec", testVec[{{.Name | ToLower}}.Vec])
+	t.Run("Poly",testPoly[{{.Name | ToLower}}.Poly, {{.Name | ToLower}}.Vec])
+}
+
+func Benchmark{{.Name}}(b *testing.B) {
+	b.Run("Fp", benchmarkFp[{{.Name | ToLower}}.Fp])
+	b.Run("Vec", benchmarkVec[{{.Name | ToLower}}.Vec])
+	b.Run("Poly", benchmarkPoly[{{.Name | ToLower}}.Poly, {{.Name | ToLower}}.Vec])
+}

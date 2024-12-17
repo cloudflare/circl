@@ -1,0 +1,40 @@
+{
+    "agg_param": "",
+    "agg_result": 1,
+    "agg_shares": [
+        "e369056891a9fd95",
+        "1f96fa976d56026a"
+    ],
+    "ctx": "736f6d65206170706c69636174696f6e",
+    "prep": [
+        {
+            "input_shares": [
+                "e369056891a9fd95d44e6fadb3b75e6774b666d312bcc59b57694d189321ffe06f46b37d26db61d056b17152e3726a2e",
+                "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+            ],
+            "measurement": 1,
+            "nonce": "000102030405060708090a0b0c0d0e0f",
+            "out_shares": [
+                [
+                    "e369056891a9fd95"
+                ],
+                [
+                    "1f96fa976d56026a"
+                ]
+            ],
+            "prep_messages": [
+                ""
+            ],
+            "prep_shares": [
+                [
+                    "5c6a0685bd0f0aa9b19b8c1c4431ec49eca02338e5e05da8fc91575311627200",
+                    "a595f97a41f0f5565abc07086ef01d5b3cb2629a3c534bd4dbd8f5187ad75aad"
+                ]
+            ],
+            "public_share": "",
+            "rand": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f"
+        }
+    ],
+    "shares": 2,
+    "verify_key": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"
+}
