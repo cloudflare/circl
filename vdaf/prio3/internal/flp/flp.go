@@ -11,14 +11,15 @@ import (
 // FLP is an instance of a FLP by Boneh et al. Crypto, 2019 paper
 // "Zero-Knowledge Proofs on Secret-Shared Data via Fully Linear PCPs",
 // https://ia.cr/2019/188
-// plus some changes described in VDAFs CFRG draft.
+// plus some changes described in VDAF specification.
+//
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-vdaf-13#section-7.1
 type FLP[
 	G Gadget[P, V, E, F],
 	P arith.Poly[P, E], V arith.Vec[V, E], E arith.Elt, F arith.Fp[E],
 ] struct {
 	// Eval evaluates the arithmetic circuit on a measurement and joint randomness.
-	Eval func(out V, g Gadget[P, V, E, F], numCalls uint, meas, jointRand V, shares uint8)
+	Eval func(out V, g Gadget[P, V, E, F], numCalls uint, meas, jointRand V, numShares uint8)
 	Valid[G, P, V, E, F]
 }
 
@@ -33,10 +34,13 @@ func (f *FLP[G, P, V, E, F]) Prove(meas, proveRand, jointRand V) V {
 
 	g := f.Valid.wrapProve(proveRand)
 	out := arith.NewVec[V](f.EvalOutputLength())
-	f.Eval(out, g, f.Valid.NumCalls, meas, jointRand, 1)
+	f.Eval(out, g, f.Valid.NumGadgetCalls, meas, jointRand, 1)
 
+	// invN is the inverse of N = g.p.
+	// Also, since g.p is always a power of two, we call a faster inversion
+	// method that receives the log2 of g.p.
 	invN := F(new(E))
-	invN.InvTwoN(g.log2p) // since p is always a power of 2.
+	invN.InvTwoN(g.log2p)
 
 	arity := g.Arity()
 	wirePoly := make([]P, arity)
@@ -59,7 +63,7 @@ func (f *FLP[G, P, V, E, F]) Prove(meas, proveRand, jointRand V) V {
 	return proof
 }
 
-// Query is the linear Query algorithm run by the verifier on a share of the
+// Query is the linear Query algorithm run by each verifier on a share of the
 // measurement and proof.
 // Query randomness must be provided.
 // Some statements may require joint randomness too.
@@ -75,7 +79,7 @@ func (f *FLP[G, P, V, E, F]) Query(
 	g := f.Valid.wrapQuery(proofShare)
 	outLen := f.EvalOutputLength()
 	out := arith.NewVec[V](outLen)
-	f.Eval(out, g, f.Valid.NumCalls, measShare, jointRand, numShares)
+	f.Eval(out, g, f.Valid.NumGadgetCalls, measShare, jointRand, numShares)
 
 	v := verifierCur.Next(1)
 	if outLen > 1 {
@@ -96,6 +100,9 @@ func (f *FLP[G, P, V, E, F]) Query(
 		return nil, ErrInvalidEval
 	}
 
+	// invN is the inverse of N = g.p.
+	// Also, since g.p is always a power of two, we call a faster inversion
+	// method that receives the log2 of g.p.
 	invN := F(new(E))
 	invN.InvTwoN(g.log2p)
 
