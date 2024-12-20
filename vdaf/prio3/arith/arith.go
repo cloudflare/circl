@@ -18,6 +18,8 @@ type Elt any
 
 // Fp lists the functionality that a prime field element must have denoting
 // methods with a pointer receiver.
+// This interface considers the modulus is an NTT-friendly prime, i.e.,
+// there exists a multiplicative subgroup formed by the N-th roots of unity.
 type Fp[E Elt] interface {
 	*E
 	// Size returns the number of bytes to encode a field element.
@@ -26,9 +28,9 @@ type Fp[E Elt] interface {
 	IsZero() bool
 	// Returns true if the element is the neutral multiplicative element.
 	IsOne() bool
-	// Returns true if the element is equivalent to x.
+	// Returns true if the element is equal to x.
 	IsEqual(x *E) bool
-	// Set the element to the neutral additive element.
+	// Set the element to the neutral multiplicative element.
 	SetOne()
 	// Set the element to x if x < Order().
 	SetUint64(uint64) error
@@ -70,13 +72,13 @@ type Fp[E Elt] interface {
 	conv.UnmarshalingValue
 }
 
-// NewVec returns a vector of length n.
+// NewVec returns a vector of length n with all elements set to zero.
 func NewVec[V Vec[V, E], E Elt](n uint) V { return make(V, n) }
 
-// Vec list the funtionality of a vector of field elements.
+// Vec lists the funtionality of a vector of field elements.
 type Vec[Vec ~[]E, E Elt] interface {
 	~[]E
-	// Size returns the number of bytes to encode a vector.
+	// Size returns the number of bytes to encode the vector.
 	Size() uint
 	// AddAssing calculates z = z + x.
 	AddAssign(x Vec)
@@ -86,11 +88,13 @@ type Vec[Vec ~[]E, E Elt] interface {
 	ScalarMul(x *E)
 	// DotProduct calculates z[i] = z[i] * x[i].
 	DotProduct(x Vec) E
-	// NTT calculates the number theoretic transform on values.
+	// NTT calculates the number theoretic transform of the vector.
 	NTT(Vec)
 	// InvNTT calculates the inverse number theoretic transform on values.
 	InvNTT(Vec)
 	// SplitBits sets the vector of elements corresponding to the bits of n.
+	// The receiving vector sets v[i] = SetUint64(n(i)), where n(i) is the i-th
+	// bit of n, and len(v) >= log2(n).
 	SplitBits(n uint64) error
 	// JoinBits calculates the element sum( 2^i * z[i] ).
 	JoinBits() E
@@ -110,7 +114,8 @@ type Vec[Vec ~[]E, E Elt] interface {
 	conv.UnmarshalingValue
 }
 
-// NewPoly returns a polynomial of the given degree.
+// NewPoly returns a polynomial of the given degree with all coefficients set
+// to zero.
 func NewPoly[P Poly[P, E], E Elt](degree uint) P { return make(P, degree+1) }
 
 // Poly lists the funtionality of polynomials with coefficients in a field.
@@ -128,6 +133,8 @@ type Poly[Poly ~[]E, E Elt] interface {
 	Evaluate(x *E) E
 	// Strip removes the higher-degree zero terms.
 	Strip() Poly
-	// Interpolate a polynomial on given the values.
-	Interpolate([]E)
+	// Interpolate a polynomial passing through the points (x[i], y[i]), where
+	// x are the powers of an N-th root of unity, y are the values, and
+	// N = len(y) must be a power of two.
+	Interpolate(y []E)
 }
