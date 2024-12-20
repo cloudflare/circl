@@ -5,6 +5,7 @@ import (
 	"encoding"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"slices"
@@ -52,6 +53,34 @@ func testMarshal[T any](t testing.TB, x *T, p *prio3.Params, extra ...uint) {
 	// check for invalid size
 	err = bm.UnmarshalBinary(nil)
 	test.CheckIsErr(t, err, "UnmarshalBinary should failed")
+}
+
+func fromReader[T any](t testing.TB, r io.Reader) (z T) {
+	var err error
+	switch zz := any(&z).(type) {
+	case *prio3.Nonce:
+		_, err = r.Read(zz[:])
+	case *prio3.VerifyKey:
+		_, err = r.Read(zz[:])
+	default:
+		err = errors.New("wrong type")
+	}
+	test.CheckNoErr(t, err, "fromReader failed")
+	return
+}
+
+func fromHex[T any](t testing.TB, x Hex) (z T) {
+	var err error
+	switch zz := any(&z).(type) {
+	case *prio3.Nonce:
+		copy(zz[:], x[:prio3.NonceSize])
+	case *prio3.VerifyKey:
+		copy(zz[:], x[:prio3.VerifyKeySize])
+	default:
+		err = errors.New("wrong type")
+	}
+	test.CheckNoErr(t, err, "fromHex failed")
+	return
 }
 
 type Hex []byte

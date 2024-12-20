@@ -111,7 +111,7 @@ func newFlpSum(maxMeasurement uint64) (*flpSum, error) {
 	return s, nil
 }
 
-func (s *flpSum) EvalEval(
+func (s *flpSum) Eval(
 	out Vec, g flp.Gadget[poly, Vec, Fp, *Fp], numCalls uint,
 	meas, jointRand Vec, numShares uint8,
 ) {
