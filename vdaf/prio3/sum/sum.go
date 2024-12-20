@@ -35,8 +35,13 @@ type Sum struct {
 
 func New(numShares uint8, maxMeasurement uint64, context []byte) (s *Sum, err error) {
 	const sumID = 2
+	flp, err := newFlpSum(maxMeasurement)
+	if err != nil {
+		return nil, err
+	}
+
 	s = new(Sum)
-	s.p, err = prio3.New(newFlpSum(maxMeasurement), sumID, numShares, context)
+	s.p, err = prio3.New(flp, sumID, numShares, context)
 	if err != nil {
 		return nil, err
 	}
@@ -85,15 +90,15 @@ type flpSum struct {
 	offset Fp
 }
 
-func newFlpSum(maxMeasurement uint64) *flpSum {
-	s := new(flpSum)
+func newFlpSum(maxMeasurement uint64) (*flpSum, error) {
 	bits := uint(bits.Len64(maxMeasurement))
 	offset := (uint64(1) << uint64(bits)) - 1 - maxMeasurement
 
+	s := new(flpSum)
 	s.bits = bits
 	err := s.offset.SetUint64(offset)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	s.Valid.MeasurementLen = 2 * bits
@@ -103,7 +108,7 @@ func newFlpSum(maxMeasurement uint64) *flpSum {
 	s.Gadget = flp.GadgetPolyEvalx2x{}
 	s.NumGadgetCalls = 2 * bits
 	s.FLP.Eval = s.Eval
-	return s
+	return s, nil
 }
 
 func (s *flpSum) EvalEval(

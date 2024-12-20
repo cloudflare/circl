@@ -2,6 +2,7 @@
 package mhcv
 
 import (
+	"errors"
 	"math/big"
 	"math/bits"
 
@@ -36,12 +37,15 @@ type MultiHotCountVec struct {
 	p prio3.Prio3[[]bool, []uint64, *flpMultiHotCountVec, Vec, Fp, *Fp]
 }
 
-func New(numShares uint8, length, maxWeight, chunkLen uint, context []byte) (m *MultiHotCountVec, err error) {
+func New(numShares uint8, length, maxWeight, chunkLength uint, context []byte) (m *MultiHotCountVec, err error) {
 	const multihotCountVecID = 5
+	flp, err := newFlpMultiCountHotVec(length, maxWeight, chunkLength)
+	if err != nil {
+		return nil, err
+	}
+
 	m = new(MultiHotCountVec)
-	m.p, err = prio3.New(
-		newFlpMultiCountHotVec(length, maxWeight, chunkLen),
-		multihotCountVecID, numShares, context)
+	m.p, err = prio3.New(flp, multihotCountVecID, numShares, context)
 	if err != nil {
 		return nil, err
 	}
@@ -86,22 +90,21 @@ func (m *MultiHotCountVec) Unshard(aggShares []AggShare, numMeas uint) (aggregat
 
 type flpMultiHotCountVec struct {
 	flp.FLP[flp.GadgetParallelSumInnerMul, poly, Vec, Fp, *Fp]
-	bits     uint
-	chunkLen uint
-	length   uint
-	offset   Fp
+	bits        uint
+	chunkLength uint
+	length      uint
+	offset      Fp
 }
 
-func newFlpMultiCountHotVec(length, maxWeight, chunkLen uint) *flpMultiHotCountVec {
-	m := new(flpMultiHotCountVec)
+func newFlpMultiCountHotVec(length, maxWeight, chunkLength uint) (*flpMultiHotCountVec, error) {
 	if length == 0 {
-		panic("length cannot be zero")
+		return nil, ErrLength
 	}
 	if maxWeight > length {
-		panic("maxWeight cannot be greater than length")
+		return nil, ErrMaxWeight
 	}
-	if chunkLen == 0 {
-		panic("chunkLen cannot be zero")
+	if chunkLength == 0 {
+		return nil, ErrChunkLength
 	}
 
 	bits := uint(bits.Len64(uint64(maxWeight)))
@@ -110,27 +113,28 @@ func newFlpMultiCountHotVec(length, maxWeight, chunkLen uint) *flpMultiHotCountV
 	b := new(big.Int).SetBytes(new(Fp).Order())
 	b.Sub(b, big.NewInt(int64(offset)))
 	if b.Cmp(big.NewInt(int64(length))) <= 0 {
-		panic("length and maxWeight are too large for the current field size")
+		return nil, ErrFieldSize
 	}
 
-	numGadgetCalls := (length + bits + chunkLen - 1) / chunkLen
+	numGadgetCalls := (length + bits + chunkLength - 1) / chunkLength
 
+	m := new(flpMultiHotCountVec)
 	m.bits = bits
 	m.length = length
-	m.chunkLen = chunkLen
+	m.chunkLength = chunkLength
 	err := m.offset.SetUint64(offset)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	m.Valid.MeasurementLen = length + bits
 	m.Valid.JointRandLen = numGadgetCalls
 	m.Valid.OutputLen = length
 	m.Valid.EvalOutputLen = 2
-	m.Gadget = flp.GadgetParallelSumInnerMul{Count: chunkLen}
+	m.Gadget = flp.GadgetParallelSumInnerMul{Count: chunkLength}
 	m.NumGadgetCalls = numGadgetCalls
 	m.FLP.Eval = m.Eval
-	return m
+	return m, nil
 }
 
 func (m *flpMultiHotCountVec) Eval(
@@ -139,7 +143,7 @@ func (m *flpMultiHotCountVec) Eval(
 ) {
 	var invShares Fp
 	invShares.InvUint64(uint64(numShares))
-	out[0] = flp.RangeCheck(g, numCalls, m.chunkLen, &invShares, meas, jointRand)
+	out[0] = flp.RangeCheck(g, numCalls, m.chunkLength, &invShares, meas, jointRand)
 
 	measCur := cursor.New(meas)
 	countVec := measCur.Next(m.length)
@@ -205,3 +209,10 @@ func (m *flpMultiHotCountVec) Decode(output Vec, numMeas uint) (*[]uint64, error
 
 	return &out, nil
 }
+
+var (
+	ErrLength      = errors.New("length cannot be zero")
+	ErrMaxWeight   = errors.New("maxWeight cannot be greater than length")
+	ErrChunkLength = errors.New("chunkLength cannot be zero")
+	ErrFieldSize   = errors.New("length and maxWeight are too large for the current field size")
+)

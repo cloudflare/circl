@@ -2,6 +2,8 @@
 package sumvec
 
 import (
+	"errors"
+
 	"github.com/cloudflare/circl/vdaf/prio3/arith"
 	"github.com/cloudflare/circl/vdaf/prio3/arith/fp128"
 	"github.com/cloudflare/circl/vdaf/prio3/internal/cursor"
@@ -31,10 +33,15 @@ type SumVec struct {
 	p prio3.Prio3[[]uint64, []uint64, *flpSumVec, Vec, Fp, *Fp]
 }
 
-func New(numShares uint8, length, bits, chunkLen uint, context []byte) (s *SumVec, err error) {
+func New(numShares uint8, length, bits, chunkLength uint, context []byte) (s *SumVec, err error) {
 	const sumVecID = 3
+	flp, err := newFlpSumVec(length, bits, chunkLength)
+	if err != nil {
+		return nil, err
+	}
+
 	s = new(SumVec)
-	s.p, err = prio3.New(newFlpSumVec(length, bits, chunkLen), sumVecID, numShares, context)
+	s.p, err = prio3.New(flp, sumVecID, numShares, context)
 	if err != nil {
 		return nil, err
 	}
@@ -84,14 +91,14 @@ type flpSumVec struct {
 	chunkLen uint
 }
 
-func newFlpSumVec(length, bits, chunkLen uint) *flpSumVec {
+func newFlpSumVec(length, bits, chunkLen uint) (*flpSumVec, error) {
 	if bits > 64 {
-		panic("bits larger than 64 is not supported")
+		return nil, ErrBits
 	}
 
-	s := new(flpSumVec)
 	numGadgetCalls := (length*bits + chunkLen - 1) / chunkLen
 
+	s := new(flpSumVec)
 	s.length = length
 	s.bits = bits
 	s.chunkLen = chunkLen
@@ -102,7 +109,7 @@ func newFlpSumVec(length, bits, chunkLen uint) *flpSumVec {
 	s.Gadget = flp.GadgetParallelSumInnerMul{Count: chunkLen}
 	s.NumGadgetCalls = numGadgetCalls
 	s.FLP.Eval = s.Eval
-	return s
+	return s, nil
 }
 
 func (s *flpSumVec) Eval(
@@ -157,3 +164,5 @@ func (s *flpSumVec) Decode(output Vec, numMeas uint) (*[]uint64, error) {
 
 	return &out, nil
 }
+
+var ErrBits = errors.New("bits larger than 64 is not supported")
