@@ -17,17 +17,16 @@ import (
 
 type Prio3[
 	Measurement, Aggregate any,
-	AggShare, InputShare, OutShare, PrepShare, PrepState any,
+	AggShare, InputShare, Nonce, OutShare, PrepMessage, PrepShare, PrepState,
+	PublicShare, VerifyKey any,
 ] interface {
 	Params() prio3.Params
-	Shard(
-		Measurement, *prio3.Nonce, []byte,
-	) (prio3.PublicShare, []InputShare, error)
+	Shard(Measurement, *Nonce, []byte) (PublicShare, []InputShare, error)
 	PrepInit(
-		*prio3.VerifyKey, *prio3.Nonce, uint8, prio3.PublicShare, InputShare,
+		*VerifyKey, *Nonce, uint8, PublicShare, InputShare,
 	) (*PrepState, *PrepShare, error)
-	PrepSharesToPrep([]PrepShare) (*prio3.PrepMessage, error)
-	PrepNext(*PrepState, *prio3.PrepMessage) (*OutShare, error)
+	PrepSharesToPrep([]PrepShare) (*PrepMessage, error)
+	PrepNext(*PrepState, *PrepMessage) (*OutShare, error)
 	AggregateInit() AggShare
 	AggregateUpdate(*AggShare, *OutShare)
 	Unshard([]AggShare, uint) (*Aggregate, error)
@@ -116,16 +115,16 @@ func TestMultiHotCountVec(t *testing.T) {
 func testPrio3[
 	P Prio3[
 		Measurement, Aggregate,
-		AggShare, InputShare, OutShare, PrepShare, PrepState,
+		AggShare, InputShare, Nonce, OutShare, PrepMessage, PrepShare, PrepState,
+		PublicShare, VerifyKey,
 	],
 	Measurement, Aggregate any,
-	AggShare, InputShare, OutShare, PrepShare, PrepState any,
+	AggShare, InputShare, Nonce, OutShare, PrepMessage, PrepShare, PrepState,
+	PublicShare, VerifyKey any,
 ](t testing.TB, p P, measurements []Measurement) *Aggregate {
 	params := p.Params()
 	shares := params.Shares()
-	var verifyKey prio3.VerifyKey
-	_, err := io.ReadFull(rand.Reader, verifyKey[:])
-	test.CheckNoErr(t, err, "read verifyKey failed")
+	verifyKey := fromReader[VerifyKey](t, rand.Reader)
 
 	aggShares := make([]AggShare, shares)
 	for i := range aggShares {
@@ -133,18 +132,15 @@ func testPrio3[
 	}
 
 	for _, mi := range measurements {
-		var nonce prio3.Nonce
-		_, err = io.ReadFull(rand.Reader, nonce[:])
-		test.CheckNoErr(t, err, "read nonce failed")
-
+		nonce := fromReader[Nonce](t, rand.Reader)
 		randb := make([]byte, params.RandSize())
-		_, err = io.ReadFull(rand.Reader, randb)
+		_, err := io.ReadFull(rand.Reader, randb)
 		test.CheckNoErr(t, err, "read rand bytes failed")
 
-		var pubShare prio3.PublicShare
+		var pubShare PublicShare
 		var inputShares []InputShare
 		pubShare, inputShares, err = p.Shard(mi, &nonce, randb)
-		test.CheckNoErr(t, err, "shard failed")
+		test.CheckNoErr(t, err, "Shard failed")
 		testMarshal(t, &pubShare, &params)
 		for i := range inputShares {
 			testMarshal(t, &inputShares[i], &params, uint(i))
@@ -155,16 +151,15 @@ func testPrio3[
 		for i := range shares {
 			state, share, errx := p.PrepInit(
 				&verifyKey, &nonce, i, pubShare, inputShares[i])
-			test.CheckNoErr(t, errx, "prepare init failed")
+			test.CheckNoErr(t, errx, "PrepInit failed")
+			testMarshal(t, state, &params)
+			testMarshal(t, share, &params)
 
 			prepStates = append(prepStates, state)
 			outboundPrepShares = append(outboundPrepShares, *share)
 		}
 
-		testMarshal(t, prepStates[0], &params)
-		testMarshal(t, &outboundPrepShares[0], &params)
-
-		var prepMsg *prio3.PrepMessage
+		var prepMsg *PrepMessage
 		prepMsg, err = p.PrepSharesToPrep(outboundPrepShares)
 		test.CheckNoErr(t, err, "PrepSharesToPrep failed")
 		testMarshal(t, prepMsg, &params)
@@ -221,14 +216,16 @@ func BenchmarkMultiHotCountVec(b *testing.B) {
 }
 
 func benchmarkPrio3[
-	T Prio3[
+	P Prio3[
 		Measurement, Aggregate,
-		AggShare, InputShare, OutShare, PrepShare, PrepState,
+		AggShare, InputShare, Nonce, OutShare, PrepMessage, PrepShare, PrepState,
+		PublicShare, VerifyKey,
 	],
 	Measurement, Aggregate any,
-	AggShare, InputShare, OutShare, PrepShare, PrepState any,
-](b *testing.B, v T, meas []Measurement) {
+	AggShare, InputShare, Nonce, OutShare, PrepMessage, PrepShare, PrepState,
+	PublicShare, VerifyKey any,
+](b *testing.B, p P, meas []Measurement) {
 	for i := 0; i < b.N; i++ {
-		_ = testPrio3(b, v, meas)
+		_ = testPrio3(b, p, meas)
 	}
 }

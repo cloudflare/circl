@@ -98,7 +98,7 @@ func newFlpHistogram(length, chunkLen uint) *flpHistogram {
 	return h
 }
 
-func (h *flpHistogram) EvalEval(
+func (h *flpHistogram) Eval(
 	out Vec, g flp.Gadget[poly, Vec, Fp, *Fp], numCalls uint,
 	meas, jointRand Vec, numShares uint8,
 ) {

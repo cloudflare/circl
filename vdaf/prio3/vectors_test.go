@@ -9,7 +9,6 @@ import (
 	"github.com/cloudflare/circl/internal/test"
 	"github.com/cloudflare/circl/vdaf/prio3/count"
 	"github.com/cloudflare/circl/vdaf/prio3/histogram"
-	"github.com/cloudflare/circl/vdaf/prio3/internal/prio3"
 	"github.com/cloudflare/circl/vdaf/prio3/mhcv"
 	"github.com/cloudflare/circl/vdaf/prio3/sum"
 	"github.com/cloudflare/circl/vdaf/prio3/sumvec"
@@ -153,14 +152,16 @@ func TestVector(t *testing.T) {
 func runPrio3[
 	P Prio3[
 		Measurement, Aggregate,
-		AggShare, InputShare, OutShare, PrepShare, PrepState,
+		AggShare, InputShare, Nonce, OutShare, PrepMessage, PrepShare, PrepState,
+		PublicShare, VerifyKey,
 	],
 	Measurement, Aggregate any,
-	AggShare, InputShare, OutShare, PrepShare, PrepState any,
+	AggShare, InputShare, Nonce, OutShare, PrepMessage, PrepShare, PrepState,
+	PublicShare, VerifyKey any,
 ](t *testing.T, p P, v VectorBase[Measurement, Aggregate]) {
 	params := p.Params()
 	shares := params.Shares()
-	verifyKey := prio3.VerifyKey(v.VerifyKey)
+	verifyKey := fromHex[VerifyKey](t, v.VerifyKey)
 
 	aggShares := make([]AggShare, shares)
 	for i := range aggShares {
@@ -168,7 +169,7 @@ func runPrio3[
 	}
 
 	for _, instance := range v.Prep {
-		nonce := prio3.Nonce(instance.Nonce)
+		nonce := fromHex[Nonce](t, instance.Nonce)
 		randb := instance.Rand
 		meas := instance.Measurement
 
