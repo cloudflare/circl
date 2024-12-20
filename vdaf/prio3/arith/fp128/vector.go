@@ -203,8 +203,8 @@ func (v Vec) Unmarshal(s *cryptobyte.String) bool {
 }
 
 func isInRange(b *[Size]byte) (out [2]uint64, ok bool) {
-	out[0] = binary.LittleEndian.Uint64(b[:8])
 	out[1] = binary.LittleEndian.Uint64(b[8:])
+	out[0] = binary.LittleEndian.Uint64(b[:8])
 	ok = out[1] < orderP1 || (out[1] == orderP1 && out[0] < orderP0)
 	return
 }
