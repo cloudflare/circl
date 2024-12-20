@@ -1,8 +1,6 @@
-// Package prio3 implements Prio3 a set of Verifiable Distributed
-// Aggregation Functions.
-//
-// Prio3 provides several variants of Verifiable Distributed Aggregation
-// Functions (VDAF) as described in draft-irtf-cfrg-vdaf [v13]
+// Package prio3 implements Prio3, a set of Verifiable Distributed
+// Aggregation Functions (VDAFs). It provides several concrete VDAFs
+// described in draft-irtf-cfrg-vdaf [v13]:
 //   - Count [github.com/cloudflare/circl/vdaf/prio3/count]
 //   - Sum [github.com/cloudflare/circl/vdaf/prio3/sum]
 //   - SumVec [github.com/cloudflare/circl/vdaf/prio3/sumvec]

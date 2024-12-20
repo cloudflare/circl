@@ -18,7 +18,7 @@ type (
 	// VerifyKey is a secret verification key held by each of the Aggregators.
 	// This key is used to verify validity of the output shares they compute.
 	VerifyKey [VerifyKeySize]byte
-	// Seed is used to feed an extnedable output function.
+	// Seed is used to feed an extendable output function.
 	Seed [SeedSize]byte
 )
 
@@ -75,7 +75,7 @@ type inputShareContent[V arith.Vec[V, E], E arith.Elt] struct {
 
 func (s *inputShareContent[V, E]) New(p *Params) *inputShareContent[V, E] {
 	s.measShare = arith.NewVec[V](p.MeasurementLength())
-	s.proofShare = arith.NewVec[V](p.ProofLength() * numProofs)
+	s.proofShare = arith.NewVec[V](p.ProofLength())
 	if p.JointRandLength() > 0 {
 		s.blind = &Seed{}
 	} else {
@@ -226,7 +226,7 @@ type PrepShare[V arith.Vec[V, E], E arith.Elt] struct {
 }
 
 func (s *PrepShare[V, E]) New(p *Params) *PrepShare[V, E] {
-	s.verifiersShare = arith.NewVec[V](p.VerifierLength() * numProofs)
+	s.verifiersShare = arith.NewVec[V](p.VerifierLength())
 	if p.JointRandLength() > 0 {
 		s.jointRandPart = &Seed{}
 	} else {

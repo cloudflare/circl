@@ -28,8 +28,8 @@ type Prio3[
 	) (*PrepState, *PrepShare, error)
 	PrepSharesToPrep([]PrepShare) (*prio3.PrepMessage, error)
 	PrepNext(*PrepState, *prio3.PrepMessage) (*OutShare, error)
-	AggregationInit() AggShare
-	AggregationUpdate(*AggShare, *OutShare)
+	AggregateInit() AggShare
+	AggregateUpdate(*AggShare, *OutShare)
 	Unshard([]AggShare, uint) (*Aggregate, error)
 }
 
@@ -129,7 +129,7 @@ func testPrio3[
 
 	aggShares := make([]AggShare, shares)
 	for i := range aggShares {
-		aggShares[i] = p.AggregationInit()
+		aggShares[i] = p.AggregateInit()
 	}
 
 	for _, mi := range measurements {
@@ -174,7 +174,7 @@ func testPrio3[
 			outShare, err = p.PrepNext(prepStates[i], prepMsg)
 			test.CheckNoErr(t, err, "PrepNext failed")
 			testMarshal(t, outShare, &params)
-			p.AggregationUpdate(&aggShares[i], outShare)
+			p.AggregateUpdate(&aggShares[i], outShare)
 		}
 	}
 

@@ -10,14 +10,18 @@ import (
 )
 
 type (
-	poly       = fp128.Poly
-	Vec        = fp128.Vec
-	Fp         = fp128.Fp
-	AggShare   = prio3.AggShare[Vec, Fp]
-	InputShare = prio3.InputShare[Vec, Fp]
-	OutShare   = prio3.OutShare[Vec, Fp]
-	PrepShare  = prio3.PrepShare[Vec, Fp]
-	PrepState  = prio3.PrepState[Vec, Fp]
+	poly        = fp128.Poly
+	Vec         = fp128.Vec
+	Fp          = fp128.Fp
+	AggShare    = prio3.AggShare[Vec, Fp]
+	InputShare  = prio3.InputShare[Vec, Fp]
+	Nonce       = prio3.Nonce
+	OutShare    = prio3.OutShare[Vec, Fp]
+	PrepMessage = prio3.PrepMessage
+	PrepShare   = prio3.PrepShare[Vec, Fp]
+	PrepState   = prio3.PrepState[Vec, Fp]
+	PublicShare = prio3.PublicShare
+	VerifyKey   = prio3.VerifyKey
 )
 
 // SumVec is a verifiable distributed aggregation function in which each
@@ -28,7 +32,7 @@ type SumVec struct {
 }
 
 func New(numShares uint8, length, bits, chunkLen uint, context []byte) (s *SumVec, err error) {
-	const sumVecID uint8 = 3
+	const sumVecID = 3
 	s = new(SumVec)
 	s.p, err = prio3.New(newFlpSumVec(length, bits, chunkLen), sumVecID, numShares, context)
 	if err != nil {
@@ -40,33 +44,33 @@ func New(numShares uint8, length, bits, chunkLen uint, context []byte) (s *SumVe
 
 func (s *SumVec) Params() prio3.Params { return s.p.Params() }
 
-func (s *SumVec) Shard(measurement []uint64, nonce *prio3.Nonce, rand []byte,
-) (prio3.PublicShare, []InputShare, error) {
+func (s *SumVec) Shard(measurement []uint64, nonce *Nonce, rand []byte,
+) (PublicShare, []InputShare, error) {
 	return s.p.Shard(measurement, nonce, rand)
 }
 
 func (s *SumVec) PrepInit(
-	verifyKey *prio3.VerifyKey,
-	nonce *prio3.Nonce,
+	verifyKey *VerifyKey,
+	nonce *Nonce,
 	aggID uint8,
-	publicShare prio3.PublicShare,
+	publicShare PublicShare,
 	inputShare InputShare,
 ) (*PrepState, *PrepShare, error) {
 	return s.p.PrepInit(verifyKey, nonce, aggID, publicShare, inputShare)
 }
 
-func (s *SumVec) PrepSharesToPrep(prepShares []PrepShare) (*prio3.PrepMessage, error) {
+func (s *SumVec) PrepSharesToPrep(prepShares []PrepShare) (*PrepMessage, error) {
 	return s.p.PrepSharesToPrep(prepShares)
 }
 
-func (s *SumVec) PrepNext(state *PrepState, msg *prio3.PrepMessage) (*OutShare, error) {
+func (s *SumVec) PrepNext(state *PrepState, msg *PrepMessage) (*OutShare, error) {
 	return s.p.PrepNext(state, msg)
 }
 
-func (s *SumVec) AggregationInit() AggShare { return s.p.AggregationInit() }
+func (s *SumVec) AggregateInit() AggShare { return s.p.AggregateInit() }
 
-func (s *SumVec) AggregationUpdate(aggShare *AggShare, outShare *OutShare) {
-	s.p.AggregationUpdate(aggShare, outShare)
+func (s *SumVec) AggregateUpdate(aggShare *AggShare, outShare *OutShare) {
+	s.p.AggregateUpdate(aggShare, outShare)
 }
 
 func (s *SumVec) Unshard(aggShares []AggShare, numMeas uint) (aggregate *[]uint64, err error) {
@@ -74,7 +78,7 @@ func (s *SumVec) Unshard(aggShares []AggShare, numMeas uint) (aggregate *[]uint6
 }
 
 type flpSumVec struct {
-	flp.FLP[flp.GadgetParallelSum, poly, Vec, Fp, *Fp]
+	flp.FLP[flp.GadgetParallelSumInnerMul, poly, Vec, Fp, *Fp]
 	length   uint
 	bits     uint
 	chunkLen uint
@@ -86,24 +90,27 @@ func newFlpSumVec(length, bits, chunkLen uint) *flpSumVec {
 	}
 
 	s := new(flpSumVec)
-	numCalls := (length*bits + chunkLen - 1) / chunkLen
+	numGadgetCalls := (length*bits + chunkLen - 1) / chunkLen
 
 	s.length = length
 	s.bits = bits
 	s.chunkLen = chunkLen
 	s.Valid.MeasurementLen = length * bits
-	s.Valid.JointRandLen = numCalls
+	s.Valid.JointRandLen = numGadgetCalls
 	s.Valid.OutputLen = length
 	s.Valid.EvalOutputLen = 1
-	s.Gadget = flp.GadgetParallelSum{Count: chunkLen}
-	s.NumCalls = numCalls
+	s.Gadget = flp.GadgetParallelSumInnerMul{Count: chunkLen}
+	s.NumGadgetCalls = numGadgetCalls
 	s.FLP.Eval = s.Eval
 	return s
 }
 
-func (s *flpSumVec) Eval(out Vec, g flp.Gadget[poly, Vec, Fp, *Fp], numCalls uint, meas, jointRand Vec, shares uint8) {
+func (s *flpSumVec) Eval(
+	out Vec, g flp.Gadget[poly, Vec, Fp, *Fp], numCalls uint,
+	meas, jointRand Vec, numShares uint8,
+) {
 	var invShares Fp
-	invShares.InvUint64(uint64(shares))
+	invShares.InvUint64(uint64(numShares))
 	out[0] = flp.RangeCheck(g, numCalls, s.chunkLen, &invShares, meas, jointRand)
 }
 
