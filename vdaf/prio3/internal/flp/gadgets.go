@@ -62,14 +62,14 @@ func (GadgetPolyEvalx2x) EvalPoly(out fp64.Poly, in []fp64.Poly) {
 	out.Strip()
 }
 
-type GadgetParallelSum struct {
+type GadgetParallelSumInnerMul struct {
 	inner gadgetMulFp128
 	Count uint
 }
 
-func (g GadgetParallelSum) Arity() uint  { return g.inner.Arity() * g.Count }
-func (g GadgetParallelSum) Degree() uint { return g.inner.Degree() }
-func (g GadgetParallelSum) Eval(out *fp128.Fp, in fp128.Vec) {
+func (g GadgetParallelSumInnerMul) Arity() uint  { return g.inner.Arity() * g.Count }
+func (g GadgetParallelSumInnerMul) Degree() uint { return g.inner.Degree() }
+func (g GadgetParallelSumInnerMul) Eval(out *fp128.Fp, in fp128.Vec) {
 	inCur := cursor.New(in)
 	arity := g.inner.Arity()
 	var e fp128.Fp
@@ -79,7 +79,7 @@ func (g GadgetParallelSum) Eval(out *fp128.Fp, in fp128.Vec) {
 	}
 }
 
-func (g GadgetParallelSum) EvalPoly(out fp128.Poly, in []fp128.Poly) {
+func (g GadgetParallelSumInnerMul) EvalPoly(out fp128.Poly, in []fp128.Poly) {
 	inCur := cursor.New(in)
 	arity := g.inner.Arity()
 	e := arith.NewPoly[fp128.Poly](uint(len(out) - 1))

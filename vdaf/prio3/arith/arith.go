@@ -56,8 +56,8 @@ type Fp[E Elt] interface {
 	Inv(x *E)
 	// InvUint64 calculates z = 1 / x.
 	InvUint64(x uint64)
-	// InvTwoN calculates z = 1 / 2^n.
-	InvTwoN(x uint)
+	// InvTwoN calculates z = 1 / (2^n).
+	InvTwoN(n uint)
 	// Random samples an element from an io.Reader.
 	Random(io.Reader) error
 	// RandomSHA3 samples an element from a SHA3 state.

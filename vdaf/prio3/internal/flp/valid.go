@@ -24,8 +24,8 @@ type Valid[
 	G Gadget[P, V, E, F],
 	P arith.Poly[P, E], V arith.Vec[V, E], E arith.Elt, F arith.Fp[E],
 ] struct {
-	Gadget   G    // Gadget to be evaluated
-	NumCalls uint // Number of times each gadget is called.
+	Gadget         G    // Gadget to be evaluated
+	NumGadgetCalls uint // Number of times each gadget is called.
 	Params
 }
 
@@ -33,7 +33,7 @@ func (v *Valid[G, P, V, E, F]) ProveRandLength() uint { return v.Gadget.Arity() 
 func (v *Valid[G, P, V, E, F]) ProofLength() uint     { return v.Gadget.Arity() + v.gadgetPolyLen() }
 func (v *Valid[G, P, V, E, F]) VerifierLength() uint  { return 1 + 1 + v.Gadget.Arity() }
 func (v *Valid[G, P, V, E, F]) gadgetPolyLen() uint {
-	p, _ := math.NextPow2(1 + v.NumCalls)
+	p, _ := math.NextPow2(1 + v.NumGadgetCalls)
 	return 1 + v.Gadget.Degree()*(p-1)
 }
 
@@ -58,7 +58,7 @@ func (v *Valid[G, P, V, E, F]) wrapQuery(proof V) *QueryGadget[G, P, V, E, F] {
 
 func (v *Valid[G, P, V, E, F]) wrap(wireSeeds V) (g wrapperGadget[G, P, V, E, F]) {
 	g.inner = v.Gadget
-	g.p, g.log2p = math.NextPow2(1 + v.NumCalls)
+	g.p, g.log2p = math.NextPow2(1 + v.NumGadgetCalls)
 	g.wires = arith.NewVec[V](uint(len(wireSeeds)) * g.p)
 	wiresCur := cursor.New(g.wires)
 	for i := range wireSeeds {
