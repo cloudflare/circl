@@ -5,7 +5,7 @@
 // To ensure each measurement is valid, the Aggregators run a multi-party
 // computation on their shares, the result of which is the output of the
 // arithmetic circuit.
-// This involves verification of a Fully Linear Proof (FLP) which specify
+// This involves verification of a Fully Linear Proof (FLP) that specifies
 // the types of measurements.
 //
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-vdaf-13#section-7
@@ -18,9 +18,6 @@ import (
 	"github.com/cloudflare/circl/vdaf/prio3/arith"
 	"github.com/cloudflare/circl/vdaf/prio3/internal/cursor"
 )
-
-// Number of proofs to generate.
-const numProofs = 1
 
 // Prio3 supports a variety of verifiable distributed aggregation functions.
 // An instance is parametrized by the type of measurement and aggregated data,
@@ -40,14 +37,14 @@ func New[
 	T flp[Measurement, Aggregate, V, E, F],
 	Measurement, Aggregate any,
 	V arith.Vec[V, E], E arith.Elt, F arith.Fp[E],
-](f T, id uint8, numShares uint8, context []byte,
+](f T, algorithmID uint32, numShares uint8, context []byte,
 ) (v Prio3[Measurement, Aggregate, T, V, E, F], err error) {
 	if numShares < 2 {
 		return v, ErrNumShares
 	}
 
 	v.flp = f
-	v.xof, err = NewXof[V, E](uint32(id), context)
+	v.xof, err = NewXof[V](algorithmID, context)
 	if err != nil {
 		return v, err
 	}
@@ -85,14 +82,14 @@ func (v *Prio3[M, A, T, V, E, F]) Shard(
 	}
 }
 
-// FLPs Without Joint Randomness.
+// FLPs without joint randomness.
 //
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-vdaf-13#section-7.2.1.1
 func (v *Prio3[M, A, T, V, E, F]) shardNoJointRand(
 	meas V, seeds []byte,
 ) ([]InputShare[V, E], error) {
 	// Each Aggregator's input share contains its measurement share
-	// and its share of the proof(s).
+	// and its share of the proof.
 	params := v.Params()
 	inputShares := make([]InputShare[V, E], v.shares)
 	inputShares[0].leader = new(InputShareLeader[V, E]).New(&params)
@@ -107,7 +104,7 @@ func (v *Prio3[M, A, T, V, E, F]) shardNoJointRand(
 
 	// Generate proof of valid measurement.
 	proveSeed := Seed(seedsCur.Next(SeedSize))
-	proveRands := arith.NewVec[V](params.ProveRandLength() * numProofs)
+	proveRands := arith.NewVec[V](params.ProveRandLength())
 	err := v.xof.proveRands(proveRands, &proveSeed)
 	if err != nil {
 		return nil, err
@@ -120,7 +117,7 @@ func (v *Prio3[M, A, T, V, E, F]) shardNoJointRand(
 	copy(inputShares[0].leader.measShare, meas)
 	copy(inputShares[0].leader.proofShare, proof)
 	m := arith.NewVec[V](params.MeasurementLength())
-	p := arith.NewVec[V](params.ProofLength() * numProofs)
+	p := arith.NewVec[V](params.ProofLength())
 	for i := 1; i < len(inputShares); i++ {
 		share := &inputShares[i].helper.share
 		err = v.xof.helperMeasShare(m, uint8(i), share)
@@ -141,14 +138,14 @@ func (v *Prio3[M, A, T, V, E, F]) shardNoJointRand(
 	return inputShares, nil
 }
 
-// FLPs With Joint Randomness.
+// FLPs with joint randomness.
 //
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-vdaf-13#section-7.2.1.2
 func (v *Prio3[M, A, T, V, E, F]) shardWithJointRand(
 	meas V, nonce *Nonce, seeds []byte,
 ) (PublicShare, []InputShare[V, E], error) {
 	// Each Aggregator's input share contains its measurement share,
-	// share of proof(s), and blind. The public share contains the
+	// share of proof, and blind. The public share contains the
 	// Aggregators' joint randomness parts.
 	params := v.Params()
 	inputShares := make([]InputShare[V, E], v.shares)
@@ -190,7 +187,7 @@ func (v *Prio3[M, A, T, V, E, F]) shardWithJointRand(
 		inputShares[0].leader.measShare.SubAssign(m)
 	}
 
-	// Calculate leader's jointRandPart after leader's measurementShare
+	// Calculate leader's jointRandPart after leader's measShare
 	// has been calculated.
 	measShareEnc, err := inputShares[0].leader.measShare.MarshalBinary()
 	if err != nil {
@@ -205,7 +202,7 @@ func (v *Prio3[M, A, T, V, E, F]) shardWithJointRand(
 
 	// Generate proof of valid measurement.
 	proveSeed := Seed(seedsCur.Next(SeedSize))
-	proveRands := arith.NewVec[V](params.ProveRandLength() * numProofs)
+	proveRands := arith.NewVec[V](params.ProveRandLength())
 	err = v.xof.proveRands(proveRands, &proveSeed)
 	if err != nil {
 		return nil, nil, err
@@ -218,7 +215,7 @@ func (v *Prio3[M, A, T, V, E, F]) shardWithJointRand(
 		return nil, nil, err
 	}
 
-	jointRands := arith.NewVec[V](params.JointRandLength() * numProofs)
+	jointRands := arith.NewVec[V](params.JointRandLength())
 	err = v.xof.jointRands(jointRands, &jrSeed)
 	if err != nil {
 		return nil, nil, err
@@ -229,7 +226,7 @@ func (v *Prio3[M, A, T, V, E, F]) shardWithJointRand(
 
 	// Shard the proof into shares.
 	copy(inputShares[0].leader.proofShare, proof)
-	p := arith.NewVec[V](params.ProofLength() * numProofs)
+	p := arith.NewVec[V](params.ProofLength())
 	for i := 1; i < len(inputShares); i++ {
 		err = v.xof.helperProofsShare(p, uint8(i), &inputShares[i].helper.share)
 		if err != nil {
@@ -242,7 +239,7 @@ func (v *Prio3[M, A, T, V, E, F]) shardWithJointRand(
 	return jointRandParts, inputShares, nil
 }
 
-// PrepInit used by aggregator for preparation phase.
+// PrepInit is used by each aggregator to begin the preparation phase.
 //
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-vdaf-13#section-7.2.2
 func (v *Prio3[M, A, T, V, E, F]) PrepInit(
@@ -290,7 +287,7 @@ func (v *Prio3[M, A, T, V, E, F]) PrepInit(
 			return nil, nil, err
 		}
 
-		jointRands := arith.NewVec[V](params.JointRandLength() * numProofs)
+		jointRands := arith.NewVec[V](params.JointRandLength())
 		err = v.xof.jointRands(jointRands, prepState.correctedJointRandSeed)
 		if err != nil {
 			return nil, nil, err
@@ -299,8 +296,8 @@ func (v *Prio3[M, A, T, V, E, F]) PrepInit(
 		jointRand = jointRands[:jointRandLen]
 	}
 
-	// Query the measurement and proof(s) share(s).
-	queryRands := arith.NewVec[V](params.QueryRandLength() * numProofs)
+	// Query the measurement and proof share.
+	queryRands := arith.NewVec[V](params.QueryRandLength())
 	err = v.xof.queryRands(queryRands, verifyKey, nonce)
 	if err != nil {
 		return nil, nil, err
@@ -318,7 +315,10 @@ func (v *Prio3[M, A, T, V, E, F]) PrepInit(
 	return prepState, prepShare, nil
 }
 
-// PrepSharesToPrep used by aggregator for aggregate shares.
+// PrepSharesToPrep is the deterministic preparation message pre-processing
+// algorithm. It combines the prep shares produced by the Aggregators in the
+// previous round into the prep message consumed by each Aggregator to start
+// the next round.
 //
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-vdaf-13#section-7.2.2
 func (v *Prio3[M, A, T, V, E, F]) PrepSharesToPrep(
@@ -326,9 +326,9 @@ func (v *Prio3[M, A, T, V, E, F]) PrepSharesToPrep(
 ) (*PrepMessage, error) {
 	params := v.Params()
 	msg := new(PrepMessage)
-	// Unshard each set of verifier shares into each verifier message.
+	// Unshard the verifier shares into the verifier message.
 	verifierLen := params.VerifierLength()
-	verifiers := arith.NewVec[V](verifierLen * numProofs)
+	verifiers := arith.NewVec[V](verifierLen)
 	for i := range prepShares {
 		verifiers.AddAssign(prepShares[i].verifiersShare)
 	}
@@ -364,7 +364,7 @@ func (v *Prio3[M, A, T, V, E, F]) PrepSharesToPrep(
 	return msg, nil
 }
 
-// PrepNext used by aggregator to produce an output share.
+// PrepNext is used by each aggregator to produce its output share.
 //
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-vdaf-13#section-7.2.2
 func (v *Prio3[M, A, T, V, E, F]) PrepNext(
@@ -381,30 +381,30 @@ func (v *Prio3[M, A, T, V, E, F]) PrepNext(
 	return &OutShare[V, E]{state.outShare}, nil
 }
 
-// AggregationInit is used to start aggregation.
+// AggregateInit is used to start aggregation.
 //
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-vdaf-13#section-7.2.4
-func (v *Prio3[M, A, T, V, E, F]) AggregationInit() (s AggShare[V, E]) {
+func (v *Prio3[M, A, T, V, E, F]) AggregateInit() (s AggShare[V, E]) {
 	s.share = arith.NewVec[V](v.flp.OutputLength())
 	return
 }
 
-// AggregationUpdate aggregates an output share into an aggregation share.
+// AggregateUpdate aggregates an output share into an aggregation share.
 //
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-vdaf-13#section-7.2.4
-func (v *Prio3[M, A, T, V, E, F]) AggregationUpdate(
+func (v *Prio3[M, A, T, V, E, F]) AggregateUpdate(
 	aggShare *AggShare[V, E], outShare *OutShare[V, E],
 ) {
 	aggShare.share.AddAssign(outShare.share)
 }
 
-// AggregationMerge merges several aggregation shares.
+// aggregateMerge merges several aggregation shares.
 //
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-vdaf-13#section-7.2.4
-func (v *Prio3[M, A, T, V, E, F]) aggregationMerge(
+func (v *Prio3[M, A, T, V, E, F]) aggregateMerge(
 	aggShares []AggShare[V, E],
 ) (s AggShare[V, E]) {
-	s = v.AggregationInit()
+	s = v.AggregateInit()
 	for i := range aggShares {
 		s.share.AddAssign(aggShares[i].share)
 	}
@@ -423,7 +423,7 @@ func (v *Prio3[M, A, T, V, E, F]) Unshard(
 		return nil, ErrAggShareSize
 	}
 
-	s := v.aggregationMerge(aggShares)
+	s := v.aggregateMerge(aggShares)
 	return v.flp.Decode(s.share, numMeas)
 }
 
@@ -504,9 +504,9 @@ type flp[
 	ProofLength() uint
 	VerifierLength() uint
 	QueryRandLength() uint
-	// Prove returns a proof attesting validity to the given measurement.
+	// Prove returns a proof attesting to the validity of the given measurement.
 	Prove(meas, proveRand, jointRand V) V
-	// Query is the linear Query algorithm run by the verifier on a share of
+	// Query is the linear Query algorithm run by each verifier on its share of
 	// the measurement and proof.
 	Query(measShare, proofShare, queryRnd, jointRnd V, shares uint8) (V, error)
 	// Decide returns true if the measurement from which it was generated is

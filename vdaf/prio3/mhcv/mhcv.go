@@ -1,4 +1,4 @@
-// Package mhcv is a VDAF for aggregating bounded vectors of Booleans into buckets.
+// Package mhcv is a VDAF for aggregating vectors of Booleans with bounded weight.
 package mhcv
 
 import (
@@ -13,18 +13,22 @@ import (
 )
 
 type (
-	poly       = fp128.Poly
-	Vec        = fp128.Vec
-	Fp         = fp128.Fp
-	AggShare   = prio3.AggShare[Vec, Fp]
-	InputShare = prio3.InputShare[Vec, Fp]
-	OutShare   = prio3.OutShare[Vec, Fp]
-	PrepShare  = prio3.PrepShare[Vec, Fp]
-	PrepState  = prio3.PrepState[Vec, Fp]
+	poly        = fp128.Poly
+	Vec         = fp128.Vec
+	Fp          = fp128.Fp
+	AggShare    = prio3.AggShare[Vec, Fp]
+	InputShare  = prio3.InputShare[Vec, Fp]
+	Nonce       = prio3.Nonce
+	OutShare    = prio3.OutShare[Vec, Fp]
+	PrepMessage = prio3.PrepMessage
+	PrepShare   = prio3.PrepShare[Vec, Fp]
+	PrepState   = prio3.PrepState[Vec, Fp]
+	PublicShare = prio3.PublicShare
+	VerifyKey   = prio3.VerifyKey
 )
 
 // MultiHotCountVec is a verifiable distributed aggregation function in which
-// each measurement is a vector of Boolean values, where the number of True
+// each measurement is a vector of Booleans, where the number of True
 // values is bounded.
 // This provides a functionality similar to Histogram except that more than
 // one entry (or none at all) may be non-zero.
@@ -33,7 +37,7 @@ type MultiHotCountVec struct {
 }
 
 func New(numShares uint8, length, maxWeight, chunkLen uint, context []byte) (m *MultiHotCountVec, err error) {
-	const multihotCountVecID uint8 = 5
+	const multihotCountVecID = 5
 	m = new(MultiHotCountVec)
 	m.p, err = prio3.New(
 		newFlpMultiCountHotVec(length, maxWeight, chunkLen),
@@ -47,33 +51,33 @@ func New(numShares uint8, length, maxWeight, chunkLen uint, context []byte) (m *
 
 func (m *MultiHotCountVec) Params() prio3.Params { return m.p.Params() }
 
-func (m *MultiHotCountVec) Shard(measurement []bool, nonce *prio3.Nonce, rand []byte,
-) (prio3.PublicShare, []InputShare, error) {
+func (m *MultiHotCountVec) Shard(measurement []bool, nonce *Nonce, rand []byte,
+) (PublicShare, []InputShare, error) {
 	return m.p.Shard(measurement, nonce, rand)
 }
 
 func (m *MultiHotCountVec) PrepInit(
-	verifyKey *prio3.VerifyKey,
-	nonce *prio3.Nonce,
+	verifyKey *VerifyKey,
+	nonce *Nonce,
 	aggID uint8,
-	publicShare prio3.PublicShare,
+	publicShare PublicShare,
 	inputShare InputShare,
 ) (*PrepState, *PrepShare, error) {
 	return m.p.PrepInit(verifyKey, nonce, aggID, publicShare, inputShare)
 }
 
-func (m *MultiHotCountVec) PrepSharesToPrep(prepShares []PrepShare) (*prio3.PrepMessage, error) {
+func (m *MultiHotCountVec) PrepSharesToPrep(prepShares []PrepShare) (*PrepMessage, error) {
 	return m.p.PrepSharesToPrep(prepShares)
 }
 
-func (m *MultiHotCountVec) PrepNext(state *PrepState, msg *prio3.PrepMessage) (*OutShare, error) {
+func (m *MultiHotCountVec) PrepNext(state *PrepState, msg *PrepMessage) (*OutShare, error) {
 	return m.p.PrepNext(state, msg)
 }
 
-func (m *MultiHotCountVec) AggregationInit() AggShare { return m.p.AggregationInit() }
+func (m *MultiHotCountVec) AggregateInit() AggShare { return m.p.AggregateInit() }
 
-func (m *MultiHotCountVec) AggregationUpdate(aggShare *AggShare, outShare *OutShare) {
-	m.p.AggregationUpdate(aggShare, outShare)
+func (m *MultiHotCountVec) AggregateUpdate(aggShare *AggShare, outShare *OutShare) {
+	m.p.AggregateUpdate(aggShare, outShare)
 }
 
 func (m *MultiHotCountVec) Unshard(aggShares []AggShare, numMeas uint) (aggregate *[]uint64, err error) {
@@ -81,7 +85,7 @@ func (m *MultiHotCountVec) Unshard(aggShares []AggShare, numMeas uint) (aggregat
 }
 
 type flpMultiHotCountVec struct {
-	flp.FLP[flp.GadgetParallelSum, poly, Vec, Fp, *Fp]
+	flp.FLP[flp.GadgetParallelSumInnerMul, poly, Vec, Fp, *Fp]
 	bits     uint
 	chunkLen uint
 	length   uint
@@ -109,7 +113,7 @@ func newFlpMultiCountHotVec(length, maxWeight, chunkLen uint) *flpMultiHotCountV
 		panic("length and maxWeight are too large for the current field size")
 	}
 
-	numCalls := (length + bits + chunkLen - 1) / chunkLen
+	numGadgetCalls := (length + bits + chunkLen - 1) / chunkLen
 
 	m.bits = bits
 	m.length = length
@@ -120,18 +124,21 @@ func newFlpMultiCountHotVec(length, maxWeight, chunkLen uint) *flpMultiHotCountV
 	}
 
 	m.Valid.MeasurementLen = length + bits
-	m.Valid.JointRandLen = numCalls
+	m.Valid.JointRandLen = numGadgetCalls
 	m.Valid.OutputLen = length
 	m.Valid.EvalOutputLen = 2
-	m.Gadget = flp.GadgetParallelSum{Count: chunkLen}
-	m.NumCalls = numCalls
+	m.Gadget = flp.GadgetParallelSumInnerMul{Count: chunkLen}
+	m.NumGadgetCalls = numGadgetCalls
 	m.FLP.Eval = m.Eval
 	return m
 }
 
-func (m *flpMultiHotCountVec) Eval(out Vec, g flp.Gadget[poly, Vec, Fp, *Fp], numCalls uint, meas, jointRand Vec, shares uint8) {
+func (m *flpMultiHotCountVec) Eval(
+	out Vec, g flp.Gadget[poly, Vec, Fp, *Fp], numCalls uint,
+	meas, jointRand Vec, numShares uint8,
+) {
 	var invShares Fp
-	invShares.InvUint64(uint64(shares))
+	invShares.InvUint64(uint64(numShares))
 	out[0] = flp.RangeCheck(g, numCalls, m.chunkLen, &invShares, meas, jointRand)
 
 	measCur := cursor.New(meas)

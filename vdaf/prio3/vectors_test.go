@@ -164,7 +164,7 @@ func runPrio3[
 
 	aggShares := make([]AggShare, shares)
 	for i := range aggShares {
-		aggShares[i] = p.AggregationInit()
+		aggShares[i] = p.AggregateInit()
 	}
 
 	for _, instance := range v.Prep {
@@ -203,7 +203,7 @@ func runPrio3[
 			test.CheckNoErr(t, err, "PrepNext failed")
 			checkEqual(t, outShare, slices.Concat(instance.OutShares[i]...))
 
-			p.AggregationUpdate(&aggShares[i], outShare)
+			p.AggregateUpdate(&aggShares[i], outShare)
 		}
 	}
 

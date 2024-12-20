@@ -15,9 +15,10 @@ type xofTS[V arith.Vec[V, E], E arith.Elt] struct {
 	sha3.State
 }
 
-// NewXof returns an xofTS from an ID and context.
+// NewXof returns an xof based on TurboSHAKE given a VDAF ID and an application
+// context string.
 func NewXof[V arith.Vec[V, E], E arith.Elt](
-	id uint32, context []byte,
+	algorithmID uint32, context []byte,
 ) (x xofTS[V, E], err error) {
 	const (
 		Version              = 12
@@ -45,7 +46,7 @@ func NewXof[V arith.Vec[V, E], E arith.Elt](
 	x.Header = binary.LittleEndian.AppendUint16(x.Header, uint16(lenDST))
 	x.Header = append(x.Header, Version)
 	x.Header = append(x.Header, AlgoClass)
-	x.Header = binary.BigEndian.AppendUint32(x.Header, id)
+	x.Header = binary.BigEndian.AppendUint32(x.Header, algorithmID)
 	x.Header = binary.BigEndian.AppendUint16(x.Header, 0)
 	x.Header = append(x.Header, context...)
 	x.Header = append(x.Header, uint8(SeedSize))
@@ -117,6 +118,7 @@ func (x *xofTS[V, E]) helperMeasShare(out V, aggID uint8, s *Seed) error {
 }
 
 func (x *xofTS[V, E]) helperProofsShare(out V, aggID uint8, s *Seed) error {
+	const numProofs = 1
 	err := x.Init(usageProofShare, s)
 	if err != nil {
 		return err
@@ -131,6 +133,7 @@ func (x *xofTS[V, E]) helperProofsShare(out V, aggID uint8, s *Seed) error {
 }
 
 func (x *xofTS[V, E]) proveRands(out V, proveSeed *Seed) error {
+	const numProofs = 1
 	err := x.Init(usageProveRandomness, proveSeed)
 	if err != nil {
 		return err
@@ -145,6 +148,7 @@ func (x *xofTS[V, E]) proveRands(out V, proveSeed *Seed) error {
 }
 
 func (x *xofTS[V, E]) queryRands(out V, k *VerifyKey, nonce *Nonce) error {
+	const numProofs = 1
 	err := x.Init(usageQueryRandomness, (*Seed)(k))
 	if err != nil {
 		return err
@@ -192,6 +196,7 @@ func (x *xofTS[V, E]) jointRandSeed(jointRandParts []byte) (s Seed, err error) {
 }
 
 func (x *xofTS[V, E]) jointRands(out V, jointRandSeed *Seed) error {
+	const numProofs = 1
 	err := x.Init(usageJointRandomness, jointRandSeed)
 	if err != nil {
 		return err

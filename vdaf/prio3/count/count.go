@@ -9,14 +9,18 @@ import (
 )
 
 type (
-	poly       = fp64.Poly
-	Vec        = fp64.Vec
-	Fp         = fp64.Fp
-	AggShare   = prio3.AggShare[Vec, Fp]
-	InputShare = prio3.InputShare[Vec, Fp]
-	OutShare   = prio3.OutShare[Vec, Fp]
-	PrepShare  = prio3.PrepShare[Vec, Fp]
-	PrepState  = prio3.PrepState[Vec, Fp]
+	poly        = fp64.Poly
+	Vec         = fp64.Vec
+	Fp          = fp64.Fp
+	AggShare    = prio3.AggShare[Vec, Fp]
+	InputShare  = prio3.InputShare[Vec, Fp]
+	Nonce       = prio3.Nonce
+	OutShare    = prio3.OutShare[Vec, Fp]
+	PrepMessage = prio3.PrepMessage
+	PrepShare   = prio3.PrepShare[Vec, Fp]
+	PrepState   = prio3.PrepState[Vec, Fp]
+	PublicShare = prio3.PublicShare
+	VerifyKey   = prio3.VerifyKey
 )
 
 // Count is a verifiable distributed aggregation function in which each
@@ -27,7 +31,7 @@ type Count struct {
 }
 
 func New(numShares uint8, context []byte) (c *Count, err error) {
-	const countID uint8 = 1
+	const countID = 1
 	c = new(Count)
 	c.p, err = prio3.New(newFlpCount(), countID, numShares, context)
 	if err != nil {
@@ -39,33 +43,33 @@ func New(numShares uint8, context []byte) (c *Count, err error) {
 
 func (c *Count) Params() prio3.Params { return c.p.Params() }
 
-func (c *Count) Shard(measurement bool, nonce *prio3.Nonce, rand []byte,
-) (prio3.PublicShare, []InputShare, error) {
+func (c *Count) Shard(measurement bool, nonce *Nonce, rand []byte,
+) (PublicShare, []InputShare, error) {
 	return c.p.Shard(measurement, nonce, rand)
 }
 
 func (c *Count) PrepInit(
-	verifyKey *prio3.VerifyKey,
-	nonce *prio3.Nonce,
+	verifyKey *VerifyKey,
+	nonce *Nonce,
 	aggID uint8,
-	publicShare prio3.PublicShare,
+	publicShare PublicShare,
 	inputShare InputShare,
 ) (*PrepState, *PrepShare, error) {
 	return c.p.PrepInit(verifyKey, nonce, aggID, publicShare, inputShare)
 }
 
-func (c *Count) PrepSharesToPrep(prepShares []PrepShare) (*prio3.PrepMessage, error) {
+func (c *Count) PrepSharesToPrep(prepShares []PrepShare) (*PrepMessage, error) {
 	return c.p.PrepSharesToPrep(prepShares)
 }
 
-func (c *Count) PrepNext(state *PrepState, msg *prio3.PrepMessage) (*OutShare, error) {
+func (c *Count) PrepNext(state *PrepState, msg *PrepMessage) (*OutShare, error) {
 	return c.p.PrepNext(state, msg)
 }
 
-func (c *Count) AggregationInit() AggShare { return c.p.AggregationInit() }
+func (c *Count) AggregateInit() AggShare { return c.p.AggregateInit() }
 
-func (c *Count) AggregationUpdate(aggShare *AggShare, outShare *OutShare) {
-	c.p.AggregationUpdate(aggShare, outShare)
+func (c *Count) AggregateUpdate(aggShare *AggShare, outShare *OutShare) {
+	c.p.AggregateUpdate(aggShare, outShare)
 }
 
 func (c *Count) Unshard(aggShares []AggShare, numMeas uint) (aggregate *uint64, err error) {
@@ -83,14 +87,14 @@ func newFlpCount() *flpCount {
 	c.Valid.OutputLen = 1
 	c.Valid.EvalOutputLen = 1
 	c.Gadget = flp.GadgetMulFp64{}
-	c.NumCalls = 1
+	c.NumGadgetCalls = 1
 	c.FLP.Eval = c.Eval
 	return c
 }
 
 func (c *flpCount) Eval(
-	out Vec, g flp.Gadget[poly, Vec, Fp, *Fp], _numCalls uint,
-	meas, _jointRand Vec, _shares uint8,
+	out Vec, g flp.Gadget[poly, Vec, Fp, *Fp], numCalls uint,
+	meas, jointRand Vec, numShares uint8,
 ) {
 	g.Eval(&out[0], Vec{meas[0], meas[0]})
 	out[0].SubAssign(&meas[0])
