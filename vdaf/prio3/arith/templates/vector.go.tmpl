@@ -209,13 +209,17 @@ func (v Vec) Unmarshal(s *cryptobyte.String) bool{
 
 
 func isInRange(b *[Size]byte) (out [{{.NumUint64}}]uint64, ok bool) {
+	{{- if .NeedsMasking}}
+	panic("unimplemented: recall to implement masking before decoding")
+	{{- else }}
 	{{- if eq .Bits 64}}
 	out[0] = binary.LittleEndian.Uint64(b[:8])
 	ok = out[0] < orderP0
 	{{- else if eq .Bits 128}}
-	out[0] = binary.LittleEndian.Uint64(b[:8])
 	out[1] = binary.LittleEndian.Uint64(b[8:])
+	out[0] = binary.LittleEndian.Uint64(b[:8])
 	ok = out[1] < orderP1 || (out[1] == orderP1 && out[0] < orderP0)
+	{{- end }}
 	{{- end }}
 	return
 }

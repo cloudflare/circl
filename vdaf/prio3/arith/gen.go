@@ -24,7 +24,12 @@ type Fp struct {
 
 func (f Fp) NumUint64() int { return int(f.Bits) / 64 }
 
-func (f Fp) NumUint8() int { return int(f.Bits) / 8 }
+func (f Fp) NumUint8() int { return int(f.Bits+7) / 8 }
+
+func (f Fp) NeedsMasking() bool {
+	p := f.Prime()
+	return p.BitLen() < 8*f.NumUint8()
+}
 
 func (f Fp) OrderConst() (s string) {
 	d := baseTwo64(f.Prime())
