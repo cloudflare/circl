@@ -1,4 +1,4 @@
-// Package count is a VDAF for counting boolean measurements.
+// Package count is a VDAF for counting Boolean measurements.
 package count
 
 import (
