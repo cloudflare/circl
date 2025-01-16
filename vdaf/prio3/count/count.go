@@ -2,6 +2,8 @@
 package count
 
 import (
+	"crypto/subtle"
+
 	"github.com/cloudflare/circl/vdaf/prio3/arith"
 	"github.com/cloudflare/circl/vdaf/prio3/arith/fp64"
 	"github.com/cloudflare/circl/vdaf/prio3/internal/flp"
@@ -101,9 +103,25 @@ func (c *flpCount) Eval(
 }
 
 func (c *flpCount) Encode(measurement bool) (Vec, error) {
-	out := arith.NewVec[Vec](1)
+	var one Fp
+	one.SetOne()
+	y, err := one.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+
+	var b int
 	if measurement {
-		out[0].SetOne()
+		b = 1
+	}
+
+	var x [fp64.Size]byte
+	subtle.ConstantTimeCopy(b, x[:], y)
+
+	out := arith.NewVec[Vec](1)
+	err = out[0].UnmarshalBinary(x[:])
+	if err != nil {
+		return nil, err
 	}
 
 	return out, nil
