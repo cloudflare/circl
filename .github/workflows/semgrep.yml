@@ -11,6 +11,7 @@ jobs:
   semgrep:
     name: semgrep/ci
     runs-on: ubuntu-latest
+    if: github.repository == 'cloudflare/circl'
     env:
       SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
       SEMGREP_URL: https://cloudflare.semgrep.dev
