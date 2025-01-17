@@ -1,6 +1,7 @@
 package flp_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/sha3"
@@ -34,14 +35,17 @@ func TestInvalidQuery[
 	invalidEvaluationPoint := F(&queryRand[index])
 	_, logP := math.NextPow2(1 + f.Valid.NumGadgetCalls)
 	root := F(new(E))
-	// Check all subgroups of order 2^logN.
+	// Check all subgroups of order 2^logN <= 2^logP.
 	for logN := range logP + 1 {
 		root.SetRootOfUnityTwoN(logN)
 		invalidEvaluationPoint.SetOne()
-		// Check any element in the subgroup of order 2^logN.
+		// Check every element in the subgroup of order 2^logN.
 		for range 1 << logN {
 			_, err := f.Query(measShare, proofShare, queryRand, jointRand, NumShares)
-			test.CheckIsErr(t, err, "Query should failed")
+			if !errors.Is(err, flp.ErrInvalidEval) {
+				test.ReportError(t, err, flp.ErrInvalidEval)
+			}
+
 			invalidEvaluationPoint.MulAssign(root)
 		}
 	}
