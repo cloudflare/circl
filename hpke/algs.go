@@ -62,7 +62,7 @@ func (k KEM) IsValid() bool {
 
 // Scheme returns an instance of a KEM that supports authentication. Panics if
 // the KEM identifier is invalid.
-func (k KEM) Scheme() kem.AuthScheme {
+func (k KEM) Scheme() kem.Scheme {
 	switch k {
 	case KEM_P256_HKDF_SHA256:
 		return dhkemp256hkdfsha256
@@ -283,6 +283,6 @@ func init() {
 	hybridkemX25519Kyber768.kemA = dhkemx25519hkdfsha256
 	hybridkemX25519Kyber768.kemB = kyber768.Scheme()
 
-	kemXwing.kem = xwing.Scheme()
+	kemXwing.Scheme = xwing.Scheme()
 	kemXwing.name = "HPKE_KEM_XWING"
 }

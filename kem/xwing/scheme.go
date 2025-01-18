@@ -13,23 +13,21 @@ import (
 // generic KEM API.
 
 // Returns the generic KEM interface for  X-Wing PQ/T hybrid KEM.
-func Scheme() kem.Scheme { return &xwing }
+func Scheme() kem.Scheme { return scheme{} }
 
 type scheme struct{}
 
-var xwing scheme
+func (scheme) Name() string               { return "X-Wing" }
+func (scheme) PublicKeySize() int         { return PublicKeySize }
+func (scheme) PrivateKeySize() int        { return PrivateKeySize }
+func (scheme) SeedSize() int              { return SeedSize }
+func (scheme) EncapsulationSeedSize() int { return EncapsulationSeedSize }
+func (scheme) SharedKeySize() int         { return SharedKeySize }
+func (scheme) CiphertextSize() int        { return CiphertextSize }
+func (*PrivateKey) Scheme() kem.Scheme    { return scheme{} }
+func (*PublicKey) Scheme() kem.Scheme     { return scheme{} }
 
-func (*scheme) Name() string               { return "X-Wing" }
-func (*scheme) PublicKeySize() int         { return PublicKeySize }
-func (*scheme) PrivateKeySize() int        { return PrivateKeySize }
-func (*scheme) SeedSize() int              { return SeedSize }
-func (*scheme) EncapsulationSeedSize() int { return EncapsulationSeedSize }
-func (*scheme) SharedKeySize() int         { return SharedKeySize }
-func (*scheme) CiphertextSize() int        { return CiphertextSize }
-func (*PrivateKey) Scheme() kem.Scheme     { return &xwing }
-func (*PublicKey) Scheme() kem.Scheme      { return &xwing }
-
-func (sch *scheme) Encapsulate(pk kem.PublicKey) (ct, ss []byte, err error) {
+func (sch scheme) Encapsulate(pk kem.PublicKey) (ct, ss []byte, err error) {
 	var seed [EncapsulationSeedSize]byte
 	_, err = cryptoRand.Read(seed[:])
 	if err != nil {
@@ -38,7 +36,7 @@ func (sch *scheme) Encapsulate(pk kem.PublicKey) (ct, ss []byte, err error) {
 	return sch.EncapsulateDeterministically(pk, seed[:])
 }
 
-func (sch *scheme) EncapsulateDeterministically(
+func (scheme) EncapsulateDeterministically(
 	pk kem.PublicKey, seed []byte,
 ) ([]byte, []byte, error) {
 	if len(seed) != EncapsulationSeedSize {
@@ -56,7 +54,7 @@ func (sch *scheme) EncapsulateDeterministically(
 	return ct[:], ss[:], nil
 }
 
-func (*scheme) UnmarshalBinaryPublicKey(buf []byte) (kem.PublicKey, error) {
+func (scheme) UnmarshalBinaryPublicKey(buf []byte) (kem.PublicKey, error) {
 	var pk PublicKey
 	if len(buf) != PublicKeySize {
 		return nil, kem.ErrPubKeySize
@@ -68,7 +66,7 @@ func (*scheme) UnmarshalBinaryPublicKey(buf []byte) (kem.PublicKey, error) {
 	return &pk, nil
 }
 
-func (*scheme) UnmarshalBinaryPrivateKey(buf []byte) (kem.PrivateKey, error) {
+func (scheme) UnmarshalBinaryPrivateKey(buf []byte) (kem.PrivateKey, error) {
 	var sk PrivateKey
 	if len(buf) != PrivateKeySize {
 		return nil, kem.ErrPrivKeySize
@@ -114,17 +112,17 @@ func (pk *PublicKey) MarshalBinary() ([]byte, error) {
 	return ret[:], nil
 }
 
-func (*scheme) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
+func (scheme) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 	sk, pk := DeriveKeyPair(seed)
 	return pk, sk
 }
 
-func (sch *scheme) GenerateKeyPair() (kem.PublicKey, kem.PrivateKey, error) {
+func (scheme) GenerateKeyPair() (kem.PublicKey, kem.PrivateKey, error) {
 	sk, pk, err := GenerateKeyPair(nil)
 	return pk, sk, err
 }
 
-func (*scheme) Decapsulate(sk kem.PrivateKey, ct []byte) ([]byte, error) {
+func (scheme) Decapsulate(sk kem.PrivateKey, ct []byte) ([]byte, error) {
 	if len(ct) != CiphertextSize {
 		return nil, kem.ErrCiphertextSize
 	}
