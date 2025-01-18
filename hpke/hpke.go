@@ -224,7 +224,12 @@ func (s *Sender) allSetup(rnd io.Reader) ([]byte, Sealer, error) {
 	case modeBase, modePSK:
 		enc, ss, err = scheme.EncapsulateDeterministically(s.pkR, seed)
 	case modeAuth, modeAuthPSK:
-		enc, ss, err = scheme.AuthEncapsulateDeterministically(s.pkR, s.skS, seed)
+		authScheme, ok := scheme.(kem.AuthScheme)
+		if !ok {
+			return nil, nil, ErrInvalidAuthKEM
+		}
+
+		enc, ss, err = authScheme.AuthEncapsulateDeterministically(s.pkR, s.skS, seed)
 	}
 	if err != nil {
 		return nil, nil, err
@@ -246,7 +251,12 @@ func (r *Receiver) allSetup() (Opener, error) {
 	case modeBase, modePSK:
 		ss, err = scheme.Decapsulate(r.skR, r.enc)
 	case modeAuth, modeAuthPSK:
-		ss, err = scheme.AuthDecapsulate(r.skR, r.enc, r.pkS)
+		authScheme, ok := scheme.(kem.AuthScheme)
+		if !ok {
+			return nil, ErrInvalidAuthKEM
+		}
+
+		ss, err = authScheme.AuthDecapsulate(r.skR, r.enc, r.pkS)
 	}
 	if err != nil {
 		return nil, err
@@ -263,6 +273,7 @@ var (
 	ErrInvalidHPKESuite       = errors.New("hpke: invalid HPKE suite")
 	ErrInvalidKDF             = errors.New("hpke: invalid KDF identifier")
 	ErrInvalidKEM             = errors.New("hpke: invalid KEM identifier")
+	ErrInvalidAuthKEM         = errors.New("hpke: KEM does not support Auth mode")
 	ErrInvalidAEAD            = errors.New("hpke: invalid AEAD identifier")
 	ErrInvalidKEMPublicKey    = errors.New("hpke: invalid KEM public key")
 	ErrInvalidKEMPrivateKey   = errors.New("hpke: invalid KEM private key")
