@@ -3,6 +3,7 @@ package hybrid
 import (
 	"crypto/ecdh"
 	cryptoRand "crypto/rand"
+
 	"github.com/cloudflare/circl/kem"
 	"github.com/cloudflare/circl/xof"
 )
