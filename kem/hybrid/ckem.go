@@ -25,11 +25,11 @@ var p256Kem = &cScheme{ecdh.P256()}
 func (sch *cScheme) Name() string {
 	switch sch.curve {
 	case ecdh.P256():
-		return "P256"
+		return "P-256"
 	case ecdh.P384():
-		return "P384"
+		return "P-384"
 	case ecdh.P521():
-		return "P521"
+		return "P-521"
 	default:
 		panic("unsupported curve")
 	}
