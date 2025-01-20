@@ -96,10 +96,7 @@ func (sk *cPrivateKey) Equal(other kem.PrivateKey) bool {
 }
 
 func (sk *cPrivateKey) Public() kem.PublicKey {
-	pk, err := sk.scheme.curve.NewPublicKey(sk.key.Bytes())
-	if err != nil {
-		panic(err)
-	}
+	pk := sk.key.PublicKey()
 	return &cPublicKey{scheme: sk.scheme, key: pk}
 }
 
