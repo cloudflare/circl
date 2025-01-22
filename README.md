@@ -83,6 +83,7 @@ Alternatively, look at the [Cloudflare Go](https://github.com/cloudflare/go/tree
 |:---:|
 
  - [ML-KEM](./kem/mlkem): modes 512, 768, 1024 ([FIPS-203](https://doi.org/10.6028/NIST.FIPS.203)).
+ - [X-Wing](./kem/xwing) ([draft-connolly-cfrg-xwing-kem](https://datatracker.ietf.org/doc/draft-connolly-cfrg-xwing-kem/)).
  - [Kyber KEM](./kem/kyber): modes 512, 768, 1024 ([KYBER](https://pq-crystals.org/kyber/)).
  - [FrodoKEM](./kem/frodo): modes 640-SHAKE. ([FrodoKEM](https://frodokem.org/))
  - [CSIDH](./dh/csidh): Post-Quantum Commutative Group Action ([CSIDH](https://csidh.isogeny.org/)).
@@ -163,10 +164,10 @@ APA Style
 ```
 Faz-Hernandez, A. and Kwiatkowski, K. (2019). Introducing CIRCL:
 An Advanced Cryptographic Library. Cloudflare. Available at
-https://github.com/cloudflare/circl. v1.5.0 Accessed Oct, 2024.
+https://github.com/cloudflare/circl. v1.6.0 Accessed Jan, 2025.
 ```
 
-Bibtex Source
+BibTeX Source
 
 ```bibtex
 @manual{circl,
@@ -178,7 +179,7 @@ Bibtex Source
                    of this library is to be used as a tool for experimental
                    deployment of cryptographic algorithms targeting Post-Quantum (PQ)
                    and Elliptic Curve Cryptography (ECC).}},
-  note         = {Available at \url{https://github.com/cloudflare/circl}. v1.5.0 Accessed Oct, 2024},
+  note         = {Available at \url{https://github.com/cloudflare/circl}. v1.6.0 Accessed Jan, 2025},
   month        = jun,
   year         = {2019}
 }
