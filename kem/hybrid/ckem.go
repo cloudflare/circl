@@ -1,64 +1,79 @@
 package hybrid
 
-// TODO move over to crypto/ecdh once we can assume Go 1.20.
-
 import (
-	"crypto/elliptic"
+	"crypto/ecdh"
 	cryptoRand "crypto/rand"
-	"crypto/subtle"
-	"math/big"
 
 	"github.com/cloudflare/circl/kem"
 	"github.com/cloudflare/circl/xof"
 )
 
 type cPublicKey struct {
-	scheme *cScheme
-	x, y   *big.Int
+	scheme cScheme
+	key    *ecdh.PublicKey
 }
 type cPrivateKey struct {
-	scheme *cScheme
-	key    []byte
+	scheme cScheme
+	key    *ecdh.PrivateKey
 }
 type cScheme struct {
-	curve elliptic.Curve
+	curve ecdh.Curve
 }
 
-var p256Kem = &cScheme{elliptic.P256()}
+var p256Kem = &cScheme{ecdh.P256()}
 
-func (sch *cScheme) scSize() int {
-	return (sch.curve.Params().N.BitLen() + 7) / 8
+func (sch cScheme) Name() string {
+	switch sch.curve {
+	case ecdh.P256():
+		return "P-256"
+	case ecdh.P384():
+		return "P-384"
+	case ecdh.P521():
+		return "P-521"
+	default:
+		panic("unsupported curve")
+	}
 }
 
-func (sch *cScheme) ptSize() int {
-	return (sch.curve.Params().BitSize + 7) / 8
+func (sch cScheme) PublicKeySize() int {
+	switch sch.curve {
+	case ecdh.P256():
+		return 65
+	case ecdh.P384():
+		return 97
+	case ecdh.P521():
+		return 133
+	default:
+		panic("unsupported curve")
+	}
 }
 
-func (sch *cScheme) Name() string {
-	return sch.curve.Params().Name
+func (sch cScheme) PrivateKeySize() int {
+	switch sch.curve {
+	case ecdh.P256():
+		return 32
+	case ecdh.P384():
+		return 48
+	case ecdh.P521():
+		return 66
+	default:
+		panic("unsupported curve")
+	}
 }
 
-func (sch *cScheme) PublicKeySize() int {
-	return 2*sch.ptSize() + 1
-}
-
-func (sch *cScheme) PrivateKeySize() int {
-	return sch.scSize()
-}
-
-func (sch *cScheme) SeedSize() int {
+func (sch cScheme) SeedSize() int {
 	return sch.PrivateKeySize()
 }
 
-func (sch *cScheme) SharedKeySize() int {
-	return sch.ptSize()
+func (sch cScheme) SharedKeySize() int {
+	return sch.PrivateKeySize()
 }
 
-func (sch *cScheme) CiphertextSize() int {
+func (sch cScheme) CiphertextSize() int {
 	return sch.PublicKeySize()
 }
 
-func (sch *cScheme) EncapsulationSeedSize() int {
+func (sch cScheme) EncapsulationSeedSize() int {
 	return sch.SeedSize()
 }
 
@@ -66,9 +81,7 @@ func (sk *cPrivateKey) Scheme() kem.Scheme { return sk.scheme }
 func (pk *cPublicKey) Scheme() kem.Scheme  { return pk.scheme }
 
 func (sk *cPrivateKey) MarshalBinary() ([]byte, error) {
-	ret := make([]byte, len(sk.key))
-	copy(ret, sk.key)
-	return ret, nil
+	return sk.key.Bytes(), nil
 }
 
 func (sk *cPrivateKey) Equal(other kem.PrivateKey) bool {
@@ -79,16 +92,12 @@ func (sk *cPrivateKey) Equal(other kem.PrivateKey) bool {
 	if oth.scheme != sk.scheme {
 		return false
 	}
-	return subtle.ConstantTimeCompare(oth.key, sk.key) == 1
+	return oth.key.Equal(sk.key)
 }
 
 func (sk *cPrivateKey) Public() kem.PublicKey {
-	x, y := sk.scheme.curve.ScalarBaseMult(sk.key)
-	return &cPublicKey{
-		sk.scheme,
-		x,
-		y,
-	}
+	pk := sk.key.PublicKey()
+	return &cPublicKey{scheme: sk.scheme, key: pk}
 }
 
 func (pk *cPublicKey) Equal(other kem.PublicKey) bool {
@@ -99,14 +108,14 @@ func (pk *cPublicKey) Equal(other kem.PublicKey) bool {
 	if oth.scheme != pk.scheme {
 		return false
 	}
-	return oth.x.Cmp(pk.x) == 0 && oth.y.Cmp(pk.y) == 0
+	return oth.key.Equal(pk.key)
 }
 
 func (pk *cPublicKey) MarshalBinary() ([]byte, error) {
-	return elliptic.Marshal(pk.scheme.curve, pk.x, pk.y), nil
+	return pk.key.Bytes(), nil
 }
 
-func (sch *cScheme) GenerateKeyPair() (kem.PublicKey, kem.PrivateKey, error) {
+func (sch cScheme) GenerateKeyPair() (kem.PublicKey, kem.PrivateKey, error) {
 	seed := make([]byte, sch.SeedSize())
 	_, err := cryptoRand.Read(seed)
 	if err != nil {
@@ -116,24 +125,25 @@ func (sch *cScheme) GenerateKeyPair() (kem.PublicKey, kem.PrivateKey, error) {
 	return pk, sk, nil
 }
 
-func (sch *cScheme) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
+func (sch cScheme) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 	if len(seed) != sch.SeedSize() {
 		panic(kem.ErrSeedSize)
 	}
 	h := xof.SHAKE256.New()
 	_, _ = h.Write(seed)
-	key, x, y, err := elliptic.GenerateKey(sch.curve, h)
+	privKey, err := sch.curve.GenerateKey(h)
 	if err != nil {
 		panic(err)
 	}
+	pubKey := privKey.PublicKey()
 
-	sk := cPrivateKey{scheme: sch, key: key}
-	pk := cPublicKey{scheme: sch, x: x, y: y}
+	sk := cPrivateKey{scheme: sch, key: privKey}
+	pk := cPublicKey{scheme: sch, key: pubKey}
 
 	return &pk, &sk
 }
 
-func (sch *cScheme) Encapsulate(pk kem.PublicKey) (ct, ss []byte, err error) {
+func (sch cScheme) Encapsulate(pk kem.PublicKey) (ct, ss []byte, err error) {
 	seed := make([]byte, sch.EncapsulationSeedSize())
 	_, err = cryptoRand.Read(seed)
 	if err != nil {
@@ -147,13 +157,14 @@ func (pk *cPublicKey) X(sk *cPrivateKey) []byte {
 		panic(kem.ErrTypeMismatch)
 	}
 
-	sharedKey := make([]byte, pk.scheme.SharedKeySize())
-	xShared, _ := pk.scheme.curve.ScalarMult(pk.x, pk.y, sk.key)
-	xShared.FillBytes(sharedKey)
+	sharedKey, err := sk.key.ECDH(pk.key)
+	if err != nil {
+		panic(err)
+	}
 	return sharedKey
 }
 
-func (sch *cScheme) EncapsulateDeterministically(
+func (sch cScheme) EncapsulateDeterministically(
 	pk kem.PublicKey, seed []byte,
 ) (ct, ss []byte, err error) {
 	if len(seed) != sch.EncapsulationSeedSize() {
@@ -170,7 +181,7 @@ func (sch *cScheme) EncapsulateDeterministically(
 	return
 }
 
-func (sch *cScheme) Decapsulate(sk kem.PrivateKey, ct []byte) ([]byte, error) {
+func (sch cScheme) Decapsulate(sk kem.PrivateKey, ct []byte) ([]byte, error) {
 	if len(ct) != sch.CiphertextSize() {
 		return nil, kem.ErrCiphertextSize
 	}
@@ -189,19 +200,24 @@ func (sch *cScheme) Decapsulate(sk kem.PrivateKey, ct []byte) ([]byte, error) {
 	return ss, nil
 }
 
-func (sch *cScheme) UnmarshalBinaryPublicKey(buf []byte) (kem.PublicKey, error) {
+func (sch cScheme) UnmarshalBinaryPublicKey(buf []byte) (kem.PublicKey, error) {
 	if len(buf) != sch.PublicKeySize() {
 		return nil, kem.ErrPubKeySize
 	}
-	x, y := elliptic.Unmarshal(sch.curve, buf)
-	return &cPublicKey{sch, x, y}, nil
+	key, err := sch.curve.NewPublicKey(buf)
+	if err != nil {
+		return nil, err
+	}
+	return &cPublicKey{sch, key}, nil
 }
 
-func (sch *cScheme) UnmarshalBinaryPrivateKey(buf []byte) (kem.PrivateKey, error) {
+func (sch cScheme) UnmarshalBinaryPrivateKey(buf []byte) (kem.PrivateKey, error) {
 	if len(buf) != sch.PrivateKeySize() {
 		return nil, kem.ErrPrivKeySize
 	}
-	ret := cPrivateKey{sch, make([]byte, sch.PrivateKeySize())}
-	copy(ret.key, buf)
-	return &ret, nil
+	key, err := sch.curve.NewPrivateKey(buf)
+	if err != nil {
+		return nil, err
+	}
+	return &cPrivateKey{sch, key}, nil
 }
