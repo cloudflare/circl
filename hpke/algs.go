@@ -4,7 +4,7 @@ import (
 	"crypto"
 	"crypto/aes"
 	"crypto/cipher"
-	"crypto/elliptic"
+	"crypto/ecdh"
 	_ "crypto/sha256" // Linking sha256.
 	_ "crypto/sha512" // Linking sha512.
 	"fmt"
@@ -13,7 +13,6 @@ import (
 
 	"github.com/cloudflare/circl/dh/x25519"
 	"github.com/cloudflare/circl/dh/x448"
-	"github.com/cloudflare/circl/ecc/p384"
 	"github.com/cloudflare/circl/kem"
 	"github.com/cloudflare/circl/kem/kyber/kyber768"
 	"github.com/cloudflare/circl/kem/xwing"
@@ -247,19 +246,19 @@ var (
 )
 
 func init() {
-	dhkemp256hkdfsha256.Curve = elliptic.P256()
+	dhkemp256hkdfsha256.Curve = ecdh.P256()
 	dhkemp256hkdfsha256.dhKemBase.id = KEM_P256_HKDF_SHA256
 	dhkemp256hkdfsha256.dhKemBase.name = "HPKE_KEM_P256_HKDF_SHA256"
 	dhkemp256hkdfsha256.dhKemBase.Hash = crypto.SHA256
 	dhkemp256hkdfsha256.dhKemBase.dhKEM = dhkemp256hkdfsha256
 
-	dhkemp384hkdfsha384.Curve = p384.P384()
+	dhkemp384hkdfsha384.Curve = ecdh.P384()
 	dhkemp384hkdfsha384.dhKemBase.id = KEM_P384_HKDF_SHA384
 	dhkemp384hkdfsha384.dhKemBase.name = "HPKE_KEM_P384_HKDF_SHA384"
 	dhkemp384hkdfsha384.dhKemBase.Hash = crypto.SHA384
 	dhkemp384hkdfsha384.dhKemBase.dhKEM = dhkemp384hkdfsha384
 
-	dhkemp521hkdfsha512.Curve = elliptic.P521()
+	dhkemp521hkdfsha512.Curve = ecdh.P521()
 	dhkemp521hkdfsha512.dhKemBase.id = KEM_P521_HKDF_SHA512
 	dhkemp521hkdfsha512.dhKemBase.name = "HPKE_KEM_P521_HKDF_SHA512"
 	dhkemp521hkdfsha512.dhKemBase.Hash = crypto.SHA512
