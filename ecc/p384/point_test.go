@@ -4,18 +4,30 @@
 package p384
 
 import (
+	"crypto/ecdh"
 	"crypto/elliptic"
 	"crypto/rand"
 	"encoding/binary"
+	"slices"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/test"
 )
 
 func randomAffine() *affinePoint {
-	params := elliptic.P384().Params()
-	k, _ := rand.Int(rand.Reader, params.N)
-	return newAffinePoint(params.ScalarBaseMult(k.Bytes()))
+	sk, err := ecdh.P384().GenerateKey(rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+
+	b := sk.PublicKey().Bytes()
+	x, y := b[1:1+sizeFp], b[1+sizeFp:1+2*sizeFp]
+	slices.Reverse(x)
+	slices.Reverse(y)
+	p := new(affinePoint)
+	montEncode(&p.x, (*fp384)(x))
+	montEncode(&p.y, (*fp384)(y))
+	return p
 }
 
 func randomJacobian() *jacobianPoint {
