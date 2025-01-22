@@ -278,5 +278,6 @@ var (
 	ErrInvalidKEMPublicKey    = errors.New("hpke: invalid KEM public key")
 	ErrInvalidKEMPrivateKey   = errors.New("hpke: invalid KEM private key")
 	ErrInvalidKEMSharedSecret = errors.New("hpke: invalid KEM shared secret")
+	ErrInvalidKEMDeriveKey    = errors.New("hpke: too many tries to derive KEM key")
 	ErrAEADSeqOverflows       = errors.New("hpke: AEAD sequence number overflows")
 )
