@@ -157,11 +157,7 @@ func (pk *cPublicKey) X(sk *cPrivateKey) []byte {
 		panic(kem.ErrTypeMismatch)
 	}
 
-	privKey, err := pk.scheme.curve.NewPrivateKey(sk.key.Bytes())
-	if err != nil {
-		panic(err)
-	}
-	sharedKey, err := privKey.ECDH(pk.key)
+	sharedKey, err := sk.key.ECDH(pk.key)
 	if err != nil {
 		panic(err)
 	}
@@ -223,6 +219,5 @@ func (sch *cScheme) UnmarshalBinaryPrivateKey(buf []byte) (kem.PrivateKey, error
 	if err != nil {
 		return nil, err
 	}
-	ret := cPrivateKey{sch, key}
-	return &ret, nil
+	return &cPrivateKey{sch, key}, nil
 }
