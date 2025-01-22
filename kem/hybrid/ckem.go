@@ -9,11 +9,11 @@ import (
 )
 
 type cPublicKey struct {
-	scheme *cScheme
+	scheme cScheme
 	key    *ecdh.PublicKey
 }
 type cPrivateKey struct {
-	scheme *cScheme
+	scheme cScheme
 	key    *ecdh.PrivateKey
 }
 type cScheme struct {
@@ -22,7 +22,7 @@ type cScheme struct {
 
 var p256Kem = &cScheme{ecdh.P256()}
 
-func (sch *cScheme) Name() string {
+func (sch cScheme) Name() string {
 	switch sch.curve {
 	case ecdh.P256():
 		return "P-256"
@@ -35,7 +35,7 @@ func (sch *cScheme) Name() string {
 	}
 }
 
-func (sch *cScheme) PublicKeySize() int {
+func (sch cScheme) PublicKeySize() int {
 	switch sch.curve {
 	case ecdh.P256():
 		return 65
@@ -48,7 +48,7 @@ func (sch *cScheme) PublicKeySize() int {
 	}
 }
 
-func (sch *cScheme) PrivateKeySize() int {
+func (sch cScheme) PrivateKeySize() int {
 	switch sch.curve {
 	case ecdh.P256():
 		return 32
@@ -61,19 +61,19 @@ func (sch *cScheme) PrivateKeySize() int {
 	}
 }
 
-func (sch *cScheme) SeedSize() int {
+func (sch cScheme) SeedSize() int {
 	return sch.PrivateKeySize()
 }
 
-func (sch *cScheme) SharedKeySize() int {
+func (sch cScheme) SharedKeySize() int {
 	return sch.PrivateKeySize()
 }
 
-func (sch *cScheme) CiphertextSize() int {
+func (sch cScheme) CiphertextSize() int {
 	return sch.PublicKeySize()
 }
 
-func (sch *cScheme) EncapsulationSeedSize() int {
+func (sch cScheme) EncapsulationSeedSize() int {
 	return sch.SeedSize()
 }
 
@@ -115,7 +115,7 @@ func (pk *cPublicKey) MarshalBinary() ([]byte, error) {
 	return pk.key.Bytes(), nil
 }
 
-func (sch *cScheme) GenerateKeyPair() (kem.PublicKey, kem.PrivateKey, error) {
+func (sch cScheme) GenerateKeyPair() (kem.PublicKey, kem.PrivateKey, error) {
 	seed := make([]byte, sch.SeedSize())
 	_, err := cryptoRand.Read(seed)
 	if err != nil {
@@ -125,7 +125,7 @@ func (sch *cScheme) GenerateKeyPair() (kem.PublicKey, kem.PrivateKey, error) {
 	return pk, sk, nil
 }
 
-func (sch *cScheme) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
+func (sch cScheme) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 	if len(seed) != sch.SeedSize() {
 		panic(kem.ErrSeedSize)
 	}
@@ -143,7 +143,7 @@ func (sch *cScheme) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 	return &pk, &sk
 }
 
-func (sch *cScheme) Encapsulate(pk kem.PublicKey) (ct, ss []byte, err error) {
+func (sch cScheme) Encapsulate(pk kem.PublicKey) (ct, ss []byte, err error) {
 	seed := make([]byte, sch.EncapsulationSeedSize())
 	_, err = cryptoRand.Read(seed)
 	if err != nil {
@@ -164,7 +164,7 @@ func (pk *cPublicKey) X(sk *cPrivateKey) []byte {
 	return sharedKey
 }
 
-func (sch *cScheme) EncapsulateDeterministically(
+func (sch cScheme) EncapsulateDeterministically(
 	pk kem.PublicKey, seed []byte,
 ) (ct, ss []byte, err error) {
 	if len(seed) != sch.EncapsulationSeedSize() {
@@ -181,7 +181,7 @@ func (sch *cScheme) EncapsulateDeterministically(
 	return
 }
 
-func (sch *cScheme) Decapsulate(sk kem.PrivateKey, ct []byte) ([]byte, error) {
+func (sch cScheme) Decapsulate(sk kem.PrivateKey, ct []byte) ([]byte, error) {
 	if len(ct) != sch.CiphertextSize() {
 		return nil, kem.ErrCiphertextSize
 	}
@@ -200,7 +200,7 @@ func (sch *cScheme) Decapsulate(sk kem.PrivateKey, ct []byte) ([]byte, error) {
 	return ss, nil
 }
 
-func (sch *cScheme) UnmarshalBinaryPublicKey(buf []byte) (kem.PublicKey, error) {
+func (sch cScheme) UnmarshalBinaryPublicKey(buf []byte) (kem.PublicKey, error) {
 	if len(buf) != sch.PublicKeySize() {
 		return nil, kem.ErrPubKeySize
 	}
@@ -211,7 +211,7 @@ func (sch *cScheme) UnmarshalBinaryPublicKey(buf []byte) (kem.PublicKey, error) 
 	return &cPublicKey{sch, key}, nil
 }
 
-func (sch *cScheme) UnmarshalBinaryPrivateKey(buf []byte) (kem.PrivateKey, error) {
+func (sch cScheme) UnmarshalBinaryPrivateKey(buf []byte) (kem.PrivateKey, error) {
 	if len(buf) != sch.PrivateKeySize() {
 		return nil, kem.ErrPrivKeySize
 	}
