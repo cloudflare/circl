@@ -60,8 +60,8 @@ func (p Poly) Strip() Poly {
 }
 
 func (p Poly) Interpolate(values []Fp) {
-	_, logN := math.NextPow2(uint(len(values)))
-	Vec(p).InvNTT(values)
+	N, logN := math.NextPow2(uint(len(values)))
+	Vec(p).InvNTT(values, N)
 	var invN Fp
 	invN.InvTwoN(logN)
 	Vec(p).ScalarMul(&invN)
