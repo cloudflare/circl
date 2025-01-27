@@ -89,9 +89,9 @@ type Vec[Vec ~[]E, E Elt] interface {
 	// DotProduct calculates z[i] = z[i] * x[i].
 	DotProduct(x Vec) E
 	// NTT calculates the number theoretic transform of the vector.
-	NTT(Vec)
+	NTT(Vec, uint)
 	// InvNTT calculates the inverse number theoretic transform on values.
-	InvNTT(Vec)
+	InvNTT(Vec, uint)
 	// SplitBits sets the vector of elements corresponding to the bits of n.
 	// The receiving vector sets v[i] = SetUint64(n(i)), where n(i) is the i-th
 	// bit of n, and len(v) >= log2(n).

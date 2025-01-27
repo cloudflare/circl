@@ -50,7 +50,7 @@ func (f *FLP[G, P, V, E, F]) Prove(meas, proveRand, jointRand V) V {
 	for i := range wirePoly {
 		wire := wiresCur.Next(g.p)
 		wirePolyI := wirePolyNCur.Next(g.p)
-		wirePolyI.InvNTT(wire)
+		wirePolyI.InvNTT(wire, g.p)
 		// Extracts the constant factor (1/N) to be multiplied after
 		// polynomial interpolation.
 		wirePolyI.ScalarMul(invN)
@@ -110,7 +110,7 @@ func (f *FLP[G, P, V, E, F]) Query(
 	wirePoly := arith.NewPoly[P](g.p - 1)
 	wirei := cursor.New(g.wires)
 	for i := range wireChecks {
-		V(wirePoly).InvNTT(wirei.Next(g.p))
+		V(wirePoly).InvNTT(wirei.Next(g.p), g.p)
 		wireChecks[i] = wirePoly.Evaluate(t)
 		// Extracts the constant factor (1/N) to be multiplied after
 		// polynomial interpolation and evaluation.

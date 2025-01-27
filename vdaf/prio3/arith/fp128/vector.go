@@ -51,11 +51,11 @@ func bitRev(x uint, numBits uint) uint {
 	return bits.Reverse(x) >> (bits.UintSize - numBits)
 }
 
-func (v Vec) NTT(values Vec)    { v.doNTT(values, false) }
-func (v Vec) InvNTT(values Vec) { v.doNTT(values, true) }
-func (v Vec) doNTT(values Vec, isInvNTT bool) {
+func (v Vec) NTT(values Vec, n uint)    { v.doNTT(values, n, false) }
+func (v Vec) InvNTT(values Vec, n uint) { v.doNTT(values, n, true) }
+func (v Vec) doNTT(values Vec, n uint, isInvNTT bool) {
 	valuesLen := uint(len(values))
-	_, logN := math.NextPow2(valuesLen)
+	_, logN := math.NextPow2(n)
 
 	for i := range v {
 		j := bitRev(uint(i), logN)

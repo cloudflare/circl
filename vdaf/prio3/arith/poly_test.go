@@ -74,7 +74,7 @@ func interpolate[P Poly[P, E], V Vec[V, E], E EltTest, F Fp[E]](t *testing.T) {
 		values := evalRootsUnity[P, V, E, F](p)
 
 		y := NewVec[V](N)
-		y.NTT(V(p))
+		y.NTT(V(p), N)
 		if !slices.Equal(y, values) {
 			test.ReportError(t, y, values)
 		}
@@ -137,12 +137,12 @@ func benchmarkPoly[P Poly[P, E], V Vec[V, E], E Elt, F Fp[E]](b *testing.B) {
 	})
 	b.Run("NTT", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			V(p).NTT(values)
+			V(p).NTT(values, N)
 		}
 	})
 	b.Run("InvNTT", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			V(p).InvNTT(values)
+			V(p).InvNTT(values, N)
 		}
 	})
 	b.Run("Interpolate", func(b *testing.B) {
