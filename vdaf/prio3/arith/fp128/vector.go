@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"io"
 	"math/bits"
+	"slices"
 
 	"github.com/cloudflare/circl/internal/conv"
 	"github.com/cloudflare/circl/internal/sha3"
@@ -51,9 +52,12 @@ func bitRev(x uint, numBits uint) uint {
 	return bits.Reverse(x) >> (bits.UintSize - numBits)
 }
 
-func (v Vec) NTT(values Vec, n uint)    { v.doNTT(values, n, false) }
-func (v Vec) InvNTT(values Vec, n uint) { v.doNTT(values, n, true) }
-func (v Vec) doNTT(values Vec, n uint, isInvNTT bool) {
+func (v Vec) InvNTT(values Vec, n uint) {
+	v.NTT(values, n)
+	slices.Reverse(v[1:])
+}
+
+func (v Vec) NTT(values Vec, n uint) {
 	valuesLen := uint(len(values))
 	_, logN := math.NextPow2(n)
 
@@ -64,13 +68,7 @@ func (v Vec) doNTT(values Vec, n uint, isInvNTT bool) {
 		}
 	}
 
-	var t, w, wn, iwn Fp
-	r := &wn
-	if isInvNTT {
-		r = &iwn
-		iwn.SetOne()
-	}
-
+	var t, w, wn Fp
 	for l := uint(1); l <= logN; l++ {
 		y := uint(1) << (l - 1)
 		chunk := uint(1) << (logN - l)
@@ -84,9 +82,8 @@ func (v Vec) doNTT(values Vec, n uint, isInvNTT bool) {
 
 		w.SetOne()
 		wn.SetRootOfUnityTwoN(l)
-		iwn.MulAssign(&wn)
 		for i := uint(1); i < y; i++ {
-			w.MulAssign(r)
+			w.MulAssign(&wn)
 			for j := range chunk {
 				x := (j << l) + i
 				u := v[x]
