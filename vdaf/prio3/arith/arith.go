@@ -133,8 +133,4 @@ type Poly[Poly ~[]E, E Elt] interface {
 	Evaluate(x *E) E
 	// Strip removes the higher-degree zero terms.
 	Strip() Poly
-	// Interpolate a polynomial passing through the points (x[i], y[i]), where
-	// x are the powers of an N-th root of unity, y are the values, and
-	// N = len(y) must be a power of two.
-	Interpolate(y []E)
 }

@@ -51,8 +51,6 @@ func (f *FLP[G, P, V, E, F]) Prove(meas, proveRand, jointRand V) V {
 		wire := wiresCur.Next(g.p)
 		wirePolyI := wirePolyNCur.Next(g.p)
 		wirePolyI.InvNTT(wire, g.p)
-		// Extracts the constant factor (1/N) to be multiplied after
-		// polynomial interpolation.
 		wirePolyI.ScalarMul(invN)
 		wirePoly[i] = P(wirePolyI)
 		proofCur.Next(1)[0] = wire[0]
