@@ -12,13 +12,10 @@ import (
 	"strings"
 
 	"github.com/cloudflare/circl/internal/sha3"
-	"github.com/cloudflare/circl/sign"
 )
 
 // [ParamID] identifies the supported parameter sets of SLH-DSA.
 // Note that the zero value is an invalid identifier.
-// [ParamID] with a valid identifier also implements the [sign.Scheme]
-// interface, but invalid identifiers cause methods panic.
 type ParamID byte
 
 const (
@@ -57,13 +54,8 @@ func ParamIDByName(name string) (id ParamID, err error) {
 }
 
 // IsValid returns true if the parameter set is supported.
-func (id ParamID) IsValid() bool         { return 0 < id && id < _MaxParams }
-func (id ParamID) Name() string          { return id.String() }
-func (id ParamID) PublicKeySize() int    { return int(id.params().PublicKeySize()) }
-func (id ParamID) PrivateKeySize() int   { return int(id.params().PrivateKeySize()) }
-func (id ParamID) SignatureSize() int    { return int(id.params().SignatureSize()) }
-func (id ParamID) SeedSize() int         { return id.PrivateKeySize() }
-func (id ParamID) SupportsContext() bool { return true }
+func (id ParamID) IsValid() bool { return 0 < id && id < _MaxParams }
+
 func (id ParamID) String() string {
 	if !id.IsValid() {
 		return ErrParam.Error()
@@ -76,24 +68,6 @@ func (id ParamID) params() *params {
 		panic(ErrParam)
 	}
 	return &supportedParams[id-1]
-}
-
-func (id ParamID) UnmarshalBinaryPublicKey(b []byte) (sign.PublicKey, error) {
-	k := PublicKey{ParamID: id}
-	err := k.UnmarshalBinary(b)
-	if err != nil {
-		return nil, err
-	}
-	return &k, nil
-}
-
-func (id ParamID) UnmarshalBinaryPrivateKey(b []byte) (sign.PrivateKey, error) {
-	k := PrivateKey{ParamID: id}
-	err := k.UnmarshalBinary(b)
-	if err != nil {
-		return nil, err
-	}
-	return &k, nil
 }
 
 func (id ParamID) Oid() asn1.ObjectIdentifier {
