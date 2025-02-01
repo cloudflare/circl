@@ -27,12 +27,7 @@ func (s scheme) GenerateKey() (sign.PublicKey, sign.PrivateKey, error) {
 func (s scheme) Sign(
 	key sign.PrivateKey, message []byte, options *sign.SignatureOpts,
 ) []byte {
-	var sigOps Options
-	if options != nil {
-		sigOps.Context = []byte(options.Context)
-	}
-
-	signature, err := key.Sign(rand.Reader, message, sigOps)
+	signature, err := key.Sign(rand.Reader, message, nil)
 	if err != nil {
 		return nil
 	}
@@ -54,13 +49,12 @@ func (s scheme) Verify(
 		panic(sign.ErrTypeMismatch)
 	}
 
-	var sigOps Options
+	var context []byte
 	if options != nil {
-		sigOps.Context = []byte(options.Context)
+		context = []byte(options.Context)
 	}
 
-	msg := NewMessage(message)
-	return Verify(&k, &msg, signature, &sigOps)
+	return Verify(&k, NewMessagito(message), signature, context)
 }
 
 // Deterministically derives a pair of keys from a seed. If you're unsure,

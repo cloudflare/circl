@@ -14,10 +14,10 @@ func testInternal(t *testing.T, p *params) {
 	addRand := mustRead(t, p.n)
 
 	pk, sk := slhKeyGenInternal(p, skSeed, skPrf, pkSeed)
-	sig, err := slhSignInternal(p, &sk, msg, addRand)
+	sig, err := slhSignInternal(&sk, msg, addRand)
 	test.CheckNoErr(t, err, "slhSignInternal failed")
 
-	valid := slhVerifyInternal(p, &pk, msg, sig)
+	valid := slhVerifyInternal(&pk, msg, sig)
 	test.CheckOk(valid, "slhVerifyInternal failed", t)
 }
 
@@ -29,7 +29,7 @@ func benchmarkInternal(b *testing.B, p *params) {
 	addRand := mustRead(b, p.n)
 
 	pk, sk := slhKeyGenInternal(p, skSeed, skPrf, pkSeed)
-	sig, err := slhSignInternal(p, &sk, msg, addRand)
+	sig, err := slhSignInternal(&sk, msg, addRand)
 	test.CheckNoErr(b, err, "slhSignInternal failed")
 
 	b.Run("Keygen", func(b *testing.B) {
@@ -39,12 +39,12 @@ func benchmarkInternal(b *testing.B, p *params) {
 	})
 	b.Run("Sign", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_, _ = slhSignInternal(p, &sk, msg, addRand)
+			_, _ = slhSignInternal(&sk, msg, addRand)
 		}
 	})
 	b.Run("Verify", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_ = slhVerifyInternal(p, &pk, msg, sig)
+			_ = slhVerifyInternal(&pk, msg, sig)
 		}
 	})
 }

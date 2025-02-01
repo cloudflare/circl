@@ -5,7 +5,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/sha512"
-	"encoding/asn1"
 	"encoding/binary"
 	"hash"
 	"io"
@@ -68,20 +67,6 @@ func (id ParamID) params() *params {
 		panic(ErrParam)
 	}
 	return &supportedParams[id-1]
-}
-
-func (id ParamID) Oid() asn1.ObjectIdentifier {
-	// Source https://csrc.nist.gov/Projects/computer-security-objects-register/algorithm-registration
-	return asn1.ObjectIdentifier{
-		2,               // joint-iso-ccitt(2)
-		16,              // country(16)
-		840,             // us(840)
-		1,               // organization(1)
-		101,             // gov(101)
-		3,               // csor(3)
-		4,               // nistAlgorithm(4)
-		id.params().oid, // sigAlgs(oid)
-	}
 }
 
 // params contains all the relevant constants of a parameter set.

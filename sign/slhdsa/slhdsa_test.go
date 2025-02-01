@@ -25,14 +25,6 @@ var supportedParameters = [12]slhdsa.ParamID{
 	slhdsa.ParamIDSHAKEFast256,
 }
 
-var supportedPrehashIDs = [5]slhdsa.PreHashID{
-	slhdsa.NoPreHash,
-	slhdsa.PreHashSHA256,
-	slhdsa.PreHashSHA512,
-	slhdsa.PreHashSHAKE128,
-	slhdsa.PreHashSHAKE256,
-}
-
 // Indicates whether long tests should be run
 var runLongTest = flag.Bool("long", false, "runs longer tests")
 
@@ -45,9 +37,7 @@ func TestSlhdsaLong(t *testing.T) {
 		t.Run(paramID.String(), func(t *testing.T) {
 			t.Run("Keys", func(t *testing.T) { testKeys(t, paramID) })
 
-			for _, ph := range supportedPrehashIDs {
-				t.Run(ph.String(), func(t *testing.T) { testSign(t, paramID, ph) })
-			}
+			t.Run("Sign", func(t *testing.T) { testSign(t, paramID) })
 		})
 	}
 }
@@ -57,7 +47,7 @@ func TestSlhdsa(t *testing.T) {
 		testKeys(t, slhdsa.ParamIDSHA2Fast128)
 	})
 	t.Run("PreHashSHA256", func(t *testing.T) {
-		testSign(t, slhdsa.ParamIDSHA2Fast128, slhdsa.PreHashSHA256)
+		testSign(t, slhdsa.ParamIDSHA2Fast128)
 	})
 }
 
@@ -87,29 +77,26 @@ func testKeys(t *testing.T, id slhdsa.ParamID) {
 	test.CheckOk(pub2.Equal(pub3), "public key not equal", t)
 }
 
-func testSign(t *testing.T, id slhdsa.ParamID, ph slhdsa.PreHashID) {
+func testSign(t *testing.T, id slhdsa.ParamID) {
 	msg := []byte("Alice and Bob")
 	ctx := []byte("this is a context string")
 
 	pk, sk, err := slhdsa.GenerateKey(rand.Reader, id)
 	test.CheckNoErr(t, err, "keygen failed")
 
-	m, err := slhdsa.NewMessageWithPreHash(ph)
-	test.CheckNoErr(t, err, "NewMessageWithPreHash failed")
+	m := slhdsa.NewMessagito(msg)
+	test.CheckNoErr(t, err, "NewPreHashedMessage failed")
 
-	_, err = m.Write(msg)
-	test.CheckNoErr(t, err, "Write message failed")
+	sig, err := slhdsa.SignRandomized(&sk, rand.Reader, m, ctx)
+	test.CheckNoErr(t, err, "Sign randomized failed")
 
-	sig, err := sk.SignRandomized(rand.Reader, &m, ctx)
-	test.CheckNoErr(t, err, "SignRandomized failed")
-
-	valid := slhdsa.Verify(&pk, &m, ctx, sig)
+	valid := slhdsa.Verify(&pk, m, sig, ctx)
 	test.CheckOk(valid, "Verify failed", t)
 
-	sig, err = sk.SignDeterministic(&m, ctx)
-	test.CheckNoErr(t, err, "SignDeterministic failed")
+	sig, err = slhdsa.SignDeterministic(&sk, m, ctx)
+	test.CheckNoErr(t, err, "Sign deterministic failed")
 
-	valid = slhdsa.Verify(&pk, &m, ctx, sig)
+	valid = slhdsa.Verify(&pk, m, sig, ctx)
 	test.CheckOk(valid, "Verify failed", t)
 }
 
@@ -124,17 +111,14 @@ func BenchmarkSlhdsa(b *testing.B) {
 				}
 			})
 
-			for j := range supportedPrehashIDs {
-				ph := supportedPrehashIDs[j]
-				msg := []byte("Alice and Bob")
-				ctx := []byte("this is a context string")
-				pub, priv, err := slhdsa.GenerateKey(rand.Reader, id)
-				test.CheckNoErr(b, err, "GenerateKey failed")
+			msg := []byte("Alice and Bob")
+			ctx := []byte("this is a context string")
+			pub, priv, err := slhdsa.GenerateKey(rand.Reader, id)
+			test.CheckNoErr(b, err, "GenerateKey failed")
+			b.Run("Sign", func(b *testing.B) {
+				benchmarkSign(b, &pub, &priv, msg, ctx)
+			})
 
-				b.Run(ph.String(), func(b *testing.B) {
-					benchmarkSign(b, &pub, &priv, msg, ctx, ph)
-				})
-			}
 		})
 	}
 }
@@ -144,30 +128,25 @@ func benchmarkSign(
 	pk *slhdsa.PublicKey,
 	sk *slhdsa.PrivateKey,
 	msg, ctx []byte,
-	ph slhdsa.PreHashID,
 ) {
-	m, err := slhdsa.NewMessageWithPreHash(ph)
-	test.CheckNoErr(b, err, "NewMessageWithPreHash failed")
+	m := slhdsa.NewMessagito(msg)
 
-	_, err = m.Write(msg)
-	test.CheckNoErr(b, err, "Write message failed")
-
-	sig, err := sk.SignRandomized(rand.Reader, &m, ctx)
-	test.CheckNoErr(b, err, "SignRandomized failed")
+	sig, err := slhdsa.SignDeterministic(sk, m, ctx)
+	test.CheckNoErr(b, err, "SignDeterministic failed")
 
 	b.Run("SignRandomized", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_, _ = sk.SignRandomized(rand.Reader, &m, ctx)
+			_, _ = slhdsa.SignRandomized(sk, rand.Reader, m, ctx)
 		}
 	})
 	b.Run("SignDeterministic", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_, _ = sk.SignDeterministic(&m, ctx)
+			_, _ = slhdsa.SignDeterministic(sk, m, ctx)
 		}
 	})
 	b.Run("Verify", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			_ = slhdsa.Verify(pk, &m, ctx, sig)
+			_ = slhdsa.Verify(pk, m, sig, ctx)
 		}
 	})
 }
