@@ -19,15 +19,11 @@
 package slhdsa
 
 import (
-	"bytes"
 	"crypto"
 	"crypto/rand"
 	"errors"
 	"fmt"
 	"io"
-
-	"github.com/cloudflare/circl/internal/sha3"
-	"github.com/cloudflare/circl/sign"
 )
 
 // [MaxContextSize] is the maximum byte length of a context for signing.
@@ -41,7 +37,7 @@ func GenerateKey(
 	// See FIPS 205 -- Section 10.1 -- Algorithm 21.
 	params := id.params()
 
-	var skPrf, skSeed, pkSeed []byte
+	var skSeed, skPrf, pkSeed []byte
 	skSeed, err = readRandom(random, params.n)
 	if err != nil {
 		return
@@ -60,42 +56,6 @@ func GenerateKey(
 	pub, priv = slhKeyGenInternal(params, skSeed, skPrf, pkSeed)
 
 	return
-}
-
-// GenerateKey is similar to [GenerateKey] function, except it always reads
-// random bytes from [rand.Reader].
-func (id ParamID) GenerateKey() (sign.PublicKey, sign.PrivateKey, error) {
-	pub, priv, err := GenerateKey(rand.Reader, id)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return &pub, &priv, nil
-}
-
-// Deterministically derives a pair of keys from a seed. If you're unsure,
-// you're better off using [GenerateKey] function.
-//
-// Panics if seed is not of length [ParamID.SeedSize].
-func (id ParamID) DeriveKey(seed []byte) (sign.PublicKey, sign.PrivateKey) {
-	params := id.params()
-	if len(seed) != id.SeedSize() {
-		panic(sign.ErrSeedSize)
-	}
-
-	m := make([]byte, 3*params.n)
-	if params.isSHA2 {
-		params.mgf1(m, seed, 3*params.n)
-	} else {
-		sha3.ShakeSum256(m, seed)
-	}
-
-	pub, priv, err := GenerateKey(bytes.NewReader(m), id)
-	if err != nil {
-		return nil, nil
-	}
-
-	return &pub, &priv
 }
 
 // SignRandomized returns a random signature of the message with the
@@ -142,7 +102,7 @@ func (k *PrivateKey) doSign(msg *Message, ctx, addRnd []byte) ([]byte, error) {
 // If options is nil, the message is not prehased, and a randomized
 // signature with an empty context is generated.
 // It returns an error if it fails reading from the random source.
-func (k *PrivateKey) Sign(
+func (k PrivateKey) Sign(
 	random io.Reader, message []byte, options crypto.SignerOpts,
 ) (signature []byte, err error) {
 	var signOptions SignatureOpts
@@ -173,35 +133,6 @@ func (k *PrivateKey) Sign(
 	}
 }
 
-// [ParamID.Sign] returns a randomized signature of the message with the
-// specified options.
-// This function never pre-hashes the message and uses the context provided
-// in options. If options is nil, an empty context is used.
-// It returns an empty slice if it fails reading from the random source.
-//
-// Panics if the key is not a [*PrivateKey] or mismatches with the ParamID.
-func (id ParamID) Sign(
-	key sign.PrivateKey, message []byte, options *sign.SignatureOpts,
-) (signature []byte) {
-	k, ok := key.(*PrivateKey)
-	if !ok || id != k.ParamID {
-		panic(sign.ErrTypeMismatch)
-	}
-
-	var context []byte
-	if options != nil {
-		context = []byte(options.Context)
-	}
-
-	msg := NewMessage(message)
-	signature, err := k.SignRandomized(rand.Reader, &msg, context)
-	if err != nil {
-		return nil
-	}
-
-	return
-}
-
 // [Verify] returns true if the signature of the message with the specified
 // context is valid.
 func Verify(key *PublicKey, message *Message, context, signature []byte) bool {
@@ -213,29 +144,6 @@ func Verify(key *PublicKey, message *Message, context, signature []byte) bool {
 	}
 
 	return slhVerifyInternal(params, key, msgPrime, signature)
-}
-
-// [Verify] returns true if the signature of the message with the specified
-// context is valid.
-// This function never pre-hashes the message and uses the context provided
-// in options. If options is nil, an empty context is used.
-//
-// Panics if the key is not a [*PublicKey] or mismatches with the ParamID.
-func (id ParamID) Verify(
-	key sign.PublicKey, message, signature []byte, options *sign.SignatureOpts,
-) bool {
-	k, ok := key.(*PublicKey)
-	if !ok || id != k.ParamID {
-		panic(sign.ErrTypeMismatch)
-	}
-
-	var context []byte
-	if options != nil {
-		context = []byte(options.Context)
-	}
-
-	msg := NewMessage(message)
-	return Verify(k, &msg, context, signature)
 }
 
 // [SignatureOpts] is used to specify the generation and verification
@@ -268,7 +176,7 @@ func readRandom(random io.Reader, size uint32) (out []byte, err error) {
 	if random == nil {
 		random = rand.Reader
 	}
-	_, err = io.ReadFull(random, out)
+	_, err = random.Read(out)
 	return
 }
 

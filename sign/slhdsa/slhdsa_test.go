@@ -42,7 +42,7 @@ func TestSlhdsaLong(t *testing.T) {
 	}
 
 	for _, paramID := range supportedParameters {
-		t.Run(paramID.Name(), func(t *testing.T) {
+		t.Run(paramID.String(), func(t *testing.T) {
 			t.Run("Keys", func(t *testing.T) { testKeys(t, paramID) })
 
 			for _, ph := range supportedPrehashIDs {
@@ -78,9 +78,10 @@ func testKeys(t *testing.T, id slhdsa.ParamID) {
 	test.CheckMarshal(t, &priv0, &priv1)
 	test.CheckMarshal(t, &pub0, &pub1)
 
-	seed := make([]byte, id.SeedSize())
-	pub2, priv2 := id.DeriveKey(seed)
-	pub3, priv3 := id.DeriveKey(seed)
+	scheme := id.Scheme()
+	seed := make([]byte, scheme.SeedSize())
+	pub2, priv2 := scheme.DeriveKey(seed)
+	pub3, priv3 := scheme.DeriveKey(seed)
 
 	test.CheckOk(priv2.Equal(priv3), "private key not equal", t)
 	test.CheckOk(pub2.Equal(pub3), "public key not equal", t)
@@ -116,7 +117,7 @@ func BenchmarkSlhdsa(b *testing.B) {
 	for i := range supportedParameters {
 		id := supportedParameters[i]
 
-		b.Run(id.Name(), func(b *testing.B) {
+		b.Run(id.String(), func(b *testing.B) {
 			b.Run("GenerateKey", func(b *testing.B) {
 				for i := 0; i < b.N; i++ {
 					_, _, _ = slhdsa.GenerateKey(rand.Reader, id)
