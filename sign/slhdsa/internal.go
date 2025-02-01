@@ -61,9 +61,8 @@ func (p *params) parseMsg(
 }
 
 // See FIPS 205 -- Section 9.2 -- Algorithm 19.
-func slhSignInternal(
-	p *params, sk *PrivateKey, message, addRand []byte,
-) ([]byte, error) {
+func slhSignInternal(sk *PrivateKey, message, addRand []byte) ([]byte, error) {
+	p := sk.ParamID.params()
 	sigBytes := make([]byte, p.SignatureSize())
 
 	var sig signature
@@ -93,9 +92,8 @@ func slhSignInternal(
 }
 
 // See FIPS 205 -- Section 9.3 -- Algorithm 20.
-func slhVerifyInternal(
-	p *params, pub *PublicKey, message, sigBytes []byte,
-) bool {
+func slhVerifyInternal(pub *PublicKey, message, sigBytes []byte) bool {
+	p := pub.ParamID.params()
 	var sig signature
 	curSig := cursor(sigBytes)
 	if len(sigBytes) != int(p.SignatureSize()) || !sig.fromBytes(p, &curSig) {
