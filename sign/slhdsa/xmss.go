@@ -40,7 +40,7 @@ func (s *statePriv) xmssNodeIter(
 
 	twoZ := uint32(1) << z
 	iTwoZ := i << z
-	for k := uint32(0); k < twoZ; k++ {
+	for k := range twoZ {
 		li := iTwoZ + k
 		lz := uint32(0)
 
@@ -59,7 +59,7 @@ func (s *statePriv) xmssNodeIter(
 			node = s.H.Final()
 		}
 
-		stack.push(item{lz, node})
+		stack.push(item{node, lz})
 	}
 
 	copy(root, stack.pop().node)
@@ -70,7 +70,7 @@ func (s *statePriv) xmssSign(
 	stack stackNode, sig xmssSignature, msg []byte, idx uint32, addr address,
 ) {
 	authPath := cursor(sig.authPath)
-	for j := uint32(0); j < s.hPrime; j++ {
+	for j := range s.hPrime {
 		k := (idx >> j) ^ 1
 		s.xmssNodeIter(stack, authPath.Next(s.n), k, j, addr)
 	}
@@ -93,7 +93,7 @@ func (s *state) xmssPkFromSig(
 	s.H.address.SetTypeAndClear(addressTree)
 
 	authPath := cursor(sig.authPath)
-	for k := uint32(0); k < s.hPrime; k++ {
+	for k := range s.hPrime {
 		if (idx>>k)&0x1 == 0 {
 			treeIdx = treeIdx >> 1
 			s.H.SetMsgs(pk, authPath.Next(s.n))

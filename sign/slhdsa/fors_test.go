@@ -92,24 +92,24 @@ func benchmarkFors(b *testing.B, p *params) {
 	state.forsSign(sig, msg, addr)
 
 	b.Run("NodeRec", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_ = state.forsNodeRec(0, p.a, addr)
 		}
 	})
 	b.Run("NodeIter", func(b *testing.B) {
 		node := make([]byte, p.n)
 		forsStack := p.NewStack(p.a)
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			state.forsNodeIter(forsStack, node, 0, p.a, addr)
 		}
 	})
 	b.Run("Sign", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			state.forsSign(sig, msg, addr)
 		}
 	})
 	b.Run("PkFromSig", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_ = state.forsPkFromSig(sig, msg, addr)
 		}
 	})

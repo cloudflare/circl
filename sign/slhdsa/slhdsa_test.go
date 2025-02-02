@@ -1,31 +1,34 @@
 package slhdsa_test
 
 import (
+	"crypto"
 	"crypto/rand"
 	"flag"
+	"io"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/sha3"
 	"github.com/cloudflare/circl/internal/test"
 	"github.com/cloudflare/circl/sign/slhdsa"
+	"github.com/cloudflare/circl/xof"
 )
 
-var fastSign = [...]slhdsa.ParamID{
-	slhdsa.ParamIDSHA2Fast128,
-	slhdsa.ParamIDSHAKEFast128,
-	slhdsa.ParamIDSHA2Fast192,
-	slhdsa.ParamIDSHAKEFast192,
-	slhdsa.ParamIDSHA2Fast256,
-	slhdsa.ParamIDSHAKEFast256,
+var fastSign = [...]slhdsa.ID{
+	slhdsa.SHA2Fast128,
+	slhdsa.SHAKEFast128,
+	slhdsa.SHA2Fast192,
+	slhdsa.SHAKEFast192,
+	slhdsa.SHA2Fast256,
+	slhdsa.SHAKEFast256,
 }
 
-var smallSign = [...]slhdsa.ParamID{
-	slhdsa.ParamIDSHA2Small128,
-	slhdsa.ParamIDSHAKESmall128,
-	slhdsa.ParamIDSHA2Small192,
-	slhdsa.ParamIDSHAKESmall192,
-	slhdsa.ParamIDSHA2Small256,
-	slhdsa.ParamIDSHAKESmall256,
+var smallSign = [...]slhdsa.ID{
+	slhdsa.SHA2Small128,
+	slhdsa.SHAKESmall128,
+	slhdsa.SHA2Small192,
+	slhdsa.SHAKESmall192,
+	slhdsa.SHA2Small256,
+	slhdsa.SHAKESmall256,
 }
 
 // Indicates whether long tests should be run
@@ -58,7 +61,7 @@ func TestInnerSmall(t *testing.T) {
 	slhdsa.InnerTest(t, smallSign[:])
 }
 
-func testSlhdsa(t *testing.T, sigIDs []slhdsa.ParamID) {
+func testSlhdsa(t *testing.T, sigIDs []slhdsa.ID) {
 	for _, id := range sigIDs {
 		t.Run(id.String(), func(t *testing.T) {
 			t.Run("Keys", func(t *testing.T) { testKeys(t, id) })
@@ -67,7 +70,7 @@ func testSlhdsa(t *testing.T, sigIDs []slhdsa.ParamID) {
 	}
 }
 
-func testKeys(t *testing.T, id slhdsa.ParamID) {
+func testKeys(t *testing.T, id slhdsa.ID) {
 	reader := sha3.NewShake128()
 
 	reader.Reset()
@@ -93,7 +96,7 @@ func testKeys(t *testing.T, id slhdsa.ParamID) {
 	test.CheckOk(pub2.Equal(pub3), "public key not equal", t)
 }
 
-func testSign(t *testing.T, id slhdsa.ParamID) {
+func testSign(t *testing.T, id slhdsa.ID) {
 	pub, priv, err := slhdsa.GenerateKey(rand.Reader, id)
 	test.CheckNoErr(t, err, "GenerateKey failed")
 
@@ -131,7 +134,31 @@ func BenchmarkInnerSmall(b *testing.B) {
 	slhdsa.InnerBenchmark(b, smallSign[:])
 }
 
-func benchmarkSlhdsa(b *testing.B, sigIDs []slhdsa.ParamID) {
+func BenchmarkPreHash(b *testing.B) {
+	b.Run("WithHash", func(b *testing.B) {
+		ph, err := slhdsa.NewPreHashWithHash(crypto.SHA512)
+		test.CheckNoErr(b, err, "NewPreHashWithHash failed")
+		benchmarkPreHash(b, ph)
+	})
+	b.Run("WithXof", func(b *testing.B) {
+		ph, err := slhdsa.NewPreHashWithXof(xof.SHAKE256)
+		test.CheckNoErr(b, err, "NewPreHashWithXof failed")
+		benchmarkPreHash(b, ph)
+	})
+}
+
+func benchmarkPreHash(b *testing.B, ph *slhdsa.PreHash) {
+	s := sha3.NewShake128()
+	for range b.N {
+		_, err := io.Copy(ph, io.LimitReader(&s, 1024))
+		test.CheckNoErr(b, err, "io.Copy failed")
+
+		_, err = ph.BuildMessage()
+		test.CheckNoErr(b, err, "BuildMessage failed")
+	}
+}
+
+func benchmarkSlhdsa(b *testing.B, sigIDs []slhdsa.ID) {
 	msg := slhdsa.NewMessage([]byte("Alice and Bob"))
 	ctx := []byte("this is a context string")
 

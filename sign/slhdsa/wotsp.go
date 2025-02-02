@@ -4,8 +4,8 @@ package slhdsa
 // Winternitz One-Time Signature Plus Scheme
 
 const (
-	wotsW    = 16 // wotsW is w = 2^lg_w, where lg_w = 4.
-	wotsLen2 = 3  // wotsLen2 is len_2 fixed to 3.
+	wotsW    uint32 = 16 // wotsW is w = 2^lg_w, where lg_w = 4.
+	wotsLen2 uint32 = 3  // wotsLen2 is len_2 fixed to 3.
 )
 
 type (
@@ -47,7 +47,7 @@ func (s *statePriv) wotsPkGen(addr address) wotsPublicKey {
 
 	s.T.Reset()
 	wotsLen := s.wotsLen()
-	for i := uint32(0); i < wotsLen; i++ {
+	for i := range wotsLen {
 		s.PRF.address.SetChainAddress(i)
 		sk := s.PRF.Final()
 
@@ -75,7 +75,7 @@ func (s *statePriv) wotsSign(sig wotsSignature, msg []byte, addr address) {
 	s.PRF.address.SetKeyPairAddress(addr.GetKeyPairAddress())
 
 	// Signs every nibble of the message and computes the checksum.
-	for i := uint32(0); i < wotsLen1; i++ {
+	for i := range wotsLen1 {
 		s.PRF.address.SetChainAddress(i)
 		sk := s.PRF.Final()
 
@@ -87,7 +87,7 @@ func (s *statePriv) wotsSign(sig wotsSignature, msg []byte, addr address) {
 	}
 
 	// Lastly, every nibble of the checksum is also signed.
-	for i := uint32(0); i < wotsLen2; i++ {
+	for i := range wotsLen2 {
 		s.PRF.address.SetChainAddress(wotsLen1 + i)
 		sk := s.PRF.Final()
 
@@ -118,7 +118,7 @@ func (s *state) wotsPkFromSig(
 
 	// Signs every nibble of the message, computes the checksum, and
 	// feeds each signature to the T function.
-	for i := uint32(0); i < wotsLen1; i++ {
+	for i := range wotsLen1 {
 		addr.SetChainAddress(i)
 		msgi := uint32((msg[i/2] >> ((1 - (i & 1)) << 2)) & 0xF)
 		sigi := s.chain(curSig.Next(s.n), msgi, wotsW-1-msgi, addr)
@@ -129,7 +129,7 @@ func (s *state) wotsPkFromSig(
 
 	// Every nibble of the checksum is also signed feeding the signature
 	// to the T function.
-	for i := uint32(0); i < wotsLen2; i++ {
+	for i := range wotsLen2 {
 		addr.SetChainAddress(wotsLen1 + i)
 		csumi := (csum >> (8 - 4*i)) & 0xF
 		sigi := s.chain(curSig.Next(s.n), csumi, wotsW-1-csumi, addr)

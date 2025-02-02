@@ -197,7 +197,7 @@ func testVerify(t *testing.T) {
 }
 
 func acvpKeygen(t *testing.T, paramSet string, in *keyGenInput, wantSk, wantPk []byte) {
-	id, err := ParamIDByName(paramSet)
+	id, err := IDByName(paramSet)
 	test.CheckNoErr(t, err, "invalid param name")
 
 	var buffer bytes.Buffer
@@ -223,10 +223,10 @@ func acvpKeygen(t *testing.T, paramSet string, in *keyGenInput, wantSk, wantPk [
 }
 
 func acvpSign(t *testing.T, p *sigGenParams, in *sigGenInput, wantSig []byte) {
-	id, err := ParamIDByName(p.ParameterSet)
+	id, err := IDByName(p.ParameterSet)
 	test.CheckNoErr(t, err, "invalid ParameterSet")
 
-	sk := PrivateKey{ParamID: id}
+	sk := PrivateKey{ID: id}
 	err = sk.UnmarshalBinary(in.Sk)
 	test.CheckNoErr(t, err, "PrivateKey.UnmarshalBinary failed")
 
@@ -284,10 +284,10 @@ func acvpSign(t *testing.T, p *sigGenParams, in *sigGenInput, wantSig []byte) {
 }
 
 func acvpVerify(t *testing.T, p *sigParams, in *verifyInput, want bool) {
-	id, err := ParamIDByName(p.ParameterSet)
+	id, err := IDByName(p.ParameterSet)
 	test.CheckNoErr(t, err, "invalid ParameterSet")
 
-	pk := PublicKey{ParamID: id}
+	pk := PublicKey{ID: id}
 	err = pk.UnmarshalBinary(in.Pk)
 	test.CheckNoErr(t, err, "PublicKey.UnmarshalBinary failed")
 
@@ -320,10 +320,9 @@ type Hex []byte
 func (b *Hex) UnmarshalJSON(data []byte) (err error) {
 	var s string
 	err = json.Unmarshal(data, &s)
-	if err != nil {
-		return
+	if err == nil {
+		*b, err = hex.DecodeString(s)
 	}
-	*b, err = hex.DecodeString(s)
 	return
 }
 

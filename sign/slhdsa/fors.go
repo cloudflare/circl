@@ -64,7 +64,7 @@ func (s *statePriv) forsNodeIter(
 
 	twoZ := uint32(1) << z
 	iTwoZ := i << z
-	for k := uint32(0); k < twoZ; k++ {
+	for k := range twoZ {
 		li := iTwoZ + k
 		lz := uint32(0)
 
@@ -84,7 +84,7 @@ func (s *statePriv) forsNodeIter(
 			node = s.H.Final()
 		}
 
-		stack.push(item{lz, node})
+		stack.push(item{node, lz})
 	}
 
 	copy(root, stack.pop().node)
@@ -98,7 +98,7 @@ func (s *statePriv) forsSign(sig forsSignature, digest []byte, addr address) {
 	in, bits, total := 0, uint32(0), uint32(0)
 	maskA := (uint32(1) << s.a) - 1
 
-	for i := uint32(0); i < s.k; i++ {
+	for i := range s.k {
 		for bits < s.a {
 			total = (total << 8) + uint32(digest[in])
 			in++
@@ -111,7 +111,7 @@ func (s *statePriv) forsSign(sig forsSignature, digest []byte, addr address) {
 		forsSk := s.forsSkGen(addr, treeIdx)
 		copy(sig[i].sk, forsSk)
 
-		for j := uint32(0); j < s.a; j++ {
+		for j := range s.a {
 			shift := (indicesI >> j) ^ 1
 			s.forsNodeIter(stack, sig[i].auth[j], (i<<(s.a-j))+shift, j, addr)
 		}
@@ -137,7 +137,7 @@ func (s *state) forsPkFromSig(
 	in, bits, total := 0, uint32(0), uint32(0)
 	maskA := (uint32(1) << s.a) - 1
 
-	for i := uint32(0); i < s.k; i++ {
+	for i := range s.k {
 		for bits < s.a {
 			total = (total << 8) + uint32(digest[in])
 			in++
@@ -151,7 +151,7 @@ func (s *state) forsPkFromSig(
 		s.F.SetMessage(sig[i].sk)
 		node := s.F.Final()
 
-		for j := uint32(0); j < s.a; j++ {
+		for j := range s.a {
 			if (indicesI>>j)&0x1 == 0 {
 				treeIdx = treeIdx >> 1
 				s.H.SetMsgs(node, sig[i].auth[j])

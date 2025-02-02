@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func InnerTest(t *testing.T, sigIDs []ParamID) {
+func InnerTest(t *testing.T, sigIDs []ID) {
 	for _, id := range sigIDs {
 		param := id.params()
 		t.Run(id.String(), func(t *testing.T) {
@@ -18,7 +18,7 @@ func InnerTest(t *testing.T, sigIDs []ParamID) {
 	}
 }
 
-func InnerBenchmark(b *testing.B, sigIDs []ParamID) {
+func InnerBenchmark(b *testing.B, sigIDs []ID) {
 	for _, id := range sigIDs {
 		param := id.params()
 		b.Run(param.name, func(b *testing.B) {

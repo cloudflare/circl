@@ -20,11 +20,11 @@ func slhKeyGenInternal(
 	pkRoot := make([]byte, p.n)
 	s.xmssNodeIter(stack, pkRoot, 0, p.hPrime, addr)
 
-	pub.ParamID = p.id
+	pub.ID = p.ID
 	pub.seed = pkSeed
 	pub.root = pkRoot
 
-	priv.ParamID = p.id
+	priv.ID = p.ID
 	priv.prfKey = skPrf
 	priv.seed = skSeed
 	priv.publicKey = pub
@@ -62,7 +62,7 @@ func (p *params) parseMsg(
 
 // See FIPS 205 -- Section 9.2 -- Algorithm 19.
 func slhSignInternal(sk *PrivateKey, message, addRand []byte) ([]byte, error) {
-	p := sk.ParamID.params()
+	p := sk.ID.params()
 	sigBytes := make([]byte, p.SignatureSize())
 
 	var sig signature
@@ -93,10 +93,10 @@ func slhSignInternal(sk *PrivateKey, message, addRand []byte) ([]byte, error) {
 
 // See FIPS 205 -- Section 9.3 -- Algorithm 20.
 func slhVerifyInternal(pub *PublicKey, message, sigBytes []byte) bool {
-	p := pub.ParamID.params()
+	p := pub.ID.params()
 	var sig signature
 	curSig := cursor(sigBytes)
-	if len(sigBytes) != int(p.SignatureSize()) || !sig.fromBytes(p, &curSig) {
+	if len(sigBytes) != p.SignatureSize() || !sig.fromBytes(p, &curSig) {
 		return false
 	}
 
@@ -123,8 +123,8 @@ type signature struct {
 	htSig   hyperTreeSignature // hyperTreeSigSize() bytes
 }
 
-func (p *params) SignatureSize() uint32 {
-	return p.n + p.forsSigSize() + p.hyperTreeSigSize()
+func (p *params) SignatureSize() int {
+	return int(p.n + p.forsSigSize() + p.hyperTreeSigSize())
 }
 
 func (s *signature) fromBytes(p *params, c *cursor) bool {
