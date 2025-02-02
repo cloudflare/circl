@@ -14,107 +14,97 @@ import (
 	"github.com/cloudflare/circl/xof"
 )
 
-type acvpHeader struct {
-	VsID      int    `json:"vsId"`
-	Algorithm string `json:"algorithm"`
-	Mode      string `json:"mode"`
-	Revision  string `json:"revision"`
-	IsSample  bool   `json:"isSample"`
-}
-
 type acvpKeyGenPrompt struct {
-	acvpHeader
 	TestGroups []struct {
-		TgID         int           `json:"tgId"`
 		TestType     string        `json:"testType"`
 		ParameterSet string        `json:"parameterSet"`
 		Tests        []keyGenInput `json:"tests"`
+		TgID         int           `json:"tgId"`
 	} `json:"testGroups"`
 }
 
 type keyGenInput struct {
-	TcID   int `json:"tcId"`
 	SkSeed Hex `json:"skSeed"`
 	SkPrf  Hex `json:"skPrf"`
 	PkSeed Hex `json:"pkSeed"`
+	TcID   int `json:"tcId"`
 }
 
 type acvpKeyGenResult struct {
-	acvpHeader
 	TestGroups []struct {
-		TgID  int `json:"tgId"`
 		Tests []struct {
-			TcID int `json:"tcId"`
 			Sk   Hex `json:"sk"`
 			Pk   Hex `json:"pk"`
+			TcID int `json:"tcId"`
 		} `json:"tests"`
+		TgID int `json:"tgId"`
 	} `json:"testGroups"`
 }
 
 type acvpSigGenPrompt struct {
-	acvpHeader
 	TestGroups []struct {
-		TgID     int           `json:"tgId"`
+		sigGenParams
 		TestType string        `json:"testType"`
 		Tests    []sigGenInput `json:"tests"`
-		sigGenParams
+		TgID     int           `json:"tgId"`
 	} `json:"testGroups"`
 }
 
+type sigParams struct {
+	ParameterSet string `json:"parameterSet"`
+	SigInterface string `json:"signatureInterface"`
+	PreHash      string `json:"preHash"`
+}
+
 type sigGenParams struct {
-	ParameterSet    string `json:"parameterSet"`
-	IsDeterministic bool   `json:"deterministic"`
-	SigInterface    string `json:"signatureInterface"`
-	PreHash         string `json:"preHash"`
+	sigParams
+	IsDeterministic bool `json:"deterministic"`
 }
 
 type sigGenInput struct {
-	TcID    int    `json:"tcId"`
+	HashAlg string `json:"hashAlg,omitempty"`
 	Sk      Hex    `json:"sk"`
 	Msg     Hex    `json:"message"`
 	Ctx     Hex    `json:"context,omitempty"`
 	AddRand Hex    `json:"additionalRandomness,omitempty"`
-	HashAlg string `json:"hashAlg,omitempty"`
+	TcID    int    `json:"tcId"`
 }
 
 type acvpSigGenResult struct {
-	acvpHeader
 	TestGroups []struct {
-		TgID  int `json:"tgId"`
 		Tests []struct {
-			TcID      int `json:"tcId"`
 			Signature Hex `json:"signature"`
+			TcID      int `json:"tcId"`
 		} `json:"tests"`
+		TgID int `json:"tgId"`
 	} `json:"testGroups"`
 }
 
 type acvpVerifyInput struct {
-	acvpHeader
 	TestGroups []struct {
-		TgID         int           `json:"tgId"`
-		TestType     string        `json:"testType"`
-		ParameterSet string        `json:"parameterSet"`
-		Tests        []verifyInput `json:"tests"`
+		sigParams
+		TestType string        `json:"testType"`
+		Tests    []verifyInput `json:"tests"`
+		TgID     int           `json:"tgId"`
 	} `json:"testGroups"`
 }
 
 type verifyInput struct {
-	TcID          int    `json:"tcId"`
-	Pk            Hex    `json:"pk"`
-	MessageLength int    `json:"messageLength"`
-	Message       Hex    `json:"message"`
-	Signature     Hex    `json:"signature"`
-	Reason        string `json:"reason"`
+	HashAlg string `json:"hashAlg,omitempty"`
+	Pk      Hex    `json:"pk"`
+	Msg     Hex    `json:"message"`
+	Sig     Hex    `json:"signature"`
+	Ctx     Hex    `json:"context,omitempty"`
+	TcID    int    `json:"tcId"`
 }
 
 type acvpVerifyResult struct {
-	acvpHeader
 	TestGroups []struct {
-		TgID  int `json:"tgId"`
 		Tests []struct {
 			TcID       int  `json:"tcId"`
 			TestPassed bool `json:"testPassed"`
 		} `json:"tests"`
+		TgID int `json:"tgId"`
 	} `json:"testGroups"`
 }
 
@@ -125,7 +115,7 @@ func TestACVP(t *testing.T) {
 }
 
 func testKeygen(t *testing.T) {
-	// https://github.com/usnistgov/ACVP-Server/tree/v1.1.0.37/gen-val/json-files/SLH-DSA-keyGen-FIPS205
+	// https://github.com/usnistgov/ACVP-Server/tree/v1.1.0.38/gen-val/json-files/SLH-DSA-keyGen-FIPS205
 	inputs := new(acvpKeyGenPrompt)
 	readVector(t, "testdata/keyGen_prompt.json.zip", inputs)
 	outputs := new(acvpKeyGenResult)
@@ -152,7 +142,7 @@ func testKeygen(t *testing.T) {
 }
 
 func testSign(t *testing.T) {
-	// https://github.com/usnistgov/ACVP-Server/tree/v1.1.0.37/gen-val/json-files/SLH-DSA-sigGen-FIPS205
+	// https://github.com/usnistgov/ACVP-Server/tree/v1.1.0.38/gen-val/json-files/SLH-DSA-sigGen-FIPS205
 	inputs := new(acvpSigGenPrompt)
 	readVector(t, "testdata/sigGen_prompt.json.zip", inputs)
 	outputs := new(acvpSigGenResult)
@@ -179,7 +169,7 @@ func testSign(t *testing.T) {
 }
 
 func testVerify(t *testing.T) {
-	// https://github.com/usnistgov/ACVP-Server/tree/v1.1.0.37/gen-val/json-files/SLH-DSA-sigVer-FIPS205
+	// https://github.com/usnistgov/ACVP-Server/tree/v1.1.0.38/gen-val/json-files/SLH-DSA-sigVer-FIPS205
 	inputs := new(acvpVerifyInput)
 	readVector(t, "testdata/verify_prompt.json.zip", inputs)
 	outputs := new(acvpVerifyResult)
@@ -197,7 +187,7 @@ func testVerify(t *testing.T) {
 
 				t.Run(fmt.Sprintf("TcID_%v", group.Tests[ti].TcID),
 					func(t *testing.T) {
-						acvpVerify(t, group.ParameterSet, &group.Tests[ti],
+						acvpVerify(t, &group.sigParams, &group.Tests[ti],
 							outputs.TestGroups[gi].Tests[ti].TestPassed,
 						)
 					})
@@ -210,8 +200,12 @@ func acvpKeygen(t *testing.T, paramSet string, in *keyGenInput, wantSk, wantPk [
 	id, err := ParamIDByName(paramSet)
 	test.CheckNoErr(t, err, "invalid param name")
 
-	params := id.params()
-	pk, sk := slhKeyGenInternal(params, in.SkSeed, in.SkPrf, in.PkSeed)
+	var buffer bytes.Buffer
+	_, _ = buffer.Write(in.SkSeed)
+	_, _ = buffer.Write(in.SkPrf)
+	_, _ = buffer.Write(in.PkSeed)
+	pk, sk, err := GenerateKey(&buffer, id)
+	test.CheckNoErr(t, err, "GenerateKey failed")
 
 	skGot, err := sk.MarshalBinary()
 	test.CheckNoErr(t, err, "PrivateKey.MarshalBinary failed")
@@ -220,35 +214,19 @@ func acvpKeygen(t *testing.T, paramSet string, in *keyGenInput, wantSk, wantPk [
 		test.ReportError(t, skGot, wantSk)
 	}
 
-	skWant := &PrivateKey{ParamID: id}
-	err = skWant.UnmarshalBinary(wantSk)
-	test.CheckNoErr(t, err, "PrivateKey.UnmarshalBinary failed")
-
-	if !sk.Equal(skWant) {
-		test.ReportError(t, sk, skWant)
-	}
-
 	pkGot, err := pk.MarshalBinary()
 	test.CheckNoErr(t, err, "PublicKey.MarshalBinary failed")
 
 	if !bytes.Equal(pkGot, wantPk) {
 		test.ReportError(t, pkGot, wantPk)
 	}
-
-	pkWant := &PublicKey{ParamID: id}
-	err = pkWant.UnmarshalBinary(wantPk)
-	test.CheckNoErr(t, err, "PublicKey.UnmarshalBinary failed")
-
-	if !pk.Equal(pkWant) {
-		test.ReportError(t, pk, pkWant)
-	}
 }
 
 func acvpSign(t *testing.T, p *sigGenParams, in *sigGenInput, wantSig []byte) {
 	id, err := ParamIDByName(p.ParameterSet)
-	test.CheckNoErr(t, err, "invalid param name")
+	test.CheckNoErr(t, err, "invalid ParameterSet")
 
-	sk := &PrivateKey{ParamID: id}
+	sk := PrivateKey{ParamID: id}
 	err = sk.UnmarshalBinary(in.Sk)
 	test.CheckNoErr(t, err, "PrivateKey.UnmarshalBinary failed")
 
@@ -259,7 +237,7 @@ func acvpSign(t *testing.T, p *sigGenParams, in *sigGenInput, wantSig []byte) {
 			addRand = in.AddRand
 		}
 
-		gotSig, err = slhSignInternal(sk, in.Msg, addRand)
+		gotSig, err = slhSignInternal(&sk, in.Msg, addRand)
 		test.CheckNoErr(t, err, "slhSignInternal failed")
 
 		if !bytes.Equal(gotSig, wantSig) {
@@ -272,25 +250,23 @@ func acvpSign(t *testing.T, p *sigGenParams, in *sigGenInput, wantSig []byte) {
 		valid := slhVerifyInternal(&sk.publicKey, in.Msg, gotSig)
 		test.CheckOk(valid, "slhVerifyInternal failed", t)
 	} else if p.SigInterface == "external" {
-		var msg *Messagito
+		var msg *Message
 		if p.PreHash == "pure" {
-			msg = NewMessagito(in.Msg)
+			msg = NewMessage(in.Msg)
 		} else if p.PreHash == "preHash" {
 			ph := getPreHash(t, in.HashAlg)
 			_, err = ph.Write(in.Msg)
 			test.CheckNoErr(t, err, "PreHash Write failed")
 
-			msg, err = ph.GetMessage()
+			msg, err = ph.BuildMessage()
 			test.CheckNoErr(t, err, "PreHash GetMessage failed")
-		} else {
-			t.Fatal("unknown prehash")
 		}
 
 		if p.IsDeterministic {
-			gotSig, err = SignDeterministic(sk, msg, in.Ctx)
+			gotSig, err = SignDeterministic(&sk, msg, in.Ctx)
 			test.CheckNoErr(t, err, "SignDeterministic failed")
 		} else {
-			gotSig, err = SignRandomized(sk, bytes.NewReader(in.AddRand), msg, in.Ctx)
+			gotSig, err = SignRandomized(&sk, bytes.NewReader(in.AddRand), msg, in.Ctx)
 			test.CheckNoErr(t, err, "SignRandomized failed")
 		}
 
@@ -304,21 +280,35 @@ func acvpSign(t *testing.T, p *sigGenParams, in *sigGenInput, wantSig []byte) {
 		pk := sk.PublicKey()
 		valid := Verify(&pk, msg, gotSig, in.Ctx)
 		test.CheckOk(valid, "Verify failed", t)
-
-	} else {
-		t.Skip()
 	}
 }
 
-func acvpVerify(t *testing.T, paramSet string, in *verifyInput, want bool) {
-	id, err := ParamIDByName(paramSet)
-	test.CheckNoErr(t, err, "invalid param name")
+func acvpVerify(t *testing.T, p *sigParams, in *verifyInput, want bool) {
+	id, err := ParamIDByName(p.ParameterSet)
+	test.CheckNoErr(t, err, "invalid ParameterSet")
 
-	pk := &PublicKey{ParamID: id}
+	pk := PublicKey{ParamID: id}
 	err = pk.UnmarshalBinary(in.Pk)
 	test.CheckNoErr(t, err, "PublicKey.UnmarshalBinary failed")
 
-	got := slhVerifyInternal(pk, in.Message, in.Signature)
+	var got bool
+	if p.SigInterface == "internal" {
+		got = slhVerifyInternal(&pk, in.Msg, in.Sig)
+	} else if p.SigInterface == "external" {
+		var msg *Message
+		if p.PreHash == "pure" {
+			msg = NewMessage(in.Msg)
+		} else if p.PreHash == "preHash" {
+			ph := getPreHash(t, in.HashAlg)
+			_, err = ph.Write(in.Msg)
+			test.CheckNoErr(t, err, "PreHash Write failed")
+
+			msg, err = ph.BuildMessage()
+			test.CheckNoErr(t, err, "PreHash GetMessage failed")
+		}
+
+		got = Verify(&pk, msg, in.Sig, in.Ctx)
+	}
 
 	if got != want {
 		test.ReportError(t, got, want)
@@ -353,26 +343,22 @@ func readVector(t *testing.T, fileName string, vector interface{}) {
 	test.CheckNoErr(t, err, "error unmarshalling JSON file")
 }
 
-func getPreHash(t *testing.T, s string) PreHash {
-	var supportedPreHash = map[string]PreHash{
-		"SHA2-224":     NewPreHashWithHash(crypto.SHA224),
-		"SHA2-256":     NewPreHashWithHash(crypto.SHA256),
-		"SHA2-384":     NewPreHashWithHash(crypto.SHA384),
-		"SHA2-512":     NewPreHashWithHash(crypto.SHA512),
-		"SHA2-512/224": NewPreHashWithHash(crypto.SHA512_224),
-		"SHA2-512/256": NewPreHashWithHash(crypto.SHA512_256),
-		"SHA3-224":     NewPreHashWithHash(crypto.SHA3_224),
-		"SHA3-256":     NewPreHashWithHash(crypto.SHA3_256),
-		"SHA3-384":     NewPreHashWithHash(crypto.SHA3_384),
-		"SHA3-512":     NewPreHashWithHash(crypto.SHA3_512),
-		"SHAKE-128":    NewPreHashWithXof(xof.SHAKE128),
-		"SHAKE-256":    NewPreHashWithXof(xof.SHAKE256),
-	}
+func getPreHash(t *testing.T, s string) *PreHash {
+	m := make(map[string]*PreHash)
+	m["SHA2-224"], _ = NewPreHashWithHash(crypto.SHA224)
+	m["SHA2-256"], _ = NewPreHashWithHash(crypto.SHA256)
+	m["SHA2-384"], _ = NewPreHashWithHash(crypto.SHA384)
+	m["SHA2-512"], _ = NewPreHashWithHash(crypto.SHA512)
+	m["SHA2-512/224"], _ = NewPreHashWithHash(crypto.SHA512_224)
+	m["SHA2-512/256"], _ = NewPreHashWithHash(crypto.SHA512_256)
+	m["SHA3-224"], _ = NewPreHashWithHash(crypto.SHA3_224)
+	m["SHA3-256"], _ = NewPreHashWithHash(crypto.SHA3_256)
+	m["SHA3-384"], _ = NewPreHashWithHash(crypto.SHA3_384)
+	m["SHA3-512"], _ = NewPreHashWithHash(crypto.SHA3_512)
+	m["SHAKE-128"], _ = NewPreHashWithXof(xof.SHAKE128)
+	m["SHAKE-256"], _ = NewPreHashWithXof(xof.SHAKE256)
 
-	ph, ok := supportedPreHash[s]
-	if !ok {
-		t.Fatal("preHash algorithm not supported")
-	}
-
+	ph, ok := m[s]
+	test.CheckOk(ok, fmt.Sprintf("preHash algorithm not supported %v", s), t)
 	return ph
 }
