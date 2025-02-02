@@ -1,6 +1,6 @@
 package slhdsa
 
-import "crypto/subtle"
+import "bytes"
 
 // See FIPS 205 -- Section 7
 // SLH-DSA uses a hypertree to sign the FORS keys.
@@ -64,5 +64,5 @@ func (s *state) htVerify(
 		s.xmssPkFromSig(node, node, sig[j], idxLeaf, addr)
 	}
 
-	return subtle.ConstantTimeCompare(node, root) == 1
+	return bytes.Equal(node, root)
 }

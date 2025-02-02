@@ -17,19 +17,20 @@ import (
 // Note that the zero value is not a valid identifier.
 type ID byte
 
+//nolint:stylecheck
 const (
-	SHA2Small128  ID = iota + 1 // SLH-DSA-SHA2-128s
-	SHAKESmall128               // SLH-DSA-SHAKE-128s
-	SHA2Fast128                 // SLH-DSA-SHA2-128f
-	SHAKEFast128                // SLH-DSA-SHAKE-128f
-	SHA2Small192                // SLH-DSA-SHA2-192s
-	SHAKESmall192               // SLH-DSA-SHAKE-192s
-	SHA2Fast192                 // SLH-DSA-SHA2-192f
-	SHAKEFast192                // SLH-DSA-SHAKE-192f
-	SHA2Small256                // SLH-DSA-SHA2-256s
-	SHAKESmall256               // SLH-DSA-SHAKE-256s
-	SHA2Fast256                 // SLH-DSA-SHA2-256f
-	SHAKEFast256                // SLH-DSA-SHAKE-256f
+	SHA2_128s  ID = iota + 1 // SLH-DSA-SHA2-128s
+	SHAKE_128s               // SLH-DSA-SHAKE-128s
+	SHA2_128f                // SLH-DSA-SHA2-128f
+	SHAKE_128f               // SLH-DSA-SHAKE-128f
+	SHA2_192s                // SLH-DSA-SHA2-192s
+	SHAKE_192s               // SLH-DSA-SHAKE-192s
+	SHA2_192f                // SLH-DSA-SHA2-192f
+	SHAKE_192f               // SLH-DSA-SHAKE-192f
+	SHA2_256s                // SLH-DSA-SHA2-256s
+	SHAKE_256s               // SLH-DSA-SHAKE-256s
+	SHA2_256f                // SLH-DSA-SHA2-256f
+	SHAKE_256f               // SLH-DSA-SHAKE-256f
 	_MaxParams
 )
 
@@ -85,18 +86,18 @@ type params struct {
 
 // Stores all the supported (read-only) parameter sets.
 var supportedParams = [_MaxParams - 1]params{
-	{ID: SHA2Small128, n: 16, h: 63, d: 7, hPrime: 9, a: 12, k: 14, m: 30, isSHA2: true, name: "SLH-DSA-SHA2-128s"},
-	{ID: SHAKESmall128, n: 16, h: 63, d: 7, hPrime: 9, a: 12, k: 14, m: 30, isSHA2: false, name: "SLH-DSA-SHAKE-128s"},
-	{ID: SHA2Fast128, n: 16, h: 66, d: 22, hPrime: 3, a: 6, k: 33, m: 34, isSHA2: true, name: "SLH-DSA-SHA2-128f"},
-	{ID: SHAKEFast128, n: 16, h: 66, d: 22, hPrime: 3, a: 6, k: 33, m: 34, isSHA2: false, name: "SLH-DSA-SHAKE-128f"},
-	{ID: SHA2Small192, n: 24, h: 63, d: 7, hPrime: 9, a: 14, k: 17, m: 39, isSHA2: true, name: "SLH-DSA-SHA2-192s"},
-	{ID: SHAKESmall192, n: 24, h: 63, d: 7, hPrime: 9, a: 14, k: 17, m: 39, isSHA2: false, name: "SLH-DSA-SHAKE-192s"},
-	{ID: SHA2Fast192, n: 24, h: 66, d: 22, hPrime: 3, a: 8, k: 33, m: 42, isSHA2: true, name: "SLH-DSA-SHA2-192f"},
-	{ID: SHAKEFast192, n: 24, h: 66, d: 22, hPrime: 3, a: 8, k: 33, m: 42, isSHA2: false, name: "SLH-DSA-SHAKE-192f"},
-	{ID: SHA2Small256, n: 32, h: 64, d: 8, hPrime: 8, a: 14, k: 22, m: 47, isSHA2: true, name: "SLH-DSA-SHA2-256s"},
-	{ID: SHAKESmall256, n: 32, h: 64, d: 8, hPrime: 8, a: 14, k: 22, m: 47, isSHA2: false, name: "SLH-DSA-SHAKE-256s"},
-	{ID: SHA2Fast256, n: 32, h: 68, d: 17, hPrime: 4, a: 9, k: 35, m: 49, isSHA2: true, name: "SLH-DSA-SHA2-256f"},
-	{ID: SHAKEFast256, n: 32, h: 68, d: 17, hPrime: 4, a: 9, k: 35, m: 49, isSHA2: false, name: "SLH-DSA-SHAKE-256f"},
+	{ID: SHA2_128s, n: 16, h: 63, d: 7, hPrime: 9, a: 12, k: 14, m: 30, isSHA2: true, name: "SLH-DSA-SHA2-128s"},
+	{ID: SHAKE_128s, n: 16, h: 63, d: 7, hPrime: 9, a: 12, k: 14, m: 30, isSHA2: false, name: "SLH-DSA-SHAKE-128s"},
+	{ID: SHA2_128f, n: 16, h: 66, d: 22, hPrime: 3, a: 6, k: 33, m: 34, isSHA2: true, name: "SLH-DSA-SHA2-128f"},
+	{ID: SHAKE_128f, n: 16, h: 66, d: 22, hPrime: 3, a: 6, k: 33, m: 34, isSHA2: false, name: "SLH-DSA-SHAKE-128f"},
+	{ID: SHA2_192s, n: 24, h: 63, d: 7, hPrime: 9, a: 14, k: 17, m: 39, isSHA2: true, name: "SLH-DSA-SHA2-192s"},
+	{ID: SHAKE_192s, n: 24, h: 63, d: 7, hPrime: 9, a: 14, k: 17, m: 39, isSHA2: false, name: "SLH-DSA-SHAKE-192s"},
+	{ID: SHA2_192f, n: 24, h: 66, d: 22, hPrime: 3, a: 8, k: 33, m: 42, isSHA2: true, name: "SLH-DSA-SHA2-192f"},
+	{ID: SHAKE_192f, n: 24, h: 66, d: 22, hPrime: 3, a: 8, k: 33, m: 42, isSHA2: false, name: "SLH-DSA-SHAKE-192f"},
+	{ID: SHA2_256s, n: 32, h: 64, d: 8, hPrime: 8, a: 14, k: 22, m: 47, isSHA2: true, name: "SLH-DSA-SHA2-256s"},
+	{ID: SHAKE_256s, n: 32, h: 64, d: 8, hPrime: 8, a: 14, k: 22, m: 47, isSHA2: false, name: "SLH-DSA-SHAKE-256s"},
+	{ID: SHA2_256f, n: 32, h: 68, d: 17, hPrime: 4, a: 9, k: 35, m: 49, isSHA2: true, name: "SLH-DSA-SHA2-256f"},
+	{ID: SHAKE_256f, n: 32, h: 68, d: 17, hPrime: 4, a: 9, k: 35, m: 49, isSHA2: false, name: "SLH-DSA-SHAKE-256f"},
 }
 
 // See FIPS-205, Section 11.1 and Section 11.2.

@@ -13,21 +13,15 @@ import (
 )
 
 var fastSign = [...]slhdsa.ID{
-	slhdsa.SHA2Fast128,
-	slhdsa.SHAKEFast128,
-	slhdsa.SHA2Fast192,
-	slhdsa.SHAKEFast192,
-	slhdsa.SHA2Fast256,
-	slhdsa.SHAKEFast256,
+	slhdsa.SHA2_128f, slhdsa.SHAKE_128f,
+	slhdsa.SHA2_192f, slhdsa.SHAKE_192f,
+	slhdsa.SHA2_256f, slhdsa.SHAKE_256f,
 }
 
 var smallSign = [...]slhdsa.ID{
-	slhdsa.SHA2Small128,
-	slhdsa.SHAKESmall128,
-	slhdsa.SHA2Small192,
-	slhdsa.SHAKESmall192,
-	slhdsa.SHA2Small256,
-	slhdsa.SHAKESmall256,
+	slhdsa.SHA2_128s, slhdsa.SHAKE_128s,
+	slhdsa.SHA2_192s, slhdsa.SHAKE_192s,
+	slhdsa.SHA2_256s, slhdsa.SHAKE_256s,
 }
 
 func TestInnerFast(t *testing.T)  { slhdsa.InnerTest(t, fastSign[:]) }
