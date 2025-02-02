@@ -10,14 +10,25 @@ import (
 	"github.com/cloudflare/circl/xof"
 )
 
+// [PreHash] is a helper for hashing a message before signing.
+// It implements the [io.Writer] interface, so the message can be provided
+// in chunks before calling the [SignDeterministic], [SignRandomized], or
+// [Verify] functions.
+// Pre-hash must not be used for generating pure signatures.
 type PreHash struct {
-	io.Writer
+	writer interface {
+		io.Writer
+		Reset()
+	}
 	size int
 	oid  byte
 }
 
-func NewPreHashWithHash(h crypto.Hash) PreHash {
-	supportedHashes := map[crypto.Hash]byte{
+// [NewPreHashWithHash] is used to prehash messages using either the SHA2 or
+// SHA3 hash functions.
+// Returns [ErrPreHash] is the function is not supported.
+func NewPreHashWithHash(h crypto.Hash) (*PreHash, error) {
+	hash2oid := [...]byte{
 		crypto.SHA256:     1,
 		crypto.SHA384:     2,
 		crypto.SHA512:     3,
@@ -30,213 +41,74 @@ func NewPreHashWithHash(h crypto.Hash) PreHash {
 		crypto.SHA3_512:   10,
 	}
 
-	oid, ok := supportedHashes[h]
-	if !ok {
-		panic(ErrPreHash)
+	oid := hash2oid[h]
+	if oid == 0 {
+		return nil, ErrPreHash
 	}
 
-	return PreHash{h.New(), h.Size(), oid}
+	return &PreHash{h.New(), h.Size(), oid}, nil
 }
 
-func NewPreHashWithXof(x xof.ID) PreHash {
+// [NewPreHashWithXof] is used to prehash messages using either the SHAKE-128
+// or SHAKE-256 extendable-output functions.
+// Returns [ErrPreHash] is the function is not supported.
+func NewPreHashWithXof(x xof.ID) (*PreHash, error) {
 	switch x {
 	case xof.SHAKE128:
-		return PreHash{x.New(), 256 / 8, 11}
+		return &PreHash{x.New(), 32, 11}, nil
 	case xof.SHAKE256:
-		return PreHash{x.New(), 512 / 8, 12}
+		return &PreHash{x.New(), 64, 12}, nil
 	default:
-		panic(ErrPreHash)
+		return nil, ErrPreHash
 	}
 }
 
-func (ph *PreHash) GetMessage() (*Messagito, error) {
+func (ph *PreHash) Reset()                      { ph.writer.Reset() }
+func (ph *PreHash) Write(p []byte) (int, error) { return ph.writer.Write(p) }
+func (ph *PreHash) BuildMessage() (*Message, error) {
 	// Source https://csrc.nist.gov/Projects/computer-security-objects-register/algorithm-registration
 	const oidLen = 11
 	oid := [oidLen]byte{
 		0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, ph.oid,
 	}
 
-	msg := make([]byte, oidLen, oidLen+ph.size)
+	msg := make([]byte, oidLen+ph.size)
 	copy(msg, oid[:])
-	switch f := ph.Writer.(type) {
+	switch f := ph.writer.(type) {
 	case hash.Hash:
-		msg = f.Sum(msg)
-		f.Reset()
+		msg = f.Sum(msg[:oidLen])
 	case xof.XOF:
-		msg = msg[:cap(msg)]
 		_, err := f.Read(msg[oidLen:])
 		if err != nil {
 			return nil, err
 		}
-		f.Reset()
 	default:
-		panic(ErrPreHash)
+		return nil, ErrPreHash
 	}
 
-	return &Messagito{msg, 1}, nil
+	ph.writer.Reset()
+	return &Message{msg, 1}, nil
 }
 
-type Messagito struct {
+type Message struct {
 	msg       []byte
 	isPreHash byte
 }
 
-func NewMessagito(msg []byte) *Messagito { return &Messagito{msg, 0} }
+// [NewMessage] wraps a message for signing.
+// For pure signatures, use [NewMessage] to pass the message to be signed.
+// For pre-hashed signatures, use [PreHash] to hash the message first, and
+// then use [PreHash.BuildMessage] to get a [Message] to be signed.
+func NewMessage(msg []byte) *Message { return &Message{msg, 0} }
 
-func (m Messagito) getMsgPrime(context []byte) ([]byte, error) {
+func (m *Message) getMsgPrime(context []byte) ([]byte, error) {
 	// See FIPS 205 -- Section 10.2 -- Algorithm 23 and Algorithm 25.
+	const MaxContextSize = 255
 	if len(context) > MaxContextSize {
 		return nil, ErrContext
 	}
 
-	return append(append([]byte{m.isPreHash, byte(len(context))}, context...), m.msg...), nil
+	return append(append(
+		[]byte{m.isPreHash, byte(len(context))}, context...), m.msg...,
+	), nil
 }
-
-// [Message] wraps the message to be signed.
-// It implements the [io.Writer] interface, so the message can be provided
-// in chunks before calling the [Sign] or [Verify] functions.
-//
-// There are two cases depending on whether the message must be pre-hashed:
-//   - Hash Signing: Use [NewPreHashedMessage] when the message is meant
-//     to be hashed before signing. The calls to [Message.Write] are
-//     directly passed to the specified pre-hash function.
-//   - Pure Signing. Use [NewMessage] or just create a [Message] variable,
-//     if a pure signature must be created.
-//     [NewMessage] is equialent to call [NewPreHashedMessage] with [Pure].
-//     The calls to [Message.Write] copy the message into a internal buffer.
-//     To avoid copies of the message, use [NewMessage] instead.
-// type Message struct {
-// 	buffer bytes.Buffer
-// 	hasher interface {
-// 		io.Writer
-// 		SumIdempotent([]byte)
-// 	}
-// 	isPreHash bool
-// 	oid10     byte
-// 	outLen    int
-// }
-
-// // [NewMessage] wraps a message for signing, also known as pure signing.
-// // Use this function or just create a [Message] variable, if the message
-// // must not be pre-hashed.
-// // [NewMessage] is equialent to call [NewPreHashedMessage] with [Pure].
-// // The calls to [Message.Write] copy the message into an internal buffer.
-// // To avoid copies of the message, use [NewMessage] instead.
-// func NewMessage(msg []byte) (m Message) {
-// 	_ = m.init(Pure, msg)
-// 	return
-// }
-
-// // [NewPreHashedMessage] hashes the message before signing.
-// // The calls to [Message.Write] are directly passed to the specified
-// // pre-hash function.
-// // It returns an error if the pre-hash function is not supported.
-// func NewPreHashedMessage(id PreHashID) (m Message, err error) {
-// 	err = m.init(id, nil)
-// 	return
-// }
-
-// // Write allows to provide the message to be signed in chunks.
-// // Depending on how the receiver was generated, Write will either copy the
-// // chunks into an internal buffer, or pass them to the pre-hash function.
-// func (m *Message) Write(p []byte) (n int, err error) {
-// 	if m.isPreHash {
-// 		return m.hasher.Write(p)
-// 	} else {
-// 		return m.buffer.Write(p)
-// 	}
-// }
-
-// func (m *Message) init(ph PreHashID, msg []byte) (err error) {
-// 	switch ph {
-// 	case Pure:
-// 		m.isPreHash = false
-// 		m.buffer = *bytes.NewBuffer(msg)
-// 	case PreHashSHA256:
-// 		m.isPreHash = true
-// 		m.oid10 = 0x01
-// 		m.outLen = crypto.SHA256.Size()
-// 		m.hasher = &sha2rw{sha256.New()}
-// 	case PreHashSHA512:
-// 		m.isPreHash = true
-// 		m.oid10 = 0x03
-// 		m.outLen = crypto.SHA512.Size()
-// 		m.hasher = &sha2rw{sha512.New()}
-// 	case PreHashSHAKE128:
-// 		m.isPreHash = true
-// 		m.oid10 = 0x0B
-// 		m.outLen = 256 / 8
-// 		m.hasher = &sha3rw{sha3.NewShake128()}
-// 	case PreHashSHAKE256:
-// 		m.isPreHash = true
-// 		m.oid10 = 0x0C
-// 		m.outLen = 512 / 8
-// 		m.hasher = &sha3rw{sha3.NewShake256()}
-// 	default:
-// 		return ErrPreHash
-// 	}
-
-// 	if m.isPreHash && msg != nil {
-// 		_, err = m.hasher.Write(msg)
-// 	}
-
-// 	return err
-// }
-
-// func (m *Message) getMsgPrime(context []byte) (msgPrime []byte, err error) {
-// 	// See FIPS 205 -- Section 10.2 -- Algorithm 23 and Algorithm 25.
-// 	if len(context) > MaxContextSize {
-// 		return nil, ErrContext
-// 	}
-
-// 	msgPrime = append([]byte{0, byte(len(context))}, context...)
-
-// 	var phMsg []byte
-// 	if !m.isPreHash {
-// 		msgPrime[0] = 0x0
-// 		phMsg = m.buffer.Bytes()
-// 	} else {
-// 		msgPrime[0] = 0x1
-
-// 		// Source https://csrc.nist.gov/Projects/computer-security-objects-register/algorithm-registration
-// 		oid := [11]byte{
-// 			0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02,
-// 		}
-// 		oid[10] = m.oid10
-// 		msgPrime = append(msgPrime, oid[:]...)
-
-// 		phMsg = make([]byte, m.outLen)
-// 		m.hasher.SumIdempotent(phMsg)
-// 	}
-
-// 	return append(msgPrime, phMsg...), nil
-// }
-
-// // PreHashID specifies a function for hashing the message before signing.
-// // The zero value is [NoPreHash] and stands for pure signing.
-// type PreHashID byte
-
-// const (
-// 	Pure            PreHashID = PreHashID(0)
-// 	PreHashSHA256   PreHashID = PreHashID(crypto.SHA256)
-// 	PreHashSHA512   PreHashID = PreHashID(crypto.SHA512)
-// 	PreHashSHAKE128 PreHashID = PreHashID(xof.SHAKE128)
-// 	PreHashSHAKE256 PreHashID = PreHashID(xof.SHAKE256)
-// )
-
-// func (id PreHashID) String() string {
-// 	switch id {
-// 	case Pure:
-// 		return "Pure"
-// 	case PreHashSHA256:
-// 		return "PreHashSHA256"
-// 	case PreHashSHA512:
-// 		return "PreHashSHA512"
-// 	case PreHashSHAKE128:
-// 		return "PreHashSHAKE128"
-// 	case PreHashSHAKE256:
-// 		return "PreHashSHAKE256"
-// 	default:
-// 		return ErrPreHash.Error()
-// 	}
-// }
