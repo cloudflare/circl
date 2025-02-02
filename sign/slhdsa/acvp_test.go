@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/test"
@@ -123,6 +124,10 @@ func testKeygen(t *testing.T) {
 
 	for gi, group := range inputs.TestGroups {
 		t.Run(fmt.Sprintf("TgID_%v", group.TgID), func(t *testing.T) {
+			if strings.HasSuffix(group.ParameterSet, "s") {
+				SkipLongTest(t)
+			}
+
 			for ti := range group.Tests {
 				test.CheckOk(
 					group.Tests[ti].TcID == outputs.TestGroups[gi].Tests[ti].TcID,
@@ -152,6 +157,10 @@ func testSign(t *testing.T) {
 		test.CheckOk(group.TgID == outputs.TestGroups[gi].TgID, "mismatch of TgID", t)
 
 		t.Run(fmt.Sprintf("TgID_%v", group.TgID), func(t *testing.T) {
+			if strings.HasSuffix(group.ParameterSet, "s") {
+				SkipLongTest(t)
+			}
+
 			for ti := range group.Tests {
 				test.CheckOk(
 					group.Tests[ti].TcID == outputs.TestGroups[gi].Tests[ti].TcID,
@@ -179,6 +188,10 @@ func testVerify(t *testing.T) {
 		test.CheckOk(group.TgID == outputs.TestGroups[gi].TgID, "mismatch of TgID", t)
 
 		t.Run(fmt.Sprintf("TgID_%v", group.TgID), func(t *testing.T) {
+			if strings.HasSuffix(group.ParameterSet, "s") {
+				SkipLongTest(t)
+			}
+
 			for ti := range group.Tests {
 				test.CheckOk(
 					group.Tests[ti].TcID == outputs.TestGroups[gi].Tests[ti].TcID,
@@ -196,9 +209,11 @@ func testVerify(t *testing.T) {
 	}
 }
 
-func acvpKeygen(t *testing.T, paramSet string, in *keyGenInput, wantSk, wantPk []byte) {
+func acvpKeygen(
+	t *testing.T, paramSet string, in *keyGenInput, wantSk, wantPk []byte,
+) {
 	id, err := IDByName(paramSet)
-	test.CheckNoErr(t, err, "invalid param name")
+	test.CheckNoErr(t, err, "invalid ParameterSet")
 
 	var buffer bytes.Buffer
 	_, _ = buffer.Write(in.SkSeed)
@@ -232,6 +247,8 @@ func acvpSign(t *testing.T, p *sigGenParams, in *sigGenInput, wantSig []byte) {
 
 	var gotSig []byte
 	if p.SigInterface == "internal" {
+		SkipLongTest(t)
+
 		addRand := sk.publicKey.seed
 		if !p.IsDeterministic {
 			addRand = in.AddRand
@@ -293,6 +310,7 @@ func acvpVerify(t *testing.T, p *sigParams, in *verifyInput, want bool) {
 
 	var got bool
 	if p.SigInterface == "internal" {
+		SkipLongTest(t)
 		got = slhVerifyInternal(&pk, in.Msg, in.Sig)
 	} else if p.SigInterface == "external" {
 		var msg *Message

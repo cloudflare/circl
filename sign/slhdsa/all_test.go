@@ -2,10 +2,22 @@ package slhdsa
 
 import (
 	"crypto/rand"
+	"flag"
 	"testing"
 )
 
+// RunLongTest indicates whether long tests should be run.
+var RunLongTest = flag.Bool("long", false, "runs longer tests and benchmark")
+
+func SkipLongTest(t testing.TB) {
+	t.Helper()
+	if !*RunLongTest {
+		t.Skip("Skipped one long test, add -long flag to run longer tests")
+	}
+}
+
 func InnerTest(t *testing.T, sigIDs []ID) {
+	SkipLongTest(t)
 	for _, id := range sigIDs {
 		param := id.params()
 		t.Run(id.String(), func(t *testing.T) {
@@ -18,7 +30,8 @@ func InnerTest(t *testing.T, sigIDs []ID) {
 	}
 }
 
-func InnerBenchmark(b *testing.B, sigIDs []ID) {
+func BenchInner(b *testing.B, sigIDs []ID) {
+	SkipLongTest(b)
 	for _, id := range sigIDs {
 		param := id.params()
 		b.Run(param.name, func(b *testing.B) {

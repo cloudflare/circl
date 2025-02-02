@@ -3,7 +3,6 @@ package slhdsa_test
 import (
 	"crypto"
 	"crypto/rand"
-	"flag"
 	"io"
 	"testing"
 
@@ -31,34 +30,12 @@ var smallSign = [...]slhdsa.ID{
 	slhdsa.SHAKESmall256,
 }
 
-// Indicates whether long tests should be run
-var runLongTest = flag.Bool("long", false, "sign/slhdsa: runs longer tests and benchmark")
-
-const skipTestMsg = "Skipped one long test, add -long flag to run longer tests"
-
+func TestInnerFast(t *testing.T)  { slhdsa.InnerTest(t, fastSign[:]) }
+func TestInnerSmall(t *testing.T) { slhdsa.InnerTest(t, smallSign[:]) }
 func TestSlhdsaFast(t *testing.T) { testSlhdsa(t, fastSign[:]) }
 func TestSlhdsaSmall(t *testing.T) {
-	if !*runLongTest {
-		t.Skip(skipTestMsg)
-	}
-
+	slhdsa.SkipLongTest(t)
 	testSlhdsa(t, smallSign[:])
-}
-
-func TestInnerFast(t *testing.T) {
-	if !*runLongTest {
-		t.Skip(skipTestMsg)
-	}
-
-	slhdsa.InnerTest(t, fastSign[:])
-}
-
-func TestInnerSmall(t *testing.T) {
-	if !*runLongTest {
-		t.Skip(skipTestMsg)
-	}
-
-	slhdsa.InnerTest(t, smallSign[:])
 }
 
 func testSlhdsa(t *testing.T, sigIDs []slhdsa.ID) {
@@ -108,30 +85,12 @@ func testSign(t *testing.T, id slhdsa.ID) {
 	test.CheckOk(valid, "Verify failed", t)
 }
 
+func BenchmarkInnerFast(b *testing.B)  { slhdsa.BenchInner(b, fastSign[:]) }
+func BenchmarkInnerSmall(b *testing.B) { slhdsa.BenchInner(b, smallSign[:]) }
 func BenchmarkSlhdsaFast(b *testing.B) { benchmarkSlhdsa(b, fastSign[:]) }
-
 func BenchmarkSlhdsaSmall(b *testing.B) {
-	if !*runLongTest {
-		b.Skip(skipTestMsg)
-	}
-
+	slhdsa.SkipLongTest(b)
 	benchmarkSlhdsa(b, smallSign[:])
-}
-
-func BenchmarkInnerFast(b *testing.B) {
-	if !*runLongTest {
-		b.Skip(skipTestMsg)
-	}
-
-	slhdsa.InnerBenchmark(b, fastSign[:])
-}
-
-func BenchmarkInnerSmall(b *testing.B) {
-	if !*runLongTest {
-		b.Skip(skipTestMsg)
-	}
-
-	slhdsa.InnerBenchmark(b, smallSign[:])
 }
 
 func BenchmarkPreHash(b *testing.B) {
