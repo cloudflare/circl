@@ -4,16 +4,16 @@
 // the following parameter sets:
 //
 // Category 1
-//   - Based on SHA2: [SHA2Small128] and [SHA2Fast128].
-//   - Based on SHAKE: [SHAKESmall128] and [SHAKEFast128].
+//   - Based on SHA2: [SHA2_128s] and [SHA2_128f].
+//   - Based on SHAKE: [SHAKE_128s] and [SHAKE_128f].
 //
 // Category 3
-//   - Based on SHA2: [SHA2Small192] and [SHA2Fast192]
-//   - Based on SHAKE: [SHAKESmall192] and [SHAKEFast192]
+//   - Based on SHA2: [SHA2_192s] and [SHA2_192f]
+//   - Based on SHAKE: [SHAKE_192s] and [SHAKE_192f]
 //
 // Category 5
-//   - Based on SHA2: [SHA2Small256] and [SHA2Fast256].
-//   - Based on SHAKE: [SHAKESmall256] and [SHAKEFast256].
+//   - Based on SHA2: [SHA2_256s] and [SHA2_256f].
+//   - Based on SHAKE: [SHAKE_256s] and [SHAKE_256f].
 //
 // [FIPS 205]: https://doi.org/10.6028/NIST.FIPS.205
 package slhdsa
