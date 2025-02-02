@@ -22,7 +22,7 @@ type PrivateKey struct {
 
 func (p *params) PrivateKeySize() uint32 { return 2*p.n + p.PublicKeySize() }
 
-// Marshal serializes the key using a Builder.
+// Marshal serializes the key using a [cryptobyte.Builder].
 func (k PrivateKey) Marshal(b *cryptobyte.Builder) error {
 	b.AddBytes(k.seed)
 	b.AddBytes(k.prfKey)
@@ -30,8 +30,8 @@ func (k PrivateKey) Marshal(b *cryptobyte.Builder) error {
 	return nil
 }
 
-// Unmarshal recovers a PrivateKey from a [cryptobyte.String]. Caller must
-// specify the ParamID of the key in advance.
+// Unmarshal recovers a [PrivateKey] from a [cryptobyte.String].
+// Caller must specify the [PrivateKey.ParamID] of the key in advance.
 // Example:
 //
 //	var key PrivateKey
@@ -39,8 +39,8 @@ func (k PrivateKey) Marshal(b *cryptobyte.Builder) error {
 //	key.Unmarshal(str) // returns true
 func (k *PrivateKey) Unmarshal(s *cryptobyte.String) bool {
 	params := k.ParamID.params()
-	var b []byte
-	if !s.ReadBytes(&b, int(params.PrivateKeySize())) {
+	b := make([]byte, params.PrivateKeySize())
+	if !s.CopyBytes(b) {
 		return false
 	}
 
@@ -52,11 +52,11 @@ func (k *PrivateKey) fromBytes(p *params, c *cursor) bool {
 	k.ParamID = p.id
 	k.seed = c.Next(p.n)
 	k.prfKey = c.Next(p.n)
-	return k.publicKey.fromBytes(p, c)
+	return k.publicKey.fromBytes(p, c) && k.publicKey.ParamID == k.ParamID
 }
 
-// UnmarshalBinary recovers a PrivateKey from a slice of bytes. Caller must
-// specify the ParamID of the key in advance.
+// UnmarshalBinary recovers a [PrivateKey] from a slice of bytes.
+// Caller must specify the [PrivateKey.ParamID] of the key in advance.
 // Example:
 //
 //	var key PrivateKey
@@ -80,7 +80,7 @@ func (k PrivateKey) Equal(x crypto.PrivateKey) bool {
 	return ok && k.ParamID == other.ParamID &&
 		subtle.ConstantTimeCompare(k.seed, other.seed) == 1 &&
 		subtle.ConstantTimeCompare(k.prfKey, other.prfKey) == 1 &&
-		k.publicKey.Equal(&other.publicKey)
+		k.publicKey.Equal(other.publicKey)
 }
 
 // [PublicKey] stores a public key of the SLH-DSA scheme.
@@ -94,15 +94,15 @@ type PublicKey struct {
 
 func (p *params) PublicKeySize() uint32 { return 2 * p.n }
 
-// Marshal serializes the key using a Builder.
+// Marshal serializes the key using a [cryptobyte.Builder].
 func (k PublicKey) Marshal(b *cryptobyte.Builder) error {
 	b.AddBytes(k.seed)
 	b.AddBytes(k.root)
 	return nil
 }
 
-// Unmarshal recovers a PublicKey from a [cryptobyte.String]. Caller must
-// specify the ParamID of the key in advance.
+// Unmarshal recovers a [PublicKey] from a [cryptobyte.String].
+// Caller must specify the [PublicKey.ParamID] of the key in advance.
 // Example:
 //
 //	var key PublicKey
@@ -110,8 +110,8 @@ func (k PublicKey) Marshal(b *cryptobyte.Builder) error {
 //	key.Unmarshal(str) // returns true
 func (k *PublicKey) Unmarshal(s *cryptobyte.String) bool {
 	params := k.ParamID.params()
-	var b []byte
-	if !s.ReadBytes(&b, int(params.PublicKeySize())) {
+	b := make([]byte, params.PublicKeySize())
+	if !s.CopyBytes(b) {
 		return false
 	}
 
@@ -126,8 +126,8 @@ func (k *PublicKey) fromBytes(p *params, c *cursor) bool {
 	return len(*c) == 0
 }
 
-// UnmarshalBinary recovers a PublicKey from a slice of bytes. Caller must
-// specify the ParamID of the key in advance.
+// UnmarshalBinary recovers a [PublicKey] from a slice of bytes.
+// Caller must specify the [PublicKey.ParamID] of the key in advance.
 // Example:
 //
 //	var key PublicKey
@@ -137,7 +137,7 @@ func (k *PublicKey) UnmarshalBinary(b []byte) error { return conv.UnmarshalBinar
 func (k PublicKey) MarshalBinary() ([]byte, error)  { return conv.MarshalBinary(k) }
 func (k PublicKey) Scheme() sign.Scheme             { return scheme{k.ParamID} }
 func (k PublicKey) Equal(x crypto.PublicKey) bool {
-	other, ok := x.(*PublicKey)
+	other, ok := x.(PublicKey)
 	return ok && k.ParamID == other.ParamID &&
 		bytes.Equal(k.seed, other.seed) &&
 		bytes.Equal(k.root, other.root)

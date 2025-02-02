@@ -22,12 +22,8 @@ import (
 	"crypto"
 	"crypto/rand"
 	"errors"
-	"fmt"
 	"io"
 )
-
-// [MaxContextSize] is the maximum byte length of a context for signing.
-const MaxContextSize = 255
 
 // GenerateKey returns a pair of keys using the parameter set specified.
 // It returns an error if it fails reading from the random source.
@@ -58,56 +54,54 @@ func GenerateKey(
 	return
 }
 
+// [SignDeterministic] returns the signature of the message with the
+// specified context.
+func SignDeterministic(
+	priv *PrivateKey, message *Message, context []byte,
+) (signature []byte, err error) {
+	return priv.doSign(message, context, priv.publicKey.seed)
+}
+
 // [SignRandomized] returns a random signature of the message with the
 // specified context.
 // It returns an error if it fails reading from the random source.
 func SignRandomized(
-	k *PrivateKey, random io.Reader, message *Messagito, context []byte,
+	priv *PrivateKey, random io.Reader, message *Message, context []byte,
 ) (signature []byte, err error) {
-	params := k.ParamID.params()
+	params := priv.ParamID.params()
 	addRand, err := readRandom(random, params.n)
 	if err != nil {
 		return nil, err
 	}
 
-	return k.doSign(message, context, addRand)
+	return priv.doSign(message, context, addRand)
 }
 
-// [SignDeterministic] returns the signature of the message with the
-// specified context.
+// [PrivateKey.Sign] returns a randomized signature of the message with an
+// empty context.
+// Any parameter passed in [crypto.SignerOpts] is discarded.
 // It returns an error if it fails reading from the random source.
-func SignDeterministic(
-	k *PrivateKey, message *Messagito, context []byte,
+func (k PrivateKey) Sign(
+	random io.Reader, message []byte, _ crypto.SignerOpts,
 ) (signature []byte, err error) {
-	return k.doSign(message, context, k.publicKey.seed)
+	return SignRandomized(&k, random, NewMessage(message), nil)
 }
 
-func (k *PrivateKey) doSign(msg *Messagito, context, addRnd []byte) ([]byte, error) {
+func (k *PrivateKey) doSign(
+	message *Message, context, addRand []byte,
+) ([]byte, error) {
 	// See FIPS 205 -- Section 10.2 -- Algorithm 22.
-	msgPrime, err := msg.getMsgPrime(context)
+	msgPrime, err := message.getMsgPrime(context)
 	if err != nil {
 		return nil, err
 	}
 
-	return slhSignInternal(k, msgPrime, addRnd)
-}
-
-// [PrivateKey.Sign] returns a signature of the message with the specified
-// options.
-//
-// When options is a [SignatureOpts] struct, the signature is generated as
-// specified by the options. Otherwise, options.HashFunc is used as the
-// pre-hash function (allowing only SHA256 or SHA512).
-// If options is nil, the message is not prehased, and a randomized
-// signature with an empty context is generated.
-// It returns an error if it fails reading from the random source.
-func (k PrivateKey) Sign(r io.Reader, m []byte, o crypto.SignerOpts) ([]byte, error) {
-	return SignRandomized(&k, r, NewMessagito(m), nil)
+	return slhSignInternal(k, msgPrime, addRand)
 }
 
 // [Verify] returns true if the signature of the message with the specified
 // context is valid.
-func Verify(key *PublicKey, message *Messagito, signature, context []byte) bool {
+func Verify(key *PublicKey, message *Message, signature, context []byte) bool {
 	// See FIPS 205 -- Section 10.3 -- Algorithm 24.
 	msgPrime, err := message.getMsgPrime(context)
 	if err != nil {
@@ -116,32 +110,6 @@ func Verify(key *PublicKey, message *Messagito, signature, context []byte) bool 
 
 	return slhVerifyInternal(key, msgPrime, signature)
 }
-
-// // [Options] is used to specify the generation and verification
-// // procedure of signatures.
-// // The zero value produces a randomized pure signature with an empty context.
-// type Options struct {
-// 	// When set to [Pure] (the zero value), the signature is generated
-// 	// over the original message.
-// 	// Otherwise, it specifies the function used to pre-hash the message
-// 	// before signing.
-// 	// PreHashID PreHashID
-// 	// A context of at most [MaxContextSize] bytes.
-// 	Context []byte
-// 	// True for deterministic signatures, false for randomized signatures.
-// 	IsDeterministic bool
-// }
-
-// HashFunc returns a [crypto.Hash] function only when the PreHashID field
-// in the options corresponds to either SHA256 or SHA512.
-// Otherwise, it returns the zero value.
-// func (s Options) HashFunc() (h crypto.Hash) {
-// 	switch s.PreHashID {
-// 	case PreHashSHA256, PreHashSHA512:
-// 		h = crypto.Hash(s.PreHashID)
-// 	}
-// 	return
-// }
 
 func readRandom(random io.Reader, size uint32) (out []byte, err error) {
 	out = make([]byte, size)
@@ -153,7 +121,7 @@ func readRandom(random io.Reader, size uint32) (out []byte, err error) {
 }
 
 var (
-	ErrContext  = fmt.Errorf("sign/slhdsa: context is larger than MaxContextSize=%v bytes", MaxContextSize)
+	ErrContext  = errors.New("sign/slhdsa: context is larger than 255 bytes")
 	ErrMsgLen   = errors.New("sign/slhdsa: invalid message length")
 	ErrParam    = errors.New("sign/slhdsa: invalid SLH-DSA parameter")
 	ErrPreHash  = errors.New("sign/slhdsa: invalid prehash function")

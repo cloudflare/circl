@@ -17,34 +17,16 @@ func (s scheme) GenerateKey() (sign.PublicKey, sign.PrivateKey, error) {
 	return GenerateKey(rand.Reader, s.ParamID)
 }
 
-// [ParamID.Sign] returns a randomized signature of the message with the
-// specified options.
-// This function never pre-hashes the message and uses the context provided
-// in options. If options is nil, an empty context is used.
-// It returns an empty slice if it fails reading from the random source.
+// Sign returns a randomized pure signature of the message with the context
+// given.
+// If options is nil, an empty context is used.
+// It returns an empty slice if the signature generation fails.
 //
-// Panics if the key is not a [PrivateKey] or mismatches with the ParamID.
+// Panics if the key is not a [PrivateKey] or mismatches with the [ParamID].
 func (s scheme) Sign(
-	key sign.PrivateKey, message []byte, options *sign.SignatureOpts,
+	priv sign.PrivateKey, message []byte, options *sign.SignatureOpts,
 ) []byte {
-	signature, err := key.Sign(rand.Reader, message, nil)
-	if err != nil {
-		return nil
-	}
-
-	return signature
-}
-
-// [Verify] returns true if the signature of the message with the specified
-// context is valid.
-// This function never pre-hashes the message and uses the context provided
-// in options. If options is nil, an empty context is used.
-//
-// Panics if the key is not a [*PublicKey] or mismatches with the ParamID.
-func (s scheme) Verify(
-	key sign.PublicKey, message, signature []byte, options *sign.SignatureOpts,
-) bool {
-	k, ok := key.(PublicKey)
+	k, ok := priv.(PrivateKey)
 	if !ok || s.ParamID != k.ParamID {
 		panic(sign.ErrTypeMismatch)
 	}
@@ -54,11 +36,36 @@ func (s scheme) Verify(
 		context = []byte(options.Context)
 	}
 
-	return Verify(&k, NewMessagito(message), signature, context)
+	sig, err := SignRandomized(&k, rand.Reader, NewMessage(message), context)
+	if err != nil {
+		return nil
+	}
+
+	return sig
 }
 
-// Deterministically derives a pair of keys from a seed. If you're unsure,
-// you're better off using [GenerateKey] function.
+// Verify returns true if the signature of the message with the specified
+// context is valid.
+// If options is nil, an empty context is used.
+//
+// Panics if the key is not a [PublicKey] or mismatches with the [ParamID].
+func (s scheme) Verify(
+	pub sign.PublicKey, message, signature []byte, options *sign.SignatureOpts,
+) bool {
+	k, ok := pub.(PublicKey)
+	if !ok || s.ParamID != k.ParamID {
+		panic(sign.ErrTypeMismatch)
+	}
+
+	var context []byte
+	if options != nil {
+		context = []byte(options.Context)
+	}
+
+	return Verify(&k, NewMessage(message), signature, context)
+}
+
+// DeriveKey deterministically generates a pair of keys from a seed.
 //
 // Panics if seed is not of length [ParamID.SeedSize].
 func (s scheme) DeriveKey(seed []byte) (sign.PublicKey, sign.PrivateKey) {
@@ -89,6 +96,7 @@ func (s scheme) UnmarshalBinaryPublicKey(b []byte) (sign.PublicKey, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return k, nil
 }
 
@@ -98,6 +106,7 @@ func (s scheme) UnmarshalBinaryPrivateKey(b []byte) (sign.PrivateKey, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return k, nil
 }
 
