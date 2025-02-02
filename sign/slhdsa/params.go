@@ -13,56 +13,56 @@ import (
 	"github.com/cloudflare/circl/internal/sha3"
 )
 
-// [ParamID] identifies the supported parameter sets of SLH-DSA.
-// Note that the zero value is an invalid identifier.
-type ParamID byte
+// [ID] identifies the supported parameter sets of SLH-DSA.
+// Note that the zero value is not a valid identifier.
+type ID byte
 
 const (
-	ParamIDSHA2Small128  ParamID = iota + 1 // SLH-DSA-SHA2-128s
-	ParamIDSHAKESmall128                    // SLH-DSA-SHAKE-128s
-	ParamIDSHA2Fast128                      // SLH-DSA-SHA2-128f
-	ParamIDSHAKEFast128                     // SLH-DSA-SHAKE-128f
-	ParamIDSHA2Small192                     // SLH-DSA-SHA2-192s
-	ParamIDSHAKESmall192                    // SLH-DSA-SHAKE-192s
-	ParamIDSHA2Fast192                      // SLH-DSA-SHA2-192f
-	ParamIDSHAKEFast192                     // SLH-DSA-SHAKE-192f
-	ParamIDSHA2Small256                     // SLH-DSA-SHA2-256s
-	ParamIDSHAKESmall256                    // SLH-DSA-SHAKE-256s
-	ParamIDSHA2Fast256                      // SLH-DSA-SHA2-256f
-	ParamIDSHAKEFast256                     // SLH-DSA-SHAKE-256f
+	SHA2Small128  ID = iota + 1 // SLH-DSA-SHA2-128s
+	SHAKESmall128               // SLH-DSA-SHAKE-128s
+	SHA2Fast128                 // SLH-DSA-SHA2-128f
+	SHAKEFast128                // SLH-DSA-SHAKE-128f
+	SHA2Small192                // SLH-DSA-SHA2-192s
+	SHAKESmall192               // SLH-DSA-SHAKE-192s
+	SHA2Fast192                 // SLH-DSA-SHA2-192f
+	SHAKEFast192                // SLH-DSA-SHAKE-192f
+	SHA2Small256                // SLH-DSA-SHA2-256s
+	SHAKESmall256               // SLH-DSA-SHAKE-256s
+	SHA2Fast256                 // SLH-DSA-SHA2-256f
+	SHAKEFast256                // SLH-DSA-SHAKE-256f
 	_MaxParams
 )
 
-// [ParamIDByName] returns the [ParamID] that corresponds to the given name,
+// [IDByName] returns the [ID] that corresponds to the given name,
 // or an error if no parameter set was found.
-// See [ParamID] documentation for the specific names of each parameter set.
+// See [ID] documentation for the specific names of each parameter set.
 // Names are case insensitive.
 //
 // Example:
 //
-//	ParamIDByName("SLH-DSA-SHAKE-256s") // returns (ParamIDSHAKESmall256, nil)
-func ParamIDByName(name string) (id ParamID, err error) {
+//	IDByName("SLH-DSA-SHAKE-256s") // returns (SHAKESmall256, nil)
+func IDByName(name string) (ID, error) {
 	v := strings.ToLower(name)
 	for i := range supportedParams {
 		if strings.ToLower(supportedParams[i].name) == v {
-			return supportedParams[i].id, nil
+			return supportedParams[i].ID, nil
 		}
 	}
 
-	return id, ErrParam
+	return ID(0), ErrParam
 }
 
 // IsValid returns true if the parameter set is supported.
-func (id ParamID) IsValid() bool { return 0 < id && id < _MaxParams }
+func (id ID) IsValid() bool { return 0 < id && id < _MaxParams }
 
-func (id ParamID) String() string {
+func (id ID) String() string {
 	if !id.IsValid() {
 		return ErrParam.Error()
 	}
 	return supportedParams[id-1].name
 }
 
-func (id ParamID) params() *params {
+func (id ID) params() *params {
 	if !id.IsValid() {
 		panic(ErrParam)
 	}
@@ -71,32 +71,32 @@ func (id ParamID) params() *params {
 
 // params contains all the relevant constants of a parameter set.
 type params struct {
-	n      uint32  // Length of WOTS+ messages.
-	hPrime uint32  // XMSS Merkle tree height.
-	h      uint32  // Total height of a hypertree.
-	d      uint32  // Hypertree has d layers of XMSS trees.
-	a      uint32  // FORS signs a-bit messages.
-	k      uint32  // FORS generates k private keys.
-	m      uint32  // Used by HashMSG function.
-	isSHA2 bool    // True, if the hash function is SHA2, otherwise is SHAKE.
-	name   string  // Name of the parameter set.
-	id     ParamID // Identifier of the parameter set.
+	name   string // Name of the parameter set.
+	n      uint32 // Length of WOTS+ messages.
+	hPrime uint32 // XMSS Merkle tree height.
+	h      uint32 // Total height of a hypertree.
+	d      uint32 // Hypertree has d layers of XMSS trees.
+	a      uint32 // FORS signs a-bit messages.
+	k      uint32 // FORS generates k private keys.
+	m      uint32 // Used by HashMSG function.
+	isSHA2 bool   // True, if the hash function is SHA2, otherwise is SHAKE.
+	ID            // Identifier of the parameter set.
 }
 
 // Stores all the supported (read-only) parameter sets.
 var supportedParams = [_MaxParams - 1]params{
-	{id: ParamIDSHA2Small128, n: 16, h: 63, d: 7, hPrime: 9, a: 12, k: 14, m: 30, isSHA2: true, name: "SLH-DSA-SHA2-128s"},
-	{id: ParamIDSHAKESmall128, n: 16, h: 63, d: 7, hPrime: 9, a: 12, k: 14, m: 30, isSHA2: false, name: "SLH-DSA-SHAKE-128s"},
-	{id: ParamIDSHA2Fast128, n: 16, h: 66, d: 22, hPrime: 3, a: 6, k: 33, m: 34, isSHA2: true, name: "SLH-DSA-SHA2-128f"},
-	{id: ParamIDSHAKEFast128, n: 16, h: 66, d: 22, hPrime: 3, a: 6, k: 33, m: 34, isSHA2: false, name: "SLH-DSA-SHAKE-128f"},
-	{id: ParamIDSHA2Small192, n: 24, h: 63, d: 7, hPrime: 9, a: 14, k: 17, m: 39, isSHA2: true, name: "SLH-DSA-SHA2-192s"},
-	{id: ParamIDSHAKESmall192, n: 24, h: 63, d: 7, hPrime: 9, a: 14, k: 17, m: 39, isSHA2: false, name: "SLH-DSA-SHAKE-192s"},
-	{id: ParamIDSHA2Fast192, n: 24, h: 66, d: 22, hPrime: 3, a: 8, k: 33, m: 42, isSHA2: true, name: "SLH-DSA-SHA2-192f"},
-	{id: ParamIDSHAKEFast192, n: 24, h: 66, d: 22, hPrime: 3, a: 8, k: 33, m: 42, isSHA2: false, name: "SLH-DSA-SHAKE-192f"},
-	{id: ParamIDSHA2Small256, n: 32, h: 64, d: 8, hPrime: 8, a: 14, k: 22, m: 47, isSHA2: true, name: "SLH-DSA-SHA2-256s"},
-	{id: ParamIDSHAKESmall256, n: 32, h: 64, d: 8, hPrime: 8, a: 14, k: 22, m: 47, isSHA2: false, name: "SLH-DSA-SHAKE-256s"},
-	{id: ParamIDSHA2Fast256, n: 32, h: 68, d: 17, hPrime: 4, a: 9, k: 35, m: 49, isSHA2: true, name: "SLH-DSA-SHA2-256f"},
-	{id: ParamIDSHAKEFast256, n: 32, h: 68, d: 17, hPrime: 4, a: 9, k: 35, m: 49, isSHA2: false, name: "SLH-DSA-SHAKE-256f"},
+	{ID: SHA2Small128, n: 16, h: 63, d: 7, hPrime: 9, a: 12, k: 14, m: 30, isSHA2: true, name: "SLH-DSA-SHA2-128s"},
+	{ID: SHAKESmall128, n: 16, h: 63, d: 7, hPrime: 9, a: 12, k: 14, m: 30, isSHA2: false, name: "SLH-DSA-SHAKE-128s"},
+	{ID: SHA2Fast128, n: 16, h: 66, d: 22, hPrime: 3, a: 6, k: 33, m: 34, isSHA2: true, name: "SLH-DSA-SHA2-128f"},
+	{ID: SHAKEFast128, n: 16, h: 66, d: 22, hPrime: 3, a: 6, k: 33, m: 34, isSHA2: false, name: "SLH-DSA-SHAKE-128f"},
+	{ID: SHA2Small192, n: 24, h: 63, d: 7, hPrime: 9, a: 14, k: 17, m: 39, isSHA2: true, name: "SLH-DSA-SHA2-192s"},
+	{ID: SHAKESmall192, n: 24, h: 63, d: 7, hPrime: 9, a: 14, k: 17, m: 39, isSHA2: false, name: "SLH-DSA-SHAKE-192s"},
+	{ID: SHA2Fast192, n: 24, h: 66, d: 22, hPrime: 3, a: 8, k: 33, m: 42, isSHA2: true, name: "SLH-DSA-SHA2-192f"},
+	{ID: SHAKEFast192, n: 24, h: 66, d: 22, hPrime: 3, a: 8, k: 33, m: 42, isSHA2: false, name: "SLH-DSA-SHAKE-192f"},
+	{ID: SHA2Small256, n: 32, h: 64, d: 8, hPrime: 8, a: 14, k: 22, m: 47, isSHA2: true, name: "SLH-DSA-SHA2-256s"},
+	{ID: SHAKESmall256, n: 32, h: 64, d: 8, hPrime: 8, a: 14, k: 22, m: 47, isSHA2: false, name: "SLH-DSA-SHAKE-256s"},
+	{ID: SHA2Fast256, n: 32, h: 68, d: 17, hPrime: 4, a: 9, k: 35, m: 49, isSHA2: true, name: "SLH-DSA-SHA2-256f"},
+	{ID: SHAKEFast256, n: 32, h: 68, d: 17, hPrime: 4, a: 9, k: 35, m: 49, isSHA2: false, name: "SLH-DSA-SHAKE-256f"},
 }
 
 // See FIPS-205, Section 11.1 and Section 11.2.
@@ -172,8 +172,8 @@ func (p *params) mgf1(out, mgfSeed []byte, maskLen uint32) {
 }
 
 func concat(w io.Writer, list ...[]byte) {
-	for i := range list {
-		_, err := w.Write(list[i])
+	for _, li := range list {
+		_, err := w.Write(li)
 		if err != nil {
 			panic(ErrWriting)
 		}

@@ -33,17 +33,17 @@ func benchmarkInternal(b *testing.B, p *params) {
 	test.CheckNoErr(b, err, "slhSignInternal failed")
 
 	b.Run("Keygen", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_, _ = slhKeyGenInternal(p, skSeed, skPrf, pkSeed)
 		}
 	})
 	b.Run("Sign", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_, _ = slhSignInternal(&sk, msg, addRand)
 		}
 	})
 	b.Run("Verify", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_ = slhVerifyInternal(&pk, msg, sig)
 		}
 	})

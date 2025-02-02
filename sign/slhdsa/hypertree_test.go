@@ -48,12 +48,12 @@ func benchmarkHyperTree(b *testing.B, p *params) {
 	state.htSign(sig, msg, idxTree, idxLeaf)
 
 	b.Run("Sign", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			state.htSign(sig, msg, idxTree, idxLeaf)
 		}
 	})
 	b.Run("Verify", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_ = state.htVerify(msg, pkRoot, idxTree, idxLeaf, sig)
 		}
 	})

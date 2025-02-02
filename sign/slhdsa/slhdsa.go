@@ -1,19 +1,19 @@
 // Package slhdsa provides Stateless Hash-based Digital Signature Algorithm.
 //
-// This package is compliant with [FIPS 205] and the [ParamID] represents
+// This package is compliant with [FIPS 205] and the [ID] represents
 // the following parameter sets:
 //
 // Category 1
-//   - Based on SHA2: [ParamIDSHA2Small128] and [ParamIDSHA2Fast128].
-//   - Based on SHAKE: [ParamIDSHAKESmall128] and [ParamIDSHAKEFast128].
+//   - Based on SHA2: [SHA2Small128] and [SHA2Fast128].
+//   - Based on SHAKE: [SHAKESmall128] and [SHAKEFast128].
 //
 // Category 3
-//   - Based on SHA2: [ParamIDSHA2Small192] and [ParamIDSHA2Fast192]
-//   - Based on SHAKE: [ParamIDSHAKESmall192] and [ParamIDSHAKEFast192]
+//   - Based on SHA2: [SHA2Small192] and [SHA2Fast192]
+//   - Based on SHAKE: [SHAKESmall192] and [SHAKEFast192]
 //
 // Category 5
-//   - Based on SHA2: [ParamIDSHA2Small256] and [ParamIDSHA2Fast256].
-//   - Based on SHAKE: [ParamIDSHAKESmall256] and [ParamIDSHAKEFast256].
+//   - Based on SHA2: [SHA2Small256] and [SHA2Fast256].
+//   - Based on SHAKE: [SHAKESmall256] and [SHAKEFast256].
 //
 // [FIPS 205]: https://doi.org/10.6028/NIST.FIPS.205
 package slhdsa
@@ -25,10 +25,10 @@ import (
 	"io"
 )
 
-// GenerateKey returns a pair of keys using the parameter set specified.
+// [GenerateKey] returns a pair of keys using the parameter set specified.
 // It returns an error if it fails reading from the random source.
 func GenerateKey(
-	random io.Reader, id ParamID,
+	random io.Reader, id ID,
 ) (pub PublicKey, priv PrivateKey, err error) {
 	// See FIPS 205 -- Section 10.1 -- Algorithm 21.
 	params := id.params()
@@ -68,7 +68,7 @@ func SignDeterministic(
 func SignRandomized(
 	priv *PrivateKey, random io.Reader, message *Message, context []byte,
 ) (signature []byte, err error) {
-	params := priv.ParamID.params()
+	params := priv.ID.params()
 	addRand, err := readRandom(random, params.n)
 	if err != nil {
 		return nil, err
@@ -90,7 +90,7 @@ func (k PrivateKey) Sign(
 func (k *PrivateKey) doSign(
 	message *Message, context, addRand []byte,
 ) ([]byte, error) {
-	// See FIPS 205 -- Section 10.2 -- Algorithm 22.
+	// See FIPS 205 -- Section 10.2 -- Algorithm 22 and Algorithm 23.
 	msgPrime, err := message.getMsgPrime(context)
 	if err != nil {
 		return nil, err

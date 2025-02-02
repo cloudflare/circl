@@ -47,17 +47,17 @@ func benchmarkWotsPlus(b *testing.B, p *params) {
 	state.wotsSign(sig, msg, addr)
 
 	b.Run("PkGen", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_ = state.wotsPkGen(addr)
 		}
 	})
 	b.Run("Sign", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			state.wotsSign(sig, msg, addr)
 		}
 	})
 	b.Run("PkFromSig", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_ = state.wotsPkFromSig(sig, msg, addr)
 		}
 	})

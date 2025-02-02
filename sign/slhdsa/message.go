@@ -5,9 +5,8 @@ import (
 	"hash"
 	"io"
 
-	_ "golang.org/x/crypto/sha3"
-
 	"github.com/cloudflare/circl/xof"
+	_ "golang.org/x/crypto/sha3"
 )
 
 // [PreHash] is a helper for hashing a message before signing.
@@ -26,7 +25,7 @@ type PreHash struct {
 
 // [NewPreHashWithHash] is used to prehash messages using either the SHA2 or
 // SHA3 hash functions.
-// Returns [ErrPreHash] is the function is not supported.
+// Returns [ErrPreHash] if the function is not supported.
 func NewPreHashWithHash(h crypto.Hash) (*PreHash, error) {
 	hash2oid := [...]byte{
 		crypto.SHA256:     1,
@@ -49,9 +48,9 @@ func NewPreHashWithHash(h crypto.Hash) (*PreHash, error) {
 	return &PreHash{h.New(), h.Size(), oid}, nil
 }
 
-// [NewPreHashWithXof] is used to prehash messages using either the SHAKE-128
-// or SHAKE-256 extendable-output functions.
-// Returns [ErrPreHash] is the function is not supported.
+// [NewPreHashWithXof] is used to prehash messages using either SHAKE-128
+// or SHAKE-256.
+// Returns [ErrPreHash] if the function is not supported.
 func NewPreHashWithXof(x xof.ID) (*PreHash, error) {
 	switch x {
 	case xof.SHAKE128:
@@ -64,7 +63,9 @@ func NewPreHashWithXof(x xof.ID) (*PreHash, error) {
 }
 
 func (ph *PreHash) Reset()                      { ph.writer.Reset() }
-func (ph *PreHash) Write(p []byte) (int, error) { return ph.writer.Write(p) }
+func (ph *PreHash) Write(b []byte) (int, error) { return ph.writer.Write(b) }
+
+// BuildMessage returns a [Message] for signing, and resets the writer.
 func (ph *PreHash) BuildMessage() (*Message, error) {
 	// Source https://csrc.nist.gov/Projects/computer-security-objects-register/algorithm-registration
 	const oidLen = 11
@@ -86,16 +87,16 @@ func (ph *PreHash) BuildMessage() (*Message, error) {
 		return nil, ErrPreHash
 	}
 
-	ph.writer.Reset()
+	ph.Reset()
 	return &Message{msg, 1}, nil
 }
 
+// [Message] wraps a message for signing.
 type Message struct {
 	msg       []byte
 	isPreHash byte
 }
 
-// [NewMessage] wraps a message for signing.
 // For pure signatures, use [NewMessage] to pass the message to be signed.
 // For pre-hashed signatures, use [PreHash] to hash the message first, and
 // then use [PreHash.BuildMessage] to get a [Message] to be signed.

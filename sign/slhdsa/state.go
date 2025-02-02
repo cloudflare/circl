@@ -70,9 +70,9 @@ func sha256sum(out, in []byte) { s := sha256.Sum256(in); copy(out, s[:]) }
 func sha512sum(out, in []byte) { s := sha512.Sum512(in); copy(out, s[:]) }
 
 type baseHasher struct {
+	hash          func(out, in []byte)
 	input, output []byte
 	address
-	hash func(out, in []byte)
 }
 
 func (b *baseHasher) Size(p *params) uint32 {
@@ -121,8 +121,8 @@ func (s *statePRF) padSize(p *params) uint32 {
 }
 
 type stateF struct {
-	baseHasher
 	msg []byte
+	baseHasher
 }
 
 func (s *stateF) Init(p *params, cur *cursor, pkSeed []byte) {
@@ -161,8 +161,8 @@ func (s *stateF) padSize(p *params) uint32 {
 }
 
 type stateH struct {
-	baseHasher
 	msg0, msg1 []byte
+	baseHasher
 }
 
 func (s *stateH) Init(p *params, cur *cursor, pkSeed []byte) {
@@ -214,13 +214,13 @@ func (s *stateH) padSize(p *params) uint32 {
 }
 
 type stateT struct {
-	input, output []byte
-	address
 	hash interface {
 		io.Writer
 		Reset()
 		Final([]byte)
 	}
+	input, output []byte
+	address
 }
 
 func (s *stateT) Init(p *params, cur *cursor, pkSeed []byte) {
@@ -301,8 +301,8 @@ func (s *sha3rw) SumIdempotent(out []byte) { _, _ = s.Clone().Read(out) }
 
 type (
 	item struct {
-		z    uint32
 		node []byte
+		z    uint32
 	}
 	stackNode []item
 )
@@ -345,10 +345,12 @@ func (s *stackNode) Clear() {
 
 type cursor []byte
 
-func (s *cursor) Rest() []byte { return (*s)[:] }
-func (s *cursor) Next(n uint32) (out []byte) {
-	out = (*s)[:n]
-	*s = (*s)[n:]
+func (c *cursor) Rest() []byte { return (*c)[:] }
+func (c *cursor) Next(n uint32) (out []byte) {
+	if len(*c) >= int(n) {
+		out = (*c)[:n]
+		*c = (*c)[n:]
+	}
 	return
 }
 

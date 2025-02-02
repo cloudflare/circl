@@ -7,14 +7,18 @@ import (
 	"github.com/cloudflare/circl/sign"
 )
 
-type scheme struct{ ParamID }
+func (id ID) Scheme() sign.Scheme { return scheme{id.params()} }
 
-func (id ParamID) Scheme() sign.Scheme { return scheme{id} }
+type scheme struct{ *params }
+
+func (s scheme) Name() string          { return s.name }
+func (s scheme) SeedSize() int         { return s.PrivateKeySize() }
+func (s scheme) SupportsContext() bool { return true }
 
 // GenerateKey is similar to [GenerateKey] function, except it always reads
 // random bytes from [rand.Reader].
 func (s scheme) GenerateKey() (sign.PublicKey, sign.PrivateKey, error) {
-	return GenerateKey(rand.Reader, s.ParamID)
+	return GenerateKey(rand.Reader, s.ID)
 }
 
 // Sign returns a randomized pure signature of the message with the context
@@ -22,12 +26,12 @@ func (s scheme) GenerateKey() (sign.PublicKey, sign.PrivateKey, error) {
 // If options is nil, an empty context is used.
 // It returns an empty slice if the signature generation fails.
 //
-// Panics if the key is not a [PrivateKey] or mismatches with the [ParamID].
+// Panics if the key is not a [PrivateKey] or when the [ID] mismatches.
 func (s scheme) Sign(
 	priv sign.PrivateKey, message []byte, options *sign.SignatureOpts,
 ) []byte {
 	k, ok := priv.(PrivateKey)
-	if !ok || s.ParamID != k.ParamID {
+	if !ok || s.ID != k.ID {
 		panic(sign.ErrTypeMismatch)
 	}
 
@@ -48,12 +52,12 @@ func (s scheme) Sign(
 // context is valid.
 // If options is nil, an empty context is used.
 //
-// Panics if the key is not a [PublicKey] or mismatches with the [ParamID].
+// Panics if the key is not a [PublicKey] or when the [ID] mismatches.
 func (s scheme) Verify(
 	pub sign.PublicKey, message, signature []byte, options *sign.SignatureOpts,
 ) bool {
 	k, ok := pub.(PublicKey)
-	if !ok || s.ParamID != k.ParamID {
+	if !ok || s.ID != k.ID {
 		panic(sign.ErrTypeMismatch)
 	}
 
@@ -67,17 +71,16 @@ func (s scheme) Verify(
 
 // DeriveKey deterministically generates a pair of keys from a seed.
 //
-// Panics if seed is not of length [ParamID.SeedSize].
+// Panics if seed is not of length [sign.Scheme.SeedSize].
 func (s scheme) DeriveKey(seed []byte) (sign.PublicKey, sign.PrivateKey) {
-	params := s.ParamID.params()
 	if len(seed) != s.SeedSize() {
 		panic(sign.ErrSeedSize)
 	}
 
-	n := params.n
+	n := s.n
 	buf := make([]byte, 3*n)
-	if params.isSHA2 {
-		params.mgf1(buf, seed, 3*n)
+	if s.isSHA2 {
+		s.mgf1(buf, seed, 3*n)
 	} else {
 		sha3.ShakeSum256(buf, seed)
 	}
@@ -87,11 +90,11 @@ func (s scheme) DeriveKey(seed []byte) (sign.PublicKey, sign.PrivateKey) {
 	skPrf := c.Next(n)
 	pkSeed := c.Next(n)
 
-	return slhKeyGenInternal(params, skSeed, skPrf, pkSeed)
+	return slhKeyGenInternal(s.params, skSeed, skPrf, pkSeed)
 }
 
 func (s scheme) UnmarshalBinaryPublicKey(b []byte) (sign.PublicKey, error) {
-	k := PublicKey{ParamID: s.ParamID}
+	k := PublicKey{ID: s.ID}
 	err := k.UnmarshalBinary(b)
 	if err != nil {
 		return nil, err
@@ -101,7 +104,7 @@ func (s scheme) UnmarshalBinaryPublicKey(b []byte) (sign.PublicKey, error) {
 }
 
 func (s scheme) UnmarshalBinaryPrivateKey(b []byte) (sign.PrivateKey, error) {
-	k := PrivateKey{ParamID: s.ParamID}
+	k := PrivateKey{ID: s.ID}
 	err := k.UnmarshalBinary(b)
 	if err != nil {
 		return nil, err
@@ -109,10 +112,3 @@ func (s scheme) UnmarshalBinaryPrivateKey(b []byte) (sign.PrivateKey, error) {
 
 	return k, nil
 }
-
-func (s scheme) Name() string          { return s.String() }
-func (s scheme) PublicKeySize() int    { return int(s.params().PublicKeySize()) }
-func (s scheme) PrivateKeySize() int   { return int(s.params().PrivateKeySize()) }
-func (s scheme) SignatureSize() int    { return int(s.params().SignatureSize()) }
-func (s scheme) SeedSize() int         { return s.PrivateKeySize() }
-func (s scheme) SupportsContext() bool { return true }

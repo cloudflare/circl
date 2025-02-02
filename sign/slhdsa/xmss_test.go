@@ -90,26 +90,26 @@ func benchmarkXmss(b *testing.B, p *params) {
 	state.xmssSign(state.NewStack(p.hPrime), sig, msg, idx, addr)
 
 	b.Run("NodeRec", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			_ = state.xmssNodeRec(idx, p.hPrime, addr)
 		}
 	})
 	b.Run("NodeIter", func(b *testing.B) {
 		node := make([]byte, p.n)
 		stack := state.NewStack(p.hPrime)
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			state.xmssNodeIter(stack, node, idx, p.hPrime, addr)
 		}
 	})
 	b.Run("Sign", func(b *testing.B) {
 		stack := state.NewStack(p.hPrime)
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			state.xmssSign(stack, sig, msg, idx, addr)
 		}
 	})
 	b.Run("PkFromSig", func(b *testing.B) {
 		node := make([]byte, p.xmssPkSize())
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			state.xmssPkFromSig(node, msg, sig, idx, addr)
 		}
 	})
