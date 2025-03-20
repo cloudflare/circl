@@ -252,6 +252,9 @@ func (pk *PublicKey) EncapsulateTo(ct, ss, seed []byte) {
 	copy(ekx[:], seed[32:])
 
 	x25519.KeyGen(&ctx, &ekx)
+	// A peer public key with low order points results in an all-zeroes
+	// shared secret. Ignored for now pending clarification in the spec,
+	// https://github.com/dconnolly/draft-connolly-cfrg-xwing-kem/issues/28
 	x25519.Shared(&ssx, &ekx, &pk.x)
 	pk.m.EncapsulateTo(ct[:mlkem768.CiphertextSize], ssm[:], seedm[:])
 
@@ -283,6 +286,9 @@ func (sk *PrivateKey) DecapsulateTo(ss, ct []byte) {
 	copy(ctx[:], ct[mlkem768.CiphertextSize:])
 
 	sk.m.DecapsulateTo(ssm[:], ctm)
+	// A peer public key with low order points results in an all-zeroes
+	// shared secret. Ignored for now pending clarification in the spec,
+	// https://github.com/dconnolly/draft-connolly-cfrg-xwing-kem/issues/28
 	x25519.Shared(&ssx, &sk.x, &ctx)
 	combiner(ss, &ssm, &ssx, &ctx, &sk.xpk)
 }

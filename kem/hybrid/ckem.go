@@ -159,6 +159,9 @@ func (pk *cPublicKey) X(sk *cPrivateKey) []byte {
 
 	sharedKey, err := sk.key.ECDH(pk.key)
 	if err != nil {
+		// ECDH cannot fail for NIST curves as NewPublicKey rejects
+		// invalid points and the point in infinity, and NewPrivateKey
+		// rejects invalid scalars and the zero value.
 		panic(err)
 	}
 	return sharedKey

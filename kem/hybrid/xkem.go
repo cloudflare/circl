@@ -131,7 +131,7 @@ func (sch *xScheme) Encapsulate(pk kem.PublicKey) (ct, ss []byte, err error) {
 	return sch.EncapsulateDeterministically(pk, seed)
 }
 
-func (pk *xPublicKey) X(sk *xPrivateKey) []byte {
+func (pk *xPublicKey) X(sk *xPrivateKey) ([]byte, error) {
 	if pk.scheme != sk.scheme {
 		panic(kem.ErrTypeMismatch)
 	}
@@ -141,14 +141,18 @@ func (pk *xPublicKey) X(sk *xPrivateKey) []byte {
 		var ss2, pk2, sk2 x25519.Key
 		copy(pk2[:], pk.key)
 		copy(sk2[:], sk.key)
-		x25519.Shared(&ss2, &sk2, &pk2)
-		return ss2[:]
+		if !x25519.Shared(&ss2, &sk2, &pk2) {
+			return nil, kem.ErrPubKey
+		}
+		return ss2[:], nil
 	case x448.Size:
 		var ss2, pk2, sk2 x448.Key
 		copy(pk2[:], pk.key)
 		copy(sk2[:], sk.key)
-		x448.Shared(&ss2, &sk2, &pk2)
-		return ss2[:]
+		if !x448.Shared(&ss2, &sk2, &pk2) {
+			return nil, kem.ErrPubKey
+		}
+		return ss2[:], nil
 	}
 	panic(kem.ErrTypeMismatch)
 }
@@ -165,7 +169,10 @@ func (sch *xScheme) EncapsulateDeterministically(
 	}
 
 	pk2, sk2 := sch.DeriveKeyPair(seed)
-	ss = pub.X(sk2.(*xPrivateKey))
+	ss, err = pub.X(sk2.(*xPrivateKey))
+	if err != nil {
+		return nil, nil, err
+	}
 	ct, _ = pk2.MarshalBinary()
 	return
 }
@@ -185,8 +192,7 @@ func (sch *xScheme) Decapsulate(sk kem.PrivateKey, ct []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	ss := pk.(*xPublicKey).X(priv)
-	return ss, nil
+	return pk.(*xPublicKey).X(priv)
 }
 
 func (sch *xScheme) UnmarshalBinaryPublicKey(buf []byte) (kem.PublicKey, error) {
