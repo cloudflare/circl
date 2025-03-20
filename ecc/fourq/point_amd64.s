@@ -1,8 +1,8 @@
 // +build amd64,!purego
 
 #include "go_asm.h"
-#include "fq_amd64.h"
-#include "point_amd64.h"
+#include "fqMacro_amd64.s"
+#include "pointMacro_amd64.s"
 
 // func doubleAmd64(P *pointR1)
 TEXT ·doubleAmd64(SB),0,$0-8

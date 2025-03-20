@@ -2,7 +2,7 @@
 // +build amd64,!purego
 
 #include "textflag.h"
-#include "fp_amd64.h"
+#include "fpMacro_amd64.s"
 
 // func cmovAmd64(x, y *Elt, n uint)
 TEXT ·cmovAmd64(SB),NOSPLIT,$0-24

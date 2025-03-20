@@ -1,4 +1,4 @@
-#include "fp_amd64.h"
+#include "fpMacro_amd64.s"
 
 #define _fqAdd(c,a,b)      \
     _fpAdd( 0+c, 0+a, 0+b) \

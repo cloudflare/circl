@@ -1,7 +1,7 @@
 // +build amd64,!purego
 
 #include "textflag.h"
-#include "fp_amd64.h"
+#include "fpMacro_amd64.s"
 
 // fpModp sets e to zero if it is equal to p. This is the only case where c
 // will not naturally be reduced to canonical form.

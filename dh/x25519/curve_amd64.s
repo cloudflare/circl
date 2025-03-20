@@ -4,8 +4,8 @@
 #include "textflag.h"
 
 // Depends on circl/math/fp25519 package
-#include "../../math/fp25519/fp_amd64.h"
-#include "curve_amd64.h"
+#include "../../math/fp25519/fpMacro_amd64.s"
+#include "curveMacro_amd64.s"
 
 // CTE_A24 is (A+2)/4 from Curve25519
 #define CTE_A24 121666
