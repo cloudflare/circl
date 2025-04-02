@@ -110,6 +110,7 @@ func TestOddMultiples(t *testing.T) {
 			Q.add(&Tab[j])
 		}
 		// R = (2^6)P == 64P
+		R = P
 		for j := 0; j < 6; j++ {
 			R.double()
 		}
@@ -123,7 +124,7 @@ func TestOddMultiples(t *testing.T) {
 
 func TestScalarMult(t *testing.T) {
 	const testTimes = 1 << 10
-	var P, Q, G pointR1
+	var P, Q pointR1
 	var k [Size]byte
 
 	t.Run("0P=0", func(t *testing.T) {
@@ -163,11 +164,13 @@ func TestScalarMult(t *testing.T) {
 		}
 	})
 	t.Run("mult", func(t *testing.T) {
-		G.X = genX
-		G.Y = genY
+		var G Point
+		G.SetGenerator()
+		var gen pointR1
+		G.toR1(&gen)
 		for i := 0; i < testTimes; i++ {
 			_, _ = rand.Read(k[:])
-			P.ScalarMult(&k, &G)
+			P.ScalarMult(&k, &gen)
 			Q.ScalarBaseMult(&k)
 			got := Q.isEqual(&P)
 			want := true
