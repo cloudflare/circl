@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/cloudflare/circl/internal/test"
+	"github.com/cloudflare/circl/math/fp25519"
 )
 
 func randomPoint(P *pointR1) {
@@ -16,6 +17,17 @@ func randomPoint(P *pointR1) {
 
 func TestPoint(t *testing.T) {
 	const testTimes = 1 << 10
+
+	t.Run("isEqual", func(t *testing.T) {
+		var valid, invalid pointR1
+		randomPoint(&valid)
+		randomPoint(&invalid)
+		invalid.z = fp25519.Elt{}
+		test.CheckOk(!valid.isEqual(&invalid), "valid point shouldn't match invalid point", t)
+		test.CheckOk(!invalid.isEqual(&valid), "invalid point shouldn't match valid point", t)
+		test.CheckOk(valid.isEqual(&valid), "valid point should match valid point", t)
+		test.CheckOk(!invalid.isEqual(&invalid), "invalid point shouldn't match anything", t)
+	})
 
 	t.Run("add", func(t *testing.T) {
 		var P pointR1
