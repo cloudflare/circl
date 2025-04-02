@@ -15,6 +15,61 @@ func (P *pointR1) random() {
 	P.ScalarBaseMult(&k)
 }
 
+func TestPoint(t *testing.T) {
+	const testTimes = 1 << 10
+	t.Run("IsOnCurve(ok)", func(t *testing.T) {
+		var gen Point
+		var goodGen pointR1
+		gen.SetGenerator()
+		gen.toR1(&goodGen)
+		test.CheckOk(goodGen.IsOnCurve(), "valid point should pass", t)
+	})
+
+	t.Run("IsOnCurve(zero)", func(t *testing.T) {
+		var allZeros pointR1
+		test.CheckOk(!allZeros.IsOnCurve(), "invalid point should be detected", t)
+	})
+
+	t.Run("IsOnCurve(bad)", func(t *testing.T) {
+		var badGen pointR1
+		badGen.X = genX
+		badGen.Y = genY
+		test.CheckOk(!badGen.IsOnCurve(), "invalid point should be detected", t)
+	})
+
+	t.Run("IsEqual", func(t *testing.T) {
+		var badGen pointR1
+		badGen.X = genX
+		badGen.Y = genY
+		var gen Point
+		var goodGen pointR1
+		gen.SetGenerator()
+		gen.toR1(&goodGen)
+		test.CheckOk(!badGen.isEqual(&goodGen), "invalid point shouldn't match generator", t)
+		test.CheckOk(!goodGen.isEqual(&badGen), "invalid point shouldn't match generator", t)
+		test.CheckOk(goodGen.isEqual(&goodGen), "valid point should match generator", t)
+		test.CheckOk(!badGen.isEqual(&badGen), "invalid point shouldn't match anything", t)
+	})
+
+	t.Run("isEqual(fail-w/random)", func(t *testing.T) {
+		var badG pointR1
+		badG.X = genX
+		badG.Y = genY
+		test.CheckOk(!badG.IsOnCurve(), "invalid point should be detected", t)
+
+		var k [Size]byte
+		var got, want pointR1
+		for i := 0; i < testTimes; i++ {
+			_, _ = rand.Read(k[:])
+			got.ScalarMult(&k, &badG)
+			want.random()
+			if got.isEqual(&want) {
+				test.ReportError(t, got, want, k)
+			}
+		}
+	})
+}
+
 func TestPointAddition(t *testing.T) {
 	const testTimes = 1 << 10
 	var P, Q pointR1
@@ -118,6 +173,16 @@ func TestScalarMult(t *testing.T) {
 			want := true
 			if got != want {
 				test.ReportError(t, got, want, k)
+			}
+		}
+	})
+	t.Run("mult-non_curve_point_issue", func(t *testing.T) {
+		for i := 0; i < testTimes; i++ {
+			_, _ = rand.Read(k[:])
+			Q.random()
+			P.ScalarMult(&k, &Q)
+			if !P.IsOnCurve() {
+				t.Fatalf("Point is not on curve: %X\n", P)
 			}
 		}
 	})
