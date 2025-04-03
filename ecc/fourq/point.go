@@ -249,24 +249,31 @@ func (P *Point) Marshal(out *[Size]byte) {
 
 // Unmarshal retrieves a point P from the input buffer. On success, returns true.
 func (P *Point) Unmarshal(in *[Size]byte) bool {
+	var Q Point
 	s := in[Size-1] >> 7
 	in[Size-1] &= 0x7F
-	if ok := P.Y.fromBytes(in[:]); !ok {
-		return ok
-	}
+	ok := Q.Y.fromBytes(in[:])
 	in[Size-1] |= s << 7
+	if !ok {
+		return false
+	}
 
 	t0, t1, one := &Fq{}, &Fq{}, &Fq{}
 	one.setOne()
-	fqSqr(t0, &P.Y)                  // t0 = y^2
+	fqSqr(t0, &Q.Y)                  // t0 = y^2
 	fqMul(t1, t0, &paramD)           // t1 = d*y^2
 	fqSub(t0, t0, one)               // t0 = y^2 - 1
 	fqAdd(t1, t1, one)               // t1 = d*y^2 + 1
-	fqSqrt(&P.X, t0, t1, 1-2*int(s)) // x = sqrt(t0/t1)
+	fqSqrt(&Q.X, t0, t1, 1-2*int(s)) // x = sqrt(t0/t1)
 
-	if !P.IsOnCurve() {
-		fpNeg(&P.X[1], &P.X[1])
+	if !Q.IsOnCurve() {
+		fpNeg(&Q.X[1], &Q.X[1])
 	}
+	if !Q.IsOnCurve() {
+		return false
+	}
+
+	*P = Q
 	return true
 }
 
