@@ -189,6 +189,23 @@ func TestScalarMult(t *testing.T) {
 			}
 		}
 	})
+	t.Run("unmarshal-faulty-point", func(t *testing.T) {
+		// This test demonstrates that it is possible to find points which are unmarshalled
+		// successfully, but are not on the curve.
+		var marshalledPoint [Size]byte
+		for i := 0; i < testTimes; i++ {
+			_, _ = rand.Read(marshalledPoint[:])
+			unmarshalledP := Point{}
+			ok := unmarshalledP.Unmarshal(&marshalledPoint)
+			isOnCurve := unmarshalledP.IsOnCurve()
+			switch true {
+			case ok && !isOnCurve:
+				t.Fatalf("unmarshal ok, but not on curve: %v\n", unmarshalledP)
+			case !ok && isOnCurve:
+				t.Fatalf("unmarshal failed with a point on curve: %v\n", unmarshalledP)
+			}
+		}
+	})
 }
 
 func TestScalar(t *testing.T) {
