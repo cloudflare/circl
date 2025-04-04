@@ -20,8 +20,10 @@ func KeyGen(public, secret *Key) {
 func Shared(shared, secret, public *Key) bool {
 	var P, Q fourq.Point
 	ok := P.Unmarshal((*[Size]byte)(public))
+	if !ok {
+		return false
+	}
 	Q.ScalarMult((*[Size]byte)(secret), &P)
 	Q.Marshal((*[Size]byte)(shared))
-	ok = ok && Q.IsOnCurve()
-	return ok
+	return !Q.IsIdentity() && Q.IsOnCurve()
 }
