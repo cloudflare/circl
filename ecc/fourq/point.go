@@ -249,59 +249,78 @@ func (P *Point) Marshal(out *[Size]byte) {
 
 // Unmarshal retrieves a point P from the input buffer. On success, returns true.
 func (P *Point) Unmarshal(in *[Size]byte) bool {
+	var Q Point
 	s := in[Size-1] >> 7
 	in[Size-1] &= 0x7F
-	if ok := P.Y.fromBytes(in[:]); !ok {
-		return ok
-	}
+	ok := Q.Y.fromBytes(in[:])
 	in[Size-1] |= s << 7
+	if !ok {
+		return false
+	}
 
 	t0, t1, one := &Fq{}, &Fq{}, &Fq{}
 	one.setOne()
-	fqSqr(t0, &P.Y)                  // t0 = y^2
+	fqSqr(t0, &Q.Y)                  // t0 = y^2
 	fqMul(t1, t0, &paramD)           // t1 = d*y^2
 	fqSub(t0, t0, one)               // t0 = y^2 - 1
 	fqAdd(t1, t1, one)               // t1 = d*y^2 + 1
-	fqSqrt(&P.X, t0, t1, 1-2*int(s)) // x = sqrt(t0/t1)
+	fqSqrt(&Q.X, t0, t1, 1-2*int(s)) // x = sqrt(t0/t1)
 
-	if !P.IsOnCurve() {
-		fpNeg(&P.X[1], &P.X[1])
+	if !Q.IsOnCurve() {
+		fpNeg(&Q.X[1], &Q.X[1])
 	}
+	if !Q.IsOnCurve() {
+		return false
+	}
+
+	*P = Q
 	return true
 }
 
 func (P *pointR1) IsOnCurve() bool {
 	t0, lhs, rhs := &Fq{}, &Fq{}, &Fq{}
+	// Check z != 0
+	eq0 := !P.Z.isZero()
 
+	// Check Eq 1: -X^2 + Y^2 == Z^2 + dT^2
 	fqAdd(t0, &P.Y, &P.X)    // t0  = y + x
 	fqSub(lhs, &P.Y, &P.X)   // lhs = y - x
 	fqMul(lhs, lhs, t0)      // lhs = y^2 - x^2
-	fqMul(rhs, &P.X, &P.Y)   // rhs = xy
-	fqSqr(rhs, rhs)          // rhs = x^2y^2
-	fqMul(rhs, rhs, &paramD) // rhs = dx^2y^2
-	t0.setOne()              // t0  = 1
-	fqAdd(rhs, rhs, t0)      // rhs = 1 + dx^2y^2
-	fqSub(t0, lhs, rhs)      // t0 = -x^2 + y^2 - (1 + dx^2y^2)
-	return t0.isZero()
+	fqMul(rhs, &P.Ta, &P.Tb) // rhs = T = Ta * Tb
+	fqSqr(rhs, rhs)          // rhs = T^2
+	fqMul(rhs, rhs, &paramD) // rhs = dT^2
+	fqSqr(t0, &P.Z)          // t0  = Z^2
+	fqAdd(rhs, rhs, t0)      // rhs = Z^2 + dT^2
+	fqSub(t0, lhs, rhs)      // t0  = (-X^2 + Y^2) - (Z^2 + dT^2)
+	eq1 := t0.isZero()
+
+	// Check Eq 2: (Ta*Tb)*Z == X*Y
+	fqMul(lhs, &P.Ta, &P.Tb) // lhs = Ta*Tb = T
+	fqMul(lhs, lhs, &P.Z)    // lhs = T * Z
+	fqMul(rhs, &P.X, &P.Y)   // rhs = X * Y
+	fqSub(t0, lhs, rhs)      // t0  = Ta*Tb*Z - X*Y
+	eq2 := t0.isZero()
+
+	return eq0 && eq1 && eq2
 }
 
 func (P *pointR1) isEqual(Q *pointR1) bool {
 	l, r := &Fq{}, &Fq{}
-	fqMul(l, &P.X, &Q.Z)
-	fqMul(r, &Q.X, &P.Z)
-	fqSub(l, l, r)
+	fqMul(l, &P.X, &Q.Z) // l = X1*Z2
+	fqMul(r, &Q.X, &P.Z) // r = X2*Z1
+	fqSub(l, l, r)       // l = l-r
 	b := l.isZero()
-	fqMul(l, &P.Y, &Q.Z)
-	fqMul(r, &Q.Y, &P.Z)
-	fqSub(l, l, r)
+	fqMul(l, &P.Y, &Q.Z) // l = Y1*Z2
+	fqMul(r, &Q.Y, &P.Z) // r = Y2*Z1
+	fqSub(l, l, r)       // l = l-r
 	b = b && l.isZero()
-	fqMul(l, &P.Ta, &P.Tb)
-	fqMul(l, l, &Q.Z)
-	fqMul(r, &Q.Ta, &Q.Tb)
-	fqMul(r, r, &P.Z)
-	fqSub(l, l, r)
+	fqMul(l, &P.Ta, &P.Tb) // l = T1 = Ta1*Tb1
+	fqMul(l, l, &Q.Z)      // l = T1*Z2
+	fqMul(r, &Q.Ta, &Q.Tb) // r = T2 = Ta2*Tb2
+	fqMul(r, r, &P.Z)      // r = T2*Z1
+	fqSub(l, l, r)         // l = l-r
 	b = b && l.isZero()
-	return b
+	return b && !P.Z.isZero() && !Q.Z.isZero()
 }
 
 func (P *pointR1) ClearCofactor() {

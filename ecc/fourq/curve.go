@@ -12,6 +12,8 @@ const Size = 32
 // Point represents an affine point of the curve. The identity is (0,1).
 type Point struct{ X, Y Fq }
 
+func (P Point) String() string { return "(x: " + P.X.String() + ", y: " + P.Y.String() + ")" }
+
 // CurveParams contains the parameters of the elliptic curve.
 type CurveParams struct {
 	Name string   // The canonical name of the curve.

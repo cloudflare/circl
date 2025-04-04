@@ -15,6 +15,61 @@ func (P *pointR1) random() {
 	P.ScalarBaseMult(&k)
 }
 
+func TestPoint(t *testing.T) {
+	const testTimes = 1 << 10
+	t.Run("IsOnCurve(ok)", func(t *testing.T) {
+		var gen Point
+		var goodGen pointR1
+		gen.SetGenerator()
+		gen.toR1(&goodGen)
+		test.CheckOk(goodGen.IsOnCurve(), "valid point should pass", t)
+	})
+
+	t.Run("IsOnCurve(zero)", func(t *testing.T) {
+		var allZeros pointR1
+		test.CheckOk(!allZeros.IsOnCurve(), "invalid point should be detected", t)
+	})
+
+	t.Run("IsOnCurve(bad)", func(t *testing.T) {
+		var badGen pointR1
+		badGen.X = genX
+		badGen.Y = genY
+		test.CheckOk(!badGen.IsOnCurve(), "invalid point should be detected", t)
+	})
+
+	t.Run("IsEqual", func(t *testing.T) {
+		var badGen pointR1
+		badGen.X = genX
+		badGen.Y = genY
+		var gen Point
+		var goodGen pointR1
+		gen.SetGenerator()
+		gen.toR1(&goodGen)
+		test.CheckOk(!badGen.isEqual(&goodGen), "invalid point shouldn't match generator", t)
+		test.CheckOk(!goodGen.isEqual(&badGen), "invalid point shouldn't match generator", t)
+		test.CheckOk(goodGen.isEqual(&goodGen), "valid point should match generator", t)
+		test.CheckOk(!badGen.isEqual(&badGen), "invalid point shouldn't match anything", t)
+	})
+
+	t.Run("isEqual(fail-w/random)", func(t *testing.T) {
+		var badG pointR1
+		badG.X = genX
+		badG.Y = genY
+		test.CheckOk(!badG.IsOnCurve(), "invalid point should be detected", t)
+
+		var k [Size]byte
+		var got, want pointR1
+		for i := 0; i < testTimes; i++ {
+			_, _ = rand.Read(k[:])
+			got.ScalarMult(&k, &badG)
+			want.random()
+			if got.isEqual(&want) {
+				test.ReportError(t, got, want, k)
+			}
+		}
+	})
+}
+
 func TestPointAddition(t *testing.T) {
 	const testTimes = 1 << 10
 	var P, Q pointR1
@@ -55,6 +110,7 @@ func TestOddMultiples(t *testing.T) {
 			Q.add(&Tab[j])
 		}
 		// R = (2^6)P == 64P
+		R = P
 		for j := 0; j < 6; j++ {
 			R.double()
 		}
@@ -68,7 +124,7 @@ func TestOddMultiples(t *testing.T) {
 
 func TestScalarMult(t *testing.T) {
 	const testTimes = 1 << 10
-	var P, Q, G pointR1
+	var P, Q pointR1
 	var k [Size]byte
 
 	t.Run("0P=0", func(t *testing.T) {
@@ -108,16 +164,45 @@ func TestScalarMult(t *testing.T) {
 		}
 	})
 	t.Run("mult", func(t *testing.T) {
-		G.X = genX
-		G.Y = genY
+		var G Point
+		G.SetGenerator()
+		var gen pointR1
+		G.toR1(&gen)
 		for i := 0; i < testTimes; i++ {
 			_, _ = rand.Read(k[:])
-			P.ScalarMult(&k, &G)
+			P.ScalarMult(&k, &gen)
 			Q.ScalarBaseMult(&k)
 			got := Q.isEqual(&P)
 			want := true
 			if got != want {
 				test.ReportError(t, got, want, k)
+			}
+		}
+	})
+	t.Run("mult-non_curve_point_issue", func(t *testing.T) {
+		for i := 0; i < testTimes; i++ {
+			_, _ = rand.Read(k[:])
+			Q.random()
+			P.ScalarMult(&k, &Q)
+			if !P.IsOnCurve() {
+				t.Fatalf("Point is not on curve: %X\n", P)
+			}
+		}
+	})
+	t.Run("unmarshal-faulty-point", func(t *testing.T) {
+		// This test demonstrates that it is possible to find points which are unmarshalled
+		// successfully, but are not on the curve.
+		var marshalledPoint [Size]byte
+		for i := 0; i < testTimes; i++ {
+			_, _ = rand.Read(marshalledPoint[:])
+			unmarshalledP := Point{}
+			ok := unmarshalledP.Unmarshal(&marshalledPoint)
+			isOnCurve := unmarshalledP.IsOnCurve()
+			switch true {
+			case ok && !isOnCurve:
+				t.Fatalf("unmarshall ok, but not on curve: %v\n", unmarshalledP)
+			case !ok && isOnCurve:
+				t.Fatalf("unmarshall failed with a point on curve: %v\n", unmarshalledP)
 			}
 		}
 	})

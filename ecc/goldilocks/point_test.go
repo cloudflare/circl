@@ -15,6 +15,19 @@ func randomPoint() *goldilocks.Point {
 	return goldilocks.Curve{}.ScalarBaseMult(&k)
 }
 
+func TestPoint(t *testing.T) {
+	c := goldilocks.Curve{}
+	t.Run("IsOnCurve(ok)", func(t *testing.T) {
+		goodGen := c.Generator()
+		test.CheckOk(c.IsOnCurve(goodGen), "valid point should pass", t)
+	})
+
+	t.Run("IsOnCurve(zero)", func(t *testing.T) {
+		var allZeros goldilocks.Point
+		test.CheckOk(!c.IsOnCurve(&allZeros), "invalid point should be detected", t)
+	})
+}
+
 func TestPointAdd(t *testing.T) {
 	const testTimes = 1 << 10
 	var e goldilocks.Curve
