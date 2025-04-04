@@ -1,6 +1,6 @@
 // +build amd64,!purego
 
-#include "fq_amd64.h"
+#include "fqMacro_amd64.s"
 
 #define fqMulLegacy \
     _fqMulLeg(0(DI),0(SI),0(BX))
