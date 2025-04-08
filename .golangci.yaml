@@ -47,6 +47,7 @@ linters-settings:
           - $all
         allow:
           - $gostd
+          - golang.org/x
           - github.com/bwesterb/go-ristretto
           - github.com/cloudflare/circl
   funlen:

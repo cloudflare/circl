@@ -1,6 +1,6 @@
 ---
 cff-version: 1.2.0
-version: 1.6.0
+version: 1.6.1
 title: "Introducing CIRCL: An Advanced Cryptographic Library"
 license: BSD-3-Clause
 abstract: >
@@ -25,6 +25,6 @@ keywords:
   - golang
 repository-code: "https://github.com/cloudflare/circl/"
 type: software
-message: "Available at https://github.com/cloudflare/circl. v1.6.0 Accessed Jan, 2025."
+message: "Available at https://github.com/cloudflare/circl. v1.6.1 Accessed Apr, 2025."
 contact:
   - name: "Cloudflare, Inc."
