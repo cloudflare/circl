@@ -72,7 +72,13 @@ func finalExp(g *Gt, f *ff.Fp12) {
 	ff.HardExponentiation(&g.i, c)
 }
 
-// ProdPair calculates the product of pairings, i.e., \Prod_i pair(ni*Pi,Qi).
+// ProdPair calculates the product of pairings:
+//
+//	e = \Prod_i pair(Pi, Qi)^ni
+//	  = \Prod_i pair(ni*Pi, Qi)
+//	  = \Prod_i pair(Pi, ni*Qi)
+//
+// For efficiency, it performs operations in G1.
 func ProdPair(P []*G1, Q []*G2, n []*Scalar) *Gt {
 	if len(P) != len(Q) || len(P) != len(n) {
 		panic("mismatch length of inputs")
