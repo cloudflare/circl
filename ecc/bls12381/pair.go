@@ -72,28 +72,32 @@ func finalExp(g *Gt, f *ff.Fp12) {
 	ff.HardExponentiation(&g.i, c)
 }
 
-// ProdPair calculates the product of pairings, i.e., \Prod_i pair(Pi,Qi)^ni.
+// ProdPair calculates the product of pairings, i.e., \Prod_i pair(ni*Pi,Qi).
 func ProdPair(P []*G1, Q []*G2, n []*Scalar) *Gt {
-	if len(P) != len(Q) || len(P) != len(n) {
-		panic("mismatch length of inputs")
-	}
+    if len(P) != len(Q) || len(P) != len(n) {
+        panic("mismatch length of inputs")
+    }
 
-	ei := new(ff.Fp12)
-	mi := new(ff.Fp12)
-	out := new(ff.Fp12)
-	out.SetOne()
+    scaled := make([]*G1, len(P))
+    for i := range P {
+        scaled[i] = new(G1)
+        scaled[i].ScalarMult(n[i], P[i])
+    }
 
-	affineP := affinize(P)
-	for i := range affineP {
-		miller(mi, &affineP[i], Q[i])
-		nb, _ := n[i].MarshalBinary()
-		ei.Exp(mi, nb)
-		out.Mul(out, ei)
-	}
+    affineP := affinize(scaled)
 
-	e := &Gt{}
-	finalExp(e, out)
-	return e
+    mi := new(ff.Fp12)
+    out := new(ff.Fp12)
+    out.SetOne()
+
+    for i := range affineP {
+        miller(mi, &affineP[i], Q[i])
+        out.Mul(out, mi)
+    }
+
+    e := &Gt{}
+    finalExp(e, out)
+    return e
 }
 
 // ProdPairFrac computes the product e(P, Q)^sign where sign is 1 or -1
