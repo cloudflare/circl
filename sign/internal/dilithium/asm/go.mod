@@ -3,7 +3,7 @@ module github.com/cloudflare/circl/sign/internal/dilithium/asm
 go 1.22.0
 
 require (
-	github.com/cloudflare/circl v1.4.0
+	github.com/cloudflare/circl v1.6.1
 	github.com/mmcloughlin/avo v0.6.0
 )
 
