@@ -86,6 +86,9 @@ func (sig *unpackedSignature) Unpack(buf []byte) bool {
 	if len(buf) < SignatureSize {
 		return false
 	}
+	if NIST && len(buf) != SignatureSize {
+		return false
+	}
 	copy(sig.c[:], buf[:])
 	sig.z.UnpackLeGamma1(buf[CTildeSize:])
 	if sig.z.Exceeds(Gamma1 - Beta) {
