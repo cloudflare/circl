@@ -4,46 +4,11 @@ package mldsa44
 
 import (
 	"bytes"
-	"compress/gzip"
-	"encoding/hex"
 	"encoding/json"
-	"io"
-	"os"
 	"testing"
+
+	"github.com/cloudflare/circl/internal/test"
 )
-
-// []byte but is encoded in hex for JSON
-type HexBytes []byte
-
-func (b HexBytes) MarshalJSON() ([]byte, error) {
-	return json.Marshal(hex.EncodeToString(b))
-}
-
-func (b *HexBytes) UnmarshalJSON(data []byte) (err error) {
-	var s string
-	if err = json.Unmarshal(data, &s); err != nil {
-		return err
-	}
-	*b, err = hex.DecodeString(s)
-	return err
-}
-
-func gunzip(in []byte) ([]byte, error) {
-	buf := bytes.NewBuffer(in)
-	r, err := gzip.NewReader(buf)
-	if err != nil {
-		return nil, err
-	}
-	return io.ReadAll(r)
-}
-
-func readGzip(path string) ([]byte, error) {
-	buf, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	return gunzip(buf)
-}
 
 func TestACVP(t *testing.T) {
 	for _, sub := range []string{
@@ -59,7 +24,7 @@ func TestACVP(t *testing.T) {
 
 // nolint:funlen,gocyclo
 func testACVP(t *testing.T, sub string) {
-	buf, err := readGzip("../testdata/ML-DSA-" + sub + "-FIPS204/prompt.json.gz")
+	buf, err := test.ReadGzip("../testdata/ML-DSA-" + sub + "-FIPS204/prompt.json.gz")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +37,7 @@ func testACVP(t *testing.T, sub string) {
 		t.Fatal(err)
 	}
 
-	buf, err = readGzip("../testdata/ML-DSA-" + sub + "-FIPS204/expectedResults.json.gz")
+	buf, err = test.ReadGzip("../testdata/ML-DSA-" + sub + "-FIPS204/expectedResults.json.gz")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,8 +88,8 @@ func testACVP(t *testing.T, sub string) {
 				TgID         int    `json:"tgId"`
 				ParameterSet string `json:"parameterSet"`
 				Tests        []struct {
-					TcID int      `json:"tcId"`
-					Seed HexBytes `json:"seed"`
+					TcID int           `json:"tcId"`
+					Seed test.HexBytes `json:"seed"`
 				}
 			}
 			if err := json.Unmarshal(rawGroup, &group); err != nil {
@@ -135,24 +100,24 @@ func testACVP(t *testing.T, sub string) {
 				continue
 			}
 
-			for _, test := range group.Tests {
+			for _, tst := range group.Tests {
 				var result struct {
-					Pk HexBytes `json:"pk"`
-					Sk HexBytes `json:"sk"`
+					Pk test.HexBytes `json:"pk"`
+					Sk test.HexBytes `json:"sk"`
 				}
-				rawResult, ok := rawResults[test.TcID]
+				rawResult, ok := rawResults[tst.TcID]
 				if !ok {
-					t.Fatalf("Missing result: %d", test.TcID)
+					t.Fatalf("Missing result: %d", tst.TcID)
 				}
 				if err := json.Unmarshal(rawResult, &result); err != nil {
 					t.Fatal(err)
 				}
 
-				pk, sk := scheme.DeriveKey(test.Seed)
+				pk, sk := scheme.DeriveKey(tst.Seed)
 
 				pk2, err := scheme.UnmarshalBinaryPublicKey(result.Pk)
 				if err != nil {
-					t.Fatalf("tc=%d: %v", test.TcID, err)
+					t.Fatalf("tc=%d: %v", tst.TcID, err)
 				}
 				sk2, err := scheme.UnmarshalBinaryPrivateKey(result.Sk)
 				if err != nil {
@@ -172,10 +137,10 @@ func testACVP(t *testing.T, sub string) {
 				ParameterSet  string `json:"parameterSet"`
 				Deterministic bool   `json:"deterministic"`
 				Tests         []struct {
-					TcID    int      `json:"tcId"`
-					Sk      HexBytes `json:"sk"`
-					Message HexBytes `json:"message"`
-					Rnd     HexBytes `json:"rnd"`
+					TcID    int           `json:"tcId"`
+					Sk      test.HexBytes `json:"sk"`
+					Message test.HexBytes `json:"message"`
+					Rnd     test.HexBytes `json:"rnd"`
 				}
 			}
 			if err := json.Unmarshal(rawGroup, &group); err != nil {
@@ -186,29 +151,29 @@ func testACVP(t *testing.T, sub string) {
 				continue
 			}
 
-			for _, test := range group.Tests {
+			for _, tst := range group.Tests {
 				var result struct {
-					Signature HexBytes `json:"signature"`
+					Signature test.HexBytes `json:"signature"`
 				}
-				rawResult, ok := rawResults[test.TcID]
+				rawResult, ok := rawResults[tst.TcID]
 				if !ok {
-					t.Fatalf("Missing result: %d", test.TcID)
+					t.Fatalf("Missing result: %d", tst.TcID)
 				}
 				if err := json.Unmarshal(rawResult, &result); err != nil {
 					t.Fatal(err)
 				}
 
-				sk, err := scheme.UnmarshalBinaryPrivateKey(test.Sk)
+				sk, err := scheme.UnmarshalBinaryPrivateKey(tst.Sk)
 				if err != nil {
 					t.Fatal(err)
 				}
 
 				var rnd [32]byte
 				if !group.Deterministic {
-					copy(rnd[:], test.Rnd)
+					copy(rnd[:], tst.Rnd)
 				}
 
-				sig2 := sk.(*PrivateKey).unsafeSignInternal(test.Message, rnd)
+				sig2 := sk.(*PrivateKey).unsafeSignInternal(tst.Message, rnd)
 
 				if !bytes.Equal(sig2, result.Signature) {
 					t.Fatalf("signature doesn't match: %x ≠ %x",
@@ -217,13 +182,13 @@ func testACVP(t *testing.T, sub string) {
 			}
 		case abstractGroup.TestType == "AFT" && sub == "sigVer":
 			var group struct {
-				TgID         int      `json:"tgId"`
-				ParameterSet string   `json:"parameterSet"`
-				Pk           HexBytes `json:"pk"`
+				TgID         int           `json:"tgId"`
+				ParameterSet string        `json:"parameterSet"`
+				Pk           test.HexBytes `json:"pk"`
 				Tests        []struct {
-					TcID      int      `json:"tcId"`
-					Message   HexBytes `json:"message"`
-					Signature HexBytes `json:"signature"`
+					TcID      int           `json:"tcId"`
+					Message   test.HexBytes `json:"message"`
+					Signature test.HexBytes `json:"signature"`
 				}
 			}
 			if err := json.Unmarshal(rawGroup, &group); err != nil {
@@ -239,19 +204,19 @@ func testACVP(t *testing.T, sub string) {
 				t.Fatal(err)
 			}
 
-			for _, test := range group.Tests {
+			for _, tst := range group.Tests {
 				var result struct {
 					TestPassed bool `json:"testPassed"`
 				}
-				rawResult, ok := rawResults[test.TcID]
+				rawResult, ok := rawResults[tst.TcID]
 				if !ok {
-					t.Fatalf("Missing result: %d", test.TcID)
+					t.Fatalf("Missing result: %d", tst.TcID)
 				}
 				if err := json.Unmarshal(rawResult, &result); err != nil {
 					t.Fatal(err)
 				}
 
-				passed2 := unsafeVerifyInternal(pk.(*PublicKey), test.Message, test.Signature)
+				passed2 := unsafeVerifyInternal(pk.(*PublicKey), tst.Message, tst.Signature)
 				if passed2 != result.TestPassed {
 					t.Fatalf("verification %v ≠ %v", passed2, result.TestPassed)
 				}

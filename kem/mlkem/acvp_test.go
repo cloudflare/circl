@@ -2,48 +2,12 @@ package mlkem
 
 import (
 	"bytes"
-	"compress/gzip"
-	"encoding/hex"
 	"encoding/json"
-	"io"
-	"os"
 	"testing"
 
+	"github.com/cloudflare/circl/internal/test"
 	"github.com/cloudflare/circl/kem/schemes"
 )
-
-// []byte but is encoded in hex for JSON
-type HexBytes []byte
-
-func (b HexBytes) MarshalJSON() ([]byte, error) {
-	return json.Marshal(hex.EncodeToString(b))
-}
-
-func (b *HexBytes) UnmarshalJSON(data []byte) (err error) {
-	var s string
-	if err = json.Unmarshal(data, &s); err != nil {
-		return err
-	}
-	*b, err = hex.DecodeString(s)
-	return err
-}
-
-func gunzip(in []byte) ([]byte, error) {
-	buf := bytes.NewBuffer(in)
-	r, err := gzip.NewReader(buf)
-	if err != nil {
-		return nil, err
-	}
-	return io.ReadAll(r)
-}
-
-func readGzip(path string) ([]byte, error) {
-	buf, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	return gunzip(buf)
-}
 
 func TestACVP(t *testing.T) {
 	for _, sub := range []string{
@@ -58,7 +22,7 @@ func TestACVP(t *testing.T) {
 
 // nolint:funlen,gocyclo
 func testACVP(t *testing.T, sub string) {
-	buf, err := readGzip("testdata/ML-KEM-" + sub + "-FIPS203/prompt.json.gz")
+	buf, err := test.ReadGzip("testdata/ML-KEM-" + sub + "-FIPS203/prompt.json.gz")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +35,7 @@ func testACVP(t *testing.T, sub string) {
 		t.Fatal(err)
 	}
 
-	buf, err = readGzip("testdata/ML-KEM-" + sub + "-FIPS203/expectedResults.json.gz")
+	buf, err = test.ReadGzip("testdata/ML-KEM-" + sub + "-FIPS203/expectedResults.json.gz")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,9 +84,9 @@ func testACVP(t *testing.T, sub string) {
 				TgID         int    `json:"tgId"`
 				ParameterSet string `json:"parameterSet"`
 				Tests        []struct {
-					TcID int      `json:"tcId"`
-					Z    HexBytes `json:"z"`
-					D    HexBytes `json:"d"`
+					TcID int           `json:"tcId"`
+					Z    test.HexBytes `json:"z"`
+					D    test.HexBytes `json:"d"`
 				}
 			}
 			if err := json.Unmarshal(rawGroup, &group); err != nil {
@@ -134,28 +98,28 @@ func testACVP(t *testing.T, sub string) {
 				t.Fatalf("No such scheme: %s", group.ParameterSet)
 			}
 
-			for _, test := range group.Tests {
+			for _, tst := range group.Tests {
 				var result struct {
-					Ek HexBytes `json:"ek"`
-					Dk HexBytes `json:"dk"`
+					Ek test.HexBytes `json:"ek"`
+					Dk test.HexBytes `json:"dk"`
 				}
-				rawResult, ok := rawResults[test.TcID]
+				rawResult, ok := rawResults[tst.TcID]
 				if !ok {
-					t.Fatalf("Missing result: %d", test.TcID)
+					t.Fatalf("Missing result: %d", tst.TcID)
 				}
 				if err := json.Unmarshal(rawResult, &result); err != nil {
 					t.Fatal(err)
 				}
 
 				var seed [64]byte
-				copy(seed[:], test.D)
-				copy(seed[32:], test.Z)
+				copy(seed[:], tst.D)
+				copy(seed[32:], tst.Z)
 
 				ek, dk := scheme.DeriveKeyPair(seed[:])
 
 				ek2, err := scheme.UnmarshalBinaryPublicKey(result.Ek)
 				if err != nil {
-					t.Fatalf("tc=%d: %v", test.TcID, err)
+					t.Fatalf("tc=%d: %v", tst.TcID, err)
 				}
 				dk2, err := scheme.UnmarshalBinaryPrivateKey(result.Dk)
 				if err != nil {
@@ -174,9 +138,9 @@ func testACVP(t *testing.T, sub string) {
 				TgID         int    `json:"tgId"`
 				ParameterSet string `json:"parameterSet"`
 				Tests        []struct {
-					TcID int      `json:"tcId"`
-					Ek   HexBytes `json:"ek"`
-					M    HexBytes `json:"m"`
+					TcID int           `json:"tcId"`
+					Ek   test.HexBytes `json:"ek"`
+					M    test.HexBytes `json:"m"`
 				}
 			}
 			if err := json.Unmarshal(rawGroup, &group); err != nil {
@@ -188,25 +152,25 @@ func testACVP(t *testing.T, sub string) {
 				t.Fatalf("No such scheme: %s", group.ParameterSet)
 			}
 
-			for _, test := range group.Tests {
+			for _, tst := range group.Tests {
 				var result struct {
-					C HexBytes `json:"c"`
-					K HexBytes `json:"k"`
+					C test.HexBytes `json:"c"`
+					K test.HexBytes `json:"k"`
 				}
-				rawResult, ok := rawResults[test.TcID]
+				rawResult, ok := rawResults[tst.TcID]
 				if !ok {
-					t.Fatalf("Missing result: %d", test.TcID)
+					t.Fatalf("Missing result: %d", tst.TcID)
 				}
 				if err := json.Unmarshal(rawResult, &result); err != nil {
 					t.Fatal(err)
 				}
 
-				ek, err := scheme.UnmarshalBinaryPublicKey(test.Ek)
+				ek, err := scheme.UnmarshalBinaryPublicKey(tst.Ek)
 				if err != nil {
 					t.Fatal(err)
 				}
 
-				ct, ss, err := scheme.EncapsulateDeterministically(ek, test.M)
+				ct, ss, err := scheme.EncapsulateDeterministically(ek, tst.M)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -220,12 +184,12 @@ func testACVP(t *testing.T, sub string) {
 			}
 		case abstractGroup.TestType == "VAL" && sub == "encapDecap":
 			var group struct {
-				TgID         int      `json:"tgId"`
-				ParameterSet string   `json:"parameterSet"`
-				Dk           HexBytes `json:"dk"`
+				TgID         int           `json:"tgId"`
+				ParameterSet string        `json:"parameterSet"`
+				Dk           test.HexBytes `json:"dk"`
 				Tests        []struct {
-					TcID int      `json:"tcId"`
-					C    HexBytes `json:"c"`
+					TcID int           `json:"tcId"`
+					C    test.HexBytes `json:"c"`
 				}
 			}
 			if err := json.Unmarshal(rawGroup, &group); err != nil {
@@ -242,19 +206,19 @@ func testACVP(t *testing.T, sub string) {
 				t.Fatal(err)
 			}
 
-			for _, test := range group.Tests {
+			for _, tst := range group.Tests {
 				var result struct {
-					K HexBytes `json:"k"`
+					K test.HexBytes `json:"k"`
 				}
-				rawResult, ok := rawResults[test.TcID]
+				rawResult, ok := rawResults[tst.TcID]
 				if !ok {
-					t.Fatalf("Missing rawResult: %d", test.TcID)
+					t.Fatalf("Missing rawResult: %d", tst.TcID)
 				}
 				if err := json.Unmarshal(rawResult, &result); err != nil {
 					t.Fatal(err)
 				}
 
-				ss, err := scheme.Decapsulate(dk, test.C)
+				ss, err := scheme.Decapsulate(dk, tst.C)
 				if err != nil {
 					t.Fatal(err)
 				}
