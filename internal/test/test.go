@@ -2,9 +2,14 @@ package test
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"testing"
 )
@@ -82,4 +87,38 @@ func CheckMarshal(
 	if !bytes.Equal(got, want) {
 		ReportError(t, got, want, x, y)
 	}
+}
+
+// []byte but is encoded in hex for JSON
+type HexBytes []byte
+
+func (b HexBytes) MarshalJSON() ([]byte, error) {
+	return json.Marshal(hex.EncodeToString(b))
+}
+
+func (b *HexBytes) UnmarshalJSON(data []byte) (err error) {
+	var s string
+	if err = json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	*b, err = hex.DecodeString(s)
+	return err
+}
+
+func gunzip(in []byte) ([]byte, error) {
+	buf := bytes.NewBuffer(in)
+	r, err := gzip.NewReader(buf)
+	if err != nil {
+		return nil, err
+	}
+	return io.ReadAll(r)
+}
+
+// Like os.ReadFile, but gunzip first.
+func ReadGzip(path string) ([]byte, error) {
+	buf, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return gunzip(buf)
 }
