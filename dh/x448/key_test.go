@@ -2,44 +2,29 @@ package x448
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
-	"os"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/test"
 )
 
-func hexStr2Key(k *Key, s string) {
-	b, err := hex.DecodeString(s)
-	if err != nil {
-		panic("Can't convert string to key")
-	}
-	copy(k[:], b)
-}
-
 // Indicates whether long tests should be run
 var runLongTest = flag.Bool("long", false, "runs longer tests")
 
 type katVector struct {
-	Public  string `json:"input"`
-	Shared  string `json:"output"`
-	Private string `json:"scalar"`
+	Public  test.HexBytes `json:"input"`
+	Shared  test.HexBytes `json:"output"`
+	Private test.HexBytes `json:"scalar"`
 }
 
 func TestRFC7748Kat(t *testing.T) {
-	const nameFile = "testdata/rfc7748_kat_test.json"
+	const nameFile = "testdata/rfc7748_kat_test.json.gz"
 	var kat []katVector
 
-	jsonFile, err := os.Open(nameFile)
-	if err != nil {
-		t.Fatalf("File %v can not be opened. Error: %v", nameFile, err)
-	}
-	defer jsonFile.Close()
-	input, err := io.ReadAll(jsonFile)
+	input, err := test.ReadGzip(nameFile)
 	if err != nil {
 		t.Fatalf("File %v can not be read. Error: %v", nameFile, err)
 	}
@@ -48,12 +33,13 @@ func TestRFC7748Kat(t *testing.T) {
 	if err != nil {
 		t.Fatalf("File %v can not be loaded. Error: %v", nameFile, err)
 	}
-	var priv, pub, got, want Key
+
+	var got Key
 	for _, v := range kat {
-		hexStr2Key(&pub, v.Public)
-		hexStr2Key(&priv, v.Private)
+		pub := Key(v.Public)
+		priv := Key(v.Private)
 		Shared(&got, &priv, &pub)
-		hexStr2Key(&want, v.Shared)
+		want := Key(v.Shared)
 		if got != want {
 			test.ReportError(t, got, want, v)
 		}
@@ -61,18 +47,13 @@ func TestRFC7748Kat(t *testing.T) {
 }
 
 type katTimes struct {
-	Times uint32 `json:"times"`
-	Key   string `json:"key"`
+	Times uint32        `json:"times"`
+	Key   test.HexBytes `json:"key"`
 }
 
 func TestRFC7748Times(t *testing.T) {
-	const nameFile = "testdata/rfc7748_times_test.json"
-	jsonFile, err := os.Open(nameFile)
-	if err != nil {
-		t.Fatalf("File %v can not be opened. Error: %v", nameFile, err)
-	}
-	defer jsonFile.Close()
-	input, err := io.ReadAll(jsonFile)
+	const nameFile = "testdata/rfc7748_times_test.json.gz"
+	input, err := test.ReadGzip(nameFile)
 	if err != nil {
 		t.Fatalf("File %v can not be read. Error: %v", nameFile, err)
 	}
@@ -82,7 +63,8 @@ func TestRFC7748Times(t *testing.T) {
 	if err != nil {
 		t.Fatalf("File %v can not be loaded. Error: %v", nameFile, err)
 	}
-	var got, want Key
+
+	var got Key
 	for _, v := range kat {
 		if !*runLongTest && v.Times == uint32(1000000) {
 			t.Log("Skipped one long test, add -long flag to run longer tests")
@@ -97,7 +79,7 @@ func TestRFC7748Times(t *testing.T) {
 			k = r
 		}
 		got = k
-		hexStr2Key(&want, v.Key)
+		want := Key(v.Key)
 
 		if got != want {
 			test.ReportError(t, got, want, v.Times)

@@ -69,7 +69,7 @@ func fromReader[T any](t testing.TB, r io.Reader) (z T) {
 	return
 }
 
-func fromHex[T any](t testing.TB, x Hex) (z T) {
+func fromHex[T any](t testing.TB, x test.HexBytes) (z T) {
 	var err error
 	switch zz := any(&z).(type) {
 	case *prio3.Nonce:
@@ -81,17 +81,6 @@ func fromHex[T any](t testing.TB, x Hex) (z T) {
 	}
 	test.CheckNoErr(t, err, "fromHex failed")
 	return
-}
-
-type Hex []byte
-
-func (b *Hex) UnmarshalJSON(data []byte) (err error) {
-	var s string
-	if err = json.Unmarshal(data, &s); err != nil {
-		return err
-	}
-	*b, err = hex.DecodeString(s)
-	return err
 }
 
 func readFile[V any](t *testing.T, fileName string) (v V) {

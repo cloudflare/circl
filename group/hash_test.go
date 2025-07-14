@@ -1,10 +1,8 @@
 package group_test
 
 import (
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -13,29 +11,28 @@ import (
 )
 
 func TestHashToElement(t *testing.T) {
-	fileNames, err := filepath.Glob("./testdata/P*.json")
+	fileNames, err := filepath.Glob("./testdata/P*.json.gz")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	for _, fileName := range fileNames {
-		f, err := os.Open(fileName)
+		input, err := test.ReadGzip(fileName)
 		if err != nil {
 			t.Fatal(err)
 		}
-		dec := json.NewDecoder(f)
-		var v vectorSuite
-		err = dec.Decode(&v)
-		if err != nil {
-			t.Fatal(err)
-		}
-		f.Close()
 
-		t.Run(v.Ciphersuite, func(t *testing.T) { testHashing(t, &v) })
+		var v vectorSuite
+		err = json.Unmarshal(input, &v)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		t.Run(v.Ciphersuite, v.testHashing)
 	}
 }
 
-func testHashing(t *testing.T, vs *vectorSuite) {
+func (vs *vectorSuite) testHashing(t *testing.T) {
 	var G group.Group
 	switch vs.Ciphersuite[0:4] {
 	case "P256":
@@ -88,20 +85,12 @@ type vectorSuite struct {
 }
 
 type point struct {
-	X string `json:"x"`
-	Y string `json:"y"`
+	X test.HexBytes `json:"x"`
+	Y test.HexBytes `json:"y"`
 }
 
 func (p point) toBytes() []byte {
-	x, err := hex.DecodeString(p.X[2:])
-	if err != nil {
-		panic(err)
-	}
-	y, err := hex.DecodeString(p.Y[2:])
-	if err != nil {
-		panic(err)
-	}
-	return append(append([]byte{0x04}, x...), y...)
+	return append(append([]byte{0x04}, p.X...), p.Y...)
 }
 
 type vector struct {

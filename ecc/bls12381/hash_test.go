@@ -3,8 +3,6 @@ package bls12381
 import (
 	"encoding/hex"
 	"encoding/json"
-	"io"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -96,18 +94,13 @@ func (v *vectorHash) test(t *testing.T) {
 	}
 }
 
-func readFile(t *testing.T, fileName string) *vectorHash {
-	jsonFile, err := os.Open(fileName)
+func readFile(t *testing.T, fileName string) (v vectorHash) {
+	input, err := test.ReadGzip(fileName)
 	if err != nil {
 		t.Fatalf("File %v can not be opened. Error: %v", fileName, err)
 	}
-	defer jsonFile.Close()
-	input, err := io.ReadAll(jsonFile)
-	if err != nil {
-		t.Fatalf("File %v can not be loaded. Error: %v", fileName, err)
-	}
-	v := new(vectorHash)
-	err = json.Unmarshal(input, v)
+
+	err = json.Unmarshal(input, &v)
 	if err != nil {
 		t.Fatalf("File %v can not be parsed. Error: %v", fileName, err)
 	}
@@ -121,7 +114,7 @@ func TestHashVectors(t *testing.T) {
 	// JSON files can be found at:
 	// https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/tree/draft-irtf-cfrg-hash-to-curve-10/poc/vectors
 
-	fileNames, err := filepath.Glob("./testdata/BLS12381*.json")
+	fileNames, err := filepath.Glob("./testdata/BLS12381*.json.gz")
 	if err != nil {
 		t.Fatal(err)
 	}

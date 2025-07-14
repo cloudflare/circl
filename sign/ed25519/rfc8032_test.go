@@ -1,7 +1,6 @@
 package ed25519_test
 
 import (
-	"archive/zip"
 	"bufio"
 	"bytes"
 	"encoding/hex"
@@ -58,26 +57,17 @@ func (v *rfc8032Vector) test(t *testing.T, lineNum int) {
 }
 
 func TestRFC8032(t *testing.T) {
-	const nameFile = "testdata/sign.input.zip"
-	zipFile, err := zip.OpenReader(nameFile)
+	const nameFile = "testdata/sign.input.txt.gz"
+	input, err := test.ReadGzip(nameFile)
 	if err != nil {
 		t.Fatalf("File %v can not be opened. Error: %v", nameFile, err)
 	}
-	defer zipFile.Close()
 
-	for _, f := range zipFile.File {
-		unzipped, err := f.Open()
-		if err != nil {
-			t.Fatalf("File %v can not be opened. Error: %v", f.Name, err)
-		}
-		defer unzipped.Close()
-
-		fScanner := bufio.NewScanner(unzipped)
-		var v rfc8032Vector
-		for i := 1; fScanner.Scan(); i++ {
-			v.fetch(fScanner.Text())
-			v.test(t, i)
-		}
+	fScanner := bufio.NewScanner(bytes.NewReader(input))
+	var v rfc8032Vector
+	for i := 1; fScanner.Scan(); i++ {
+		v.fetch(fScanner.Text())
+		v.test(t, i)
 	}
 }
 

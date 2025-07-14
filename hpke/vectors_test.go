@@ -23,7 +23,7 @@ var (
 func TestVectors(t *testing.T) {
 	// Test vectors from
 	// https://github.com/cfrg/draft-irtf-cfrg-hpke/blob/master/test-vectors.json
-	vectors := readFile(t, "testdata/vectors_rfc9180_5f503c5.json")
+	vectors := readFile(t, "testdata/vectors_rfc9180_5f503c5.json.gz")
 	for i, v := range vectors {
 		t.Run(fmt.Sprintf("v%v", i), v.verify)
 	}
@@ -58,17 +58,16 @@ func (v *vector) getActors(
 ) (*Sender, *Receiver) {
 	h := s.String() + "\n"
 
-	pkR, err := dhkem.UnmarshalBinaryPublicKey(hexB(t, v.PkRm))
+	pkR, err := dhkem.UnmarshalBinaryPublicKey(v.PkRm)
 	test.CheckNoErr(t, err, h+"bad public key")
 
-	skR, err := dhkem.UnmarshalBinaryPrivateKey(hexB(t, v.SkRm))
+	skR, err := dhkem.UnmarshalBinaryPrivateKey(v.SkRm)
 	test.CheckNoErr(t, err, h+"bad private key")
 
-	info := hexB(t, v.Info)
-	sender, err := s.NewSender(pkR, info)
+	sender, err := s.NewSender(pkR, v.Info)
 	test.CheckNoErr(t, err, h+"err sender")
 
-	recv, err := s.NewReceiver(skR, info)
+	recv, err := s.NewReceiver(skR, v.Info)
 	test.CheckNoErr(t, err, h+"err receiver")
 
 	return sender, recv
@@ -78,8 +77,7 @@ func (v *vector) setup(t *testing.T, k kem.Scheme,
 	se *Sender, re *Receiver,
 	m modeID, s Suite,
 ) (sealer Sealer, opener Opener) {
-	seed := hexB(t, v.IkmE)
-	rd := bytes.NewReader(seed)
+	rd := bytes.NewReader(v.IkmE)
 
 	var enc []byte
 	var skS kem.PrivateKey
@@ -94,16 +92,15 @@ func (v *vector) setup(t *testing.T, k kem.Scheme,
 		}
 
 	case modePSK:
-		psk, pskid := hexB(t, v.Psk), hexB(t, v.PskID)
-		enc, sealer, errS = se.SetupPSK(rd, psk, pskid)
+		enc, sealer, errS = se.SetupPSK(rd, v.Psk, v.PskID)
 		if errS == nil {
-			opener, errR = re.SetupPSK(enc, psk, pskid)
+			opener, errR = re.SetupPSK(enc, v.Psk, v.PskID)
 		}
 
 	case modeAuth:
-		skS, errSK = k.UnmarshalBinaryPrivateKey(hexB(t, v.SkSm))
+		skS, errSK = k.UnmarshalBinaryPrivateKey(v.SkSm)
 		if errSK == nil {
-			pkS, errPK = k.UnmarshalBinaryPublicKey(hexB(t, v.PkSm))
+			pkS, errPK = k.UnmarshalBinaryPublicKey(v.PkSm)
 			if errPK == nil {
 				enc, sealer, errS = se.SetupAuth(rd, skS)
 				if errS == nil {
@@ -113,14 +110,13 @@ func (v *vector) setup(t *testing.T, k kem.Scheme,
 		}
 
 	case modeAuthPSK:
-		psk, pskid := hexB(t, v.Psk), hexB(t, v.PskID)
-		skS, errSK = k.UnmarshalBinaryPrivateKey(hexB(t, v.SkSm))
+		skS, errSK = k.UnmarshalBinaryPrivateKey(v.SkSm)
 		if errSK == nil {
-			pkS, errPK = k.UnmarshalBinaryPublicKey(hexB(t, v.PkSm))
+			pkS, errPK = k.UnmarshalBinaryPublicKey(v.PkSm)
 			if errPK == nil {
-				enc, sealer, errS = se.SetupAuthPSK(rd, skS, psk, pskid)
+				enc, sealer, errS = se.SetupAuthPSK(rd, skS, v.Psk, v.PskID)
 				if errS == nil {
-					opener, errR = re.SetupAuthPSK(enc, psk, pskid, pkS)
+					opener, errR = re.SetupAuthPSK(enc, v.Psk, v.PskID, pkS)
 				}
 			}
 		}
@@ -137,13 +133,13 @@ func (v *vector) setup(t *testing.T, k kem.Scheme,
 
 func (v *vector) checkAead(t *testing.T, e *encdecContext, m modeID) {
 	got := e.baseNonce
-	want := hexB(t, v.BaseNonce)
+	want := v.BaseNonce
 	if !bytes.Equal(got, want) {
 		test.ReportError(t, got, want, m, e.Suite())
 	}
 
 	got = e.exporterSecret
-	want = hexB(t, v.ExporterSecret)
+	want = v.ExporterSecret
 	if !bytes.Equal(got, want) {
 		test.ReportError(t, got, want, m, e.Suite())
 	}
@@ -156,16 +152,13 @@ func (v *vector) checkEncryptions(
 	m modeID,
 ) {
 	for j, encv := range v.Encryptions {
-		pt := hexB(t, encv.Plaintext)
-		aad := hexB(t, encv.Aad)
-
-		ct, err := se.Seal(pt, aad)
+		ct, err := se.Seal(encv.Plaintext, encv.Aad)
 		test.CheckNoErr(t, err, "error on sealing")
 
-		got, err := op.Open(ct, aad)
+		got, err := op.Open(ct, encv.Aad)
 		test.CheckNoErr(t, err, "error on opening")
 
-		want := pt
+		want := encv.Plaintext
 		if !bytes.Equal(got, want) {
 			test.ReportError(t, got, want, m, se.Suite(), j)
 		}
@@ -174,30 +167,16 @@ func (v *vector) checkEncryptions(
 
 func (v *vector) checkExports(t *testing.T, context Context, m modeID) {
 	for j, expv := range v.Exports {
-		ctx := hexB(t, expv.ExportContext)
-		want := hexB(t, expv.ExportValue)
-
-		got := context.Export(ctx, uint(expv.ExportLength))
+		want := expv.ExportValue
+		got := context.Export(expv.ExportContext, uint(expv.ExportLength))
 		if !bytes.Equal(got, want) {
 			test.ReportError(t, got, want, m, context.Suite(), j)
 		}
 	}
 }
 
-func hexB(t *testing.T, x string) []byte {
-	t.Helper()
-	z, err := hex.DecodeString(x)
-	test.CheckNoErr(t, err, "")
-	return z
-}
-
 func readFile(t *testing.T, fileName string) []vector {
-	jsonFile, err := os.Open(fileName)
-	if err != nil {
-		t.Fatalf("File %v can not be opened. Error: %v", fileName, err)
-	}
-	defer jsonFile.Close()
-	input, err := io.ReadAll(jsonFile)
+	input, err := test.ReadGzip(fileName)
 	if err != nil {
 		t.Fatalf("File %v can not be read. Error: %v", fileName, err)
 	}
@@ -210,16 +189,16 @@ func readFile(t *testing.T, fileName string) []vector {
 }
 
 type encryptionVector struct {
-	Aad        string `json:"aad"`
-	Ciphertext string `json:"ct"`
-	Nonce      string `json:"nonce"`
-	Plaintext  string `json:"pt"`
+	Aad        test.HexBytes `json:"aad"`
+	Ciphertext string        `json:"ct"`
+	Nonce      string        `json:"nonce"`
+	Plaintext  test.HexBytes `json:"pt"`
 }
 
 type exportVector struct {
-	ExportContext string `json:"exporter_context"`
-	ExportLength  int    `json:"L"`
-	ExportValue   string `json:"exported_value"`
+	ExportContext test.HexBytes `json:"exporter_context"`
+	ExportLength  int           `json:"L"`
+	ExportValue   test.HexBytes `json:"exported_value"`
 }
 
 type vector struct {
@@ -227,25 +206,25 @@ type vector struct {
 	KemID              uint16             `json:"kem_id"`
 	KdfID              uint16             `json:"kdf_id"`
 	AeadID             uint16             `json:"aead_id"`
-	Info               string             `json:"info"`
-	Ier                string             `json:"ier,omitempty"`
-	IkmR               string             `json:"ikmR"`
-	IkmE               string             `json:"ikmE,omitempty"`
-	SkRm               string             `json:"skRm"`
-	SkEm               string             `json:"skEm,omitempty"`
-	SkSm               string             `json:"skSm,omitempty"`
-	Psk                string             `json:"psk,omitempty"`
-	PskID              string             `json:"psk_id,omitempty"`
-	PkSm               string             `json:"pkSm,omitempty"`
-	PkRm               string             `json:"pkRm"`
-	PkEm               string             `json:"pkEm,omitempty"`
-	Enc                string             `json:"enc"`
-	SharedSecret       string             `json:"shared_secret"`
-	KeyScheduleContext string             `json:"key_schedule_context"`
+	Info               test.HexBytes      `json:"info"`
+	Ier                test.HexBytes      `json:"ier,omitempty"`
+	IkmR               test.HexBytes      `json:"ikmR"`
+	IkmE               test.HexBytes      `json:"ikmE,omitempty"`
+	SkRm               test.HexBytes      `json:"skRm"`
+	SkEm               test.HexBytes      `json:"skEm,omitempty"`
+	SkSm               test.HexBytes      `json:"skSm,omitempty"`
+	Psk                test.HexBytes      `json:"psk,omitempty"`
+	PskID              test.HexBytes      `json:"psk_id,omitempty"`
+	PkSm               test.HexBytes      `json:"pkSm,omitempty"`
+	PkRm               test.HexBytes      `json:"pkRm"`
+	PkEm               test.HexBytes      `json:"pkEm,omitempty"`
+	Enc                test.HexBytes      `json:"enc"`
+	SharedSecret       test.HexBytes      `json:"shared_secret"`
+	KeyScheduleContext test.HexBytes      `json:"key_schedule_context"`
 	Secret             string             `json:"secret"`
 	Key                string             `json:"key"`
-	BaseNonce          string             `json:"base_nonce"`
-	ExporterSecret     string             `json:"exporter_secret"`
+	BaseNonce          test.HexBytes      `json:"base_nonce"`
+	ExporterSecret     test.HexBytes      `json:"exporter_secret"`
 	Encryptions        []encryptionVector `json:"encryptions"`
 	Exports            []exportVector     `json:"exports"`
 }
@@ -295,8 +274,8 @@ func generateEncryptions(sealer Sealer, opener Opener, msg []byte) ([]encryption
 			return nil, fmt.Errorf("Mismatch messages %d", i)
 		}
 		vectors[i] = encryptionVector{
-			Plaintext:  hex.EncodeToString(msg),
-			Aad:        hex.EncodeToString(aad),
+			Plaintext:  hexB(msg),
+			Aad:        hexB(aad),
 			Nonce:      hex.EncodeToString(nonce),
 			Ciphertext: hex.EncodeToString(encrypted),
 		}
@@ -319,14 +298,16 @@ func generateExports(sealer Sealer, opener Opener) ([]exportVector, error) {
 			return nil, fmt.Errorf("Mismatch export values")
 		}
 		vectors[i] = exportVector{
-			ExportContext: hex.EncodeToString(exportContexts[i]),
+			ExportContext: hexB(exportContexts[i]),
 			ExportLength:  testVectorExportLength,
-			ExportValue:   hex.EncodeToString(senderValue),
+			ExportValue:   hexB(senderValue),
 		}
 	}
 
 	return vectors, nil
 }
+
+func hexB(b []byte) test.HexBytes { return test.HexBytes(hex.EncodeToString(b)) }
 
 func TestHybridKemRoundTrip(t *testing.T) {
 	kemID := KEM_X25519_KYBER768_DRAFT00
@@ -409,25 +390,25 @@ func TestHybridKemRoundTrip(t *testing.T) {
 			KemID:              uint16(kemID),
 			KdfID:              uint16(kdfID),
 			AeadID:             uint16(aeadID),
-			Ier:                hex.EncodeToString(ier),
-			Info:               hex.EncodeToString(info),
-			IkmR:               hex.EncodeToString(ikmR),
-			SkRm:               hex.EncodeToString(mustEncodePrivateKey(skR)),
-			PkRm:               hex.EncodeToString(mustEncodePublicKey(pkR)),
-			Enc:                hex.EncodeToString(enc),
-			SharedSecret:       hex.EncodeToString(innerSealer.sharedSecret),
-			KeyScheduleContext: hex.EncodeToString(innerSealer.keyScheduleContext),
+			Ier:                hexB(ier),
+			Info:               hexB(info),
+			IkmR:               hexB(ikmR),
+			SkRm:               hexB(mustEncodePrivateKey(skR)),
+			PkRm:               hexB(mustEncodePublicKey(pkR)),
+			Enc:                hexB(enc),
+			SharedSecret:       hexB(innerSealer.sharedSecret),
+			KeyScheduleContext: hexB(innerSealer.keyScheduleContext),
 			Secret:             hex.EncodeToString(innerSealer.secret),
 			Key:                hex.EncodeToString(innerSealer.key),
-			BaseNonce:          hex.EncodeToString(innerSealer.baseNonce),
-			ExporterSecret:     hex.EncodeToString(innerSealer.exporterSecret),
+			BaseNonce:          hexB(innerSealer.baseNonce),
+			ExporterSecret:     hexB(innerSealer.exporterSecret),
 			Encryptions:        encryptions,
 			Exports:            exports,
 		}
 
 		if mode == modePSK {
-			ret.Psk = hex.EncodeToString(psk)
-			ret.PskID = hex.EncodeToString(pskid)
+			ret.Psk = hexB(psk)
+			ret.PskID = hexB(pskid)
 		}
 
 		return ret

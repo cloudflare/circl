@@ -4,9 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/binary"
-	"encoding/hex"
 	"encoding/json"
-	"os"
 	"testing"
 
 	. "github.com/cloudflare/circl/internal/test"
@@ -32,12 +30,12 @@ var StatusValues = map[int]string{
 var rng = rand.Reader
 
 type TestVector struct {
-	ID     int    `json:"Id"`
-	Pk1    string `json:"Pk1"`
-	Pr1    string `json:"Pr1"`
-	Pk2    string `json:"Pk2"`
-	Ss     string `json:"Ss"`
-	Status string `json:"status"`
+	ID     int      `json:"Id"`
+	Pk1    HexBytes `json:"Pk1"`
+	Pr1    HexBytes `json:"Pr1"`
+	Pk2    HexBytes `json:"Pk2"`
+	Ss     HexBytes `json:"Ss"`
+	Status string   `json:"status"`
 }
 
 type TestVectors struct {
@@ -169,27 +167,11 @@ func TestKAT(t *testing.T) {
 		var pub1, pub2 PublicKey
 		var ss [SharedSecretSize]byte
 
-		prBuf, err := hex.DecodeString(vec.Pr1)
-		if err != nil {
-			t.Fatal(err)
-		}
-		checkExpr(prv1.Import(prBuf[:]), vec, t, "PrivateKey wrong")
-		pkBuf, err := hex.DecodeString(vec.Pk1)
-		if err != nil {
-			t.Fatal(err)
-		}
-		checkExpr(pub1.Import(pkBuf[:]), vec, t, "PublicKey 1 wrong")
-		pkBuf, err = hex.DecodeString(vec.Pk2)
-		if err != nil {
-			t.Fatal(err)
-		}
-		checkExpr(pub2.Import(pkBuf[:]), vec, t, "PublicKey 2 wrong")
+		checkExpr(prv1.Import(vec.Pr1), vec, t, "PrivateKey wrong")
+		checkExpr(pub1.Import(vec.Pk1), vec, t, "PublicKey 1 wrong")
+		checkExpr(pub2.Import(vec.Pk2), vec, t, "PublicKey 2 wrong")
 		checkExpr(DeriveSecret(&ss, &pub2, &prv1, rng), vec, t, "Error when deriving key")
-		ssExp, err := hex.DecodeString(vec.Ss)
-		if err != nil {
-			t.Fatal(err)
-		}
-		checkExpr(bytes.Equal(ss[:], ssExp) == (status == Valid), vec, t, "Unexpected value of shared secret")
+		checkExpr(bytes.Equal(ss[:], vec.Ss) == (status == Valid), vec, t, "Unexpected value of shared secret")
 	}
 	// checkPublicKey1 imports public and private key for one party A
 	// and tries to generate public key for a private key. After that
@@ -200,18 +182,8 @@ func TestKAT(t *testing.T) {
 		var pub PublicKey
 		var pubBytesGot [PublicKeySize]byte
 
-		prBuf, err := hex.DecodeString(vec.Pr1)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		pubBytesExp, err := hex.DecodeString(vec.Pk1)
-		if err != nil {
-			t.Fatal(err)
-		}
-
 		checkExpr(
-			prv.Import(prBuf[:]),
+			prv.Import(vec.Pr1),
 			vec, t, "PrivateKey wrong")
 
 		// Generate public key
@@ -220,7 +192,7 @@ func TestKAT(t *testing.T) {
 
 		// pubBytesGot must be different than pubBytesExp
 		checkExpr(
-			!bytes.Equal(pubBytesGot[:], pubBytesExp),
+			!bytes.Equal(pubBytesGot[:], vec.Pk1),
 			vec, t, "Public key generated is the same as public key from the test vector")
 	}
 	// checkPublicKey2 the goal is to test key validation. Test tries to
@@ -228,22 +200,18 @@ func TestKAT(t *testing.T) {
 	// status is "Valid" and fails otherwise.
 	checkPublicKey2 := func(vec *TestVector, t *testing.T, status int) {
 		var pub PublicKey
-		pubBytesExp, err := hex.DecodeString(vec.Pk2)
-		if err != nil {
-			t.Fatal(err)
-		}
 		// Import validates an input, so it must fail
-		pub.Import(pubBytesExp[:])
+		pub.Import(vec.Pk2)
 		checkExpr(
 			Validate(&pub, rng) == (status == Valid || status == ValidPublicKey2),
 			vec, t, "PublicKey has been validated correctly")
 	}
 	// Load test data
-	file, err := os.Open(katFile)
+	input, err := ReadGzip(katFile)
 	if err != nil {
 		t.Fatal(err.Error())
 	}
-	err = json.NewDecoder(file).Decode(&tests)
+	err = json.Unmarshal(input, &tests)
 	if err != nil {
 		t.Fatal(err.Error())
 	}

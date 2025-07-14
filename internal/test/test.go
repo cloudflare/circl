@@ -101,7 +101,7 @@ func (b *HexBytes) UnmarshalJSON(data []byte) (err error) {
 	if err = json.Unmarshal(data, &s); err != nil {
 		return err
 	}
-	*b, err = hex.DecodeString(s)
+	*b, err = hex.DecodeString(strings.TrimPrefix(s, "0x"))
 	return err
 }
 
