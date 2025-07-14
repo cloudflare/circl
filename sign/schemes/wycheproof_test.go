@@ -27,8 +27,8 @@ type TestGroup struct {
 	PrivateKey  test.HexBytes `json:"privateKey"`
 	PrivateSeed test.HexBytes `json:"privateSeed"`
 	PublicKey   test.HexBytes `json:"publicKey"`
-	Tests       []Test         `json:"tests"`
-	Type        string         `json:"type"`
+	Tests       []Test        `json:"tests"`
+	Type        string        `json:"type"`
 }
 
 type TestSet struct {
