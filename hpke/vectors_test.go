@@ -20,6 +20,13 @@ var (
 	testVectorExportLength         = 32
 )
 
+func TestVectorsPQ(t *testing.T) {
+	vectors := readFile(t, "testdata/hpke-pq.json")
+	for i, v := range vectors {
+		t.Run(fmt.Sprintf("v%v", i), v.verify)
+	}
+}
+
 func TestVectors(t *testing.T) {
 	// Test vectors from
 	// https://github.com/cfrg/draft-irtf-cfrg-hpke/blob/master/test-vectors.json
@@ -46,10 +53,13 @@ func (v *vector) verify(t *testing.T) {
 	sender, recv := v.getActors(t, kem.Scheme(), s)
 	sealer, opener := v.setup(t, kem.Scheme(), sender, recv, m, s)
 
-	v.checkAead(t, (sealer.(*sealContext)).encdecContext, m)
-	v.checkAead(t, (opener.(*openContext)).encdecContext, m)
+	if sealer != nil {
+		v.checkAead(t, (sealer.(*sealContext)).encdecContext, m)
+		v.checkExports(t, sealer, m)
+	}
+
 	v.checkEncryptions(t, sealer, opener, m)
-	v.checkExports(t, sealer, m)
+	v.checkAead(t, (opener.(*openContext)).encdecContext, m)
 	v.checkExports(t, opener, m)
 }
 
@@ -88,9 +98,13 @@ func (v *vector) setup(t *testing.T, k kem.Scheme,
 
 	switch v.ModeID {
 	case modeBase:
-		enc, sealer, errS = se.Setup(rd)
-		if errS == nil {
-			opener, errR = re.Setup(enc)
+		if len(seed) > 0 {
+			enc, sealer, errS = se.Setup(rd)
+			if errS == nil {
+				opener, errR = re.Setup(enc)
+			}
+		} else {
+			opener, errR = re.Setup(hexB(t, v.Enc))
 		}
 
 	case modePSK:
@@ -158,9 +172,17 @@ func (v *vector) checkEncryptions(
 	for j, encv := range v.Encryptions {
 		pt := hexB(t, encv.Plaintext)
 		aad := hexB(t, encv.Aad)
+		var (
+			ct  []byte
+			err error
+		)
 
-		ct, err := se.Seal(pt, aad)
-		test.CheckNoErr(t, err, "error on sealing")
+		if se != nil {
+			ct, err = se.Seal(pt, aad)
+			test.CheckNoErr(t, err, "error on sealing")
+		} else {
+			ct = hexB(t, encv.Ciphertext)
+		}
 
 		got, err := op.Open(ct, aad)
 		test.CheckNoErr(t, err, "error on opening")

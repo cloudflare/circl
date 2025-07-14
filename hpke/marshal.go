@@ -106,7 +106,7 @@ func (c *sealContext) MarshalBinary() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return append([]byte{0}, rawContext...), nil
+	return concat([]byte{0}, rawContext), nil
 }
 
 // UnmarshalSealer parses an HPKE sealer.
@@ -134,7 +134,7 @@ func (c *openContext) MarshalBinary() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return append([]byte{1}, rawContext...), nil
+	return concat([]byte{1}, rawContext), nil
 }
 
 // UnmarshalOpener parses a serialized HPKE opener and returns the corresponding

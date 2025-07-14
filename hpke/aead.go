@@ -36,7 +36,11 @@ func (c *encdecContext) Export(exporterContext []byte, length uint) []byte {
 	if length > maxLength {
 		panic(fmt.Errorf("output length must be lesser than %v bytes", maxLength))
 	}
-	return c.suite.labeledExpand(c.exporterSecret, []byte("sec"),
+	if c.suite.kdfID.IsTwoStage() {
+		return c.suite.labeledExpand(c.exporterSecret, []byte("sec"),
+			exporterContext, uint16(length))
+	}
+	return c.suite.labeledDerive(c.exporterSecret, []byte("sec"),
 		exporterContext, uint16(length))
 }
 

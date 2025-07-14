@@ -13,8 +13,12 @@ import (
 
 	"github.com/cloudflare/circl/dh/x25519"
 	"github.com/cloudflare/circl/dh/x448"
+	"github.com/cloudflare/circl/internal/sha3"
 	"github.com/cloudflare/circl/kem"
 	"github.com/cloudflare/circl/kem/kyber/kyber768"
+	"github.com/cloudflare/circl/kem/mlkem/mlkem1024"
+	"github.com/cloudflare/circl/kem/mlkem/mlkem512"
+	"github.com/cloudflare/circl/kem/mlkem/mlkem768"
 	"github.com/cloudflare/circl/kem/xwing"
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/hkdf"
@@ -41,6 +45,13 @@ const (
 	KEM_X25519_KYBER768_DRAFT00 KEM = 0x30
 	// KEM_XWING is a hybrid KEM using X25519 and ML-KEM-768.
 	KEM_XWING KEM = 0x647a
+
+	KEM_MLKEM512  KEM = 0x0040
+	KEM_MLKEM768  KEM = 0x0041
+	KEM_MLKEM1024 KEM = 0x0042
+
+	KEM_QSF_P256_MLKEM768  = 0x0050
+	KEM_QSF_P384_MLKEM1024 = 0x0052
 )
 
 // IsValid returns true if the KEM identifier is supported by the HPKE package.
@@ -52,7 +63,10 @@ func (k KEM) IsValid() bool {
 		KEM_X25519_HKDF_SHA256,
 		KEM_X448_HKDF_SHA512,
 		KEM_X25519_KYBER768_DRAFT00,
-		KEM_XWING:
+		KEM_XWING,
+		KEM_MLKEM512,
+		KEM_MLKEM768,
+		KEM_MLKEM1024:
 		return true
 	default:
 		return false
@@ -77,6 +91,12 @@ func (k KEM) Scheme() kem.Scheme {
 		return hybridkemX25519Kyber768
 	case KEM_XWING:
 		return kemXwing
+	case KEM_MLKEM512:
+		return kemMLKEM512
+	case KEM_MLKEM768:
+		return kemMLKEM768
+	case KEM_MLKEM1024:
+		return kemMLKEM1024
 	default:
 		panic(ErrInvalidKEM)
 	}
@@ -86,19 +106,48 @@ type KDF uint16
 
 //nolint:golint,stylecheck
 const (
-	// KDF_HKDF_SHA256 is a KDF using HKDF with SHA-256.
+	// KDF_HKDF_SHA256 is a two-stage KDF using HKDF with SHA-256.
 	KDF_HKDF_SHA256 KDF = 0x01
-	// KDF_HKDF_SHA384 is a KDF using HKDF with SHA-384.
+	// KDF_HKDF_SHA384 is a two-stage KDF using HKDF with SHA-384.
 	KDF_HKDF_SHA384 KDF = 0x02
-	// KDF_HKDF_SHA512 is a KDF using HKDF with SHA-512.
+	// KDF_HKDF_SHA512 is a two-stage KDF using HKDF with SHA-512.
 	KDF_HKDF_SHA512 KDF = 0x03
+
+	// KDF_SHAKE128 is a one-stage KDF using SHAKE-128.
+	KDF_SHAKE128 = 0x10
+	// KDF_SHAKE256 is a one-stage KDF using SHAKE-256.
+	KDF_SHAKE256 = 0x11
+	// KDF_TurboSHAKE128 is a one-stage KDF using TurboSHAKE-128.
+	KDF_TurboSHAKE128 = 0x12
+	// KDF_TurboSHAKE256 is a one-stage KDF using TurboSHAKE-256.
+	KDF_TurboSHAKE256 = 0x13
 )
+
+func (k KDF) IsTwoStage() bool {
+	switch k {
+	case KDF_HKDF_SHA256,
+		KDF_HKDF_SHA384,
+		KDF_HKDF_SHA512:
+		return true
+	case KDF_SHAKE128,
+		KDF_TurboSHAKE128,
+		KDF_SHAKE256,
+		KDF_TurboSHAKE256:
+		return false
+	default:
+		panic(ErrInvalidKDF)
+	}
+}
 
 func (k KDF) IsValid() bool {
 	switch k {
 	case KDF_HKDF_SHA256,
 		KDF_HKDF_SHA384,
-		KDF_HKDF_SHA512:
+		KDF_HKDF_SHA512,
+		KDF_SHAKE128,
+		KDF_TurboSHAKE128,
+		KDF_SHAKE256,
+		KDF_TurboSHAKE256:
 		return true
 	default:
 		return false
@@ -106,7 +155,8 @@ func (k KDF) IsValid() bool {
 }
 
 // ExtractSize returns the size (in bytes) of the pseudorandom key produced
-// by KDF.Extract.
+// by KDF.Extract() for a two-stage KDF, and the minimum output length
+// for full security for KDF.Derive() for a one-stage KDF.
 func (k KDF) ExtractSize() int {
 	switch k {
 	case KDF_HKDF_SHA256:
@@ -115,6 +165,10 @@ func (k KDF) ExtractSize() int {
 		return crypto.SHA384.Size()
 	case KDF_HKDF_SHA512:
 		return crypto.SHA512.Size()
+	case KDF_SHAKE128, KDF_TurboSHAKE128:
+		return 32
+	case KDF_SHAKE256, KDF_TurboSHAKE256:
+		return 64
 	default:
 		panic(ErrInvalidKDF)
 	}
@@ -122,6 +176,8 @@ func (k KDF) ExtractSize() int {
 
 // Extract derives a pseudorandom key from a high-entropy, secret input and a
 // salt. The size of the output is determined by KDF.ExtractSize.
+//
+// Panics when called on a one-stage KDF.
 func (k KDF) Extract(secret, salt []byte) (pseudorandomKey []byte) {
 	return hkdf.Extract(k.hash(), secret, salt)
 }
@@ -130,6 +186,8 @@ func (k KDF) Extract(secret, salt []byte) (pseudorandomKey []byte) {
 // and an information string. Panics if the pseudorandom key is less
 // than N bytes, or if the output length is greater than 255*N bytes,
 // where N is the size returned by KDF.Extract function.
+//
+// Panics when called on a one-stage KDF.
 func (k KDF) Expand(pseudorandomKey, info []byte, outputLen uint) []byte {
 	extractSize := k.ExtractSize()
 	if len(pseudorandomKey) < extractSize {
@@ -146,6 +204,27 @@ func (k KDF) Expand(pseudorandomKey, info []byte, outputLen uint) []byte {
 		panic(err)
 	}
 	return output
+}
+
+// Derive derives a variable-length pseudorandom string from a
+// high-entropy, secret input.
+//
+// Panics when called on a two-stage KDF.
+func (k KDF) Derive(ikm []byte, l uint) []byte {
+	ret := make([]byte, l)
+	switch k {
+	case KDF_SHAKE128:
+		sha3.ShakeSum128(ret, ikm)
+	case KDF_SHAKE256:
+		sha3.ShakeSum256(ret, ikm)
+	case KDF_TurboSHAKE128:
+		sha3.TurboShakeSum128(ret, ikm, 0x1f)
+	case KDF_TurboSHAKE256:
+		sha3.TurboShakeSum256(ret, ikm, 0x1f)
+	default:
+		panic(ErrInvalidKDF)
+	}
+	return ret
 }
 
 func (k KDF) hash() func() hash.Hash {
@@ -243,6 +322,9 @@ var (
 	dhkemx25519hkdfsha256, dhkemx448hkdfsha512                    xKEM
 	hybridkemX25519Kyber768                                       hybridKEM
 	kemXwing                                                      genericNoAuthKEM
+	kemMLKEM512                                                   genericNoAuthKEM
+	kemMLKEM768                                                   genericNoAuthKEM
+	kemMLKEM1024                                                  genericNoAuthKEM
 )
 
 func init() {
@@ -284,4 +366,11 @@ func init() {
 
 	kemXwing.Scheme = xwing.Scheme()
 	kemXwing.name = "HPKE_KEM_XWING"
+
+	kemMLKEM512.Scheme = mlkem512.Scheme()
+	kemMLKEM512.name = "HPKE_KEM_MLKEM512"
+	kemMLKEM768.Scheme = mlkem768.Scheme()
+	kemMLKEM768.name = "HPKE_KEM_MLKEM768"
+	kemMLKEM1024.Scheme = mlkem1024.Scheme()
+	kemMLKEM1024.name = "HPKE_KEM_MLKEM1024"
 }
