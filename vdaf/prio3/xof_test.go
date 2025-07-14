@@ -13,12 +13,12 @@ import (
 )
 
 type VecXof struct {
-	Binder         Hex  `json:"binder"`
-	DerivedSeed    Hex  `json:"derived_seed"`
-	Dst            Hex  `json:"dst"`
-	ExpVecField128 Hex  `json:"expanded_vec_field128"`
-	Seed           Hex  `json:"seed"`
-	Length         uint `json:"length"`
+	Binder         test.HexBytes `json:"binder"`
+	DerivedSeed    test.HexBytes `json:"derived_seed"`
+	Dst            test.HexBytes `json:"dst"`
+	ExpVecField128 test.HexBytes `json:"expanded_vec_field128"`
+	Seed           test.HexBytes `json:"seed"`
+	Length         uint          `json:"length"`
 }
 
 func prepXof(

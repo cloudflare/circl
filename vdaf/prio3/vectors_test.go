@@ -49,12 +49,12 @@ type VectorBase[Measurement, Aggregate any] struct {
 }
 
 type Params[Aggregate any] struct {
-	AggParam  string    `json:"agg_param"`
-	AggResult Aggregate `json:"agg_result"`
-	AggShares []Hex     `json:"agg_shares"`
-	Ctx       Hex       `json:"ctx"`
-	VerifyKey Hex       `json:"verify_key"`
-	Shares    uint8     `json:"shares"`
+	AggParam  string          `json:"agg_param"`
+	AggResult Aggregate       `json:"agg_result"`
+	AggShares []test.HexBytes `json:"agg_shares"`
+	Ctx       test.HexBytes   `json:"ctx"`
+	VerifyKey test.HexBytes   `json:"verify_key"`
+	Shares    uint8           `json:"shares"`
 }
 
 type Prepare2[Measurement any] struct {
@@ -68,13 +68,13 @@ type Prepare[Measurement any] struct {
 }
 
 type PrepareParams struct {
-	InputShares  []Hex   `json:"input_shares"`
-	Nonce        Hex     `json:"nonce"`
-	OutShares    [][]Hex `json:"out_shares"`
-	PrepMessages []Hex   `json:"prep_messages"`
-	PrepShares   [][]Hex `json:"prep_shares"`
-	PublicShare  Hex     `json:"public_share"`
-	Rand         Hex     `json:"rand"`
+	InputShares  []test.HexBytes   `json:"input_shares"`
+	Nonce        test.HexBytes     `json:"nonce"`
+	OutShares    [][]test.HexBytes `json:"out_shares"`
+	PrepMessages []test.HexBytes   `json:"prep_messages"`
+	PrepShares   [][]test.HexBytes `json:"prep_shares"`
+	PublicShare  test.HexBytes     `json:"public_share"`
+	Rand         test.HexBytes     `json:"rand"`
 }
 
 func convert[Aggregate any](

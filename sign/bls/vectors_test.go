@@ -1,8 +1,8 @@
 package bls_test
 
 import (
-	"archive/zip"
 	"bufio"
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"strings"
@@ -26,42 +26,39 @@ func TestVectors(t *testing.T) {
 }
 
 func testVector[K bls.KeyGroup](t *testing.T, group, name string) {
-	nameFile := fmt.Sprintf("./testdata/sig_%v_basic_%v.txt.zip", group, name)
-	zipFile, err := zip.OpenReader(nameFile)
-	test.CheckNoErr(t, err, "error opening zipped file")
+	fileName := fmt.Sprintf("./testdata/sig_%v_basic_%v.txt.gz", group, name)
+	input, err := test.ReadGzip(fileName)
+	if err != nil {
+		t.Fatalf("File %v can not be read. Error: %v", fileName, err)
+	}
 
-	for _, f := range zipFile.File {
-		unzipped, err := f.Open()
-		test.CheckNoErr(t, err, "error opening unzipped file")
-
-		scanner := bufio.NewScanner(unzipped)
-		for scanner.Scan() {
-			line := scanner.Text()
-			inputs := strings.Split(line, " ")
-			if len(inputs) != 3 {
-				t.Fatalf("bad input length")
-			}
-
-			msg, err := hex.DecodeString(inputs[0])
-			test.CheckNoErr(t, err, "error decoding msg")
-			seed, err := hex.DecodeString(inputs[1])
-			test.CheckNoErr(t, err, "error decoding sk")
-			wantSig := inputs[2]
-
-			salt := []byte("BLS-SIG-KEYGEN-SALT-")
-			keyInfo := []byte("")
-			priv, err := bls.KeyGen[K](seed, salt, keyInfo)
-			test.CheckNoErr(t, err, "error generating priv key")
-
-			sig := bls.Sign(priv, msg)
-			gotSig := hex.EncodeToString(sig)
-
-			if gotSig != wantSig {
-				test.ReportError(t, gotSig, wantSig, msg)
-			}
-
-			pub := priv.PublicKey()
-			test.CheckOk(bls.Verify(pub, msg, sig), "cannot verify", t)
+	scanner := bufio.NewScanner(bytes.NewReader(input))
+	for scanner.Scan() {
+		line := scanner.Text()
+		inputs := strings.Split(line, " ")
+		if len(inputs) != 3 {
+			t.Fatalf("bad input length")
 		}
+
+		msg, err := hex.DecodeString(inputs[0])
+		test.CheckNoErr(t, err, "error decoding msg")
+		seed, err := hex.DecodeString(inputs[1])
+		test.CheckNoErr(t, err, "error decoding sk")
+		wantSig := inputs[2]
+
+		salt := []byte("BLS-SIG-KEYGEN-SALT-")
+		keyInfo := []byte("")
+		priv, err := bls.KeyGen[K](seed, salt, keyInfo)
+		test.CheckNoErr(t, err, "error generating priv key")
+
+		sig := bls.Sign(priv, msg)
+		gotSig := hex.EncodeToString(sig)
+
+		if gotSig != wantSig {
+			test.ReportError(t, gotSig, wantSig, msg)
+		}
+
+		pub := priv.PublicKey()
+		test.CheckOk(bls.Verify(pub, msg, sig), "cannot verify", t)
 	}
 }

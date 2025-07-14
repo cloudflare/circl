@@ -5,10 +5,8 @@ import (
 	"crypto"
 	_ "crypto/sha256"
 	_ "crypto/sha512"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -19,29 +17,28 @@ import (
 )
 
 func TestExpander(t *testing.T) {
-	fileNames, err := filepath.Glob("./testdata/*.json")
+	fileNames, err := filepath.Glob("./testdata/*.json.gz")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	for _, fileName := range fileNames {
-		f, err := os.Open(fileName)
+		input, err := test.ReadGzip(fileName)
 		if err != nil {
 			t.Fatal(err)
 		}
-		dec := json.NewDecoder(f)
-		var v vectorExpanderSuite
-		err = dec.Decode(&v)
-		if err != nil {
-			t.Fatal(err)
-		}
-		f.Close()
 
-		t.Run(v.Name+"/"+v.Hash, func(t *testing.T) { testExpander(t, &v) })
+		var v vectorExpanderSuite
+		err = json.Unmarshal(input, &v)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		t.Run(v.Name+"/"+v.Hash, v.testExpander)
 	}
 }
 
-func testExpander(t *testing.T, vs *vectorExpanderSuite) {
+func (vs *vectorExpanderSuite) testExpander(t *testing.T) {
 	var exp expander.Expander
 	switch vs.Hash {
 	case "SHA256":
@@ -63,11 +60,7 @@ func testExpander(t *testing.T, vs *vectorExpanderSuite) {
 		}
 
 		got := exp.Expand([]byte(v.Msg), uint(lenBytes))
-		want, err := hex.DecodeString(v.UniformBytes)
-		if err != nil {
-			t.Fatal(err)
-		}
-
+		want := v.UniformBytes
 		if !bytes.Equal(got, want) {
 			test.ReportError(t, got, want, i)
 		}
@@ -80,11 +73,11 @@ type vectorExpanderSuite struct {
 	Name  string `json:"name"`
 	K     uint   `json:"k"`
 	Tests []struct {
-		DstPrime     string `json:"DST_prime"`
-		Len          string `json:"len_in_bytes"`
-		Msg          string `json:"msg"`
-		MsgPrime     string `json:"msg_prime"`
-		UniformBytes string `json:"uniform_bytes"`
+		DstPrime     string        `json:"DST_prime"`
+		Len          string        `json:"len_in_bytes"`
+		Msg          string        `json:"msg"`
+		MsgPrime     string        `json:"msg_prime"`
+		UniformBytes test.HexBytes `json:"uniform_bytes"`
 	} `json:"tests"`
 }
 

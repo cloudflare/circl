@@ -25,18 +25,18 @@ type acvpKeyGenPrompt struct {
 }
 
 type keyGenInput struct {
-	SkSeed Hex `json:"skSeed"`
-	SkPrf  Hex `json:"skPrf"`
-	PkSeed Hex `json:"pkSeed"`
-	TcID   int `json:"tcId"`
+	SkSeed test.HexBytes `json:"skSeed"`
+	SkPrf  test.HexBytes `json:"skPrf"`
+	PkSeed test.HexBytes `json:"pkSeed"`
+	TcID   int           `json:"tcId"`
 }
 
 type acvpKeyGenResult struct {
 	TestGroups []struct {
 		Tests []struct {
-			Sk   Hex `json:"sk"`
-			Pk   Hex `json:"pk"`
-			TcID int `json:"tcId"`
+			Sk   test.HexBytes `json:"sk"`
+			Pk   test.HexBytes `json:"pk"`
+			TcID int           `json:"tcId"`
 		} `json:"tests"`
 		TgID int `json:"tgId"`
 	} `json:"testGroups"`
@@ -63,19 +63,19 @@ type sigGenParams struct {
 }
 
 type sigGenInput struct {
-	HashAlg string `json:"hashAlg,omitempty"`
-	Sk      Hex    `json:"sk"`
-	Msg     Hex    `json:"message"`
-	Ctx     Hex    `json:"context,omitempty"`
-	AddRand Hex    `json:"additionalRandomness,omitempty"`
-	TcID    int    `json:"tcId"`
+	HashAlg string        `json:"hashAlg,omitempty"`
+	Sk      test.HexBytes `json:"sk"`
+	Msg     test.HexBytes `json:"message"`
+	Ctx     test.HexBytes `json:"context,omitempty"`
+	AddRand test.HexBytes `json:"additionalRandomness,omitempty"`
+	TcID    int           `json:"tcId"`
 }
 
 type acvpSigGenResult struct {
 	TestGroups []struct {
 		Tests []struct {
-			Signature Hex `json:"signature"`
-			TcID      int `json:"tcId"`
+			Signature test.HexBytes `json:"signature"`
+			TcID      int           `json:"tcId"`
 		} `json:"tests"`
 		TgID int `json:"tgId"`
 	} `json:"testGroups"`
@@ -91,12 +91,12 @@ type acvpVerifyInput struct {
 }
 
 type verifyInput struct {
-	HashAlg string `json:"hashAlg,omitempty"`
-	Pk      Hex    `json:"pk"`
-	Msg     Hex    `json:"message"`
-	Sig     Hex    `json:"signature"`
-	Ctx     Hex    `json:"context,omitempty"`
-	TcID    int    `json:"tcId"`
+	HashAlg string        `json:"hashAlg,omitempty"`
+	Pk      test.HexBytes `json:"pk"`
+	Msg     test.HexBytes `json:"message"`
+	Sig     test.HexBytes `json:"signature"`
+	Ctx     test.HexBytes `json:"context,omitempty"`
+	TcID    int           `json:"tcId"`
 }
 
 type acvpVerifyResult struct {
@@ -331,17 +331,6 @@ func acvpVerify(t *testing.T, p *sigParams, in *verifyInput, want bool) {
 	if got != want {
 		test.ReportError(t, got, want)
 	}
-}
-
-type Hex []byte
-
-func (b *Hex) UnmarshalJSON(data []byte) (err error) {
-	var s string
-	err = json.Unmarshal(data, &s)
-	if err == nil {
-		*b, err = hex.DecodeString(s)
-	}
-	return
 }
 
 func readVector(t *testing.T, fileName string, vector interface{}) {

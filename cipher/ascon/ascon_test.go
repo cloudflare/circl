@@ -3,10 +3,8 @@ package ascon_test
 import (
 	"bytes"
 	"crypto/cipher"
-	hexa "encoding/hex"
+	"encoding/hex"
 	"encoding/json"
-	"io"
-	"os"
 	"strconv"
 	"sync"
 	"testing"
@@ -16,44 +14,25 @@ import (
 )
 
 type vector struct {
-	Count int `json:"Count"`
-	Key   hex `json:"Key"`
-	Nonce hex `json:"Nonce"`
-	PT    hex `json:"PT"`
-	AD    hex `json:"AD"`
-	CT    hex `json:"CT"`
+	Count int           `json:"Count"`
+	Key   test.HexBytes `json:"Key"`
+	Nonce test.HexBytes `json:"Nonce"`
+	PT    test.HexBytes `json:"PT"`
+	AD    test.HexBytes `json:"AD"`
+	CT    test.HexBytes `json:"CT"`
 }
 
-type hex []byte
-
-func (h *hex) UnmarshalJSON(data []byte) error {
-	var s string
-	if err := json.Unmarshal(data, &s); err != nil {
-		return err
-	}
-	decoded, err := hexa.DecodeString(s)
-	if err != nil {
-		return err
-	}
-	*h = hex(decoded)
-	return nil
-}
-
-func readFile(t *testing.T, fileName string) []vector {
-	jsonFile, err := os.Open(fileName)
-	if err != nil {
-		t.Fatalf("File %v can not be opened. Error: %v", fileName, err)
-	}
-	defer jsonFile.Close()
-	input, err := io.ReadAll(jsonFile)
+func readFile(t *testing.T, fileName string) (v []vector) {
+	input, err := test.ReadGzip(fileName)
 	if err != nil {
 		t.Fatalf("File %v can not be read. Error: %v", fileName, err)
 	}
-	var v []vector
+
 	err = json.Unmarshal(input, &v)
 	if err != nil {
 		t.Fatalf("File %v can not be loaded. Error: %v", fileName, err)
 	}
+
 	return v
 }
 
@@ -63,7 +42,7 @@ func TestAscon(t *testing.T) {
 	for _, mode := range []ascon.Mode{ascon.Ascon128, ascon.Ascon128a, ascon.Ascon80pq} {
 		name := mode.String()
 		t.Run(name, func(t *testing.T) {
-			vectors := readFile(t, "testdata/"+name+".json")
+			vectors := readFile(t, "testdata/"+name+".json.gz")
 			for _, v := range vectors {
 				a, err := ascon.New(v.Key, mode)
 				test.CheckNoErr(t, err, "failed to create cipher")
@@ -129,11 +108,11 @@ func TestBadInputs(t *testing.T) {
 }
 
 func TestAPI(t *testing.T) {
-	key, _ := hexa.DecodeString("000102030405060708090A0B0C0D0E0F")
-	nonce, _ := hexa.DecodeString("000102030405060708090A0B0C0D0E0F")
+	key, _ := hex.DecodeString("000102030405060708090A0B0C0D0E0F")
+	nonce, _ := hex.DecodeString("000102030405060708090A0B0C0D0E0F")
 	c, _ := ascon.New(key, ascon.Ascon128)
 	pt := []byte("helloworld")
-	ct, _ := hexa.DecodeString("d4e663d29cd60a693c20f890982e167d266f940b93b586945065")
+	ct, _ := hex.DecodeString("d4e663d29cd60a693c20f890982e167d266f940b93b586945065")
 
 	t.Run("append", func(t *testing.T) {
 		prefix := [5]byte{0x1F, 0x2F, 0x3F, 0x4F, 0x5F}
