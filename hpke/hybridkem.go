@@ -63,7 +63,7 @@ func (h hybridKEM) Decapsulate(skr kem.PrivateKey, ct []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	ss := append(ssA, ssB...)
+	ss := concat(ssA, ssB)
 
 	return ss, nil
 }
@@ -81,8 +81,8 @@ func (h hybridKEM) EncapsulateDeterministically(
 		return nil, nil, err
 	}
 
-	ct = append(encA, encB...)
-	ss = append(ssA, ssB...)
+	ct = concat(encA, encB)
+	ss = concat(ssA, ssB)
 
 	return ct, ss, nil
 }
@@ -106,7 +106,7 @@ func (k *hybridKEMPrivKey) MarshalBinary() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return append(skA, skB...), nil
+	return concat(skA, skB), nil
 }
 
 func (k *hybridKEMPrivKey) Equal(sk kem.PrivateKey) bool {
@@ -143,7 +143,7 @@ func (k hybridKEMPubKey) MarshalBinary() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return append(pkA, pkB...), nil
+	return concat(pkA, pkB), nil
 }
 
 func (k *hybridKEMPubKey) Equal(pk kem.PublicKey) bool {

@@ -17,6 +17,7 @@ import (
 	"crypto/rand"
 	"encoding"
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/cloudflare/circl/kem"
@@ -216,7 +217,7 @@ func (s *Sender) allSetup(rnd io.Reader) ([]byte, Sealer, error) {
 	seed := make([]byte, scheme.EncapsulationSeedSize())
 	_, err := io.ReadFull(rnd, seed)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("encapsulation seed: %w", err)
 	}
 
 	var enc, ss []byte

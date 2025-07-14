@@ -51,12 +51,12 @@ func (k kemBase) extractExpand(dh, kemCtx []byte) []byte {
 
 func (k kemBase) labeledExtract(salt, label, info []byte) []byte {
 	suiteID := k.getSuiteID()
-	labeledIKM := append(append(append(append(
-		make([]byte, 0, len(versionLabel)+len(suiteID)+len(label)+len(info)),
-		versionLabel...),
-		suiteID[:]...),
-		label...),
-		info...)
+	labeledIKM := concat(
+		[]byte(versionLabel),
+		suiteID[:],
+		label,
+		info,
+	)
 	return hkdf.Extract(k.New, labeledIKM, salt)
 }
 
@@ -68,11 +68,13 @@ func (k kemBase) labeledExpand(prk, label, info []byte, l uint16) []byte {
 		2+len(versionLabel)+len(suiteID)+len(label)+len(info),
 	)
 	binary.BigEndian.PutUint16(labeledInfo[0:2], l)
-	labeledInfo = append(append(append(append(labeledInfo,
-		versionLabel...),
-		suiteID[:]...),
-		label...),
-		info...)
+	labeledInfo = concat(
+		labeledInfo,
+		[]byte(versionLabel),
+		suiteID[:],
+		label,
+		info,
+	)
 	b := make([]byte, l)
 	rd := hkdf.Expand(k.New, prk, labeledInfo)
 	if _, err := io.ReadFull(rd, b); err != nil {
@@ -152,7 +154,7 @@ func (k dhKemBase) authEncap(
 	if err != nil {
 		return nil, nil, err
 	}
-	kemCtx = append(kemCtx, pkSm...)
+	kemCtx = concat(kemCtx, pkSm)
 
 	ss = k.extractExpand(dh, kemCtx)
 	return enc, ss, nil
@@ -177,7 +179,7 @@ func (k dhKemBase) coreEncap(
 	if err != nil {
 		return nil, nil, err
 	}
-	kemCtx = append(append([]byte{}, enc...), pkRm...)
+	kemCtx = concat(enc, pkRm)
 
 	return enc, kemCtx, nil
 }
@@ -212,7 +214,7 @@ func (k dhKemBase) AuthDecapsulate(
 	if err != nil {
 		return nil, err
 	}
-	kemCtx = append(kemCtx, pkSm...)
+	kemCtx = concat(kemCtx, pkSm)
 	return k.extractExpand(dh, kemCtx), nil
 }
 
@@ -237,5 +239,5 @@ func (k dhKemBase) coreDecap(
 		return nil, err
 	}
 
-	return append(append([]byte{}, ct...), pkRm...), nil
+	return concat(ct, pkRm), nil
 }
