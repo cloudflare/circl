@@ -61,10 +61,6 @@ linters-settings:
     enable-all: true
     disable:
       - fieldalignment
-  staticcheck:
-    # TODO: replace deprecated elliptic.Marshal, elliptic.GenerateKey,
-    # elliptic.Unmarshal, params.ScalarBaseMult before re-enabling SA1019.
-    checks: ["*", "-SA1019"]
   gosec:
     excludes:
       - G115
