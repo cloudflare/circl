@@ -9,6 +9,9 @@ import (
 
 	"github.com/cloudflare/circl/sign"
 	"github.com/cloudflare/circl/sign/schemes"
+
+	"golang.org/x/crypto/cryptobyte"
+	casn1 "golang.org/x/crypto/cryptobyte/asn1"
 )
 
 var (
@@ -94,6 +97,11 @@ func UnmarshalPEMPrivateKey(data []byte) (sign.PrivateKey, error) {
 	return UnmarshalPKIXPrivateKey(block.Bytes)
 }
 
+func isMLDSA(scheme sign.Scheme) bool {
+	name := scheme.Name()
+	return name == "ML-DSA-44" || name == "ML-DSA-65" || name == "ML-DSA-87"
+}
+
 func UnmarshalPKIXPrivateKey(data []byte) (sign.PrivateKey, error) {
 	var pkix pkixPrivKey
 	if rest, err := asn1.Unmarshal(data, &pkix); err != nil {
@@ -105,6 +113,56 @@ func UnmarshalPKIXPrivateKey(data []byte) (sign.PrivateKey, error) {
 	if scheme == nil {
 		return nil, errors.New("unsupported public key algorithm")
 	}
+
+	// ML-DSA unfortunately has a complex private key format, which we
+	// handle here separately. If future schemes require custom parsing
+	// as well, we can introduce an interface for that.
+	if isMLDSA(scheme) {
+		// Handle case of seed-only private key
+		ss := cryptobyte.String(pkix.PrivateKey)
+		tag := casn1.Tag(0).ContextSpecific()
+		if ss.PeekASN1Tag(tag) {
+			var ss2 cryptobyte.String
+			ss.ReadASN1(&ss2, tag)
+			if !ss.Empty() {
+				return nil, errors.New("trailing data")
+			}
+			if len(ss2) != scheme.SeedSize() {
+				return nil, errors.New("incorrect seed size")
+			}
+			_, sk := scheme.DeriveKey(ss2)
+			return sk, nil
+		}
+
+		// We don't support expanded-only private keys, so the only remaining
+		// option is a SEQUENCE of both seed and expanded private key.
+		if ss.PeekASN1Tag(casn1.OCTET_STRING) {
+			return nil, errors.New("require seed in private key")
+		}
+
+		var both struct {
+			Seed     []byte
+			Expanded []byte
+		}
+		if rest, err := asn1.Unmarshal(pkix.PrivateKey, &both); err != nil {
+			return nil, err
+		} else if len(rest) > 0 {
+			return nil, errors.New("trailing data")
+		}
+		if len(both.Seed) != scheme.SeedSize() {
+			return nil, errors.New("incorrect seed size")
+		}
+		_, sk := scheme.DeriveKey(both.Seed)
+		sk2, err := scheme.UnmarshalBinaryPrivateKey(both.Expanded)
+		if err != nil {
+			return nil, err
+		}
+		if !sk2.Equal(sk) {
+			return nil, errors.New("mismatching seed and expanded private key")
+		}
+		return sk, nil
+	}
+
 	var sk []byte
 	if rest, err := asn1.Unmarshal(pkix.PrivateKey, &sk); err != nil {
 		return nil, err
@@ -161,17 +219,38 @@ func MarshalPEMPrivateKey(sk sign.PrivateKey) ([]byte, error) {
 }
 
 func MarshalPKIXPrivateKey(sk sign.PrivateKey) ([]byte, error) {
-	data, err := sk.MarshalBinary()
-	if err != nil {
-		return nil, err
-	}
-
-	data, err = asn1.Marshal(data)
-	if err != nil {
-		return nil, err
-	}
-
+	var (
+		data []byte
+		err  error
+	)
 	scheme := sk.Scheme()
+
+	// ML-DSA is special. See comment in UnmarshalPKIXPrivateKey().
+	if isMLDSA(scheme) {
+		seed := sk.(sign.Seeded).Seed()
+		if seed == nil {
+			return nil, errors.New("seed not retained in ML-DSA private key")
+		}
+		var b cryptobyte.Builder
+		b.AddASN1(casn1.Tag(0).ContextSpecific(), func(b *cryptobyte.Builder) {
+			b.AddBytes(seed)
+		})
+		data, err = b.Bytes()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		data, err = sk.MarshalBinary()
+		if err != nil {
+			return nil, err
+		}
+
+		data, err = asn1.Marshal(data)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return asn1.Marshal(pkixPrivKey{
 		0,
 		pkix.AlgorithmIdentifier{
