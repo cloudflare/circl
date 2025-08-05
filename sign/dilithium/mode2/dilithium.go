@@ -141,6 +141,11 @@ func (sk *PrivateKey) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
+// Returns seed used to generate PrivateKey, and nil if not retained.
+func (sk *PrivateKey) Seed() []byte {
+	return (*internal.PrivateKey)(sk).Seed()
+}
+
 // Sign signs the given message.
 //
 // opts.HashFunc() must return zero, which can be achieved by passing
