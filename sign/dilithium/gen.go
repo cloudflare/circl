@@ -129,7 +129,7 @@ var (
 			Gamma2:        (params.Q - 1) / 88,
 			TRSize:        64,
 			CTildeSize:    32,
-			Oid:           asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 17},
+			Oid:           asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 17},
 		},
 		{
 			Name:          "ML-DSA-65",
@@ -143,7 +143,7 @@ var (
 			Gamma2:        (params.Q - 1) / 32,
 			TRSize:        64,
 			CTildeSize:    48,
-			Oid:           asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 18},
+			Oid:           asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 18},
 		},
 		{
 			Name:          "ML-DSA-87",
@@ -157,7 +157,7 @@ var (
 			Gamma2:        (params.Q - 1) / 32,
 			TRSize:        64,
 			CTildeSize:    64,
-			Oid:           asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 19},
+			Oid:           asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 19},
 		},
 	}
 	TemplateWarning = "// Code generated from"

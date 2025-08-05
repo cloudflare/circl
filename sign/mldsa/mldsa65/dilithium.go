@@ -263,7 +263,7 @@ func (*scheme) SeedSize() int       { return SeedSize }
 
 // TODO TLSIdentifier()
 func (*scheme) Oid() asn1.ObjectIdentifier {
-	return asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 18}
+	return asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 18}
 }
 
 func (*scheme) SupportsContext() bool {
