@@ -197,6 +197,11 @@ func (sk *PrivateKey) UnmarshalBinary(data []byte) error {
 	return nil
 }
 
+// Returns seed used to generate PrivateKey, and nil if not retained.
+func (sk *PrivateKey) Seed() []byte {
+	return (*internal.PrivateKey)(sk).Seed()
+}
+
 // Sign signs the given message.
 //
 // opts.HashFunc() must return zero, which can be achieved by passing
@@ -263,7 +268,7 @@ func (*scheme) SeedSize() int       { return SeedSize }
 
 // TODO TLSIdentifier()
 func (*scheme) Oid() asn1.ObjectIdentifier {
-	return asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 18}
+	return asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, 18}
 }
 
 func (*scheme) SupportsContext() bool {
