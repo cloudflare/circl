@@ -123,7 +123,9 @@ func UnmarshalPKIXPrivateKey(data []byte) (sign.PrivateKey, error) {
 		tag := casn1.Tag(0).ContextSpecific()
 		if ss.PeekASN1Tag(tag) {
 			var ss2 cryptobyte.String
-			ss.ReadASN1(&ss2, tag)
+			if !ss.ReadASN1(&ss2, tag) {
+				return nil, errors.New("truncated seed")
+			}
 			if !ss.Empty() {
 				return nil, errors.New("trailing data")
 			}

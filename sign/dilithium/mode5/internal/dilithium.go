@@ -246,7 +246,9 @@ func (sk *PrivateKey) Seed() []byte {
 	if !sk.seedSet {
 		return nil
 	}
-	return sk.seed[:]
+	var ret [common.SeedSize]byte
+	copy(ret[:], sk.seed[:])
+	return ret[:]
 }
 
 // Computes t0 and t1 from sk.s1h, sk.s2 and sk.A.
