@@ -1,18 +1,7 @@
----
+version: "2"
 linters:
-  disable-all: true
+  default: none
   enable:
-    # - lll
-    # - gocritic
-    # - gocognit
-    # - gci         (deprecated since v1.30.0)
-    # - interfacer  (deprecated since v1.38.0)
-    # - scopelint   (deprecated since v1.39.0)
-    # - golint      (deprecated since v1.41.0)
-    # - structcheck (deprecated since v1.49.0)
-    # - varcheck    (deprecated since v1.49.0)
-    # - deadcode    (deprecated since v1.49.0)
-    # - exportloopref (deprecated since v1.60.2)
     - bodyclose
     - copyloopvar
     - depguard
@@ -22,49 +11,68 @@ linters:
     - funlen
     - goconst
     - gocyclo
-    - gofmt
-    - gofumpt
-    - goimports
     - gosec
-    - gosimple
     - govet
     - ineffassign
     - misspell
     - nakedret
     - staticcheck
-    - stylecheck
-    - typecheck
     - unconvert
     - unparam
     - unused
     - whitespace
-
-linters-settings:
-  depguard:
-    rules:
-      main:
-        files:
-          - $all
-        allow:
-          - $gostd
-          - golang.org/x
-          - github.com/bwesterb/go-ristretto
-          - github.com/cloudflare/circl
-  funlen:
-    lines: 120
-    statements: 80
-  nestif:
-    min-complexity: 6
-  goconst:
-    min-occurrences: 4
-  govet:
-    enable-all: true
-    disable:
-      - fieldalignment
-  gosec:
-    excludes:
-      - G115
-
+  settings:
+    depguard:
+      rules:
+        main:
+          files:
+            - $all
+          allow:
+            - $gostd
+            - golang.org/x
+            - github.com/bwesterb/go-ristretto
+            - github.com/cloudflare/circl
+    funlen:
+      lines: 120
+      statements: 80
+    goconst:
+      min-occurrences: 4
+    gosec:
+      excludes:
+        - G115
+    govet:
+      disable:
+        - fieldalignment
+      enable-all: true
+    nestif:
+      min-complexity: 6
+    staticcheck:
+      checks:
+        # Don't bother omitting embedded fields from selector expressions
+        # https://staticcheck.dev/docs/checks/#QF1008
+        - -QF1008
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
+formatters:
+  enable:
+    - gofmt
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
