@@ -1,5 +1,5 @@
-//go:build !amd64 || purego
-// +build !amd64 purego
+//go:build (!amd64 && !arm64) || purego
+// +build !amd64,!arm64 purego
 
 package dilithium
 
@@ -78,4 +78,12 @@ func (p *Poly) Exceeds(bound uint32) bool {
 // So it requires the coefficients of p  to be less than 2³²⁻ᴰ.
 func (p *Poly) MulBy2toD(q *Poly) {
 	p.mulBy2toDGeneric(q)
+}
+
+// Splits p into p1 and p0 such that [i]p1 * 2ᴰ + [i]p0 = [i]p
+// with -2ᴰ⁻¹ < [i]p0 ≤ 2ᴰ⁻¹.  Returns p0 + Q and p1.
+//
+// Requires the coefficients of p to be normalized.
+func (p *Poly) Power2Round(p0PlusQ, p1 *Poly) {
+	p.power2RoundGeneric(p0PlusQ, p1)
 }
