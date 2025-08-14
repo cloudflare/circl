@@ -109,6 +109,22 @@ func TestMulBy2ToDAgainstGeneric(t *testing.T) {
 	}
 }
 
+func TestPower2RoundAgainstGeneric(t *testing.T) {
+	for k := 0; k < 1000; k++ {
+		var p01, p02, p11, p12, q Poly
+		q.RandLe2Q()
+
+		q.power2RoundGeneric(&p01, &p11)
+		q.Power2Round(&p02, &p12)
+		if p01 != p02 {
+			t.Fatalf("Power2Round(%v) p0PlusQ =\n%v\n!= %v", q, p01, p02)
+		}
+		if p11 != p12 {
+			t.Fatalf("Power2Round(%v) p1 =\n%v\n!= %v", q, p11, p12)
+		}
+	}
+}
+
 func BenchmarkNormalizeGeneric(b *testing.B) {
 	var p Poly
 	for i := 0; i < b.N; i++ {

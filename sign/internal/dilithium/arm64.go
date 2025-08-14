@@ -1,5 +1,5 @@
-//go:build (!amd64 && !arm64) || purego
-// +build !amd64,!arm64 purego
+//go:build arm64 && !purego
+// +build arm64,!purego
 
 package dilithium
 
@@ -9,7 +9,7 @@ package dilithium
 // by 2*Q.  The resulting coefficients are again in Montgomery representation,
 // but are only bounded bt 18*Q.
 func (p *Poly) NTT() {
-	p.nttGeneric()
+	polyNTT(p, &Zetas)
 }
 
 // Execute an in-place inverse NTT and multiply by Montgomery factor R
@@ -18,7 +18,7 @@ func (p *Poly) NTT() {
 // by 2*Q.  The resulting coefficients are again in Montgomery representation
 // and bounded by 2*Q.
 func (p *Poly) InvNTT() {
-	p.invNttGeneric()
+	polyInvNTT(p, &InvZetas)
 }
 
 // Sets p to the polynomial whose coefficients are the pointwise multiplication
@@ -27,12 +27,14 @@ func (p *Poly) InvNTT() {
 // Assumes a and b are in Montgomery form and that the pointwise product
 // of each coefficient is below 2³² q.
 func (p *Poly) MulHat(a, b *Poly) {
+	// for now not implemented in assembly due to the assumption arm64 does not support 64-bit multiplication on vector register
+	// if assumption is wrong, please feel free to provide an implementation
 	p.mulHatGeneric(a, b)
 }
 
 // Sets p to a + b.  Does not normalize polynomials.
 func (p *Poly) Add(a, b *Poly) {
-	p.addGeneric(a, b)
+	polyAdd(p, a, b)
 }
 
 // Sets p to a - b.
@@ -40,29 +42,33 @@ func (p *Poly) Add(a, b *Poly) {
 // Warning: assumes coefficients of b are less than 2q.
 // Sets p to a + b.  Does not normalize polynomials.
 func (p *Poly) Sub(a, b *Poly) {
-	p.subGeneric(a, b)
+	polySub(p, a, b)
 }
 
 // Writes p whose coefficients are in [0, 16) to buf, which must be of
 // length N/2.
 func (p *Poly) PackLe16(buf []byte) {
-	p.packLe16Generic(buf)
+	// early bounds so we don't have to in assembly code
+	// compiler may inline this func, so it may remove the bounds check
+	_ = buf[PolyLe16Size-1]
+
+	polyPackLe16(p, buf)
 }
 
 // Reduces each of the coefficients to <2q.
 func (p *Poly) ReduceLe2Q() {
-	p.reduceLe2QGeneric()
+	polyReduceLe2Q(p)
 }
 
 // Reduce each of the coefficients to <q.
 func (p *Poly) Normalize() {
-	p.normalizeGeneric()
+	polyNormalize(p)
 }
 
 // Normalize the coefficients in this polynomial assuming they are already
 // bounded by 2q.
 func (p *Poly) NormalizeAssumingLe2Q() {
-	p.normalizeAssumingLe2QGeneric()
+	polyNormalizeAssumingLe2Q(p)
 }
 
 // Checks whether the "supnorm" (see sec 2.1 of the spec) of p is equal
@@ -70,14 +76,14 @@ func (p *Poly) NormalizeAssumingLe2Q() {
 //
 // Requires the coefficients of p to be normalized.
 func (p *Poly) Exceeds(bound uint32) bool {
-	return p.exceedsGeneric(bound)
+	return polyExceeds(p, bound)
 }
 
 // Sets p to 2ᵈ q without reducing.
 //
 // So it requires the coefficients of p  to be less than 2³²⁻ᴰ.
 func (p *Poly) MulBy2toD(q *Poly) {
-	p.mulBy2toDGeneric(q)
+	polyMulBy2toD(p, q)
 }
 
 // Splits p into p1 and p0 such that [i]p1 * 2ᴰ + [i]p0 = [i]p
@@ -85,5 +91,38 @@ func (p *Poly) MulBy2toD(q *Poly) {
 //
 // Requires the coefficients of p to be normalized.
 func (p *Poly) Power2Round(p0PlusQ, p1 *Poly) {
-	p.power2RoundGeneric(p0PlusQ, p1)
+	polyPower2Round(p, p0PlusQ, p1)
 }
+
+//go:noescape
+func polyAdd(p, a, b *Poly)
+
+//go:noescape
+func polySub(p, a, b *Poly)
+
+//go:noescape
+func polyMulBy2toD(p, q *Poly)
+
+//go:noescape
+func polyPackLe16(p *Poly, buf []byte)
+
+//go:noescape
+func polyNormalizeAssumingLe2Q(p *Poly)
+
+//go:noescape
+func polyNTT(p *Poly, zetas *[N]uint32)
+
+//go:noescape
+func polyInvNTT(p *Poly, invZetas *[N]uint32)
+
+//go:noescape
+func polyPower2Round(p, p0PlusQ, p1 *Poly)
+
+//go:noescape
+func polyReduceLe2Q(p *Poly)
+
+//go:noescape
+func polyNormalize(p *Poly)
+
+//go:noescape
+func polyExceeds(p *Poly, bound uint32) bool
