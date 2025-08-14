@@ -1,5 +1,5 @@
-//go:build (!amd64 && !arm64) || purego
-// +build !amd64,!arm64 purego
+//go:build arm64 && !purego
+// +build arm64,!purego
 
 package dilithium
 
@@ -32,7 +32,7 @@ func (p *Poly) MulHat(a, b *Poly) {
 
 // Sets p to a + b.  Does not normalize polynomials.
 func (p *Poly) Add(a, b *Poly) {
-	p.addGeneric(a, b)
+	polyAdd(p, a, b)
 }
 
 // Sets p to a - b.
@@ -79,3 +79,6 @@ func (p *Poly) Exceeds(bound uint32) bool {
 func (p *Poly) MulBy2toD(q *Poly) {
 	p.mulBy2toDGeneric(q)
 }
+
+//go:noescape
+func polyAdd(p, a, b *Poly)
