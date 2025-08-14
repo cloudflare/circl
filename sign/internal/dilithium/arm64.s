@@ -8,7 +8,7 @@ TEXT ·polyAdd(SB), NOSPLIT|NOFRAME, $0-24
     MOVD    a+8(FP), R1
     MOVD    b+16(FP), R2
 
-    // loop counter (each iterations processes 16 elements so 16 * 16 = 256 = N)
+    // loop counter (each iteration processes 16 elements so 16 * 16 = 256 = N)
     // manually unrolling could also be done, for now skipped
     MOVW    $16, R3
 
