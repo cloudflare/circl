@@ -1,3 +1,6 @@
+//go:build arm64 && !purego
+// +build arm64,!purego
+
 package dilithium
 
 import (
