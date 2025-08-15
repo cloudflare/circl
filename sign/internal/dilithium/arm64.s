@@ -2,8 +2,8 @@
 
 #include "textflag.h"
 
-// func polyAdd(p, a, b *Poly)
-TEXT ·polyAdd(SB), NOSPLIT|NOFRAME, $0-24
+// func polyAddARM64(p, a, b *Poly)
+TEXT ·polyAddARM64(SB), NOSPLIT|NOFRAME, $0-24
     MOVD    p+0(FP), R0
     MOVD    a+8(FP), R1
     MOVD    b+16(FP), R2
@@ -29,8 +29,8 @@ loop:
     RET
 
 
-// func polyPackLe16(p *Poly, buf []byte)
-TEXT ·polyPackLe16(SB), NOSPLIT|NOFRAME, $0-32
+// func polyPackLe16ARM64(p *Poly, buf []byte)
+TEXT ·polyPackLe16ARM64(SB), NOSPLIT|NOFRAME, $0-32
     MOVD    p+0(FP), R0
     MOVD    buf+8(FP), R1
 

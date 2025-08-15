@@ -32,7 +32,7 @@ func (p *Poly) MulHat(a, b *Poly) {
 
 // Sets p to a + b.  Does not normalize polynomials.
 func (p *Poly) Add(a, b *Poly) {
-	polyAdd(p, a, b)
+	polyAddARM64(p, a, b)
 }
 
 // Sets p to a - b.
@@ -50,7 +50,7 @@ func (p *Poly) PackLe16(buf []byte) {
 	// compiler may inline this func, so it may remove the bounds check
 	_ = buf[PolyLe16Size-1]
 
-	polyPackLe16(p, buf)
+	polyPackLe16ARM64(p, buf)
 }
 
 // Reduces each of the coefficients to <2q.
@@ -85,7 +85,7 @@ func (p *Poly) MulBy2toD(q *Poly) {
 }
 
 //go:noescape
-func polyAdd(p, a, b *Poly)
+func polyAddARM64(p, a, b *Poly)
 
 //go:noescape
-func polyPackLe16(p *Poly, buf []byte)
+func polyPackLe16ARM64(p *Poly, buf []byte)
