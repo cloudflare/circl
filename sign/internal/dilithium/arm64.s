@@ -1,5 +1,6 @@
 //go:build arm64 && !purego
 
+#include "go_asm.h"
 #include "textflag.h"
 
 // func polyAddARM64(p, a, b *Poly)
@@ -8,9 +9,7 @@ TEXT ·polyAddARM64(SB), NOSPLIT|NOFRAME, $0-24
     MOVD    a+8(FP), R1
     MOVD    b+16(FP), R2
 
-    // loop counter (each iteration processes 16 elements so 16 * 16 = 256 = N)
-    // manually unrolling could also be done, for now skipped
-    MOVW    $16, R3
+    MOVW    $(const_N / 16), R3 // loop iterations (for each iteration we emit 16 elements)
 
 loop:
     VLD1.P  (64)(R1), [V0.S4, V1.S4, V2.S4, V3.S4]
@@ -34,7 +33,7 @@ TEXT ·polyPackLe16ARM64(SB), NOSPLIT|NOFRAME, $0-16
     MOVD    p+0(FP), R0
     MOVD    buf+8(FP), R1
 
-    MOVW    $8, R3 // loop counter
+    MOVW    $(const_PolyLe16Size / 16), R3 // loop iterations (for each iteration we emit 16 elements)
     VMOVQ   $0x1c0c180814041000, $0x3c2c382834243020, V15 // value explained at VTBL call
 
     // on the first iteration we have:
