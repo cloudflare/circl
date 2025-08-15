@@ -16,12 +16,12 @@ loop:
     VLD1.P  (64)(R1), [V0.S4, V1.S4, V2.S4, V3.S4]
     VLD1.P  (64)(R2), [V4.S4, V5.S4, V6.S4, V7.S4]
 
-    VADD    V4.S4, V0.S4, V8.S4
-    VADD    V5.S4, V1.S4, V9.S4
-    VADD    V6.S4, V2.S4, V10.S4
-    VADD    V7.S4, V3.S4, V11.S4
+    VADD    V4.S4, V0.S4, V0.S4
+    VADD    V5.S4, V1.S4, V1.S4
+    VADD    V6.S4, V2.S4, V2.S4
+    VADD    V7.S4, V3.S4, V3.S4
 
-    VST1.P  [V8.S4, V9.S4, V10.S4, V11.S4], (64)(R0)
+    VST1.P  [V0.S4, V1.S4, V2.S4, V3.S4], (64)(R0)
 
     SUBS    $1, R3, R3
     BGT     loop
