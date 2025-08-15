@@ -32,7 +32,7 @@ func (p *Poly) MulHat(a, b *Poly) {
 
 // Sets p to a + b.  Does not normalize polynomials.
 func (p *Poly) Add(a, b *Poly) {
-	polyAdd(p, a, b)
+	polyAddARM64(p, a, b)
 }
 
 // Sets p to a - b.
@@ -46,7 +46,11 @@ func (p *Poly) Sub(a, b *Poly) {
 // Writes p whose coefficients are in [0, 16) to buf, which must be of
 // length N/2.
 func (p *Poly) PackLe16(buf []byte) {
-	p.packLe16Generic(buf)
+	// early bounds so we don't have to in assembly code
+	// compiler may inline this func, so it may remove the bounds check
+	_ = buf[PolyLe16Size-1]
+
+	polyPackLe16ARM64(p, &buf[0])
 }
 
 // Reduces each of the coefficients to <2q.
@@ -90,4 +94,7 @@ func (p *Poly) Power2Round(p0PlusQ, p1 *Poly) {
 }
 
 //go:noescape
-func polyAdd(p, a, b *Poly)
+func polyAddARM64(p, a, b *Poly)
+
+//go:noescape
+func polyPackLe16ARM64(p *Poly, buf *byte)
