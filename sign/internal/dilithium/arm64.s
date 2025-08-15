@@ -29,8 +29,8 @@ loop:
     RET
 
 
-// func polyPackLe16ARM64(p *Poly, buf []byte)
-TEXT ·polyPackLe16ARM64(SB), NOSPLIT|NOFRAME, $0-32
+// func polyPackLe16ARM64(p *Poly, buf *byte)
+TEXT ·polyPackLe16ARM64(SB), NOSPLIT|NOFRAME, $0-16
     MOVD    p+0(FP), R0
     MOVD    buf+8(FP), R1
 

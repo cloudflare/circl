@@ -50,7 +50,7 @@ func (p *Poly) PackLe16(buf []byte) {
 	// compiler may inline this func, so it may remove the bounds check
 	_ = buf[PolyLe16Size-1]
 
-	polyPackLe16ARM64(p, buf)
+	polyPackLe16ARM64(p, &buf[0])
 }
 
 // Reduces each of the coefficients to <2q.
@@ -88,4 +88,4 @@ func (p *Poly) MulBy2toD(q *Poly) {
 func polyAddARM64(p, a, b *Poly)
 
 //go:noescape
-func polyPackLe16ARM64(p *Poly, buf []byte)
+func polyPackLe16ARM64(p *Poly, buf *byte)
