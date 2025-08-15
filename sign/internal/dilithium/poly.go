@@ -74,7 +74,7 @@ func (p *Poly) exceedsGeneric(bound uint32) bool {
 // with -2ᴰ⁻¹ < [i]p0 ≤ 2ᴰ⁻¹.  Returns p0 + Q and p1.
 //
 // Requires the coefficients of p to be normalized.
-func (p *Poly) Power2Round(p0PlusQ, p1 *Poly) {
+func (p *Poly) power2RoundGeneric(p0PlusQ, p1 *Poly) {
 	for i := 0; i < N; i++ {
 		p0PlusQ[i], p1[i] = power2round(p[i])
 	}
