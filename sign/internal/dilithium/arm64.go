@@ -46,7 +46,11 @@ func (p *Poly) Sub(a, b *Poly) {
 // Writes p whose coefficients are in [0, 16) to buf, which must be of
 // length N/2.
 func (p *Poly) PackLe16(buf []byte) {
-	p.packLe16Generic(buf)
+	// early bounds so we don't have to in assembly code
+	// compiler may inline this func, so it may remove the bounds check
+	_ = buf[PolyLe16Size-1]
+
+	polyPackLe16(p, buf)
 }
 
 // Reduces each of the coefficients to <2q.
@@ -82,3 +86,6 @@ func (p *Poly) MulBy2toD(q *Poly) {
 
 //go:noescape
 func polyAdd(p, a, b *Poly)
+
+//go:noescape
+func polyPackLe16(p *Poly, buf []byte)
