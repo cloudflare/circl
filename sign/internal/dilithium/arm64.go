@@ -80,5 +80,14 @@ func (p *Poly) MulBy2toD(q *Poly) {
 	p.mulBy2toDGeneric(q)
 }
 
+// Splits p into p1 and p0 such that [i]p1 * 2ᴰ + [i]p0 = [i]p
+// with -2ᴰ⁻¹ < [i]p0 ≤ 2ᴰ⁻¹.  Returns p0 + Q and p1.
+//
+// Requires the coefficients of p to be normalized.
+func (p *Poly) Power2Round(p0PlusQ, p1 *Poly) {
+	// implementation in assembly follows
+	p.power2RoundGeneric(p0PlusQ, p1)
+}
+
 //go:noescape
 func polyAdd(p, a, b *Poly)
