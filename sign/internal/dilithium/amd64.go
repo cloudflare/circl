@@ -158,6 +158,5 @@ func (p *Poly) MulBy2toD(q *Poly) {
 //
 // Requires the coefficients of p to be normalized.
 func (p *Poly) Power2Round(p0PlusQ, p1 *Poly) {
-	// feel free to provide an implementation in assembly
 	p.power2RoundGeneric(p0PlusQ, p1)
 }
