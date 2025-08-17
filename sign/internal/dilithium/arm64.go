@@ -40,7 +40,7 @@ func (p *Poly) Add(a, b *Poly) {
 // Warning: assumes coefficients of b are less than 2q.
 // Sets p to a + b.  Does not normalize polynomials.
 func (p *Poly) Sub(a, b *Poly) {
-	p.subGeneric(a, b)
+	polySubARM64(p, a, b)
 }
 
 // Writes p whose coefficients are in [0, 16) to buf, which must be of
@@ -101,3 +101,6 @@ func polyPackLe16ARM64(p *Poly, buf *byte)
 
 //go:noescape
 func polyMulBy2toDARM64(p, q *Poly)
+
+//go:noescape
+func polySubARM64(p, a, b *Poly)
