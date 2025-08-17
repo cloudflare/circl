@@ -74,7 +74,7 @@ func (p *Poly) NormalizeAssumingLe2Q() {
 //
 // Requires the coefficients of p to be normalized.
 func (p *Poly) Exceeds(bound uint32) bool {
-	return p.exceedsGeneric(bound)
+	return polyExceedsARM64(p, bound)
 }
 
 // Sets p to 2ᵈ q without reducing.
@@ -104,3 +104,6 @@ func polyMulBy2toDARM64(p, q *Poly)
 
 //go:noescape
 func polySubARM64(p, a, b *Poly)
+
+//go:noescape
+func polyExceedsARM64(p *Poly, bound uint32) bool

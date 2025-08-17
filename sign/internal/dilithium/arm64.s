@@ -3,6 +3,8 @@
 #include "go_asm.h"
 #include "textflag.h"
 
+// to get raw encoding: e.g. echo "sshr    v4.4s, v0.4s, #31" | llvm-mc -triple=arm64 -show-encoding
+
 // func polyAddARM64(p, a, b *Poly)
 TEXT ·polyAddARM64(SB), NOSPLIT|NOFRAME, $0-24
     MOVD    p+0(FP), R0
@@ -122,5 +124,73 @@ loop:
 
     SUBS    $1, R3, R3
     BGT     loop
+
+    RET
+
+// func polyExceedsARM64(p *Poly, bound uint32) bool
+TEXT ·polyExceedsARM64(SB), NOSPLIT|NOFRAME, $0-24
+    MOVD    p+0(FP), R0
+    MOVW    bound+8(FP), R1
+
+    MOVW    $(const_N / 16), R3
+    MOVW    $((const_Q - 1) / 2), R4
+
+    VDUP    R4, V8.S4
+    VDUP    R1, V9.S4
+
+loop:
+    VLD1.P  (64)(R0), [V0.S4, V1.S4, V2.S4, V3.S4]
+
+    VSUB    V0.S4, V8.S4, V0.S4
+    VSUB    V1.S4, V8.S4, V1.S4
+    VSUB    V2.S4, V8.S4, V2.S4
+    VSUB    V3.S4, V8.S4, V3.S4
+
+    WORD    $0x4f210404 //  sshr    v4.4s, v0.4s, #31
+    WORD    $0x4f210425 //  sshr    v5.4s, v1.4s, #31
+    WORD    $0x4f210446 //  sshr    v6.4s, v2.4s, #31
+    WORD    $0x4f210467 //  sshr    v7.4s, v3.4s, #31
+
+    VEOR    V4.B16, V0.B16, V0.B16
+    VEOR    V5.B16, V1.B16, V1.B16
+    VEOR    V6.B16, V2.B16, V2.B16
+    VEOR    V7.B16, V3.B16, V3.B16
+
+    VSUB    V0.S4, V8.S4, V0.S4
+    VSUB    V1.S4, V8.S4, V1.S4
+    VSUB    V2.S4, V8.S4, V2.S4
+    VSUB    V3.S4, V8.S4, V3.S4
+
+    WORD    $0x6ea93c00 //  cmhs    v0.4s, v0.4s, v9.4s
+    WORD    $0x6ea93c21 //  cmhs    v1.4s, v1.4s, v9.4s
+    WORD    $0x6ea93c42 //  cmhs    v2.4s, v2.4s, v9.4s
+    WORD    $0x6ea93c63 //  cmhs    v3.4s, v3.4s, v9.4s
+
+    WORD    $0x6eb0a800 //  umaxv   s0, v0.4s
+    WORD    $0x6eb0a821 //  umaxv   s1, v1.4s
+    WORD    $0x6eb0a842 //  umaxv   s2, v2.4s
+    WORD    $0x6eb0a863 //  umaxv   s3, v3.4s
+
+    VMOV    V0.S[0], R5
+    VMOV    V1.S[0], R6
+    VMOV    V2.S[0], R7
+    VMOV    V3.S[0], R8
+
+    ORR     R6, R5, R9
+    ORR     R8, R7, R10
+    ORR     R9, R10, R10
+
+    CBNZ     R10, exceeded
+
+    SUBS    $1, R3, R3
+    BGT     loop
+
+    MOVB    ZR, ret+16(FP) // no value inside p exceeded the bound
+
+    RET
+
+exceeded:
+    MOVW    $1, R5
+    MOVB    R5, ret+16(FP) // at least one value inside the batch (16 elements) exceeded the bound
 
     RET
