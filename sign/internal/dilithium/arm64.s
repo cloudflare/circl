@@ -69,3 +69,25 @@ loop:
     BGT     loop
 
     RET
+
+// func polyMulBy2toDARM64(p, q *Poly)
+TEXT ·polyMulBy2toDARM64(SB), NOSPLIT|NOFRAME, $0-16
+    MOVD    p+0(FP), R0
+    MOVD    q+8(FP), R1
+
+    MOVW    $(const_N / 16), R2
+
+loop:
+    VLD1.P  (64)(R1), [V0.S4, V1.S4, V2.S4, V3.S4]
+
+    VSHL    $(const_D), V0.S4, V0.S4
+    VSHL    $(const_D), V1.S4, V1.S4
+    VSHL    $(const_D), V2.S4, V2.S4
+    VSHL    $(const_D), V3.S4, V3.S4
+
+    VST1.P  [V0.S4, V1.S4, V2.S4, V3.S4], (64)(R0)
+
+    SUBS    $1, R2, R2
+    BGT     loop
+
+    RET

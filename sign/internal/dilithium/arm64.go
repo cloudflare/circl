@@ -81,7 +81,7 @@ func (p *Poly) Exceeds(bound uint32) bool {
 //
 // So it requires the coefficients of p  to be less than 2³²⁻ᴰ.
 func (p *Poly) MulBy2toD(q *Poly) {
-	p.mulBy2toDGeneric(q)
+	polyMulBy2toDARM64(p, q)
 }
 
 // Splits p into p1 and p0 such that [i]p1 * 2ᴰ + [i]p0 = [i]p
@@ -98,3 +98,6 @@ func polyAddARM64(p, a, b *Poly)
 
 //go:noescape
 func polyPackLe16ARM64(p *Poly, buf *byte)
+
+//go:noescape
+func polyMulBy2toDARM64(p, q *Poly)
