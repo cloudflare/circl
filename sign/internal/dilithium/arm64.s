@@ -103,6 +103,7 @@ TEXT ·polySubARM64(SB), NOSPLIT|NOFRAME, $0-24
 
     VDUP    R4, V8.S4
 
+    // p = a + (2q - b)
 loop:
     VLD1.P  (64)(R1), [V0.S4, V1.S4, V2.S4, V3.S4]
     VLD1.P  (64)(R2), [V4.S4, V5.S4, V6.S4, V7.S4]
