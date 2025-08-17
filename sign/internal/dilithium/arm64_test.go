@@ -41,7 +41,7 @@ func BenchmarkExceedsThreshold(b *testing.B) {
 					}
 				},
 			)
-			// on my machine (M1 Max), this is the threshold in which the arm64 version outperforms the generic version.
+			// on machine (M1 Max), this is the threshold in which the arm64 version outperforms the generic version.
 			b.Run(
 				"4thElementExceeds", func(b *testing.B) {
 					b.SetBytes(N * 4)
