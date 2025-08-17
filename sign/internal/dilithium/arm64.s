@@ -180,7 +180,7 @@ loop:
     ORR     R8, R7, R10
     ORR     R9, R10, R10
 
-    CBNZ     R10, exceeded
+    CBNZ    R10, exceeded
 
     SUBS    $1, R3, R3
     BGT     loop
