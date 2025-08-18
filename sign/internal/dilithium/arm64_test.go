@@ -36,7 +36,7 @@ func BenchmarkExceedsThreshold(b *testing.B) {
 				"1stElementExceeds", func(b *testing.B) {
 					b.SetBytes(N * 4)
 
-					for b.Loop() {
+					for i := 0; i < b.N; i++ {
 						p.Exceeds(0)
 					}
 				},
@@ -46,7 +46,7 @@ func BenchmarkExceedsThreshold(b *testing.B) {
 				"4thElementExceeds", func(b *testing.B) {
 					b.SetBytes(N * 4)
 
-					for b.Loop() {
+					for i := 0; i < b.N; i++ {
 						p.Exceeds(3)
 					}
 				},
@@ -55,7 +55,7 @@ func BenchmarkExceedsThreshold(b *testing.B) {
 				"NoElementExceeds", func(b *testing.B) {
 					b.SetBytes(N * 4)
 
-					for b.Loop() {
+					for i := 0; i < b.N; i++ {
 						p.Exceeds(256)
 					}
 				},
@@ -70,7 +70,7 @@ func BenchmarkExceedsThreshold(b *testing.B) {
 				"1stElementExceeds", func(b *testing.B) {
 					b.SetBytes(N * 4)
 
-					for b.Loop() {
+					for i := 0; i < b.N; i++ {
 						p.exceedsGeneric(0)
 					}
 				},
@@ -79,7 +79,7 @@ func BenchmarkExceedsThreshold(b *testing.B) {
 				"4thElementExceeds", func(b *testing.B) {
 					b.SetBytes(N * 4)
 
-					for b.Loop() {
+					for i := 0; i < b.N; i++ {
 						p.exceedsGeneric(3)
 					}
 				},
@@ -88,7 +88,7 @@ func BenchmarkExceedsThreshold(b *testing.B) {
 				"NoElementExceeds", func(b *testing.B) {
 					b.SetBytes(N * 4)
 
-					for b.Loop() {
+					for i := 0; i < b.N; i++ {
 						p.exceedsGeneric(256)
 					}
 				},
