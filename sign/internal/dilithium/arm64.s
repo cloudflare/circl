@@ -128,7 +128,7 @@ loop:
     RET
 
 // func polyExceedsARM64(p *Poly, bound uint32) bool
-TEXT ·polyExceedsARM64(SB), NOSPLIT|NOFRAME, $0-24
+TEXT ·polyExceedsARM64(SB), NOSPLIT|NOFRAME, $0
     MOVD    p+0(FP), R0
     MOVW    bound+8(FP), R1
 
