@@ -19,6 +19,7 @@ import (
 	"github.com/cloudflare/circl/kem/mlkem/mlkem1024"
 	"github.com/cloudflare/circl/kem/mlkem/mlkem512"
 	"github.com/cloudflare/circl/kem/mlkem/mlkem768"
+	"github.com/cloudflare/circl/kem/pwing"
 	"github.com/cloudflare/circl/kem/xwing"
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/hkdf"
@@ -45,6 +46,7 @@ const (
 	KEM_X25519_KYBER768_DRAFT00 KEM = 0x30
 	// KEM_XWING is a hybrid KEM using X25519 and ML-KEM-768.
 	KEM_XWING KEM = 0x647a
+	KEM_PWING KEM = 0x50
 
 	KEM_MLKEM512  KEM = 0x0040
 	KEM_MLKEM768  KEM = 0x0041
@@ -64,6 +66,7 @@ func (k KEM) IsValid() bool {
 		KEM_X448_HKDF_SHA512,
 		KEM_X25519_KYBER768_DRAFT00,
 		KEM_XWING,
+		KEM_PWING,
 		KEM_MLKEM512,
 		KEM_MLKEM768,
 		KEM_MLKEM1024:
@@ -91,6 +94,8 @@ func (k KEM) Scheme() kem.Scheme {
 		return hybridkemX25519Kyber768
 	case KEM_XWING:
 		return kemXwing
+	case KEM_PWING:
+		return kemPwing
 	case KEM_MLKEM512:
 		return kemMLKEM512
 	case KEM_MLKEM768:
@@ -100,6 +105,23 @@ func (k KEM) Scheme() kem.Scheme {
 	default:
 		panic(ErrInvalidKEM)
 	}
+}
+
+// UnmarshalBinaryPrivateKey unpacks a private key.
+//
+// Similar to Scheme().UnmarshalBinaryPrivateKey(), but deals with the fact
+// that HPKE uses the seed as private key for some schemes.
+func (k KEM) UnmarshalBinaryPrivateKey(xs []byte) (kem.PrivateKey, error) {
+	scheme := k.Scheme()
+	switch k {
+	case KEM_MLKEM512, KEM_MLKEM768, KEM_MLKEM1024:
+		if len(xs) != scheme.SeedSize() {
+			return nil, kem.ErrSeedSize
+		}
+		_, sk := k.Scheme().DeriveKeyPair(xs)
+		return sk, nil
+	}
+	return scheme.UnmarshalBinaryPrivateKey(xs)
 }
 
 type KDF uint16
@@ -322,6 +344,7 @@ var (
 	dhkemx25519hkdfsha256, dhkemx448hkdfsha512                    xKEM
 	hybridkemX25519Kyber768                                       hybridKEM
 	kemXwing                                                      genericNoAuthKEM
+	kemPwing                                                      genericNoAuthKEM
 	kemMLKEM512                                                   genericNoAuthKEM
 	kemMLKEM768                                                   genericNoAuthKEM
 	kemMLKEM1024                                                  genericNoAuthKEM
@@ -366,6 +389,9 @@ func init() {
 
 	kemXwing.Scheme = xwing.Scheme()
 	kemXwing.name = "HPKE_KEM_XWING"
+
+	kemPwing.Scheme = pwing.Scheme()
+	kemPwing.name = "HPKE_KEM_PWING"
 
 	kemMLKEM512.Scheme = mlkem512.Scheme()
 	kemMLKEM512.name = "HPKE_KEM_MLKEM512"

@@ -71,8 +71,14 @@ func (v *vector) getActors(
 	pkR, err := dhkem.UnmarshalBinaryPublicKey(hexB(t, v.PkRm))
 	test.CheckNoErr(t, err, h+"bad public key")
 
-	skR, err := dhkem.UnmarshalBinaryPrivateKey(hexB(t, v.SkRm))
+	skR, err := s.UnmarshalBinaryPrivateKey(hexB(t, v.SkRm))
 	test.CheckNoErr(t, err, h+"bad private key")
+
+	if !skR.Public().Equal(pkR) {
+		v, _ := skR.Public().MarshalBinary()
+		fmt.Printf("%x\n", v)
+		t.Fatal("mismatched public and private key")
+	}
 
 	info := hexB(t, v.Info)
 	sender, err := s.NewSender(pkR, info)
@@ -115,7 +121,7 @@ func (v *vector) setup(t *testing.T, k kem.Scheme,
 		}
 
 	case modeAuth:
-		skS, errSK = k.UnmarshalBinaryPrivateKey(hexB(t, v.SkSm))
+		skS, errSK = s.UnmarshalBinaryPrivateKey(hexB(t, v.SkSm))
 		if errSK == nil {
 			pkS, errPK = k.UnmarshalBinaryPublicKey(hexB(t, v.PkSm))
 			if errPK == nil {
@@ -128,7 +134,7 @@ func (v *vector) setup(t *testing.T, k kem.Scheme,
 
 	case modeAuthPSK:
 		psk, pskid := hexB(t, v.Psk), hexB(t, v.PskID)
-		skS, errSK = k.UnmarshalBinaryPrivateKey(hexB(t, v.SkSm))
+		skS, errSK = s.UnmarshalBinaryPrivateKey(hexB(t, v.SkSm))
 		if errSK == nil {
 			pkS, errPK = k.UnmarshalBinaryPublicKey(hexB(t, v.PkSm))
 			if errPK == nil {
@@ -185,7 +191,7 @@ func (v *vector) checkEncryptions(
 		}
 
 		got, err := op.Open(ct, aad)
-		test.CheckNoErr(t, err, "error on opening")
+		test.CheckNoErr(t, err, fmt.Sprintf("error on opening %d", j))
 
 		want := pt
 		if !bytes.Equal(got, want) {

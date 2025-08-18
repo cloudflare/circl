@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+
+	"github.com/cloudflare/circl/kem"
 )
 
 func (st state) keySchedule(ss, info, psk, pskID []byte) (*encdecContext, error) {
@@ -88,6 +90,10 @@ func (st state) verifyPSKInputs(psk, pskID []byte) error {
 		}
 	}
 	return nil
+}
+
+func (suite Suite) UnmarshalBinaryPrivateKey(xs []byte) (kem.PrivateKey, error) {
+	return suite.kemID.UnmarshalBinaryPrivateKey(xs)
 }
 
 // Params returns the codepoints for the algorithms comprising the suite.
