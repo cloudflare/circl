@@ -10,6 +10,7 @@ import (
 	r255 "github.com/bwesterb/go-ristretto"
 	"github.com/cloudflare/circl/expander"
 	"github.com/cloudflare/circl/internal/conv"
+	"golang.org/x/crypto/cryptobyte"
 )
 
 // Ristretto255 is a quotient group generated from the edwards25519 curve.
@@ -260,4 +261,18 @@ func (s *ristrettoScalar) MarshalBinary() ([]byte, error) {
 
 func (s *ristrettoScalar) UnmarshalBinary(data []byte) error {
 	return s.s.UnmarshalBinary(data)
+}
+
+func (s *ristrettoScalar) Marshal(b *cryptobyte.Builder) error {
+	b.AddBytes(s.s.Bytes())
+	return nil
+}
+
+func (s *ristrettoScalar) Unmarshal(str *cryptobyte.String) bool {
+	var b [32]byte
+	if !str.CopyBytes(b[:]) {
+		return false
+	}
+	s.s.SetBytes(&b)
+	return true
 }
