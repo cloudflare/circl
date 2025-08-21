@@ -6,6 +6,9 @@ import (
 	"errors"
 	"io"
 	"math/big"
+
+	"github.com/cloudflare/circl/internal/conv"
+	"golang.org/x/crypto/cryptobyte"
 )
 
 // Params stores the size in bytes of elements and scalars.
@@ -133,6 +136,10 @@ type Scalar interface {
 	// BinaryUnmarshaler recovers a scalar from a byte representation produced
 	// by encoding.BinaryMarshaler.
 	encoding.BinaryUnmarshaler
+	// MarshalingValue to a cryptobyte.Builder.
+	cryptobyte.MarshalingValue
+	// UnmarshalingValue from a cryptobyte.String.
+	conv.UnmarshalingValue
 }
 
 var (
