@@ -5,12 +5,15 @@ import (
 	"crypto/ecdh"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/rand"
 	_ "crypto/sha256"
 	_ "crypto/sha512"
 	"crypto/subtle"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"math/big"
+	"slices"
 
 	optP384 "github.com/cloudflare/circl/ecc/p384"
 	"github.com/cloudflare/circl/expander"
@@ -35,11 +38,12 @@ func (g wG) String() string      { return g.c.Params().Name }
 func (g wG) NewElement() Element { return g.zeroElement() }
 func (g wG) NewScalar() Scalar   { return g.zeroScalar() }
 func (g wG) Identity() Element   { return g.zeroElement() }
-func (g wG) zeroScalar() *wScl   { return &wScl{g, make([]byte, (g.c.Params().BitSize+7)/8)} }
-func (g wG) zeroElement() *wElt  { return &wElt{g, new(big.Int), new(big.Int)} }
-func (g wG) Generator() Element  { return &wElt{g, g.c.Params().Gx, g.c.Params().Gy} }
+func (g wG) byteSize() int       { return (g.c.Params().BitSize + 7) / 8 }
+func (g wG) zeroScalar() *wScl   { return &wScl{g, make([]byte, g.byteSize())} }
+func (g wG) zeroElement() *wElt  { return &wElt{new(big.Int), new(big.Int), g} }
+func (g wG) Generator() Element  { return &wElt{g.c.Params().Gx, g.c.Params().Gy, g} }
 func (g wG) RandomElement(rd io.Reader) Element {
-	b := make([]byte, (g.c.Params().BitSize+7)/8)
+	b := make([]byte, g.byteSize())
 	if n, err := io.ReadFull(rd, b); err != nil || n != len(b) {
 		panic(err)
 	}
@@ -47,11 +51,12 @@ func (g wG) RandomElement(rd io.Reader) Element {
 }
 
 func (g wG) RandomScalar(rd io.Reader) Scalar {
-	b := make([]byte, (g.c.Params().BitSize+7)/8)
-	if n, err := io.ReadFull(rd, b); err != nil || n != len(b) {
+	r, err := rand.Int(rd, g.c.Params().N)
+	if err != nil {
 		panic(err)
 	}
-	return g.HashToScalar(b, nil)
+
+	return &wScl{g, r.FillBytes(make([]byte, g.byteSize()))}
 }
 
 func (g wG) RandomNonZeroScalar(rd io.Reader) Scalar {
@@ -87,7 +92,7 @@ func (g wG) cvtScl(s Scalar) *wScl {
 }
 
 func (g wG) Params() *Params {
-	fieldLen := uint((g.c.Params().BitSize + 7) / 8)
+	fieldLen := uint(g.byteSize())
 	return &Params{
 		ElementLength:           1 + 2*fieldLen,
 		CompressedElementLength: 1 + fieldLen,
@@ -118,14 +123,12 @@ func (g wG) HashToScalar(b, dst []byte) Scalar {
 	_, h, L := g.mapToCurveParams()
 	xmd := expander.NewExpanderMD(h, dst)
 	HashToField(u[:], b, xmd, g.c.Params().N, L)
-	s := g.NewScalar().(*wScl)
-	s.fromBig(&u[0])
-	return s
+	return g.zeroScalar().SetBigInt(&u[0])
 }
 
 type wElt struct {
-	wG
 	x, y *big.Int
+	wG
 }
 
 func (e *wElt) Group() Group     { return e.wG }
@@ -150,7 +153,7 @@ func (e *wElt) CMov(v int, a Element) Element {
 		panic(ErrSelector)
 	}
 	aa := e.cvtElt(a)
-	l := (e.wG.c.Params().BitSize + 7) / 8
+	l := e.wG.byteSize()
 	bufE := make([]byte, l)
 	bufA := make([]byte, l)
 	e.x.FillBytes(bufE)
@@ -171,25 +174,21 @@ func (e *wElt) CSelect(v int, a Element, b Element) Element {
 		panic(ErrSelector)
 	}
 	aa, bb := e.cvtElt(a), e.cvtElt(b)
-	l := (e.wG.c.Params().BitSize + 7) / 8
+	l := e.wG.byteSize()
 	bufE := make([]byte, l)
 	bufA := make([]byte, l)
 	bufB := make([]byte, l)
 
-	e.x.FillBytes(bufE)
 	aa.x.FillBytes(bufA)
 	bb.x.FillBytes(bufB)
-	for i := range bufE {
-		bufE[i] = byte(subtle.ConstantTimeSelect(v, int(bufA[i]), int(bufB[i])))
-	}
+	subtle.ConstantTimeCopy(v, bufE, bufA)
+	subtle.ConstantTimeCopy(1-v, bufE, bufB)
 	e.x.SetBytes(bufE)
 
-	e.y.FillBytes(bufE)
 	aa.y.FillBytes(bufA)
 	bb.y.FillBytes(bufB)
-	for i := range bufE {
-		bufE[i] = byte(subtle.ConstantTimeSelect(v, int(bufA[i]), int(bufB[i])))
-	}
+	subtle.ConstantTimeCopy(v, bufE, bufA)
+	subtle.ConstantTimeCopy(1-v, bufE, bufB)
 	e.y.SetBytes(bufE)
 
 	return e
@@ -251,7 +250,7 @@ func (e *wElt) MarshalBinaryCompress() ([]byte, error) {
 }
 
 func (e *wElt) UnmarshalBinary(b []byte) error {
-	byteLen := (e.c.Params().BitSize + 7) / 8
+	byteLen := e.wG.byteSize()
 	l := len(b)
 	switch {
 	case l == 1 && b[0] == 0x00: // point at infinity
@@ -282,12 +281,24 @@ type wScl struct {
 	k []byte
 }
 
-func (s *wScl) Group() Group                { return s.wG }
-func (s *wScl) String() string              { return fmt.Sprintf("0x%x", s.k) }
-func (s *wScl) SetUint64(n uint64) Scalar   { s.fromBig(new(big.Int).SetUint64(n)); return s }
-func (s *wScl) SetBigInt(x *big.Int) Scalar { s.fromBig(x); return s }
+func (s *wScl) Group() Group   { return s.wG }
+func (s *wScl) String() string { return fmt.Sprintf("0x%x", s.k) }
+func (s *wScl) SetUint64(n uint64) Scalar {
+	l := s.wG.byteSize()
+	s.k = slices.Grow(s.k, l)
+	clear(s.k)
+	binary.BigEndian.PutUint64(s.k[l-8:], n)
+	return s
+}
+
+func (s *wScl) SetBigInt(x *big.Int) Scalar {
+	s.k = slices.Grow(s.k, s.wG.byteSize())
+	x.Mod(x, s.c.Params().N).FillBytes(s.k)
+	return s
+}
+
 func (s *wScl) IsZero() bool {
-	return subtle.ConstantTimeCompare(s.k, make([]byte, (s.wG.c.Params().BitSize+7)/8)) == 1
+	return subtle.ConstantTimeCompare(s.k, make([]byte, s.wG.byteSize())) == 1
 }
 
 func (s *wScl) IsEqual(a Scalar) bool {
@@ -295,18 +306,10 @@ func (s *wScl) IsEqual(a Scalar) bool {
 	return subtle.ConstantTimeCompare(s.k, aa.k) == 1
 }
 
-func (s *wScl) fromBig(b *big.Int) {
-	k := new(big.Int).Mod(b, s.c.Params().N)
-	if err := s.UnmarshalBinary(k.Bytes()); err != nil {
-		panic(err)
-	}
-}
-
 func (s *wScl) Set(a Scalar) Scalar {
 	aa := s.cvtScl(a)
-	if err := s.UnmarshalBinary(aa.k); err != nil {
-		panic(err)
-	}
+	s.k = slices.Grow(s.k, s.wG.byteSize())
+	copy(s.k, aa.k)
 	return s
 }
 
@@ -326,9 +329,8 @@ func (s *wScl) CSelect(v int, a Scalar, b Scalar) Scalar {
 		panic(ErrSelector)
 	}
 	aa, bb := s.cvtScl(a), s.cvtScl(b)
-	for i := range s.k {
-		s.k[i] = byte(subtle.ConstantTimeSelect(v, int(aa.k[i]), int(bb.k[i])))
-	}
+	subtle.ConstantTimeCopy(v, s.k, aa.k)
+	subtle.ConstantTimeCopy(1-v, s.k, bb.k)
 	return s
 }
 
@@ -336,50 +338,43 @@ func (s *wScl) Add(a, b Scalar) Scalar {
 	aa, bb := s.cvtScl(a), s.cvtScl(b)
 	r := new(big.Int)
 	r.SetBytes(aa.k).Add(r, new(big.Int).SetBytes(bb.k))
-	s.fromBig(r)
-	return s
+	return s.SetBigInt(r)
 }
 
 func (s *wScl) Sub(a, b Scalar) Scalar {
 	aa, bb := s.cvtScl(a), s.cvtScl(b)
 	r := new(big.Int)
 	r.SetBytes(aa.k).Sub(r, new(big.Int).SetBytes(bb.k))
-	s.fromBig(r)
-	return s
+	return s.SetBigInt(r)
 }
 
 func (s *wScl) Mul(a, b Scalar) Scalar {
 	aa, bb := s.cvtScl(a), s.cvtScl(b)
 	r := new(big.Int)
 	r.SetBytes(aa.k).Mul(r, new(big.Int).SetBytes(bb.k))
-	s.fromBig(r)
-	return s
+	return s.SetBigInt(r)
 }
 
 func (s *wScl) Neg(a Scalar) Scalar {
 	aa := s.cvtScl(a)
 	r := new(big.Int)
 	r.SetBytes(aa.k).Neg(r)
-	s.fromBig(r)
-	return s
+	return s.SetBigInt(r)
 }
 
 func (s *wScl) Inv(a Scalar) Scalar {
 	aa := s.cvtScl(a)
 	r := new(big.Int)
 	r.SetBytes(aa.k).ModInverse(r, s.c.Params().N)
-	s.fromBig(r)
-	return s
+	return s.SetBigInt(r)
 }
 
 func (s *wScl) MarshalBinary() (data []byte, err error) {
-	data = make([]byte, (s.c.Params().BitSize+7)/8)
-	copy(data, s.k)
-	return data, nil
+	return slices.Clone(s.k), nil
 }
 
 func (s *wScl) UnmarshalBinary(b []byte) error {
-	l := (s.c.Params().BitSize + 7) / 8
+	l := s.wG.byteSize()
 	s.k = make([]byte, l)
 	copy(s.k[l-len(b):l], b)
 	return nil
@@ -483,5 +478,5 @@ func (g wG) sswu3mod4Map(u *big.Int, Z, C2 *big.Int) *wElt {
 	tv1.ModInverse(xd, p)       //
 	mul(x, xn, tv1)             // 34. return (xn, xd, y, 1)
 	y.Mod(y, p)
-	return &wElt{g, x, y}
+	return &wElt{x, y, g}
 }
