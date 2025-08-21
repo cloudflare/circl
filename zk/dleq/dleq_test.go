@@ -89,7 +89,7 @@ func testErrors(
 	test.CheckNoErr(t, err, "error on marshaling proof")
 
 	// Tamper proof (in transit)
-	_, _ = rand.Read(proofBytes)
+	proofBytes[7] ^= 0xFF
 
 	tamperedProof := new(dleq.Proof)
 	err = tamperedProof.UnmarshalBinary(g, proofBytes[:5])
