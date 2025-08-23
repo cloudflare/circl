@@ -124,7 +124,7 @@ func deriveKeyPair(seed []byte, sk *PrivateKey, pk *PublicKey) {
 	pk.m = *pkm
 
 	var intx, p256 big.Int
-	p256.SetString("ffffffff00000001000000000000000000000000ffffffffffffffffffffffff", 16)
+	p256.SetString("ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551", 16)
 	intx.SetBytes(seedx[:])
 	intx.Mod(&intx, &p256)
 	intx.FillBytes(seedx[:32])
