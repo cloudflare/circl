@@ -71,6 +71,52 @@ func GenerateKey(random io.Reader, bits int) (*rsa.PrivateKey, error) {
 	return priv, nil
 }
 
+func GenerateKeyConcurrent(bits int, workers int) (*rsa.PrivateKey, error) {
+	p, err := cmath.SafePrimeConcurrent(bits/2, workers)
+	if err != nil {
+		return nil, err
+	}
+
+	var q *big.Int
+	n := new(big.Int)
+	found := false
+	for !found {
+		q, err = cmath.SafePrimeConcurrent(bits-p.BitLen(), workers)
+		if err != nil {
+			return nil, err
+		}
+
+		// check for different primes.
+		if p.Cmp(q) != 0 {
+			n.Mul(p, q)
+			// check n has the desired bitlength.
+			if n.BitLen() == bits {
+				found = true
+			}
+		}
+	}
+
+	one := big.NewInt(1)
+	pminus1 := new(big.Int).Sub(p, one)
+	qminus1 := new(big.Int).Sub(q, one)
+	totient := new(big.Int).Mul(pminus1, qminus1)
+
+	priv := new(rsa.PrivateKey)
+	priv.Primes = []*big.Int{p, q}
+	priv.N = n
+	priv.E = 65537
+	priv.D = new(big.Int)
+	e := big.NewInt(int64(priv.E))
+	ok := priv.D.ModInverse(e, totient)
+	if ok == nil {
+		return nil, errors.New("public key is not coprime to phi(n)")
+	}
+
+	priv.Precompute()
+
+	return priv, nil
+}
+
 // l or `Players`, the total number of Players.
 // t, the number of corrupted Players.
 // k=t+1 or `Threshold`, the number of signature shares needed to obtain a signature.
