@@ -1,16 +1,16 @@
-//go:build (!amd64 && !arm64) || purego
-// +build !amd64,!arm64 purego
+//go:build arm64 && !purego
+// +build arm64,!purego
 
 package common
 
 // Sets p to a + b.  Does not normalize coefficients.
 func (p *Poly) Add(a, b *Poly) {
-	p.addGeneric(a, b)
+	polyAddARM64(p, a, b)
 }
 
 // Sets p to a - b.  Does not normalize coefficients.
 func (p *Poly) Sub(a, b *Poly) {
-	p.subGeneric(a, b)
+	polySubARM64(p, a, b)
 }
 
 // Executes an in-place forward "NTT" on p.
@@ -75,3 +75,9 @@ func (p *Poly) BarrettReduce() {
 func (p *Poly) Normalize() {
 	p.normalizeGeneric()
 }
+
+//go:noescape
+func polyAddARM64(p, a, b *Poly)
+
+//go:noescape
+func polySubARM64(p, a, b *Poly)
