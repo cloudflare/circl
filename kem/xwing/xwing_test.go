@@ -7,17 +7,20 @@ import (
 	"testing"
 
 	"github.com/cloudflare/circl/internal/sha3"
+	"github.com/cloudflare/circl/internal/test"
 )
 
-func writeHex(w io.Writer, prefix string, val interface{}) {
+func writeHex(t *testing.T, w io.Writer, prefix string, val interface{}) {
 	indent := "  "
 	width := 74
 	hex := fmt.Sprintf("%x", val)
 	if len(prefix)+len(hex)+5 < width {
-		fmt.Fprintf(w, "%s     %s\n", prefix, hex)
+		_, err := fmt.Fprintf(w, "%s     %s\n", prefix, hex)
+		test.CheckNoErr(t, err, "fprintf failed")
 		return
 	}
-	fmt.Fprintf(w, "%s\n", prefix)
+	_, err := fmt.Fprintf(w, "%s\n", prefix)
+	test.CheckNoErr(t, err, "fprintf failed")
 	for len(hex) != 0 {
 		var toPrint string
 		if len(hex) < width-len(indent) {
@@ -27,7 +30,8 @@ func writeHex(w io.Writer, prefix string, val interface{}) {
 			toPrint = hex[:width-len(indent)]
 			hex = hex[width-len(indent):]
 		}
-		fmt.Fprintf(w, "%s%s\n", indent, toPrint)
+		_, err = fmt.Fprintf(w, "%s%s\n", indent, toPrint)
+		test.CheckNoErr(t, err, "fprintf failed")
 	}
 }
 
@@ -38,29 +42,30 @@ func TestVectors(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		var seed [SeedSize]byte
 		_, _ = h.Read(seed[:])
-		writeHex(w, "seed", seed)
+		writeHex(t, w, "seed", seed)
 
 		sk, pk := DeriveKeyPairPacked(seed[:])
-		writeHex(w, "sk", sk)
-		writeHex(w, "pk", pk)
+		writeHex(t, w, "sk", sk)
+		writeHex(t, w, "pk", pk)
 
 		var eseed [EncapsulationSeedSize]byte
 		_, _ = h.Read(eseed[:])
-		writeHex(w, "eseed", eseed)
+		writeHex(t, w, "eseed", eseed)
 
 		ss, ct, err := Encapsulate(pk, eseed[:])
 		if err != nil {
 			t.Fatal(err)
 		}
-		writeHex(w, "ct", ct)
-		writeHex(w, "ss", ss)
+		writeHex(t, w, "ct", ct)
+		writeHex(t, w, "ss", ss)
 
 		ss2 := Decapsulate(ct, sk)
 		if !bytes.Equal(ss, ss2) {
 			t.Fatal()
 		}
 
-		fmt.Fprintf(w, "\n")
+		_, err = fmt.Fprintf(w, "\n")
+		test.CheckNoErr(t, err, "fprintf failed")
 	}
 
 	t.Logf("%s", w.String())

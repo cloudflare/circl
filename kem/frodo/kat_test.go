@@ -7,9 +7,11 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
+	"io"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/nist"
+	"github.com/cloudflare/circl/internal/test"
 	"github.com/cloudflare/circl/kem/schemes"
 )
 
@@ -43,11 +45,12 @@ func testPQCgenKATKem(t *testing.T, name, expected string) {
 	}
 	f := sha256.New()
 	g := nist.NewDRBG(&seed)
-	fmt.Fprintf(f, "# %s\n\n", name)
+	mustWrite(t, f, "# %s\n\n", name)
 	for i := 0; i < 100; i++ {
 		g.Fill(seed[:])
-		fmt.Fprintf(f, "count = %d\n", i)
-		fmt.Fprintf(f, "seed = %X\n", seed)
+		mustWrite(t, f, "count = %d\n", i)
+		mustWrite(t, f, "seed = %X\n", seed)
+
 		g2 := nist.NewDRBG(&seed)
 
 		g2.Fill(kseed[:])
@@ -65,12 +68,17 @@ func testPQCgenKATKem(t *testing.T, name, expected string) {
 		if !bytes.Equal(ss, ss2) {
 			t.Fatal()
 		}
-		fmt.Fprintf(f, "pk = %X\n", ppk)
-		fmt.Fprintf(f, "sk = %X\n", psk)
-		fmt.Fprintf(f, "ct = %X\n", ct)
-		fmt.Fprintf(f, "ss = %X\n\n", ss)
+		mustWrite(t, f, "pk = %X\n", ppk)
+		mustWrite(t, f, "sk = %X\n", psk)
+		mustWrite(t, f, "ct = %X\n", ct)
+		mustWrite(t, f, "ss = %X\n\n", ss)
 	}
 	if fmt.Sprintf("%x", f.Sum(nil)) != expected {
 		t.Fatal()
 	}
+}
+
+func mustWrite(t *testing.T, f io.Writer, format string, data any) {
+	_, err := fmt.Fprintf(f, format, data)
+	test.CheckNoErr(t, err, "fprintf failed")
 }
