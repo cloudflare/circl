@@ -82,7 +82,12 @@ func TestSerializationVector(t *testing.T) {
 		if err != nil {
 			t.Fatalf("file %v can not be opened: %v", v.fileName, err)
 		}
-		defer file.Close()
+		defer func() {
+			err = file.Close()
+			if err != nil {
+				t.Fatalf("file %v failed to be closed: %v", v.fileName, err)
+			}
+		}()
 
 		t.Run(v.fileName[:7], func(t *testing.T) { testSerialVector(t, file, &v) })
 	}
