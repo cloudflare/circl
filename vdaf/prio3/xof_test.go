@@ -45,7 +45,7 @@ func prepXof(
 }
 
 func TestXof(t *testing.T) {
-	v := readFile[VecXof](t, "testdata/XofTurboShake128.json")
+	v := readFile[VecXof](t, "testdata/XofTurboShake128.json.gz")
 
 	t.Run("DeriveSeed", func(t *testing.T) {
 		r, err := prepXof(t, (*prio3.Seed)(v.Seed), v.Dst, v.Binder)
