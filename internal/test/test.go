@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -116,7 +117,7 @@ func gunzip(in []byte) ([]byte, error) {
 
 // Like os.ReadFile, but gunzip first.
 func ReadGzip(path string) ([]byte, error) {
-	buf, err := os.ReadFile(path)
+	buf, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return nil, err
 	}
