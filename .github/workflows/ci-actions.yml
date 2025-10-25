@@ -10,15 +10,15 @@ on:
 jobs:
   amd64_job:
     name: Go-${{matrix.GOVER}}/amd64
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
-        GOVER: ['1.24', '1.23']
+        GOVER: ['1.25', '1.24']
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Setup Go-${{ matrix.GOVER }}
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.GOVER }}
       - name: Linting
@@ -46,11 +46,11 @@ jobs:
     runs-on: ubuntu-24.04-arm
     strategy:
       matrix:
-        GOVER: ['1.24', '1.23']
+        GOVER: ['1.25', '1.24']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Setup Go-${{ matrix.GOVER }}
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.GOVER }}
       - name: Building
@@ -59,15 +59,15 @@ jobs:
         run: go test -v -count=1 ./...
   build_modes:
     needs: [amd64_job]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     name: Testing Build Modes
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: '1.24'
+          go-version: '1.25'
       - name: Build as Static
         run: make circl_static
       - name: Build as Plugin
@@ -75,19 +75,19 @@ jobs:
   coverage_amd64_job:
     needs: [amd64_job]
     if: github.event_name == 'push'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     name: amd64/coverage
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: '1.24'
+          go-version: '1.25'
       - name: Produce Coverage
         run: go test -coverprofile=./coverage.txt ./...
       - name: Upload Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           file: ./coverage.txt
         env:
@@ -101,11 +101,11 @@ jobs:
         os: [macos-latest, windows-latest]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: '1.24'
+          go-version: '1.25'
       - name: Building
         run: go build -v ./...
       - name: Testing
@@ -120,16 +120,16 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
-          go-version: '1.24'
+          go-version: '1.25'
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: go
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:go"
