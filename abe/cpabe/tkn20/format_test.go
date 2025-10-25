@@ -2,6 +2,7 @@ package tkn20
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -57,7 +58,7 @@ func TestCiphertext(t *testing.T) {
 
 func testCiphertext(t *testing.T, ctName string) {
 	t.Logf("Checking ciphertext: %v\n", ctName)
-	ciphertext, err := os.ReadFile(ctName)
+	ciphertext, err := os.ReadFile(filepath.Clean(ctName))
 	if err != nil {
 		t.Fatalf("Unable to read ciphertext data")
 	}
