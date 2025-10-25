@@ -7,10 +7,12 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/nist"
+	"github.com/cloudflare/circl/internal/test"
 	"github.com/cloudflare/circl/kem/schemes"
 )
 
@@ -54,11 +56,11 @@ func testPQCgenKATKem(t *testing.T, name, expected string) {
 
 	// The "standard" branch reference implementation still uses Kyber
 	// as name instead of ML-KEM.
-	fmt.Fprintf(f, "# %s\n\n", strings.ReplaceAll(name, "ML-KEM-", "Kyber"))
+	mustWrite(t, f, "# %s\n\n", strings.ReplaceAll(name, "ML-KEM-", "Kyber"))
 	for i := 0; i < 100; i++ {
 		g.Fill(seed[:])
-		fmt.Fprintf(f, "count = %d\n", i)
-		fmt.Fprintf(f, "seed = %X\n", seed)
+		mustWrite(t, f, "count = %d\n", i)
+		mustWrite(t, f, "seed = %X\n", seed)
 		g2 := nist.NewDRBG(&seed)
 
 		if strings.HasPrefix(name, "ML-KEM") {
@@ -81,12 +83,17 @@ func testPQCgenKATKem(t *testing.T, name, expected string) {
 		if !bytes.Equal(ss, ss2) {
 			t.Fatal()
 		}
-		fmt.Fprintf(f, "pk = %X\n", ppk)
-		fmt.Fprintf(f, "sk = %X\n", psk)
-		fmt.Fprintf(f, "ct = %X\n", ct)
-		fmt.Fprintf(f, "ss = %X\n\n", ss)
+		mustWrite(t, f, "pk = %X\n", ppk)
+		mustWrite(t, f, "sk = %X\n", psk)
+		mustWrite(t, f, "ct = %X\n", ct)
+		mustWrite(t, f, "ss = %X\n\n", ss)
 	}
 	if fmt.Sprintf("%x", f.Sum(nil)) != expected {
 		t.Fatalf("%s %x %s", name, f.Sum(nil), expected)
 	}
+}
+
+func mustWrite(t *testing.T, f io.Writer, format string, data any) {
+	_, err := fmt.Fprintf(f, format, data)
+	test.CheckNoErr(t, err, "fprintf failed")
 }

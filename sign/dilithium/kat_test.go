@@ -6,10 +6,12 @@ package dilithium
 import (
 	"crypto/sha256"
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/nist"
+	"github.com/cloudflare/circl/internal/test"
 	"github.com/cloudflare/circl/sign/schemes"
 )
 
@@ -56,17 +58,17 @@ func TestPQCgenKATSign(t *testing.T) {
 					nameInKat = "Dilithium5"
 				}
 			}
-			fmt.Fprintf(f, "# %s\n\n", nameInKat)
+			mustWrite(t, f, "# %s\n\n", nameInKat)
 			for i := 0; i < 100; i++ {
 				mlen := 33 * (i + 1)
 				g.Fill(seed[:])
 				msg := make([]byte, mlen)
 				g.Fill(msg[:])
 
-				fmt.Fprintf(f, "count = %d\n", i)
-				fmt.Fprintf(f, "seed = %X\n", seed)
-				fmt.Fprintf(f, "mlen = %d\n", mlen)
-				fmt.Fprintf(f, "msg = %X\n", msg)
+				mustWrite(t, f, "count = %d\n", i)
+				mustWrite(t, f, "seed = %X\n", seed)
+				mustWrite(t, f, "mlen = %d\n", mlen)
+				mustWrite(t, f, "msg = %X\n", msg)
 
 				g2 := nist.NewDRBG(&seed)
 				g2.Fill(eseed[:])
@@ -81,13 +83,13 @@ func TestPQCgenKATSign(t *testing.T) {
 					t.Fatal(err)
 				}
 
-				fmt.Fprintf(f, "pk = %X\n", ppk)
-				fmt.Fprintf(f, "sk = %X\n", psk)
-				fmt.Fprintf(f, "smlen = %d\n", mlen+mode.SignatureSize())
+				mustWrite(t, f, "pk = %X\n", ppk)
+				mustWrite(t, f, "sk = %X\n", psk)
+				mustWrite(t, f, "smlen = %d\n", mlen+mode.SignatureSize())
 
 				sig := mode.Sign(sk, msg[:], nil)
 
-				fmt.Fprintf(f, "sm = %X%X\n\n", sig, msg)
+				mustWrite(t, f, "sm = %X%X\n\n", sig, msg)
 
 				if !mode.Verify(pk, msg[:], sig, nil) {
 					t.Fatal()
@@ -98,4 +100,9 @@ func TestPQCgenKATSign(t *testing.T) {
 			}
 		})
 	}
+}
+
+func mustWrite(t *testing.T, f io.Writer, format string, data ...any) {
+	_, err := fmt.Fprintf(f, format, data...)
+	test.CheckNoErr(t, err, "fprintf failed")
 }
