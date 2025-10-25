@@ -98,13 +98,13 @@ func convert[Aggregate any](
 }
 
 func TestVector(t *testing.T) {
-	fileNames, err := filepath.Glob("./testdata/Prio3*.json")
+	fileNames, err := filepath.Glob("./testdata/Prio3*.json.gz")
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	for _, fileName := range fileNames {
-		testName := strings.TrimSuffix(filepath.Base(fileName), ".json")
+		testName := strings.TrimSuffix(filepath.Base(fileName), ".json.gz")
 
 		t.Run(testName, func(t *testing.T) {
 			vdaf := strings.Split(strings.TrimPrefix(testName, "Prio3"), "_")[0]

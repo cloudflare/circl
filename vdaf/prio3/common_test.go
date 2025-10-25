@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"os"
 	"slices"
 	"testing"
 
@@ -85,12 +84,7 @@ func fromHex[T any](t testing.TB, x test.HexBytes) (z T) {
 
 func readFile[V any](t *testing.T, fileName string) (v V) {
 	t.Helper()
-	jsonFile, err := os.Open(fileName)
-	if err != nil {
-		t.Fatalf("File %v can not be opened. Error: %v", fileName, err)
-	}
-	defer jsonFile.Close()
-	input, err := io.ReadAll(jsonFile)
+	input, err := test.ReadGzip(fileName)
 	if err != nil {
 		t.Fatalf("File %v can not be read. Error: %v", fileName, err)
 	}

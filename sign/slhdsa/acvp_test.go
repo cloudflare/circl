@@ -1,13 +1,11 @@
 package slhdsa
 
 import (
-	"archive/zip"
 	"bytes"
 	"crypto"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"strings"
 	"testing"
 
@@ -118,9 +116,9 @@ func TestACVP(t *testing.T) {
 func testKeygen(t *testing.T) {
 	// https://github.com/usnistgov/ACVP-Server/tree/v1.1.0.38/gen-val/json-files/SLH-DSA-keyGen-FIPS205
 	inputs := new(acvpKeyGenPrompt)
-	readVector(t, "testdata/keyGen_prompt.json.zip", inputs)
+	readVector(t, "testdata/keyGen_prompt.json.gz", inputs)
 	outputs := new(acvpKeyGenResult)
-	readVector(t, "testdata/keyGen_results.json.zip", outputs)
+	readVector(t, "testdata/keyGen_results.json.gz", outputs)
 
 	for gi, group := range inputs.TestGroups {
 		t.Run(fmt.Sprintf("TgID_%v", group.TgID), func(t *testing.T) {
@@ -149,9 +147,9 @@ func testKeygen(t *testing.T) {
 func testSign(t *testing.T) {
 	// https://github.com/usnistgov/ACVP-Server/tree/v1.1.0.38/gen-val/json-files/SLH-DSA-sigGen-FIPS205
 	inputs := new(acvpSigGenPrompt)
-	readVector(t, "testdata/sigGen_prompt.json.zip", inputs)
+	readVector(t, "testdata/sigGen_prompt.json.gz", inputs)
 	outputs := new(acvpSigGenResult)
-	readVector(t, "testdata/sigGen_results.json.zip", outputs)
+	readVector(t, "testdata/sigGen_results.json.gz", outputs)
 
 	for gi, group := range inputs.TestGroups {
 		test.CheckOk(group.TgID == outputs.TestGroups[gi].TgID, "mismatch of TgID", t)
@@ -180,9 +178,9 @@ func testSign(t *testing.T) {
 func testVerify(t *testing.T) {
 	// https://github.com/usnistgov/ACVP-Server/tree/v1.1.0.38/gen-val/json-files/SLH-DSA-sigVer-FIPS205
 	inputs := new(acvpVerifyInput)
-	readVector(t, "testdata/verify_prompt.json.zip", inputs)
+	readVector(t, "testdata/verify_prompt.json.gz", inputs)
 	outputs := new(acvpVerifyResult)
-	readVector(t, "testdata/verify_results.json.zip", outputs)
+	readVector(t, "testdata/verify_results.json.gz", outputs)
 
 	for gi, group := range inputs.TestGroups {
 		test.CheckOk(group.TgID == outputs.TestGroups[gi].TgID, "mismatch of TgID", t)
@@ -334,15 +332,7 @@ func acvpVerify(t *testing.T, p *sigParams, in *verifyInput, want bool) {
 }
 
 func readVector(t *testing.T, fileName string, vector interface{}) {
-	zipFile, err := zip.OpenReader(fileName)
-	test.CheckNoErr(t, err, "error opening file")
-	defer zipFile.Close()
-
-	jsonFile, err := zipFile.File[0].Open()
-	test.CheckNoErr(t, err, "error opening unzipping file")
-	defer jsonFile.Close()
-
-	input, err := io.ReadAll(jsonFile)
+	input, err := test.ReadGzip(fileName)
 	test.CheckNoErr(t, err, "error reading bytes")
 
 	err = json.Unmarshal(input, &vector)
