@@ -76,7 +76,7 @@ func IsEnabledX2() bool { return enabledX2 }
 // If turbo is true, applies 12-round variant instead of the usual 24.
 func (s *StateX4) Initialize(turbo bool) []uint64 {
 	s.turbo = turbo
-	rp := unsafe.Pointer(&s.a[0])
+	rp := unsafe.Pointer(&s.a[0]) //nolint:gosec
 
 	// uint64s are always aligned by a multiple of 8.  Compute the remainder
 	// of the address modulo 32 divided by 8.
@@ -96,7 +96,7 @@ func (s *StateX4) Initialize(turbo bool) []uint64 {
 // If turbo is true, applies 12-round variant instead of the usual 24.
 func (s *StateX2) Initialize(turbo bool) []uint64 {
 	s.turbo = turbo
-	rp := unsafe.Pointer(&s.a[0])
+	rp := unsafe.Pointer(&s.a[0]) //nolint:gosec
 
 	// uint64s are always aligned by a multiple of 8.  Compute the remainder
 	// of the address modulo 32 divided by 8.
