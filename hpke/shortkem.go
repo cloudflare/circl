@@ -103,7 +103,7 @@ func (s shortKEM) GenerateKeyPair() (kem.PublicKey, kem.PrivateKey, error) {
 func (s shortKEM) UnmarshalBinaryPrivateKey(data []byte) (kem.PrivateKey, error) {
 	key, err := s.Curve.NewPrivateKey(data)
 	if err != nil {
-		return nil, err
+		return nil, ErrInvalidKEMPrivateKey
 	}
 
 	return &shortKEMPrivKey{s, key}, nil
@@ -112,7 +112,7 @@ func (s shortKEM) UnmarshalBinaryPrivateKey(data []byte) (kem.PrivateKey, error)
 func (s shortKEM) UnmarshalBinaryPublicKey(data []byte) (kem.PublicKey, error) {
 	key, err := s.Curve.NewPublicKey(data)
 	if err != nil {
-		return nil, err
+		return nil, ErrInvalidKEMPublicKey
 	}
 
 	return &shortKEMPubKey{s, *key}, nil
