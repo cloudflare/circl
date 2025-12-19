@@ -106,7 +106,7 @@ jobs:
       - name: Upload Codecov
         uses: codecov/codecov-action@v5
         with:
-          file: ./coverage.txt
+          files: ./coverage.txt
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
   osCompat:
