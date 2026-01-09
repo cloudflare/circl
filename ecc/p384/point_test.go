@@ -130,13 +130,16 @@ func TestPointAdd(t *testing.T) {
 	})
 
 	t.Run("P+P=2P", func(t *testing.T) {
-		// This verifies that add function cannot be used for doublings.
+		// This verifies that add function can be used for doublings.
 		for i := 0; i < 128; i++ {
 			P = randomJacobian()
+			Q := *P
 
 			R.add(P, P)
 			gotX, gotY := R.toAffine().toInt()
-			wantX, wantY := zeroPoint().toInt()
+
+			Q.double()
+			wantX, wantY := Q.toAffine().toInt()
 
 			if gotX.Cmp(wantX) != 0 {
 				test.ReportError(t, gotX, wantX, P)

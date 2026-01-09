@@ -140,8 +140,8 @@ func (P *jacobianPoint) toAffine() *affinePoint {
 
 func (P *jacobianPoint) cmov(Q *jacobianPoint, b int) { P.p2Point.cmov(&Q.p2Point, b) }
 
-// add calculates P=Q+R such that Q and R are different than the identity point,
-// and Q!==R. This function cannot be used for doublings.
+// add calculates P=Q+R such that Q and R are different than the identity point.
+// This function can be used for doublings.
 func (P *jacobianPoint) add(Q, R *jacobianPoint) {
 	if Q.isZero() {
 		*P = *R
@@ -171,6 +171,14 @@ func (P *jacobianPoint) add(Q, R *jacobianPoint) {
 	fp384Sqr(HH, H)        // HH = H ^ 2
 	fp384Mul(HHH, H, HH)   // HHH = H * HH
 	fp384Sub(RR, S2, S1)   // r = S2 - S1
+
+	// Detect point doubling
+	if zero := (fp384{}); *H == zero && *RR == zero {
+		*P = *Q
+		P.double()
+		return
+	}
+
 	fp384Mul(V, U1, HH)    // V = U1 * HH
 	fp384Sqr(t2, RR)       // t2 = r ^ 2
 	fp384Add(t3, V, V)     // t3 = V + V
@@ -187,6 +195,7 @@ func (P *jacobianPoint) add(Q, R *jacobianPoint) {
 // mixadd calculates P=Q+R such that P and Q different than the identity point,
 // and Q not in {P,-P, O}.
 func (P *jacobianPoint) mixadd(Q *jacobianPoint, R *affinePoint) {
+	// See https://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-3.html#addition-madd-2007-bl
 	if Q.isZero() {
 		*P = *R.toJacobian()
 		return
@@ -237,6 +246,7 @@ func (P *jacobianPoint) mixadd(Q *jacobianPoint, R *affinePoint) {
 }
 
 func (P *jacobianPoint) double() {
+	// See https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-3.html#doubling-dbl-2001-b
 	delta, gamma, alpha, alpha2 := &fp384{}, &fp384{}, &fp384{}, &fp384{}
 	fp384Sqr(delta, &P.z)
 	fp384Sqr(gamma, &P.y)
