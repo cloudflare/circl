@@ -94,33 +94,32 @@ func (c curve) scalarMultOmega(x1, y1 *big.Int, k []byte, omega uint) (x, y *big
 	const bitsN = uint(384)
 	L := math.SignedDigit(&scalar, omega, bitsN)
 
-	var R jacobianPoint
-	Q := zeroPoint().toJacobian()
-	TabP := newAffinePoint(x1, y1).oddMultiples(omega)
+	var R projectivePoint
+	Q := zeroPoint().toProjective()
+	TabP := newAffinePoint(x1, y1).oddMultiplesProy(omega)
 	for i := len(L) - 1; i > 0; i-- {
 		for j := uint(0); j < omega-1; j++ {
-			Q.double()
+			Q.completeAdd(Q, Q)
 		}
 		idx := absolute(L[i]) >> 1
 		for j := range TabP {
 			R.cmov(&TabP[j], subtle.ConstantTimeEq(int32(j), idx))
 		}
 		R.cneg(int(L[i]>>31) & 1)
-		Q.add(Q, &R)
+		Q.completeAdd(Q, &R)
 	}
 	// Calculate the last iteration using complete addition formula.
 	for j := uint(0); j < omega-1; j++ {
-		Q.double()
+		Q.completeAdd(Q, Q)
 	}
 	idx := absolute(L[0]) >> 1
 	for j := range TabP {
 		R.cmov(&TabP[j], subtle.ConstantTimeEq(int32(j), idx))
 	}
 	R.cneg(int(L[0]>>31) & 1)
-	QQ := Q.toProjective()
-	QQ.completeAdd(QQ, R.toProjective())
-	QQ.cneg(isEvenK)
-	return QQ.toAffine().toInt()
+	Q.completeAdd(Q, &R)
+	Q.cneg(isEvenK)
+	return Q.toAffine().toInt()
 }
 
 // ScalarBaseMult returns k*G, where G is the base point of the group
