@@ -87,6 +87,24 @@ func (ap affinePoint) oddMultiples(n uint) []jacobianPoint {
 	return t
 }
 
+// OddMultiplesProy calculates the points iP for i={1,3,5,7,..., 2^(n-1)-1}
+// Ensure that 1 < n < 31, otherwise it returns an empty slice.
+func (ap affinePoint) oddMultiplesProy(n uint) []projectivePoint {
+	var t []projectivePoint
+	if n > 1 && n < 31 {
+		P := ap.toProjective()
+		s := int32(1) << (n - 1)
+		t = make([]projectivePoint, s)
+		t[0] = *P
+		var _2P projectivePoint
+		_2P.completeAdd(P, P)
+		for i := int32(1); i < s; i++ {
+			t[i].completeAdd(&t[i-1], &_2P)
+		}
+	}
+	return t
+}
+
 // p2Point is a point in P^2
 type p2Point struct{ x, y, z fp384 }
 
@@ -302,6 +320,8 @@ func (P *projectivePoint) isZero() bool {
 	zero := fp384{}
 	return P.x == zero && P.y != zero && P.z == zero
 }
+
+func (P *projectivePoint) cmov(Q *projectivePoint, b int) { P.p2Point.cmov(&Q.p2Point, b) }
 
 func (P *projectivePoint) toAffine() *affinePoint {
 	var aP affinePoint
