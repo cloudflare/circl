@@ -156,8 +156,6 @@ func (P *jacobianPoint) toAffine() *affinePoint {
 	return &aP
 }
 
-func (P *jacobianPoint) cmov(Q *jacobianPoint, b int) { P.p2Point.cmov(&Q.p2Point, b) }
-
 // add calculates P=Q+R such that Q and R are different than the identity point.
 // This function can be used for doublings.
 func (P *jacobianPoint) add(Q, R *jacobianPoint) {
