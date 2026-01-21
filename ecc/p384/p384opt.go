@@ -96,7 +96,7 @@ func (c curve) scalarMultOmega(x1, y1 *big.Int, k []byte, omega uint) (x, y *big
 
 	var R projectivePoint
 	Q := zeroPoint().toProjective()
-	TabP := newAffinePoint(x1, y1).oddMultiplesProy(omega)
+	TabP := newAffinePoint(x1, y1).oddMultiplesProjective(omega)
 	for i := len(L) - 1; i > 0; i-- {
 		for j := uint(0); j < omega-1; j++ {
 			Q.completeAdd(Q, Q)
