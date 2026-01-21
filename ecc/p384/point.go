@@ -87,9 +87,9 @@ func (ap affinePoint) oddMultiples(n uint) []jacobianPoint {
 	return t
 }
 
-// OddMultiplesProy calculates the points iP for i={1,3,5,7,..., 2^(n-1)-1}
+// oddMultiplesProjective calculates the points iP for i={1,3,5,7,..., 2^(n-1)-1}
 // Ensure that 1 < n < 31, otherwise it returns an empty slice.
-func (ap affinePoint) oddMultiplesProy(n uint) []projectivePoint {
+func (ap affinePoint) oddMultiplesProjective(n uint) []projectivePoint {
 	var t []projectivePoint
 	if n > 1 && n < 31 {
 		P := ap.toProjective()
