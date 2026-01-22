@@ -16,7 +16,7 @@ jobs:
         GOVER: ['1.25', '1.24']
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Setup Go-${{ matrix.GOVER }}
         uses: actions/setup-go@v6
         with:
@@ -48,7 +48,7 @@ jobs:
       matrix:
         GOVER: ['1.25', '1.24']
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Setup Go-${{ matrix.GOVER }}
         uses: actions/setup-go@v6
         with:
@@ -63,7 +63,7 @@ jobs:
     name: Testing on WASM
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
@@ -80,7 +80,7 @@ jobs:
     name: Testing Build Modes
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
@@ -96,7 +96,7 @@ jobs:
     name: amd64/coverage
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
@@ -118,7 +118,7 @@ jobs:
         os: [macos-latest, windows-latest]
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
@@ -137,7 +137,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
