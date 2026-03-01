@@ -59,7 +59,7 @@ func (kshare *KeyShare) MarshalBinary() ([]byte, error) {
 	twoDeltaSiLen := len(twoDeltaSiBytes)
 
 	if twoDeltaSiLen > math.MaxInt16 {
-		return nil, fmt.Errorf("rsa_threshold: keyshare marshall: twoDeltaSiBytes is too big to fit it's length in a uint16")
+		return nil, fmt.Errorf("rsa_threshold: keyshare marshall: twoDeltaSiBytes is too big to fit its length in a uint16")
 	}
 
 	siBytes := kshare.si.Bytes()
