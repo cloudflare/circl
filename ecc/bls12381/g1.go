@@ -371,8 +371,14 @@ func (g *G1) Encode(input, dst []byte) {
 // an optional domain separation tag. This function is safe to use when a
 // random oracle returning points in G1 be required.
 func (g *G1) Hash(input, dst []byte) {
+	g.HashWithExpander(expander.NewExpanderMD(crypto.SHA256, dst), input)
+}
+
+// HashWithExpander is similar to [G1.Hash] but allows to specify an
+// expander created from a hash function or an extendable-output function.
+func (g *G1) HashWithExpander(exp expander.Expander, input []byte) {
 	const L = 64
-	pseudo := expander.NewExpanderMD(crypto.SHA256, dst).Expand(input, 2*L)
+	pseudo := exp.Expand(input, 2*L)
 
 	var u0, u1 ff.Fp
 	u0.SetBytes(pseudo[0*L : 1*L])
