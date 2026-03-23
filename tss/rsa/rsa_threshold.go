@@ -15,7 +15,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"math/big"
 
 	cmath "github.com/cloudflare/circl/math"
@@ -150,7 +149,7 @@ func Deal(randSource io.Reader, players, threshold uint, key *rsa.PrivateKey, ca
 		shares[i-1].Players = players
 		shares[i-1].Threshold = threshold
 		// Σ^{k-1}_{i=0} | a_i * X^i (mod m)
-		poly := computePolynomial(threshold, a, i, &m)
+		poly := computePolynomial(a, i, &m)
 		shares[i-1].si = poly
 		shares[i-1].Index = i
 		if cache {
@@ -168,25 +167,17 @@ func calcN(p, q *big.Int) big.Int {
 	return n
 }
 
-// f(X) = Σ^{k-1}_{i=0} | a_i * X^i (mod m)
-func computePolynomial(k uint, a []*big.Int, x uint, m *big.Int) *big.Int {
-	// TODO: use Horner's method here.
+// f(X) = Σ^{k-1}_{i=0} | a_i * X^i (mod m), where k = len(a).
+func computePolynomial(a []*big.Int, x uint, m *big.Int) *big.Int {
 	sum := big.NewInt(0)
-	//  Σ^{k-1}_{i=0}
-	for i := uint(0); i <= k-1; i++ {
-		// X^i
-		// TODO optimize: we can compute x^{n+1} from the previous x^n
-		xi := int64(math.Pow(float64(x), float64(i)))
-		// a_i * X^i
-		prod := big.Int{}
-		prod.Mul(a[i], big.NewInt(xi))
-		// (mod m)
-		prod.Mod(&prod, m) // while not in the spec, we are eventually modding m, so we can mod here for efficiency
-		// Σ
-		sum.Add(sum, &prod)
+	if len(a) > 0 {
+		xBig := big.NewInt(int64(x))
+		sum.Set(a[len(a)-1])
+		for i := len(a) - 2; i >= 0; i-- {
+			sum.Mul(sum, xBig).Mod(sum, m)
+			sum.Add(sum, a[i]).Mod(sum, m)
+		}
 	}
-
-	sum.Mod(sum, m)
 
 	return sum
 }

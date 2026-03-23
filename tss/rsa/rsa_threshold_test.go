@@ -58,7 +58,7 @@ func TestComputePolynomial(t *testing.T) {
 	// a = {1, 2, 3, 4, 5}
 
 	x := uint(3)
-	out := computePolynomial(k, a, x, m)
+	out := computePolynomial(a, x, m)
 	// 1 * 3^0 = 1  = 1
 	// 2 * 3^1 = 6  = 6
 	// 3 * 3^2 = 27 = 5
@@ -67,6 +67,29 @@ func TestComputePolynomial(t *testing.T) {
 	// 1 + 6 + 5 + 9 + 9 = 30 = 8
 	if out.Cmp(big.NewInt(8)) != 0 {
 		t.Fatal("compute polynomial failed")
+	}
+}
+
+func TestComputePolynomialLarge(t *testing.T) {
+	m, err := rand.Prime(rand.Reader, 64)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	const k = 100
+	a := make([]*big.Int, k)
+	t0 := big.NewInt(0)
+	want := big.NewInt(0)
+	for i := 0; i < k; i++ {
+		a[i] = big.NewInt(int64(i + 1))
+		t0.Lsh(a[i], uint(i)).Mod(t0, m)
+		want.Add(want, t0)
+	}
+	want.Mod(want, m)
+
+	got := computePolynomial(a, 2, m)
+	if got.Cmp(want) != 0 {
+		test.ReportError(t, got, want, m, a)
 	}
 }
 
