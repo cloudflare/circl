@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        GOVER: ['1.25', '1.24']
+        GOVER: ['1.26', '1.25']
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-24.04-arm
     strategy:
       matrix:
-        GOVER: ['1.25', '1.24']
+        GOVER: ['1.26', '1.25']
     steps:
       - uses: actions/checkout@v6
       - name: Setup Go-${{ matrix.GOVER }}
@@ -67,7 +67,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25'
+          go-version: '1.26'
       - name: Setting WASM Runtime
         run: echo $(go env GOROOT)/lib/wasm >> $GITHUB_PATH
       - name: Building
@@ -84,7 +84,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25'
+          go-version: '1.26'
       - name: Build as Static
         run: make circl_static
       - name: Build as Plugin
@@ -100,7 +100,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25'
+          go-version: '1.26'
       - name: Produce Coverage
         run: go test -coverprofile=./coverage.txt ./...
       - name: Upload Codecov
@@ -122,7 +122,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25'
+          go-version: '1.26'
       - name: Building
         run: go build -v ./...
       - name: Testing
@@ -141,7 +141,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.25'
+          go-version: '1.26'
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
