@@ -24,6 +24,7 @@ package qndleq
 
 import (
 	"crypto/rand"
+	"errors"
 	"io"
 	"math/big"
 
@@ -31,8 +32,8 @@ import (
 )
 
 type Proof struct {
-	Z, C     *big.Int
-	SecParam uint
+	z, c     *big.Int
+	secParam uint
 }
 
 // SampleQn returns an element of Qn (the subgroup of squares in (Z/nZ)*).
@@ -82,17 +83,21 @@ func Prove(random io.Reader, x, g, gx, h, hx, N *big.Int, secParam uint) (*Proof
 	gP := new(big.Int).Exp(g, r, N)
 	hP := new(big.Int).Exp(h, r, N)
 
-	c := doChallenge(g, gx, h, hx, gP, hP, N, secParam)
+	c, err := doChallenge(g, gx, h, hx, gP, hP, N, secParam)
+	if err != nil {
+		return nil, err
+	}
+
 	z := new(big.Int)
 	z.Mul(c, x).Add(z, r)
 
-	return &Proof{Z: z, C: c, SecParam: secParam}, nil
+	return &Proof{z, c, secParam}, nil
 }
 
 // Verify checks whether x = Log_g(g^x) = Log_h(h^x).
 func (p Proof) Verify(g, gx, h, hx, N *big.Int) bool {
-	gPNum := new(big.Int).Exp(g, p.Z, N)
-	gPDen := new(big.Int).Exp(gx, p.C, N)
+	gPNum := new(big.Int).Exp(g, p.z, N)
+	gPDen := new(big.Int).Exp(gx, p.c, N)
 	ok := gPDen.ModInverse(gPDen, N)
 	if ok == nil {
 		return false
@@ -100,8 +105,8 @@ func (p Proof) Verify(g, gx, h, hx, N *big.Int) bool {
 	gP := gPNum.Mul(gPNum, gPDen)
 	gP.Mod(gP, N)
 
-	hPNum := new(big.Int).Exp(h, p.Z, N)
-	hPDen := new(big.Int).Exp(hx, p.C, N)
+	hPNum := new(big.Int).Exp(h, p.z, N)
+	hPDen := new(big.Int).Exp(hx, p.c, N)
 	ok = hPDen.ModInverse(hPDen, N)
 	if ok == nil {
 		return false
@@ -109,25 +114,62 @@ func (p Proof) Verify(g, gx, h, hx, N *big.Int) bool {
 	hP := hPNum.Mul(hPNum, hPDen)
 	hP.Mod(hP, N)
 
-	c := doChallenge(g, gx, h, hx, gP, hP, N, p.SecParam)
+	c, err := doChallenge(g, gx, h, hx, gP, hP, N, p.secParam)
+	if err != nil {
+		return false
+	}
 
-	return p.C.Cmp(c) == 0
+	return p.c.Cmp(c) == 0
 }
 
-func doChallenge(g, gx, h, hx, gP, hP, N *big.Int, secParam uint) *big.Int {
+func doChallenge(g, gx, h, hx, gP, hP, N *big.Int, secParam uint) (*big.Int, error) {
+	if secParam < 128 {
+		return nil, ErrSecParam
+	}
+
 	modulusLenBytes := (N.BitLen() + 7) / 8
 	nBytes := make([]byte, modulusLenBytes)
 	cByteLen := (secParam + 7) / 8
 	cBytes := make([]byte, cByteLen)
 
 	H := sha3.NewShake256()
-	_, _ = H.Write(g.FillBytes(nBytes))
-	_, _ = H.Write(h.FillBytes(nBytes))
-	_, _ = H.Write(gx.FillBytes(nBytes))
-	_, _ = H.Write(hx.FillBytes(nBytes))
-	_, _ = H.Write(gP.FillBytes(nBytes))
-	_, _ = H.Write(hP.FillBytes(nBytes))
-	_, _ = H.Read(cBytes)
+	_, err := H.Write(g.FillBytes(nBytes))
+	if err != nil {
+		return nil, err
+	}
 
-	return new(big.Int).SetBytes(cBytes)
+	_, err = H.Write(h.FillBytes(nBytes))
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = H.Write(gx.FillBytes(nBytes))
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = H.Write(hx.FillBytes(nBytes))
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = H.Write(gP.FillBytes(nBytes))
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = H.Write(hP.FillBytes(nBytes))
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = H.Read(cBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return new(big.Int).SetBytes(cBytes), nil
 }
+
+// ErrSecParam is returned when the security parameter is less than 128.
+var ErrSecParam = errors.New("zk/qndleq: the security parameter must be greater than 128")
