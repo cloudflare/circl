@@ -175,8 +175,9 @@ func computePolynomial(a []*big.Int, x uint, m *big.Int) *big.Int {
 		sum.Set(a[len(a)-1])
 		for i := len(a) - 2; i >= 0; i-- {
 			sum.Mul(sum, xBig).Mod(sum, m)
-			sum.Add(sum, a[i]).Mod(sum, m)
+			sum.Add(sum, a[i])
 		}
+		sum.Mod(sum, m)
 	}
 
 	return sum
