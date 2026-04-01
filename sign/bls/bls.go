@@ -365,6 +365,18 @@ func VerifyAggregate[K KeyGroup](pubs []*PublicKey[K], msgs [][]byte, aggSig Sig
 		return false
 	}
 
+	// 1. If any two input messages are equal, return INVALID.
+	set := make(map[string]struct{}, len(msgs))
+	for _, m := range msgs {
+		k := string(m)
+		if _, found := set[k]; found {
+			return false
+		}
+		set[k] = struct{}{}
+	}
+
+	// 2. CoreAggregateVerify algorithm checks an aggregated signature over
+	// several (PK, message) pairs.
 	for _, p := range pubs {
 		if !p.Validate() {
 			return false
