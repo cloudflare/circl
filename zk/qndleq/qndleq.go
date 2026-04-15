@@ -127,13 +127,18 @@ func doChallenge(g, gx, h, hx, gP, hP, N *big.Int, secParam uint) (*big.Int, err
 		return nil, ErrSecParam
 	}
 
+	err := checkBounds(N, g, gx, h, hx, gP, hP)
+	if err != nil {
+		return nil, err
+	}
+
 	modulusLenBytes := (N.BitLen() + 7) / 8
 	nBytes := make([]byte, modulusLenBytes)
 	cByteLen := (secParam + 7) / 8
 	cBytes := make([]byte, cByteLen)
 
 	H := sha3.NewShake256()
-	_, err := H.Write(g.FillBytes(nBytes))
+	_, err = H.Write(g.FillBytes(nBytes))
 	if err != nil {
 		return nil, err
 	}
@@ -171,5 +176,21 @@ func doChallenge(g, gx, h, hx, gP, hP, N *big.Int, secParam uint) (*big.Int, err
 	return new(big.Int).SetBytes(cBytes), nil
 }
 
-// ErrSecParam is returned when the security parameter is less than 128.
-var ErrSecParam = errors.New("zk/qndleq: the security parameter must be greater than 128")
+// checkBounds returns nil if 0 < x[i] < N for all 0 <= i < len(x);
+// otherwise, returns ErrBounds.
+func checkBounds(N *big.Int, x ...*big.Int) error {
+	for _, xi := range x {
+		if !(0 < xi.Sign() && xi.Cmp(N) < 0) {
+			return ErrBounds
+		}
+	}
+
+	return nil
+}
+
+var (
+	// ErrSecParam is returned when the security parameter is less than 128.
+	ErrSecParam = errors.New("zk/qndleq: the security parameter must be greater than 128")
+	// ErrBounds is returned when a value is not in the range 0 to N.
+	ErrBounds = errors.New("zk/qndleq: input must be greater than 0 and less than N")
+)

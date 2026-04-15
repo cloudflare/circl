@@ -34,6 +34,18 @@ func TestProve(t *testing.T) {
 	}
 }
 
+func TestInvalidStatement(t *testing.T) {
+	g, gx := big.NewInt(4), big.NewInt(16) // 4^2 == 16 mod 101
+	h, hx := big.NewInt(9), big.NewInt(81) // 9^2 == 81 mod 101
+	N := big.NewInt(101)
+	incorrectX := big.NewInt(3)
+
+	p, err := qndleq.Prove(rand.Reader, incorrectX, g, gx, h, hx, N, 128)
+	test.CheckNoErr(t, err, "an alleged proof must be computed")
+	isValid := p.Verify(g, gx, h, hx, N)
+	test.CheckOk(isValid == false, "proof verification must fail", t)
+}
+
 func TestSampleQn(t *testing.T) {
 	const testTimes = 1 << 7
 	one := big.NewInt(1)
