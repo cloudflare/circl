@@ -49,3 +49,24 @@ func TestForgedProofSecParamZero(t *testing.T) {
 
 	test.CheckOk(!forged.Verify(g, gx, h, hx, N), "forged proof must be rejected", t)
 }
+
+func TestChallenge(t *testing.T) {
+	g, gx := big.NewInt(4), big.NewInt(16)
+	h, hx := big.NewInt(9), big.NewInt(81)
+	gP := big.NewInt(50)
+	hP := big.NewInt(60)
+	N := big.NewInt(101)
+
+	invalidValues := []*big.Int{
+		new(big.Int).Neg(g),    // Negative
+		big.NewInt(0),          // Zero
+		new(big.Int).Set(N),    // N
+		new(big.Int).Add(N, N), // bigger than N
+	}
+
+	for _, invalidValue := range invalidValues {
+		c, err := doChallenge(invalidValue, gx, h, hx, gP, hP, N, 128)
+		test.CheckIsErr(t, err, "doChallenge must fail")
+		test.CheckOk(c == nil, "challenge must be nil", t)
+	}
+}
