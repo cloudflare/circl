@@ -72,30 +72,57 @@ func SampleQn(random io.Reader, N *big.Int) (*big.Int, error) {
 func Prove(random io.Reader, x, g, gx, h, hx, N *big.Int, secParam uint) (*Proof, error) {
 	rSizeBits := uint(N.BitLen()) + 2*secParam
 	rSizeBytes := (rSizeBits + 7) / 8
-
 	rBytes := make([]byte, rSizeBytes)
-	_, err := io.ReadFull(random, rBytes)
-	if err != nil {
-		return nil, err
+
+	ONE := big.NewInt(1)
+	NUM_TRIES := 10
+	var r, gP, hP, gc, hc big.Int
+	for i := 0; i < NUM_TRIES; i++ {
+		_, err := io.ReadFull(random, rBytes)
+		if err != nil {
+			return nil, err
+		}
+
+		r.SetBytes(rBytes)
+		gP.Exp(g, &r, N)
+		hP.Exp(h, &r, N)
+
+		c, err := doChallenge(g, gx, h, hx, &gP, &hP, N, secParam)
+		if err != nil {
+			return nil, err
+		}
+
+		// Challenge must not be congruent to zero.
+		//   c != 0 mod m, where m = (p-1)(q-1)/4, and N = p*q.
+		// Check this by doing an Exp because m is unknown.
+		//
+		// This is valid assuming N is a power of two safe prime numbers.
+		// In the verification equation, c multiplies the witness.
+		// When c is zero, it removes the witness allowing to trivially
+		// pass the verification check.
+		gc.Exp(g, c, N)
+		hc.Exp(h, c, N)
+		if gc.Cmp(ONE) != 0 && hc.Cmp(ONE) != 0 {
+			z := new(big.Int).Mul(c, x)
+			z.Add(z, &r)
+			return &Proof{z, c, secParam}, nil
+		}
 	}
-	r := new(big.Int).SetBytes(rBytes)
 
-	gP := new(big.Int).Exp(g, r, N)
-	hP := new(big.Int).Exp(h, r, N)
-
-	c, err := doChallenge(g, gx, h, hx, gP, hP, N, secParam)
-	if err != nil {
-		return nil, err
-	}
-
-	z := new(big.Int)
-	z.Mul(c, x).Add(z, r)
-
-	return &Proof{z, c, secParam}, nil
+	return nil, ErrProve
 }
 
 // Verify checks whether x = Log_g(g^x) = Log_h(h^x).
 func (p Proof) Verify(g, gx, h, hx, N *big.Int) bool {
+	// Check c != 0 (mod m), where m = (p-1)(q-1)/4,
+	// by doing an Exp as m is unknown.
+	ONE := big.NewInt(1)
+	gc := new(big.Int).Exp(g, p.c, N)
+	hc := new(big.Int).Exp(h, p.c, N)
+	if gc.Cmp(ONE) == 0 || hc.Cmp(ONE) == 0 {
+		return false
+	}
+
 	gPNum := new(big.Int).Exp(g, p.z, N)
 	gPDen := new(big.Int).Exp(gx, p.c, N)
 	ok := gPDen.ModInverse(gPDen, N)
@@ -193,4 +220,6 @@ var (
 	ErrSecParam = errors.New("zk/qndleq: the security parameter must be greater than 128")
 	// ErrBounds is returned when a value is not in the range 0 to N.
 	ErrBounds = errors.New("zk/qndleq: input must be greater than 0 and less than N")
+	// ErrProve is returned when Prove cannot produce a proof.
+	ErrProve = errors.New("zk/qndleq: Prove cannot produce a proof")
 )
