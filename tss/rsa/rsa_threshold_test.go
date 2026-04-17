@@ -95,26 +95,101 @@ func TestComputePolynomialLarge(t *testing.T) {
 
 func TestComputeLambda(t *testing.T) {
 	// shares = {1, 2, 3, 4, 5}
+	// l = 5
 	// i = 0
 	// ∆ = 5! = 120
 	// j = 3
 	//
 	// num = (0 - 1) * (0 - 2) * (0 - 4) * (0 - 5) = 40
-	// dem = (3 - 1) * (3 - 2) * (3 - 4) * (3 - 5) = 4
-	// num/dev = 40/4 = 10
+	// den = (3 - 1) * (3 - 2) * (3 - 4) * (3 - 5) = 4
+	// num/den = 40/4 = 10
 	// ∆ * 10 = 120 * 10 = 1200
-	shares := make([]SignShare, 5)
-	for i := uint(1); i <= 5; i++ {
+	const l = 5
+	shares := make([]SignShare, l)
+	for i := uint(1); i <= l; i++ {
 		shares[i-1].Index = i
 	}
 	i := int64(0)
-	delta := int64(120)
+	delta := calculateDelta(l)
 	j := int64(3)
 
-	lambda, err := computeLambda(big.NewInt(delta), shares, i, j)
-
+	lambda, err := computeLambda(delta, shares, i, j, l)
 	if err != nil || lambda.Cmp(big.NewInt(1200)) != 0 {
 		t.Fatal("computeLambda failed")
+	}
+}
+
+func TestCheckIndices(t *testing.T) {
+	type pairs []struct {
+		i int64 // i must be in {0..l} but not in S
+		j int64 // j must be in S
+	}
+
+	testCases := []struct {
+		want bool
+		pairs
+	}{
+		{true, pairs{{0, 1}, {0, 4}, {2, 1}, {2, 4}, {3, 1}, {3, 4}, {5, 1}, {5, 4}, {6, 1}, {6, 4}, {8, 1}, {8, 4}}},
+		{false, pairs{{1, 1}, {1, 4}, {4, 1}, {4, 4}, {9, 1}, {9, 4}, {-1, 1}, {-1, 4}, {0, 0}, {0, 2}, {0, 3}}},
+	}
+
+	// S = {1,4}
+	var shares [2]SignShare
+	shares[0].Index = 1
+	shares[1].Index = 4
+	const l = 8
+
+	for _, tc := range testCases {
+		for _, p := range tc.pairs {
+			got := checkIndices(p.i, p.j, l, shares[:])
+			test.CheckOk(got == tc.want, fmt.Sprintf("i: %v j: %v", p.i, p.j), t)
+		}
+	}
+}
+
+func TestComputeLambdaLarge(t *testing.T) {
+	/* Python3
+	from math import prod, factorial
+	S = [7,14,21]
+	j = 7
+	l = 32
+	computeLambda = lambda i,j,l,S : (\
+		factorial(l) * prod( i-jp for jp in S if jp!=j ) \
+		) // prod( j-jp for jp in S if jp!=j )
+	i= 0; computeLambda(i,j,l,S)
+	i=12; computeLambda(i,j,l,S)
+	i=19; computeLambda(i,j,l,S)
+	i=32; computeLambda(i,j,l,S)
+	*/
+
+	// S = {7,14,21}
+	var shares [3]SignShare
+	shares[0].Index = 7
+	shares[1].Index = 14
+	shares[2].Index = 21
+
+	const players = 32
+	const j = 7
+	delta := calculateDelta(players)
+	testCases := []struct {
+		i    int64
+		want string
+	}{
+		{0, "789392510801080590501654036480000000"},
+		{12, "48330153722515138193978818560000000"},
+		{19, "-26850085401397298996654899200000000"},
+		{32, "531631690947666520133767004160000000"},
+	}
+
+	var want big.Int
+	for _, tc := range testCases {
+		got, err := computeLambda(delta, shares[:], tc.i, j, players)
+		test.CheckNoErr(t, err, "computeLambda failed")
+		want.SetString(tc.want, 10)
+
+		if got.Cmp(&want) != 0 {
+			test.ReportError(t, got.String(), want.String(), tc.i)
+		}
 	}
 }
 

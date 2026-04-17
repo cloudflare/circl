@@ -218,7 +218,7 @@ func CombineSignShares(pub *rsa.PublicKey, shares []SignShare, msg []byte) (Sign
 	// i_1 ... i_k
 	for _, share := range shares {
 		// λ(S, 0, i)
-		lambda, err := computeLambda(delta, shares, 0, int64(share.Index))
+		lambda, err := computeLambda(delta, shares, 0, int64(share.Index), int64(players))
 		if err != nil {
 			return nil, err
 		}
@@ -280,55 +280,60 @@ func CombineSignShares(pub *rsa.PublicKey, shares []SignShare, msg []byte) (Sign
 	return sig, nil
 }
 
-// computes lagrange Interpolation for the shares
-// i must be an id 0..l but not in S
-// j must be in S
-func computeLambda(delta *big.Int, S []SignShare, i, j int64) (*big.Int, error) {
-	if i == j {
-		return nil, errors.New("rsa_threshold: i and j can't be equal by precondition")
+func checkIndices(i, j, l int64, S []SignShare) bool {
+	var isIinS, isJinS bool
+	for k := range S {
+		sk := int64(S[k].Index)
+		if sk == i {
+			isIinS = true
+		}
+		if sk == j {
+			isJinS = true
+		}
 	}
-	// these are just to check preconditions
-	foundi := false
-	foundj := false
+
+	// j must be in S
+	// i must be in {0..l} but not in S
+	return isJinS && (0 <= i && i <= l && !isIinS)
+}
+
+// computes Lagrange Interpolation for the shares
+// i must be in {0..l} but not in S
+// j must be in S
+func computeLambda(delta *big.Int, S []SignShare, i, j, l int64) (*big.Int, error) {
+	// Equation (2) of https://www.iacr.org/archive/eurocrypt2000/1807/18070209-new.pdf
+	if !checkIndices(i, j, l, S) {
+		return nil, ErrInvalidCalc
+	}
 
 	// λ(s, i, j) = ∆( (  π{j'∈S\{j}} (i - j')  ) /  (  π{j'∈S\{j}} (j - j') ) )
-
-	num := int64(1)
-	den := int64(1)
+	num := big.NewInt(1)
+	den := big.NewInt(1)
+	tmp := big.NewInt(0)
 
 	// ∈ S
 	for _, s := range S {
-		// j'
-		jprime := int64(s.Index)
-		// S\{j}
-		if jprime == j {
-			foundj = true
-			continue
+		jprime := int64(s.Index) // j'
+		if jprime != j {
+			num.Mul(num, tmp.SetInt64(i-jprime)) // (i - j')  for j' ∈ S \ {j}
+			den.Mul(den, tmp.SetInt64(j-jprime)) // (j - j')  for j' ∈ S \ {j}
 		}
-		if jprime == i {
-			foundi = false
-			break
-		}
-		//  (i - j')
-		num *= i - jprime
-		// (j - j')
-		den *= j - jprime
 	}
 
-	// ∆ * (num/den)
-	var lambda big.Int
-	// (num/den)
-	lambda.Div(big.NewInt(num), big.NewInt(den))
-	// ∆ * (num/den)
-	lambda.Mul(delta, &lambda)
-
-	if foundi {
-		return nil, fmt.Errorf("rsa_threshold: i: %d should not be in S", i)
+	// den must be different of zero.
+	if den.Sign() == 0 {
+		return nil, ErrInvalidCalc
 	}
 
-	if !foundj {
-		return nil, fmt.Errorf("rsa_threshold: j: %d should be in S", j)
+	// lambda = (delta * num) / den, and lambda must an integer.
+	var lambda, rem big.Int
+	lambda.Mul(delta, num)
+	lambda.QuoRem(&lambda, den, &rem)
+	if rem.Sign() != 0 {
+		return nil, ErrInvalidCalc
 	}
 
 	return &lambda, nil
 }
+
+var ErrInvalidCalc = errors.New("tss/rsa: invalid calculation")
