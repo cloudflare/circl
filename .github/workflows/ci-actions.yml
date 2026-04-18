@@ -22,9 +22,9 @@ jobs:
         with:
           go-version: ${{ matrix.GOVER }}
       - name: Linting
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.3.1
+          version: v2.4.0
       - name: Check shadowing
         run: |
          go install golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow@latest
