@@ -6,20 +6,24 @@ import (
 	"testing"
 
 	"github.com/cloudflare/circl/internal/test"
+	cmath "github.com/cloudflare/circl/math"
 	"github.com/cloudflare/circl/zk/qndleq"
 )
 
 func TestProve(t *testing.T) {
-	const testTimes = 1 << 8
-	const SecParam = 128
-	one := big.NewInt(1)
-	max := new(big.Int).Lsh(one, 256)
+	const (
+		testTimes = 1 << 8
+		SecParam  = 128
+		BitLength = 128 // [Warning]: this is only for tests, use a secure bit length above 2048 bits.
+	)
+
+	p, err := cmath.SafePrime(rand.Reader, BitLength)
+	test.CheckNoErr(t, err, "failed to generate a safe prime")
+	q, err := cmath.SafePrime(rand.Reader, BitLength)
+	test.CheckNoErr(t, err, "failed to generate a safe prime")
+	N := new(big.Int).Mul(p, q)
 
 	for i := 0; i < testTimes; i++ {
-		N, _ := rand.Int(rand.Reader, max)
-		if N.Bit(0) == 0 {
-			N.Add(N, one)
-		}
 		x, _ := rand.Int(rand.Reader, N)
 		g, err := qndleq.SampleQn(rand.Reader, N)
 		test.CheckNoErr(t, err, "failed to sampleQn")
@@ -38,8 +42,8 @@ func TestInvalidStatement(t *testing.T) {
 	// Safe primes: https://oeis.org/A005385
 	p, q := big.NewInt(1019), big.NewInt(1187)
 	N := new(big.Int).Mul(p, q)
-	g, gx := big.NewInt(4), big.NewInt(16) // 4^2 == 16
-	h, hx := big.NewInt(9), big.NewInt(81) // 9^2 == 81
+	g, gx := big.NewInt(4), big.NewInt(16) // 4^2 == 16 mod N
+	h, hx := big.NewInt(9), big.NewInt(81) // 9^2 == 81 mod N
 	incorrectX := big.NewInt(3)
 
 	proof, err := qndleq.Prove(rand.Reader, incorrectX, g, gx, h, hx, N, 128)

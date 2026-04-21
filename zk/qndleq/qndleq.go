@@ -70,12 +70,17 @@ func SampleQn(random io.Reader, N *big.Int) (*big.Int, error) {
 // Note: this function does not run in constant time because it uses
 // big.Int arithmetic.
 func Prove(random io.Reader, x, g, gx, h, hx, N *big.Int, secParam uint) (*Proof, error) {
+	err := checkBounds(N, g, gx, h, hx)
+	if err != nil {
+		return nil, err
+	}
+
 	rSizeBits := uint(N.BitLen()) + 2*secParam
 	rSizeBytes := (rSizeBits + 7) / 8
 	rBytes := make([]byte, rSizeBytes)
 
 	ONE := big.NewInt(1)
-	NUM_TRIES := 10
+	const NUM_TRIES = 10
 	var r, gP, hP, gc, hc big.Int
 	for i := 0; i < NUM_TRIES; i++ {
 		_, err := io.ReadFull(random, rBytes)
@@ -96,7 +101,7 @@ func Prove(random io.Reader, x, g, gx, h, hx, N *big.Int, secParam uint) (*Proof
 		//   c != 0 mod m, where m = (p-1)(q-1)/4, and N = p*q.
 		// Check this by doing an Exp because m is unknown.
 		//
-		// This is valid assuming N is a power of two safe prime numbers.
+		// This is valid assuming N is the product of two safe prime numbers.
 		// In the verification equation, c multiplies the witness.
 		// When c is zero, it removes the witness allowing to trivially
 		// pass the verification check.
@@ -114,6 +119,11 @@ func Prove(random io.Reader, x, g, gx, h, hx, N *big.Int, secParam uint) (*Proof
 
 // Verify checks whether x = Log_g(g^x) = Log_h(h^x).
 func (p Proof) Verify(g, gx, h, hx, N *big.Int) bool {
+	err := checkBounds(N, g, gx, h, hx)
+	if err != nil {
+		return false
+	}
+
 	// Check c != 0 (mod m), where m = (p-1)(q-1)/4,
 	// by doing an Exp as m is unknown.
 	ONE := big.NewInt(1)
@@ -154,18 +164,13 @@ func doChallenge(g, gx, h, hx, gP, hP, N *big.Int, secParam uint) (*big.Int, err
 		return nil, ErrSecParam
 	}
 
-	err := checkBounds(N, g, gx, h, hx, gP, hP)
-	if err != nil {
-		return nil, err
-	}
-
 	modulusLenBytes := (N.BitLen() + 7) / 8
 	nBytes := make([]byte, modulusLenBytes)
 	cByteLen := (secParam + 7) / 8
 	cBytes := make([]byte, cByteLen)
 
 	H := sha3.NewShake256()
-	_, err = H.Write(g.FillBytes(nBytes))
+	_, err := H.Write(g.FillBytes(nBytes))
 	if err != nil {
 		return nil, err
 	}
@@ -206,6 +211,10 @@ func doChallenge(g, gx, h, hx, gP, hP, N *big.Int, secParam uint) (*big.Int, err
 // checkBounds returns nil if 0 < x[i] < N for all 0 <= i < len(x);
 // otherwise, returns ErrBounds.
 func checkBounds(N *big.Int, x ...*big.Int) error {
+	if N.Sign() <= 0 {
+		return ErrBounds
+	}
+
 	for _, xi := range x {
 		if !(0 < xi.Sign() && xi.Cmp(N) < 0) {
 			return ErrBounds
@@ -220,6 +229,6 @@ var (
 	ErrSecParam = errors.New("zk/qndleq: the security parameter must be greater than 128")
 	// ErrBounds is returned when a value is not in the range 0 to N.
 	ErrBounds = errors.New("zk/qndleq: input must be greater than 0 and less than N")
-	// ErrProve is returned when Prove cannot produce a proof.
-	ErrProve = errors.New("zk/qndleq: Prove cannot produce a proof")
+	// ErrProve is returned when Prove exhausted the number of proof tries.
+	ErrProve = errors.New("zk/qndleq: exhausted the number of proof tries")
 )
