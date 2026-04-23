@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/cloudflare/circl/internal/conv"
+	"golang.org/x/crypto/cryptobyte"
 )
 
 // ScalarSize is the length in bytes of a Scalar.
@@ -62,6 +63,31 @@ func (z *Scalar) SetBytes(data []byte) {
 	s := &scRaw{}
 	copy(s[:], in64[:ScalarSize/8])
 	z.toMont(s)
+}
+
+func (z *Scalar) Marshal(b *cryptobyte.Builder) error {
+	x := z.fromMont()
+	for i := len(x) - 1; i >= 0; i-- {
+		b.AddUint64(x[i])
+	}
+
+	return nil
+}
+
+func (z *Scalar) Unmarshal(s *cryptobyte.String) bool {
+	var b [ScalarSize]byte
+	ok := s.CopyBytes(b[:])
+	if !ok {
+		return false
+	}
+
+	in64, err := setBytesBounded(b[:], scOrder[:])
+	if err != nil {
+		return false
+	}
+
+	z.toMont((*scRaw)(in64[:ScalarSize/8]))
+	return true
 }
 
 // MarshalBinary returns a slice of ScalarSize bytes that contains the minimal
