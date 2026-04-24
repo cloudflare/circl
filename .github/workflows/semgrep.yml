@@ -15,6 +15,7 @@ jobs:
   semgrep:
     name: semgrep-oss
     runs-on: ubuntu-slim
+    if: github.repository == 'cloudflare/circl'
     steps:
       - uses: actions/checkout@v5
         with:
