@@ -70,32 +70,69 @@ func SampleQn(random io.Reader, N *big.Int) (*big.Int, error) {
 // Note: this function does not run in constant time because it uses
 // big.Int arithmetic.
 func Prove(random io.Reader, x, g, gx, h, hx, N *big.Int, secParam uint) (*Proof, error) {
+	err := checkBounds(N, g, gx, h, hx)
+	if err != nil {
+		return nil, err
+	}
+
 	rSizeBits := uint(N.BitLen()) + 2*secParam
 	rSizeBytes := (rSizeBits + 7) / 8
-
 	rBytes := make([]byte, rSizeBytes)
-	_, err := io.ReadFull(random, rBytes)
-	if err != nil {
-		return nil, err
+
+	ONE := big.NewInt(1)
+	const NUM_TRIES = 10
+	var r, gP, hP, gc, hc big.Int
+	for i := 0; i < NUM_TRIES; i++ {
+		_, err := io.ReadFull(random, rBytes)
+		if err != nil {
+			return nil, err
+		}
+
+		r.SetBytes(rBytes)
+		gP.Exp(g, &r, N)
+		hP.Exp(h, &r, N)
+
+		c, err := doChallenge(g, gx, h, hx, &gP, &hP, N, secParam)
+		if err != nil {
+			return nil, err
+		}
+
+		// Challenge must not be congruent to zero.
+		//   c != 0 mod m, where m = (p-1)(q-1)/4, and N = p*q.
+		// Check this by doing an Exp because m is unknown.
+		//
+		// This is valid assuming N is the product of two safe prime numbers.
+		// In the verification equation, c multiplies the witness.
+		// When c is zero, it removes the witness allowing to trivially
+		// pass the verification check.
+		gc.Exp(g, c, N)
+		hc.Exp(h, c, N)
+		if gc.Cmp(ONE) != 0 && hc.Cmp(ONE) != 0 {
+			z := new(big.Int).Mul(c, x)
+			z.Add(z, &r)
+			return &Proof{z, c, secParam}, nil
+		}
 	}
-	r := new(big.Int).SetBytes(rBytes)
 
-	gP := new(big.Int).Exp(g, r, N)
-	hP := new(big.Int).Exp(h, r, N)
-
-	c, err := doChallenge(g, gx, h, hx, gP, hP, N, secParam)
-	if err != nil {
-		return nil, err
-	}
-
-	z := new(big.Int)
-	z.Mul(c, x).Add(z, r)
-
-	return &Proof{z, c, secParam}, nil
+	return nil, ErrProve
 }
 
 // Verify checks whether x = Log_g(g^x) = Log_h(h^x).
 func (p Proof) Verify(g, gx, h, hx, N *big.Int) bool {
+	err := checkBounds(N, g, gx, h, hx)
+	if err != nil {
+		return false
+	}
+
+	// Check c != 0 (mod m), where m = (p-1)(q-1)/4,
+	// by doing an Exp as m is unknown.
+	ONE := big.NewInt(1)
+	gc := new(big.Int).Exp(g, p.c, N)
+	hc := new(big.Int).Exp(h, p.c, N)
+	if gc.Cmp(ONE) == 0 || hc.Cmp(ONE) == 0 {
+		return false
+	}
+
 	gPNum := new(big.Int).Exp(g, p.z, N)
 	gPDen := new(big.Int).Exp(gx, p.c, N)
 	ok := gPDen.ModInverse(gPDen, N)
@@ -171,5 +208,27 @@ func doChallenge(g, gx, h, hx, gP, hP, N *big.Int, secParam uint) (*big.Int, err
 	return new(big.Int).SetBytes(cBytes), nil
 }
 
-// ErrSecParam is returned when the security parameter is less than 128.
-var ErrSecParam = errors.New("zk/qndleq: the security parameter must be greater than 128")
+// checkBounds returns nil if 0 < x[i] < N for all 0 <= i < len(x);
+// otherwise, returns ErrBounds.
+func checkBounds(N *big.Int, x ...*big.Int) error {
+	if N.Sign() <= 0 {
+		return ErrBounds
+	}
+
+	for _, xi := range x {
+		if !(0 < xi.Sign() && xi.Cmp(N) < 0) {
+			return ErrBounds
+		}
+	}
+
+	return nil
+}
+
+var (
+	// ErrSecParam is returned when the security parameter is less than 128.
+	ErrSecParam = errors.New("zk/qndleq: the security parameter must be greater than 128")
+	// ErrBounds is returned when a value is not in the range 0 to N.
+	ErrBounds = errors.New("zk/qndleq: input must be greater than 0 and less than N")
+	// ErrProve is returned when Prove exhausted the number of proof tries.
+	ErrProve = errors.New("zk/qndleq: exhausted the number of proof tries")
+)
