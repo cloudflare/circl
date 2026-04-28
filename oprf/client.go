@@ -64,6 +64,17 @@ func (c client) blind(inputs [][]byte, blinds []Blind) (*FinalizeData, *Evaluati
 	return finData, evalReq, nil
 }
 
+func (c Client) Unblind(serUnblindeds [][]byte, blindeds []group.Element, blind []Blind) (err error) {
+	if len(serUnblindeds) == 0 {
+		return ErrInvalidInput
+	}
+	if len(serUnblindeds) != len(blindeds) || len(blindeds) != len(blind) {
+		return ErrInvalidInput
+	}
+
+	return c.unblind(serUnblindeds, blindeds, blind)
+}
+
 func (c client) unblind(serUnblindeds [][]byte, blindeds []group.Element, blind []Blind) (err error) {
 	invBlind := c.params.group.NewScalar()
 	U := c.params.group.NewElement()
