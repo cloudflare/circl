@@ -104,6 +104,33 @@ func (c client) finalize(f *FinalizeData, e *Evaluation, info []byte) ([][]byte,
 	return outputs, nil
 }
 
+func (c Client) UnblindSerialized(serEvaluated [][]byte, serBlinds [][]byte) ([][]byte, error) {
+	if len(serEvaluated) != len(serBlinds) {
+		return nil, ErrInvalidInput
+	}
+
+	elements := make([]Evaluated, len(serEvaluated))
+	blinds := make([]Blind, len(serBlinds))
+
+	for i := range serEvaluated {
+		elements[i] = c.params.group.NewElement()
+		if err := elements[i].UnmarshalBinary(serEvaluated[i]); err != nil {
+			return nil, err
+		}
+		blinds[i] = c.params.group.NewScalar()
+		if err := blinds[i].UnmarshalBinary(serBlinds[i]); err != nil {
+			return nil, err
+		}
+	}
+
+	serUnblindeds := make([][]byte, len(serEvaluated))
+	if err := c.unblind(serUnblindeds, elements, blinds); err != nil {
+		return nil, err
+	}
+
+	return serUnblindeds, nil
+}
+
 func (c Client) Finalize(f *FinalizeData, e *Evaluation) (outputs [][]byte, err error) {
 	if err = c.validate(f, e); err != nil {
 		return nil, err
