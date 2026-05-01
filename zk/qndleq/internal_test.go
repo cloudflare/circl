@@ -9,8 +9,8 @@ import (
 )
 
 func TestForgedProofSecParamZero(t *testing.T) {
-	p := big.NewInt(1019)
-	q := big.NewInt(1021)
+	// Safe primes: https://oeis.org/A005385
+	p, q := big.NewInt(1019), big.NewInt(1187)
 	N := new(big.Int).Mul(p, q)
 
 	g, err := SampleQn(rand.Reader, N)
@@ -48,4 +48,56 @@ func TestForgedProofSecParamZero(t *testing.T) {
 	}
 
 	test.CheckOk(!forged.Verify(g, gx, h, hx, N), "forged proof must be rejected", t)
+}
+
+func TestOutOfBounds(t *testing.T) {
+	// Safe primes: https://oeis.org/A005385
+	p, q := big.NewInt(1019), big.NewInt(1187)
+	N := new(big.Int).Mul(p, q)
+
+	x := big.NewInt(2)
+	g, gx := big.NewInt(4), big.NewInt(16)
+	h, hx := big.NewInt(9), big.NewInt(81)
+
+	invalidValues := []*big.Int{
+		new(big.Int).Neg(g),    // Negative
+		big.NewInt(0),          // Zero
+		new(big.Int).Set(N),    // N
+		new(big.Int).Add(N, N), // bigger than N
+	}
+
+	t.Run("prove", func(t *testing.T) {
+		for _, invalidValue := range invalidValues {
+			p, err := Prove(rand.Reader, x, invalidValue, gx, h, hx, N, 128)
+			test.CheckIsErr(t, err, "Prove must fail")
+			test.CheckOk(p == nil, "proof must be nil", t)
+		}
+	})
+
+	t.Run("verify", func(t *testing.T) {
+		for _, invalidValue := range invalidValues {
+			p, err := Prove(rand.Reader, x, g, gx, h, hx, N, 128)
+			test.CheckNoErr(t, err, "Prove must succeed")
+
+			isValid := p.Verify(invalidValue, gx, h, hx, N)
+			test.CheckOk(isValid == false, "proof verification must return false", t)
+		}
+	})
+}
+
+func TestChallengeZero(t *testing.T) {
+	// Safe primes: https://oeis.org/A005385
+	p, q := big.NewInt(1019), big.NewInt(1187)
+	N := new(big.Int).Mul(p, q)
+	g, gx := big.NewInt(4), big.NewInt(16) // 4^2 == 16 mod N
+	h, hx := big.NewInt(9), big.NewInt(81) // 9^2 == 81 mod N
+
+	// Proof must fail as challenge is congruent to zero modulo m = (p-1)(q-1)/4 = 509*593.
+	// c = m * 1079334709418571583321702591065767
+	c, _ := new(big.Int).SetString("325783150686773390995072744979517913979", 10)
+	z, _ := new(big.Int).SetString("909208770437996720153744987183938443953758507571077689625761350579371458087594451128", 10)
+	invalidProof := Proof{z, c, 128}
+
+	isValid := invalidProof.Verify(g, gx, h, hx, N)
+	test.CheckOk(isValid == false, "proof verification must fail", t)
 }
