@@ -103,9 +103,14 @@ func testErrors[K bls.KeyGroup](t *testing.T) {
 	// Bad public key
 	msg := []byte("hello")
 	sig := bls.Sign[K](priv, msg)
-	pub = new(bls.PublicKey[K])
-	test.CheckOk(pub.Validate() == false, "should fail: bad public key", t)
-	test.CheckOk(bls.Verify(pub, msg, sig) == false, "should fail: bad signature", t)
+	badPub := new(bls.PublicKey[K])
+	test.CheckOk(badPub.Validate() == false, "should fail: bad public key", t)
+	test.CheckOk(bls.Verify(badPub, msg, sig) == false, "should fail: bad public key", t)
+
+	// Bad Signature equal to G.Identity
+	badSig := make(bls.Signature, len(sig))
+	badSig[0] = 0xC0
+	test.CheckOk(bls.Verify(pub, msg, badSig) == false, "should fail: bad signature", t)
 
 	// Bad private key
 	priv = new(bls.PrivateKey[K])
@@ -121,11 +126,18 @@ func testErrors[K bls.KeyGroup](t *testing.T) {
 	_, err = bls.Aggregate[K](*new(K), nil)
 	test.CheckIsErr(t, err, "should fail: empty signatures")
 
+	// Aggregate badSig
+	_, err = bls.Aggregate[K](*new(K), []bls.Signature{sig, badSig})
+	test.CheckIsErr(t, err, "should fail: bad signature")
+
 	// VerifyAggregate nil
 	test.CheckOk(bls.VerifyAggregate([]*bls.PublicKey[K]{}, nil, nil) == false, "should fail: empty keys", t)
 
 	// VerifyAggregate empty signature
 	test.CheckOk(bls.VerifyAggregate([]*bls.PublicKey[K]{pub}, [][]byte{msg}, nil) == false, "should fail: empty signature", t)
+
+	// VerifyAggregate bad aggregate signature
+	test.CheckOk(bls.VerifyAggregate([]*bls.PublicKey[K]{pub}, [][]byte{msg}, badSig) == false, "should fail: bad signature", t)
 }
 
 func testAggregation[K bls.KeyGroup](t *testing.T) {
