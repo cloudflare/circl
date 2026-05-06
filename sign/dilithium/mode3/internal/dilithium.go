@@ -234,8 +234,13 @@ func NewKeyFromSeed(seed *[common.SeedSize]byte) (*PublicKey, *PrivateKey) {
 	_, _ = h.Write(packedPk[:])
 	_, _ = h.Read(sk.tr[:])
 
-	// Finish cache of public key
-	pk.tr = &sk.tr
+	// Finish cache of public key. Copy the value rather than aliasing
+	// sk.tr so that later mutation of sk (for instance through a
+	// subsequent (*PrivateKey).Unpack on attacker-controlled bytes)
+	// does not silently propagate into a pk returned earlier from
+	// NewKeyFromSeed. See cloudflare/circl#600.
+	pk.tr = new([TRSize]byte)
+	*pk.tr = sk.tr
 
 	return &pk, &sk
 }
@@ -470,13 +475,18 @@ func SignTo(sk *PrivateKey, msg func(io.Writer), rnd [32]byte, signature []byte)
 }
 
 // Computes the public key corresponding to this private key.
+//
+// The returned pk holds its own copy of tr; later mutation of sk.tr
+// does not affect a pk previously returned from this method.
+// See cloudflare/circl#600.
 func (sk *PrivateKey) Public() *PublicKey {
 	var t0 VecK
 	pk := &PublicKey{
 		rho: sk.rho,
 		A:   &sk.A,
-		tr:  &sk.tr,
+		tr:  new([TRSize]byte),
 	}
+	*pk.tr = sk.tr
 	sk.computeT0andT1(&t0, &pk.t1)
 	pk.t1.PackT1(pk.t1p[:])
 	return pk
