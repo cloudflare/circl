@@ -47,7 +47,7 @@ type PublicKey struct {
 	// Cached values
 	t1p [common.PolyT1Size * K]byte
 	A   *Mat
-	tr  *[TRSize]byte
+	tr  [TRSize]byte
 }
 
 // PrivateKey is the type of Dilithium private keys.
@@ -119,7 +119,6 @@ func (pk *PublicKey) Unpack(buf *[PublicKeySize]byte) {
 	pk.A.Derive(&pk.rho)
 
 	// tr = CRH(ρ ‖ t1) = CRH(pk)
-	pk.tr = new([TRSize]byte)
 	h := sha3.NewShake256()
 	_, _ = h.Write(buf[:])
 	_, _ = h.Read(pk.tr[:])
@@ -234,13 +233,8 @@ func NewKeyFromSeed(seed *[common.SeedSize]byte) (*PublicKey, *PrivateKey) {
 	_, _ = h.Write(packedPk[:])
 	_, _ = h.Read(sk.tr[:])
 
-	// Finish cache of public key. Copy the value rather than aliasing
-	// sk.tr so that later mutation of sk (for instance through a
-	// subsequent (*PrivateKey).Unpack on attacker-controlled bytes)
-	// does not silently propagate into a pk returned earlier from
-	// NewKeyFromSeed. See cloudflare/circl#600.
-	pk.tr = new([TRSize]byte)
-	*pk.tr = sk.tr
+	// Finish cache of public key
+	pk.tr = sk.tr
 
 	return &pk, &sk
 }
@@ -475,18 +469,13 @@ func SignTo(sk *PrivateKey, msg func(io.Writer), rnd [32]byte, signature []byte)
 }
 
 // Computes the public key corresponding to this private key.
-//
-// The returned pk holds its own copy of tr; later mutation of sk.tr
-// does not affect a pk previously returned from this method.
-// See cloudflare/circl#600.
 func (sk *PrivateKey) Public() *PublicKey {
 	var t0 VecK
 	pk := &PublicKey{
 		rho: sk.rho,
 		A:   &sk.A,
-		tr:  new([TRSize]byte),
+		tr:  sk.tr,
 	}
-	*pk.tr = sk.tr
 	sk.computeT0andT1(&t0, &pk.t1)
 	pk.t1.PackT1(pk.t1p[:])
 	return pk
