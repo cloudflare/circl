@@ -138,6 +138,33 @@ func TestPublicFromPrivate(t *testing.T) {
 	}
 }
 
+// Regression test for cloudflare/circl#600: the pk returned by
+// NewKeyFromSeed and (*PrivateKey).Public must hold its own copy of tr,
+// not a pointer aliasing sk.tr. Otherwise a later mutation of sk -- for
+// instance through (*PrivateKey).Unpack on attacker-controlled bytes --
+// silently propagates into a pk that was returned earlier.
+func TestPublicTrIsIndependentOfPrivate(t *testing.T) {
+	var seed [common.SeedSize]byte
+	pkSeed, sk := NewKeyFromSeed(&seed)
+	pkPub := sk.Public()
+
+	pkSeedTr := *pkSeed.tr
+	pkPubTr := *pkPub.tr
+
+	for i := range sk.tr {
+		sk.tr[i] ^= 0xff
+	}
+
+	if *pkSeed.tr != pkSeedTr {
+		t.Fatalf("pk from NewKeyFromSeed aliased sk.tr (got %x want %x)",
+			*pkSeed.tr, pkSeedTr)
+	}
+	if *pkPub.tr != pkPubTr {
+		t.Fatalf("pk from sk.Public() aliased sk.tr (got %x want %x)",
+			*pkPub.tr, pkPubTr)
+	}
+}
+
 func TestGamma1Size(t *testing.T) {
 	var expected int
 	switch Gamma1Bits {
