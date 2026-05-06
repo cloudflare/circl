@@ -1,8 +1,9 @@
 package bls12381
 
 import (
+	"crypto/rand"
 	"fmt"
-	"math/rand"
+	"slices"
 	"testing"
 
 	"github.com/cloudflare/circl/ecc/bls12381/ff"
@@ -47,15 +48,17 @@ func TestProdPairFrac(t *testing.T) {
 	listSc := [N]*Scalar{}
 	listSigns := [N]int{}
 	var ePQn, got Gt
-
+	var coins [1]byte
 	for i := 0; i < testTimes; i++ {
 		got.SetIdentity()
 		for j := 0; j < N; j++ {
 			listG1[j] = randomG1(t)
 			listG2[j] = randomG2(t)
 			listSc[j] = &Scalar{}
-			coin := rand.Int31n(2) //nolint
-			switch coin {
+			_, err := rand.Read(coins[:])
+			test.CheckNoErr(t, err, "random reading failed")
+
+			switch coins[0] & 1 {
 			case 0:
 				listSc[j].SetOne()
 				listSc[j].Neg()
@@ -165,6 +168,122 @@ func TestPairIdentity(t *testing.T) {
 	ans = Pair(g1, g2id)
 	if !ans.IsEqual(one) {
 		test.ReportError(t, ans, one)
+	}
+	ans = Pair(g1id, g2id)
+	if !ans.IsEqual(one) {
+		test.ReportError(t, ans, one)
+	}
+}
+
+func TestProdPairIdentity(t *testing.T) {
+	g1id := &G1{}
+	g2id := &G2{}
+	g1 := G1Generator()
+	g2 := G2Generator()
+	g1id.SetIdentity()
+	g2id.SetIdentity()
+
+	listExp := []*Scalar{new(Scalar), new(Scalar)}
+	for i := range listExp {
+		err := listExp[i].Random(rand.Reader)
+		test.CheckNoErr(t, err, "random reading failed")
+	}
+
+	cases := []struct {
+		g1 []*G1
+		g2 []*G2
+	}{
+		{[]*G1{g1, g1id}, []*G2{g2, g2}},
+		{[]*G1{g1, g1}, []*G2{g2, g2id}},
+		{[]*G1{g1, g1id}, []*G2{g2, g2id}},
+	}
+
+	var e, want Gt
+	for i, c := range cases {
+		got := ProdPair(c.g1, c.g2, listExp)
+
+		want.SetIdentity()
+		for i := range len(c.g1) {
+			e.Exp(Pair(c.g1[i], c.g2[i]), listExp[i])
+			want.Mul(&want, &e)
+		}
+
+		if !got.IsEqual(&want) {
+			test.ReportError(t, got, want, i, listExp)
+		}
+	}
+}
+
+func TestProdPairFracIdentity(t *testing.T) {
+	g1id := &G1{}
+	g2id := &G2{}
+	g1 := G1Generator()
+	g2 := G2Generator()
+	g1id.SetIdentity()
+	g2id.SetIdentity()
+
+	listSign := []int{1, -1}
+
+	cases := []struct {
+		g1 []*G1
+		g2 []*G2
+	}{
+		{[]*G1{g1id, g1}, []*G2{g2, g2}},
+		{[]*G1{g1, g1id}, []*G2{g2, g2}},
+		{[]*G1{g1, g1}, []*G2{g2, g2id}},
+		{[]*G1{g1, g1}, []*G2{g2id, g2}},
+		{[]*G1{g1, g1id}, []*G2{g2, g2id}},
+		{[]*G1{g1id, g1}, []*G2{g2id, g2}},
+		{[]*G1{g1id, g1id}, []*G2{g2id, g2id}},
+	}
+
+	var want Gt
+	for i, c := range cases {
+		got := ProdPairFrac(c.g1, c.g2, listSign)
+
+		want.SetIdentity()
+		for i := range len(c.g1) {
+			e := Pair(c.g1[i], c.g2[i])
+			if listSign[i] == -1 {
+				e.Inv(e)
+			}
+			want.Mul(&want, e)
+		}
+
+		if !got.IsEqual(&want) {
+			test.ReportError(t, got, want, i, listSign)
+		}
+	}
+}
+
+func TestAffinize(t *testing.T) {
+	cmp := func(x, y G1) (b int) {
+		if !x.IsEqual(&y) {
+			return 1
+		}
+		return
+	}
+
+	const SIZE = 10
+	x := make([]*G1, SIZE)
+	for i := range x {
+		if i%3 == 1 {
+			x[i] = new(G1)
+			x[i].SetIdentity()
+		} else {
+			x[i] = randomG1(t)
+		}
+	}
+
+	got := affinize(x)
+	want := make([]G1, SIZE)
+	for i := range want {
+		want[i] = *x[i]
+		want[i].toAffine()
+	}
+
+	if slices.CompareFunc(got, want, cmp) != 0 {
+		test.ReportError(t, got, want, x)
 	}
 }
 

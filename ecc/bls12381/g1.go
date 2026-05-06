@@ -398,6 +398,7 @@ func G1Generator() *G1 {
 }
 
 // affinize converts an entire slice to affine at once
+// handling the points at the infinity.
 func affinize(points []*G1) (out []G1) {
 	out = make([]G1, len(points))
 	if len(points) == 0 {
@@ -405,8 +406,10 @@ func affinize(points []*G1) (out []G1) {
 	}
 	ws := make([]ff.Fp, len(points)+1)
 	ws[0].SetOne()
+	var v ff.Fp
 	for i := 0; i < len(points); i++ {
-		ws[i+1].Mul(&ws[i], &points[i].z)
+		v.CMov(&points[i].z, &ws[0], points[i].z.IsZero())
+		ws[i+1].Mul(&ws[i], &v)
 	}
 
 	w := &ff.Fp{}
@@ -414,12 +417,13 @@ func affinize(points []*G1) (out []G1) {
 
 	zinv := &ff.Fp{}
 	for i := len(points) - 1; i >= 0; i-- {
+		v.CMov(&points[i].z, &ws[0], points[i].z.IsZero())
 		zinv.Mul(w, &ws[i])
-		w.Mul(w, &points[i].z)
+		w.Mul(w, &v)
 
 		out[i].x.Mul(&points[i].x, zinv)
 		out[i].y.Mul(&points[i].y, zinv)
-		out[i].z.SetOne()
+		out[i].z.Mul(&points[i].z, zinv)
 	}
 	return
 }
