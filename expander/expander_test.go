@@ -7,6 +7,7 @@ import (
 	_ "crypto/sha512"
 	"encoding/json"
 	"fmt"
+	"math"
 	"path/filepath"
 	"strconv"
 	"testing"
@@ -15,6 +16,16 @@ import (
 	"github.com/cloudflare/circl/internal/test"
 	"github.com/cloudflare/circl/xof"
 )
+
+func TestExpanderXOFPanicsOnLongOutput(t *testing.T) {
+	exp := expander.NewExpanderXOF(xof.SHAKE128, 0, []byte("test-dst"))
+	defer func() {
+		if recover() == nil {
+			t.Fatal("Expand expected to panic for n > 2^16-1, got no panic")
+		}
+	}()
+	exp.Expand([]byte("input"), uint(math.MaxUint16)+1)
+}
 
 func TestExpander(t *testing.T) {
 	fileNames, err := filepath.Glob("./testdata/*.json.gz")
