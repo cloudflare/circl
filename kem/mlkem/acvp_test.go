@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/cloudflare/circl/internal/test"
+	"github.com/cloudflare/circl/internal/test/acvp"
 	"github.com/cloudflare/circl/kem/schemes"
 )
 
@@ -22,56 +23,9 @@ func TestACVP(t *testing.T) {
 
 // nolint:funlen,gocyclo
 func testACVP(t *testing.T, sub string) {
-	buf, err := test.ReadGzip("testdata/ML-KEM-" + sub + "-FIPS203/prompt.json.gz")
-	if err != nil {
-		t.Fatal(err)
-	}
+	groups, rawResults := acvp.LoadVectors(t, "testdata/ML-KEM-"+sub+"-FIPS203")
 
-	var prompt struct {
-		TestGroups []json.RawMessage `json:"testGroups"`
-	}
-
-	if err = json.Unmarshal(buf, &prompt); err != nil {
-		t.Fatal(err)
-	}
-
-	buf, err = test.ReadGzip("testdata/ML-KEM-" + sub + "-FIPS203/expectedResults.json.gz")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var results struct {
-		TestGroups []json.RawMessage `json:"testGroups"`
-	}
-
-	if err := json.Unmarshal(buf, &results); err != nil {
-		t.Fatal(err)
-	}
-
-	rawResults := make(map[int]json.RawMessage)
-
-	for _, rawGroup := range results.TestGroups {
-		var abstractGroup struct {
-			Tests []json.RawMessage `json:"tests"`
-		}
-		if err := json.Unmarshal(rawGroup, &abstractGroup); err != nil {
-			t.Fatal(err)
-		}
-		for _, rawTest := range abstractGroup.Tests {
-			var abstractTest struct {
-				TcID int `json:"tcId"`
-			}
-			if err := json.Unmarshal(rawTest, &abstractTest); err != nil {
-				t.Fatal(err)
-			}
-			if _, exists := rawResults[abstractTest.TcID]; exists {
-				t.Fatalf("Duplicate test id: %d", abstractTest.TcID)
-			}
-			rawResults[abstractTest.TcID] = rawTest
-		}
-	}
-
-	for _, rawGroup := range prompt.TestGroups {
+	for _, rawGroup := range groups {
 		var abstractGroup struct {
 			TestType string `json:"testType"`
 		}
