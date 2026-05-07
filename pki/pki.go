@@ -57,6 +57,9 @@ type TLSScheme interface {
 
 func UnmarshalPEMPublicKey(data []byte) (sign.PublicKey, error) {
 	block, rest := pem.Decode(data)
+	if block == nil {
+		return nil, errors.New("no pem block found")
+	}
 	if len(rest) != 0 {
 		return nil, errors.New("trailing data")
 	}
@@ -87,6 +90,9 @@ func UnmarshalPKIXPublicKey(data []byte) (sign.PublicKey, error) {
 
 func UnmarshalPEMPrivateKey(data []byte) (sign.PrivateKey, error) {
 	block, rest := pem.Decode(data)
+	if block == nil {
+		return nil, errors.New("no pem block found")
+	}
 	if len(rest) != 0 {
 		return nil, errors.New("trailing")
 	}
