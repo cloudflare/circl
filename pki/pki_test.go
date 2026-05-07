@@ -113,3 +113,14 @@ func TestMLDSA(t *testing.T) {
 
 	testMLDSASad(t, "bad-ML-DSA-44-1.priv.gz")
 }
+
+func TestUnmarshalPEMNoBlock(t *testing.T) {
+	for _, in := range [][]byte{nil, {}, []byte("not pem"), []byte("-----BEGIN GARBAGE")} {
+		if _, err := pki.UnmarshalPEMPublicKey(in); err == nil {
+			t.Errorf("UnmarshalPEMPublicKey(%q) expected error, got nil", in)
+		}
+		if _, err := pki.UnmarshalPEMPrivateKey(in); err == nil {
+			t.Errorf("UnmarshalPEMPrivateKey(%q) expected error, got nil", in)
+		}
+	}
+}
