@@ -253,7 +253,7 @@ func (f *Formula) share(rand io.Reader, k *matrixZp) ([]*matrixZp, error) {
 				return nil, err
 			}
 			shares[gate.In1] = newMatrixZp(k.rows, k.cols)
-			shares[gate.In0].sub(shares[gate.Out], shares[gate.In1])
+			shares[gate.In1].sub(shares[gate.Out], shares[gate.In0])
 
 		case Orgate:
 			shares[gate.In0] = newMatrixZp(k.rows, k.cols)
