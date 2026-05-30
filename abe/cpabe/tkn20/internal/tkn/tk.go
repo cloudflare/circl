@@ -730,49 +730,49 @@ func decapsulate(header *ciphertextHeader, key *AttributesKey) (*pairing.Gt, err
 		return nil, err
 	}
 	for k := 0; k < len(sat.matches); k++ {
-		match := sat.matches[k]
-		j := pi[match.wire]
+		mt := sat.matches[k]
+		j := pi[mt.wire]
 
 		if p1[j] == nil {
-			p1[j] = newMatrixG1(header.c3[match.wire].rows, header.c3[match.wire].cols)
+			p1[j] = newMatrixG1(header.c3[mt.wire].rows, header.c3[mt.wire].cols)
 		}
 		if p2[j] == nil {
-			p2[j] = newMatrixG1(key.k3[match.label].rows, key.k3[match.label].cols)
+			p2[j] = newMatrixG1(key.k3[mt.label].rows, key.k3[mt.label].cols)
 		}
-		if header.p.Inputs[match.wire].Positive {
-			p1[j].add(p1[j], header.c3[match.wire])
+		if header.p.Inputs[mt.wire].Positive {
+			p1[j].add(p1[j], header.c3[mt.wire])
 
-			if (*key.a)[match.label].wild {
-				if key.k3wild[match.label] == nil {
-					return nil, fmt.Errorf("missing wildcard data for Label %s", match.label)
+			if (*key.a)[mt.label].wild {
+				if key.k3wild[mt.label] == nil {
+					return nil, fmt.Errorf("missing wildcard data for Label %s", mt.label)
 				}
-				y := header.p.Inputs[match.wire].Value
+				y := header.p.Inputs[mt.wire].Value
 				tmp1 := newMatrixG1(0, 0)
-				tmp1.scalarMult(y, key.k3[match.label])
-				tmp1.add(tmp1, key.k3wild[match.label])
+				tmp1.scalarMult(y, key.k3[mt.label])
+				tmp1.add(tmp1, key.k3wild[mt.label])
 				p2[j].add(p2[j], tmp1)
 			} else {
-				p2[j].add(p2[j], key.k3[match.label])
+				p2[j].add(p2[j], key.k3[mt.label])
 			}
 		} else {
 			keymat := newMatrixG1(0, 0)
 			y := &pairing.Scalar{}
 
-			if (*key.a)[match.label].wild {
-				y.Add(header.p.Inputs[match.wire].Value, ToScalar(1))
-				keymat.scalarMult(y, key.k3[match.label])
-				keymat.add(keymat, key.k3wild[match.label])
+			if (*key.a)[mt.label].wild {
+				y.Add(header.p.Inputs[mt.wire].Value, ToScalar(1))
+				keymat.scalarMult(y, key.k3[mt.label])
+				keymat.add(keymat, key.k3wild[mt.label])
 			} else {
-				y.Set((*(key.a))[match.label].Value)
-				keymat.set(key.k3[match.label])
+				y.Set((*(key.a))[mt.label].Value)
+				keymat.set(key.k3[mt.label])
 			}
 			diff := &pairing.Scalar{}
 
-			diff.Sub(header.p.Inputs[match.wire].Value, y)
+			diff.Sub(header.p.Inputs[mt.wire].Value, y)
 			diff.Inv(diff)
 			p1add := newMatrixG1(0, 0)
-			p1add.scalarMult(y, header.c3[match.wire])
-			p1add.add(p1add, header.c3neg[match.wire])
+			p1add.scalarMult(y, header.c3[mt.wire])
+			p1add.add(p1add, header.c3neg[mt.wire])
 			p1add.scalarMult(diff, p1add)
 
 			p2add := newMatrixG1(0, 0)
