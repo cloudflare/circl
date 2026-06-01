@@ -410,6 +410,9 @@ func (hdr *ciphertextHeader) unmarshalBinary(data []byte) error {
 	if err != nil {
 		return err
 	}
+	if len(data) < 2 {
+		return fmt.Errorf("ciphertext header too short")
+	}
 	c2Len := int(binary.LittleEndian.Uint16(data))
 	hdr.c2 = make([]*matrixG2, c2Len)
 	data = data[2:]
@@ -429,6 +432,9 @@ func (hdr *ciphertextHeader) unmarshalBinary(data []byte) error {
 		}
 	}
 
+	if len(data) < 2 {
+		return fmt.Errorf("ciphertext header too short")
+	}
 	c3Len := int(binary.LittleEndian.Uint16(data))
 	hdr.c3 = make([]*matrixG1, c3Len)
 	hdr.c3neg = make([]*matrixG1, c3Len)
