@@ -76,6 +76,9 @@ func (f *Formula) UnmarshalBinary(data []byte) error {
 		return fmt.Errorf("too short data")
 	}
 	n := int(binary.LittleEndian.Uint16(data[0:2]))
+	if len(data) < 2+7*n {
+		return fmt.Errorf("too short data")
+	}
 	f.Gates = make([]Gate, n)
 	for i := 0; i < n; i++ {
 		f.Gates[i].Class = int(data[7*i+2])

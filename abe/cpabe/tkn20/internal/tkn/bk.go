@@ -141,7 +141,7 @@ type rmLenPref = func([]byte) ([]byte, []byte, error)
 
 func checkCiphertextFormat(ciphertext []byte) (ct []byte, fn rmLenPref) {
 	const N = len(CiphertextVersion)
-	if bytes.Equal(ciphertext[0:N], []byte(CiphertextVersion)) {
+	if len(ciphertext) >= N && bytes.Equal(ciphertext[0:N], []byte(CiphertextVersion)) {
 		return ciphertext[N:], removeLen32Prefixed
 	}
 	return ciphertext, removeLenPrefixed

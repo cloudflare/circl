@@ -234,7 +234,10 @@ func (p *Policy) UnmarshalBinary(data []byte) error {
 	}
 	fLen := uint(binary.LittleEndian.Uint16(data))
 	data = data[2:]
-	err := p.F.UnmarshalBinary(data)
+	if uint(len(data)) < fLen {
+		return fmt.Errorf("data not long enough")
+	}
+	err := p.F.UnmarshalBinary(data[:fLen])
 	if err != nil {
 		return err
 	}
@@ -247,13 +250,19 @@ func (p *Policy) UnmarshalBinary(data []byte) error {
 	data = data[2:]
 	p.Inputs = make([]Wire, nWires)
 	for i := 0; i < nWires; i++ {
+		if len(data) < 2 {
+			return fmt.Errorf("data not long enough")
+		}
 		wireLen := uint(binary.LittleEndian.Uint16(data))
 		data = data[2:]
-		err = p.Inputs[i].UnmarshalBinary(data)
-		data = data[wireLen:]
+		if uint(len(data)) < wireLen {
+			return fmt.Errorf("data not long enough")
+		}
+		err = p.Inputs[i].UnmarshalBinary(data[:wireLen])
 		if err != nil {
 			return fmt.Errorf("data not long enough")
 		}
+		data = data[wireLen:]
 	}
 	return nil
 }

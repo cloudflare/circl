@@ -2,6 +2,7 @@ package tkn
 
 import (
 	"crypto/rand"
+	"encoding/binary"
 	"testing"
 )
 
@@ -287,6 +288,90 @@ var benchAttrs = &Attributes{
 		wild:  false,
 		Value: ToScalar(1),
 	},
+}
+
+func TestMalformedCiphertextInternal(t *testing.T) {
+	public, secret, err := GenerateParams(rand.Reader)
+	if err != nil {
+		t.Fatalf("error generating parameters: %s", err)
+	}
+	policy := &Policy{
+		Inputs: []Wire{
+			{"a", "", ToScalar(1), true},
+		},
+		F: Formula{
+			Gates: []Gate{},
+		},
+	}
+	attrs := &Attributes{
+		"a": {
+			wild:  false,
+			Value: ToScalar(1),
+		},
+	}
+	userKey, err := DeriveAttributeKeysCCA(rand.Reader, secret, attrs)
+	if err != nil {
+		t.Fatalf("error generating Attribute keys: %s", err)
+	}
+
+	msg := []byte("drink your ovaltine")
+	ciphertext, err := EncryptCCA(rand.Reader, public, policy, msg)
+	if err != nil {
+		t.Fatalf("error encrypting: %s", err)
+	}
+
+	// Empty ciphertext must not panic.
+	if CouldDecrypt([]byte{}, attrs) {
+		t.Fatal("empty ciphertext should not be decryptable")
+	}
+	if _, err := DecryptCCA([]byte{}, userKey); err == nil {
+		t.Fatal("empty ciphertext should fail to decrypt")
+	}
+	badPolicy := &Policy{}
+	if err := badPolicy.ExtractFromCiphertext([]byte{}); err == nil {
+		t.Fatal("empty ciphertext should fail extraction")
+	}
+
+	// Truncated ciphertexts must not panic.
+	// DecryptCCA must return an error for any truncation because it needs
+	// the authentication tag, but CouldDecrypt and ExtractFromCiphertext
+	// only need the header and may succeed if the truncation is in the
+	// trailing tag/mac region.
+	for i := 1; i < len(ciphertext); i++ {
+		truncated := ciphertext[:i]
+		_ = CouldDecrypt(truncated, attrs)
+		if _, err := DecryptCCA(truncated, userKey); err == nil {
+			t.Fatalf("truncated ciphertext (len=%d) should fail to decrypt", i)
+		}
+		badPolicy := &Policy{}
+		_ = badPolicy.ExtractFromCiphertext(truncated)
+	}
+
+	// Manipulated lengths to create inconsistent data.
+	// Corrupt the macData length field in a v1.3.8 ciphertext.
+	if len(ciphertext) > len(CiphertextVersion)+4 {
+		corrupted := make([]byte, len(ciphertext))
+		copy(corrupted, ciphertext)
+		// The layout is: version | id (len-prefixed) | macData (len32-prefixed) | tag (len-prefixed)
+		// Corrupt the 32-bit length prefix of macData to claim a huge size.
+		idx := len(CiphertextVersion)
+		// Skip id length-prefixed field
+		_, rem, err := removeLenPrefixed(corrupted[idx:])
+		if err == nil {
+			// rem now starts with the 32-bit length prefix for macData
+			binary.LittleEndian.PutUint32(rem, 0xFFFFFFFF)
+			if CouldDecrypt(corrupted, attrs) {
+				t.Fatal("corrupted-length ciphertext should not be decryptable")
+			}
+			if _, err := DecryptCCA(corrupted, userKey); err == nil {
+				t.Fatal("corrupted-length ciphertext should fail to decrypt")
+			}
+			badPolicy := &Policy{}
+			if err := badPolicy.ExtractFromCiphertext(corrupted); err == nil {
+				t.Fatal("corrupted-length ciphertext should fail extraction")
+			}
+		}
+	}
 }
 
 func BenchmarkTkDecryption(b *testing.B) {

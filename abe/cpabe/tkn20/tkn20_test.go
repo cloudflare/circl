@@ -195,6 +195,79 @@ func TestMarshal(t *testing.T) {
 	}
 }
 
+func TestMalformedCiphertext(t *testing.T) {
+	pk, msk, err := Setup(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy := Policy{}
+	err = policy.FromString("a:1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	attrs := Attributes{}
+	attrs.FromMap(map[string]string{"a": "1"})
+	sk, err := msk.KeyGen(rand.Reader, attrs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	msg := []byte("test")
+	validCT, err := pk.Encrypt(rand.Reader, policy, msg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Empty ciphertext must not panic.
+	emptyAttrs := Attributes{}
+	emptyAttrs.FromMap(map[string]string{})
+	_ = emptyAttrs.CouldDecrypt([]byte{})
+	if _, err := sk.Decrypt([]byte{}); err == nil {
+		t.Fatal("empty ciphertext should fail to decrypt")
+	}
+	badPolicy := &Policy{}
+	if err := badPolicy.ExtractFromCiphertext([]byte{}); err == nil {
+		t.Fatal("empty ciphertext should fail extraction")
+	}
+
+	// Truncate the valid ciphertext at every byte and ensure no panic.
+	// DecryptCCA must return an error for any truncation because it needs
+	// the authentication tag, but CouldDecrypt and ExtractFromCiphertext
+	// only need the header and may succeed if the truncation is in the
+	// trailing tag/mac region.
+	for i := 1; i < len(validCT); i++ {
+		truncated := validCT[:i]
+		_ = attrs.CouldDecrypt(truncated)
+		if _, err := sk.Decrypt(truncated); err == nil {
+			t.Fatalf("truncated ciphertext (len=%d) should fail to decrypt", i)
+		}
+		badPolicy = &Policy{}
+		_ = badPolicy.ExtractFromCiphertext(truncated)
+	}
+
+	// Legacy format (no version prefix) with minimal data.
+	legacyTruncated := []byte{0x00, 0x00}
+	_ = attrs.CouldDecrypt(legacyTruncated)
+	if _, err := sk.Decrypt(legacyTruncated); err == nil {
+		t.Fatal("legacy truncated ciphertext should fail to decrypt")
+	}
+	badPolicy = &Policy{}
+	if err := badPolicy.ExtractFromCiphertext(legacyTruncated); err == nil {
+		t.Fatal("legacy truncated ciphertext should fail extraction")
+	}
+
+	// Version prefix with truncated remainder.
+	versionPrefixed := append([]byte("v1.3.8"), []byte{0x00, 0x00}...)
+	_ = attrs.CouldDecrypt(versionPrefixed)
+	if _, err := sk.Decrypt(versionPrefixed); err == nil {
+		t.Fatal("version-prefixed truncated ciphertext should fail to decrypt")
+	}
+	badPolicy = &Policy{}
+	if err := badPolicy.ExtractFromCiphertext(versionPrefixed); err == nil {
+		t.Fatal("version-prefixed truncated ciphertext should fail extraction")
+	}
+}
+
 func TestPolicyMethods(t *testing.T) {
 	policyStr := "(season: fall or season: winter) or (region: alaska and season: summer)"
 	policy := Policy{}
