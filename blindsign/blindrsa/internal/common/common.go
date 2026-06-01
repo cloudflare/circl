@@ -94,8 +94,14 @@ func DecryptAndCheck(random io.Reader, priv *keys.BigPrivateKey, c *big.Int) (m 
 
 // VerifyBlindSignature verifies the signature of the hashed and encoded message against the input public key.
 func VerifyBlindSignature(pub *keys.BigPublicKey, hashed, sig []byte) error {
+	if len(sig) != pub.Size() {
+		return rsa.ErrVerification
+	}
 	m := new(big.Int).SetBytes(hashed)
 	bigSig := new(big.Int).SetBytes(sig)
+	if bigSig.Cmp(pub.N) >= 0 {
+		return rsa.ErrVerification
+	}
 
 	c := encrypt(new(big.Int), pub.N, pub.E, bigSig)
 	if subtle.ConstantTimeCompare(m.Bytes(), c.Bytes()) == 1 {
@@ -117,6 +123,9 @@ func verifyPSS(pub *keys.BigPublicKey, hash crypto.Hash, digest []byte, sig []by
 		return rsa.ErrVerification
 	}
 	s := new(big.Int).SetBytes(sig)
+	if s.Cmp(pub.N) >= 0 {
+		return rsa.ErrVerification
+	}
 	m := encrypt(new(big.Int), pub.N, pub.E, s)
 	emBits := pub.N.BitLen() - 1
 	emLen := (emBits + 7) / 8

@@ -14,6 +14,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/cloudflare/circl/blindsign/blindrsa/internal/common"
+	"github.com/cloudflare/circl/blindsign/blindrsa/internal/keys"
 	"github.com/cloudflare/circl/internal/test"
 )
 
@@ -368,6 +370,70 @@ func TestVectors(t *testing.T) {
 
 	for _, vector := range tvl {
 		t.Run(vector.Name, vector.verifyTestVector)
+	}
+}
+
+func TestNonCanonicalSignatureRejection(t *testing.T) {
+	message := []byte("hello world")
+	key, err := loadPrivateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, variant := range []Variant{
+		SHA384PSSDeterministic,
+		SHA384PSSZeroDeterministic,
+		SHA384PSSRandomized,
+		SHA384PSSZeroRandomized,
+	} {
+		t.Run(variant.String(), func(tt *testing.T) {
+			client, err := NewClient(variant, &key.PublicKey)
+			if err != nil {
+				t.Fatal(err)
+			}
+			signer := NewSigner(key)
+
+			inputMsg, err := client.Prepare(rand.Reader, message)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			blindedMsg, state, err := client.Blind(rand.Reader, inputMsg)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			blindedSig, err := signer.BlindSign(blindedMsg)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			sig, err := client.Finalize(state, blindedSig)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// Compute a non-canonical signature representative: s + N
+			s := new(big.Int).SetBytes(sig)
+			s.Add(s, key.N)
+
+			kLen := (key.N.BitLen() + 7) / 8
+			if s.BitLen() > kLen*8 {
+				// s + N overflows the fixed-width encoding, skip this test
+				return
+			}
+
+			sigPlusN := make([]byte, kLen)
+			s.FillBytes(sigPlusN)
+
+			if client.Verify(inputMsg, sigPlusN) == nil {
+				t.Fatal("expected verification to fail for non-canonical signature s+N")
+			}
+
+			if common.VerifyBlindSignature(keys.NewBigPublicKey(client.v.pk), state.encodedMsg, sigPlusN) == nil {
+				t.Fatal("expected VerifyBlindSignature to fail for non-canonical signature s+N")
+			}
+		})
 	}
 }
 
