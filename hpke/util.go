@@ -52,17 +52,17 @@ func (st state) keySchedule(ss, info, psk, pskID []byte) (*encdecContext, error)
 }
 
 func (st state) verifyPSKInputs(psk, pskID []byte) error {
-	gotPSK := psk != nil
-	gotPSKID := pskID != nil
+	gotPSK := len(psk) != 0
+	gotPSKID := len(pskID) != 0
 	if gotPSK != gotPSKID {
 		return errors.New("inconsistent PSK inputs")
 	}
 	switch st.modeID {
-	case modeBase | modeAuth:
+	case modeBase, modeAuth:
 		if gotPSK {
 			return errors.New("PSK input provided when not needed")
 		}
-	case modePSK | modeAuthPSK:
+	case modePSK, modeAuthPSK:
 		if !gotPSK {
 			return errors.New("missing required PSK input")
 		}
