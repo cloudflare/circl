@@ -306,6 +306,41 @@ func TestPBRSAGenerateTestVector(t *testing.T) {
 	}
 }
 
+func TestNonCanonicalSignatureRejection(t *testing.T) {
+	message := []byte("hello world")
+	metadata := []byte("metadata")
+	key := loadStrongRSAKey()
+
+	hash := crypto.SHA384
+	verifier := NewVerifier(&key.PublicKey, hash)
+	signer, err := NewSigner(key, hash)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sig, err := runPBRSA(signer, verifier, message, metadata, rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Compute a non-canonical signature representative: s + N
+	s := new(big.Int).SetBytes(sig)
+	s.Add(s, key.N)
+
+	kLen := (key.N.BitLen() + 7) / 8
+	if s.BitLen() > kLen*8 {
+		// s + N overflows the fixed-width encoding, skip this test
+		return
+	}
+
+	sigPlusN := make([]byte, kLen)
+	s.FillBytes(sigPlusN)
+
+	if verifier.Verify(message, metadata, sigPlusN) == nil {
+		t.Fatal("expected verification to fail for non-canonical signature s+N")
+	}
+}
+
 func BenchmarkPBRSA(b *testing.B) {
 	message := []byte("hello world")
 	metadata := []byte("good doggo")
