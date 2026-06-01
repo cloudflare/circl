@@ -19,6 +19,19 @@
 //   - RSABSSA-SHA384-PSS-Randomized
 //   - RSABSSA-SHA384-PSSZERO-Randomized
 //
+// # Security considerations for deterministic variants
+//
+// The deterministic variants (RSABSSA-SHA384-PSS-Deterministic and
+// RSABSSA-SHA384-PSSZERO-Deterministic) use an empty Prepare prefix and, in the
+// PSSZERO case, a zero-length salt, so the EMSA-PSS encoding of a given message
+// is fixed. Blind enforces the RFC 9474 coprimality check (rejecting encoded
+// messages that share a factor with the modulus), which prevents a malicious
+// signer with an invalid modulus from learning gcd(m, N) from a single blinded
+// request. Nevertheless, deployments that sign low-entropy deterministic
+// messages in a malicious-signer setting should still prefer the randomized
+// variants (or otherwise ensure high-entropy encodings) and verify that the
+// signer's key is honestly generated.
+//
 // [RFC-9474]: https://www.rfc-editor.org/info/rfc9474
 package blindrsa
 
@@ -135,6 +148,13 @@ func (c Client) fixedBlind(message, salt []byte, r, rInv *big.Int) (blindedMsg [
 
 	m := new(big.Int).SetBytes(encodedMsg)
 
+	// RFC 9474 requires the encoded message to be coprime to the modulus
+	// before blinding; otherwise a malicious signer with an invalid modulus
+	// could learn gcd(m, N) from the blinded message.
+	if new(big.Int).GCD(nil, nil, m, c.v.pk.N).Cmp(big.NewInt(1)) != 0 {
+		return nil, State{}, common.ErrInvalidMessage
+	}
+
 	bigE := big.NewInt(int64(c.v.pk.E))
 	x := new(big.Int).Exp(r, bigE, c.v.pk.N)
 	z := new(big.Int).Set(m)
@@ -243,4 +263,5 @@ var (
 	ErrInvalidBlind            = common.ErrInvalidBlind
 	ErrInvalidRandomness       = common.ErrInvalidRandomness
 	ErrUnsupportedHashFunction = common.ErrUnsupportedHashFunction
+	ErrInvalidMessage          = common.ErrInvalidMessage
 )
