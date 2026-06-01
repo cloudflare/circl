@@ -85,8 +85,6 @@ func unmarshalContext(raw []byte) (*encdecContext, error) {
 // below. (Expressed in TLS syntax.) Note that this format is not defined by
 // the HPKE standard.
 //
-// enum { sealer(0), opener(1) } HpkeRole;
-//
 //	struct {
 //	    HpkeKemId kem_id;   // draft-irtf-cfrg-hpke-07
 //	    HpkeKdfId kdf_id;   // draft-irtf-cfrg-hpke-07
@@ -101,6 +99,12 @@ func unmarshalContext(raw []byte) (*encdecContext, error) {
 //	  HpkeRole role = 0; // sealer
 //	  HpkeContext context;
 //	} HpkeSealer;
+//
+// Warning: a serialized sealer contains the live AEAD key, base nonce, and
+// sequence number. Reusing these values for two distinct seal operations
+// produces a catastrophic nonce-reuse condition. A serialized sealer must
+// never be copied, restored more than once, or used concurrently with the
+// original context or any other restored copy.
 func (c *sealContext) MarshalBinary() ([]byte, error) {
 	rawContext, err := c.encdecContext.marshal()
 	if err != nil {
@@ -110,6 +114,12 @@ func (c *sealContext) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalSealer parses an HPKE sealer.
+//
+// Warning: a serialized sealer contains the live AEAD key, base nonce, and
+// sequence number. Reusing these values for two distinct seal operations
+// produces a catastrophic nonce-reuse condition. A serialized sealer must
+// never be copied, restored more than once, or used concurrently with the
+// original context or any other restored copy.
 func UnmarshalSealer(raw []byte) (Sealer, error) {
 	if raw[0] != 0 {
 		return nil, errors.New("incorrect role")
@@ -129,6 +139,12 @@ func UnmarshalSealer(raw []byte) (Sealer, error) {
 //	  HpkeRole role = 1; // opener
 //	  HpkeContext context;
 //	} HpkeOpener;
+//
+// Warning: a serialized opener contains the live AEAD key, base nonce, and
+// sequence number. Reusing these values for two distinct open operations
+// produces a catastrophic nonce-reuse condition. A serialized opener must
+// never be copied, restored more than once, or used concurrently with the
+// original context or any other restored copy.
 func (c *openContext) MarshalBinary() ([]byte, error) {
 	rawContext, err := c.encdecContext.marshal()
 	if err != nil {
@@ -139,6 +155,12 @@ func (c *openContext) MarshalBinary() ([]byte, error) {
 
 // UnmarshalOpener parses a serialized HPKE opener and returns the corresponding
 // Opener.
+//
+// Warning: a serialized opener contains the live AEAD key, base nonce, and
+// sequence number. Reusing these values for two distinct open operations
+// produces a catastrophic nonce-reuse condition. A serialized opener must
+// never be copied, restored more than once, or used concurrently with the
+// original context or any other restored copy.
 func UnmarshalOpener(raw []byte) (Opener, error) {
 	if raw[0] != 1 {
 		return nil, errors.New("incorrect role")
