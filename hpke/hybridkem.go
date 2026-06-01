@@ -53,7 +53,13 @@ func (h hybridKEM) Encapsulate(pkr kem.PublicKey) (
 }
 
 func (h hybridKEM) Decapsulate(skr kem.PrivateKey, ct []byte) ([]byte, error) {
-	hybridSk := skr.(*hybridKEMPrivKey)
+	if len(ct) != h.CiphertextSize() {
+		return nil, kem.ErrCiphertextSize
+	}
+	hybridSk, ok := skr.(*hybridKEMPrivKey)
+	if !ok {
+		return nil, kem.ErrTypeMismatch
+	}
 	ssA, err := h.kemA.Decapsulate(hybridSk.privA, ct[0:h.kemA.CiphertextSize()])
 	if err != nil {
 		return nil, err
@@ -71,7 +77,13 @@ func (h hybridKEM) Decapsulate(skr kem.PrivateKey, ct []byte) ([]byte, error) {
 func (h hybridKEM) EncapsulateDeterministically(
 	pkr kem.PublicKey, seed []byte,
 ) (ct, ss []byte, err error) {
-	hybridPk := pkr.(*hybridKEMPubKey)
+	if len(seed) != h.EncapsulationSeedSize() {
+		return nil, nil, kem.ErrSeedSize
+	}
+	hybridPk, ok := pkr.(*hybridKEMPubKey)
+	if !ok {
+		return nil, nil, kem.ErrTypeMismatch
+	}
 	encA, ssA, err := h.kemA.EncapsulateDeterministically(hybridPk.pubA, seed[0:h.kemA.EncapsulationSeedSize()])
 	if err != nil {
 		return nil, nil, err
@@ -200,6 +212,9 @@ func (h hybridKEM) GenerateKeyPair() (kem.PublicKey, kem.PrivateKey, error) {
 }
 
 func (h hybridKEM) UnmarshalBinaryPrivateKey(data []byte) (kem.PrivateKey, error) {
+	if len(data) != h.PrivateKeySize() {
+		return nil, kem.ErrPrivKeySize
+	}
 	skA, err := h.kemA.UnmarshalBinaryPrivateKey(data[0:h.kemA.PrivateKeySize()])
 	if err != nil {
 		return nil, err
@@ -216,6 +231,9 @@ func (h hybridKEM) UnmarshalBinaryPrivateKey(data []byte) (kem.PrivateKey, error
 }
 
 func (h hybridKEM) UnmarshalBinaryPublicKey(data []byte) (kem.PublicKey, error) {
+	if len(data) != h.PublicKeySize() {
+		return nil, kem.ErrPubKeySize
+	}
 	pkA, err := h.kemA.UnmarshalBinaryPublicKey(data[0:h.kemA.PublicKeySize()])
 	if err != nil {
 		return nil, err
