@@ -186,6 +186,55 @@ func TestDeterministicBlindFailure(t *testing.T) {
 	}
 }
 
+// TestBlindRejectsNonCoprimeMessage ensures Blind enforces the RFC 9474
+// coprimality check. A malicious signer that publishes an invalid (even)
+// modulus would otherwise learn gcd(encoded_msg, N) from the blinded request,
+// leaking information about low-entropy deterministic messages. Since the
+// EMSA-PSS encoding always ends in the 0xbc trailer, the encoded message is
+// always even, so any even modulus shares the factor 2 with it.
+func TestBlindRejectsNonCoprimeMessage(t *testing.T) {
+	message := []byte("hello world")
+	key, err := loadPrivateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Build a malicious public key with an even (invalid) modulus of the same
+	// bit length so that the EMSA-PSS encoding is unchanged.
+	maliciousN := new(big.Int).Set(key.N)
+	maliciousN.SetBit(maliciousN, 0, 0) // clear the low bit -> even modulus
+	maliciousPub := &rsa.PublicKey{N: maliciousN, E: key.E}
+
+	for _, variant := range []Variant{
+		SHA384PSSDeterministic,
+		SHA384PSSZeroDeterministic,
+		SHA384PSSRandomized,
+		SHA384PSSZeroRandomized,
+	} {
+		t.Run(variant.String(), func(tt *testing.T) {
+			client, err := NewClient(variant, maliciousPub)
+			if err != nil {
+				tt.Fatal(err)
+			}
+
+			inputMsg, err := client.Prepare(rand.Reader, message)
+			if err != nil {
+				tt.Fatal(err)
+			}
+
+			// Use an invertible blind (r = rInv = 1) so the coprimality
+			// check, rather than the blinding-factor invertibility check,
+			// is what rejects the request.
+			one := big.NewInt(1)
+			salt := make([]byte, client.v.SaltLength)
+			_, _, err = client.fixedBlind(inputMsg, salt, one, one)
+			if err != ErrInvalidMessage {
+				tt.Fatalf("expected ErrInvalidMessage, got %v", err)
+			}
+		})
+	}
+}
+
 func TestRandomSignVerify(t *testing.T) {
 	message := []byte("hello world")
 	key, err := loadPrivateKey()

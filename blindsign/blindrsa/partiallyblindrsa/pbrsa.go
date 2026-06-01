@@ -121,6 +121,13 @@ func fixedPartiallyBlind(message, salt []byte, r, rInv *big.Int, pk *keys.BigPub
 
 	m := new(big.Int).SetBytes(encodedMsg)
 
+	// The partially-blind RSA draft requires the encoded message to be coprime
+	// to the modulus before blinding; otherwise a malicious signer with an
+	// invalid modulus could learn gcd(m, N) from the blinded message.
+	if new(big.Int).GCD(nil, nil, m, pk.N).Cmp(big.NewInt(1)) != 0 {
+		return nil, VerifierState{}, common.ErrInvalidMessage
+	}
+
 	bigE := pk.E
 	x := new(big.Int).Exp(r, bigE, pk.N)
 	z := new(big.Int).Set(m)
@@ -331,4 +338,5 @@ var (
 	ErrUnexpectedSize       = common.ErrUnexpectedSize
 	ErrInvalidMessageLength = common.ErrInvalidMessageLength
 	ErrInvalidRandomness    = common.ErrInvalidRandomness
+	ErrInvalidMessage       = common.ErrInvalidMessage
 )
