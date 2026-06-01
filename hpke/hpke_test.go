@@ -63,6 +63,40 @@ func Example() {
 	// Output: true
 }
 
+func TestHybridKEMMalformedInputs(t *testing.T) {
+	scheme := hpke.KEM_X25519_KYBER768_DRAFT00.Scheme()
+	pk, sk, err := scheme.GenerateKeyPair()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = scheme.Decapsulate(sk, []byte{})
+	if err == nil {
+		t.Error("Decapsulate with short ciphertext should fail")
+	}
+
+	_, err = scheme.UnmarshalBinaryPrivateKey([]byte{})
+	if err == nil {
+		t.Error("UnmarshalBinaryPrivateKey with short data should fail")
+	}
+
+	_, err = scheme.UnmarshalBinaryPublicKey([]byte{})
+	if err == nil {
+		t.Error("UnmarshalBinaryPublicKey with short data should fail")
+	}
+
+	seed := make([]byte, scheme.EncapsulationSeedSize())
+	_, _, err = scheme.EncapsulateDeterministically(pk, []byte{})
+	if err == nil {
+		t.Error("EncapsulateDeterministically with short seed should fail")
+	}
+
+	_, _, err = scheme.EncapsulateDeterministically(pk, seed)
+	if err != nil {
+		t.Errorf("EncapsulateDeterministically with correct seed failed: %v", err)
+	}
+}
+
 func runHpkeBenchmark(b *testing.B, kem hpke.KEM, kdf hpke.KDF, aead hpke.AEAD) {
 	suite := hpke.NewSuite(kem, kdf, aead)
 
