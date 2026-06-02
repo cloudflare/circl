@@ -47,6 +47,9 @@ func (g *G2) SetBytes(b []byte) error {
 		if isCompressed == 1 {
 			l = G2SizeCompressed
 		}
+		if len(b) < l {
+			return errInputLength
+		}
 		zeros := make([]byte, l-1)
 		if (b[0]&0x1F) != 0 || subtle.ConstantTimeCompare(b[1:l], zeros) != 1 {
 			return errEncoding
