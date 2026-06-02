@@ -29,6 +29,14 @@ func TestPoint(t *testing.T) {
 		test.CheckOk(!invalid.isEqual(&invalid), "invalid point shouldn't match anything", t)
 	})
 
+	t.Run("isIdentity", func(t *testing.T) {
+		var P pointR1
+		P.SetIdentity()
+		test.CheckOk(P.IsIdentity(), "SetIdentity should produce identity", t)
+		randomPoint(&P)
+		test.CheckOk(!P.IsIdentity(), "random point should not be identity", t)
+	})
+
 	t.Run("add", func(t *testing.T) {
 		var P pointR1
 		var Q pointR1

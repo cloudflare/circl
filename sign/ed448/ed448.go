@@ -300,7 +300,7 @@ func verify(public PublicKey, message, signature, ctx []byte, preHash bool) bool
 	}
 
 	P, err := goldilocks.FromBytes(public)
-	if err != nil {
+	if err != nil || P.IsIdentity() {
 		return false
 	}
 

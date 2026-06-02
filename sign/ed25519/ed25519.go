@@ -327,7 +327,7 @@ func verify(public PublicKey, message, signature, ctx []byte, preHash bool) bool
 	}
 
 	var P pointR1
-	if ok := P.FromBytes(public); !ok {
+	if ok := P.FromBytes(public); !ok || P.IsIdentity() {
 		return false
 	}
 
