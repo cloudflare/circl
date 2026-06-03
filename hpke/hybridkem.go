@@ -160,9 +160,6 @@ func (k *hybridKEMPubKey) Equal(pk kem.PublicKey) bool {
 func (h hybridKEM) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 	// Implementation based on
 	// https://www.ietf.org/archive/id/draft-irtf-cfrg-hpke-07.html#name-derivekeypair
-	if len(seed) != h.SeedSize() {
-		panic(kem.ErrSeedSize)
-	}
 
 	outputSeedSize := h.kemA.SeedSize() + h.kemB.SeedSize()
 	dkpPrk := h.labeledExtract([]byte(""), []byte("dkp_prk"), seed)
