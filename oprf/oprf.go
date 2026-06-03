@@ -115,7 +115,7 @@ func NewClient(s Suite) Client {
 
 func NewVerifiableClient(s Suite, server *PublicKey) VerifiableClient {
 	p, ok := s.(params)
-	if !ok || server == nil {
+	if !ok || server == nil || server.e == nil || server.e.IsIdentity() {
 		panic(ErrNoKey)
 	}
 	p.m = VerifiableMode
@@ -125,7 +125,7 @@ func NewVerifiableClient(s Suite, server *PublicKey) VerifiableClient {
 
 func NewPartialObliviousClient(s Suite, server *PublicKey) PartialObliviousClient {
 	p, ok := s.(params)
-	if !ok || server == nil {
+	if !ok || server == nil || server.e == nil || server.e.IsIdentity() {
 		panic(ErrNoKey)
 	}
 	p.m = PartialObliviousMode
@@ -251,6 +251,8 @@ var (
 	ErrInvalidProof       = errors.New("oprf: proof verification failed")
 	ErrInverseZero        = errors.New("oprf: inverting a zero value")
 	ErrNoKey              = errors.New("oprf: must provide a key")
+	ErrInvalidPublicKey   = errors.New("oprf: invalid public key")
+	ErrInvalidPrivateKey  = errors.New("oprf: invalid private key")
 )
 
 type (
