@@ -248,6 +248,56 @@ func TestErrors(t *testing.T) {
 	})
 }
 
+// TestIdentityKeyRejection ensures the OPRF parsing boundary rejects the
+// identity public key and the zero private key, as required by RFC 9497.
+// Accepting them would let an attacker impersonate a verifiable OPRF server
+// without a secret key (see ZK-dfh985d3).
+func TestIdentityKeyRejection(t *testing.T) {
+	suites := []Suite{SuiteRistretto255, SuiteP256, SuiteP384, SuiteP521}
+	for _, suite := range suites {
+		t.Run(suite.Identifier(), func(t *testing.T) {
+			g := suite.Group()
+
+			// Serialized identity element must be rejected as a public key.
+			identity, err := g.Identity().MarshalBinaryCompress()
+			test.CheckNoErr(t, err, "failed to marshal identity")
+			err = new(PublicKey).UnmarshalBinary(suite, identity)
+			test.CheckIsErr(t, err, "must reject identity public key")
+			if err != ErrInvalidPublicKey {
+				t.Fatalf("expected ErrInvalidPublicKey, got %v", err)
+			}
+
+			// Serialized zero scalar must be rejected as a private key.
+			zero, err := g.NewScalar().MarshalBinary()
+			test.CheckNoErr(t, err, "failed to marshal zero scalar")
+			err = new(PrivateKey).UnmarshalBinary(suite, zero)
+			test.CheckIsErr(t, err, "must reject zero private key")
+			if err != ErrInvalidPrivateKey {
+				t.Fatalf("expected ErrInvalidPrivateKey, got %v", err)
+			}
+
+			// Constructors must reject an identity public key defensively.
+			idKey := &PublicKey{suite.(params), g.Identity()}
+			err = test.CheckPanic(func() { NewVerifiableClient(suite, idKey) })
+			test.CheckNoErr(t, err, "verifiable client must reject identity key")
+			err = test.CheckPanic(func() { NewPartialObliviousClient(suite, idKey) })
+			test.CheckNoErr(t, err, "partial oblivious client must reject identity key")
+
+			// A valid key must still round-trip and be accepted.
+			priv, err := GenerateKey(suite, rand.Reader)
+			test.CheckNoErr(t, err, "failed to generate key")
+			pubBytes, err := priv.Public().MarshalBinary()
+			test.CheckNoErr(t, err, "failed to marshal public key")
+			err = new(PublicKey).UnmarshalBinary(suite, pubBytes)
+			test.CheckNoErr(t, err, "valid public key must be accepted")
+			privBytes, err := priv.MarshalBinary()
+			test.CheckNoErr(t, err, "failed to marshal private key")
+			err = new(PrivateKey).UnmarshalBinary(suite, privBytes)
+			test.CheckNoErr(t, err, "valid private key must be accepted")
+		})
+	}
+}
+
 func Example_oprf() {
 	suite := SuiteP256
 	//                                  Server(sk, pk, info*)

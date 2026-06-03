@@ -29,7 +29,18 @@ func (k *PrivateKey) UnmarshalBinary(s Suite, data []byte) error {
 	k.p = p
 	k.k = k.p.group.NewScalar()
 
-	return k.k.UnmarshalBinary(data)
+	if err := k.k.UnmarshalBinary(data); err != nil {
+		return err
+	}
+
+	// RFC 9497 requires private keys (scalars) to be non-zero. A zero
+	// private key produces an identity public key, which collapses the
+	// (V)OPRF/POPRF relation to a publicly computable function.
+	if k.k.IsZero() {
+		return ErrInvalidPrivateKey
+	}
+
+	return nil
 }
 
 func (k *PublicKey) UnmarshalBinary(s Suite, data []byte) error {
@@ -40,7 +51,19 @@ func (k *PublicKey) UnmarshalBinary(s Suite, data []byte) error {
 	k.p = p
 	k.e = k.p.group.NewElement()
 
-	return k.e.UnmarshalBinary(data)
+	if err := k.e.UnmarshalBinary(data); err != nil {
+		return err
+	}
+
+	// RFC 9497 requires DeserializeElement to reject the group identity.
+	// Accepting the identity public key would let a server prove a valid
+	// DLEQ relation with the public witness 0, collapsing the VOPRF/POPRF
+	// output to a publicly computable function of (input, info).
+	if k.e.IsIdentity() {
+		return ErrInvalidPublicKey
+	}
+
+	return nil
 }
 
 func (k *PrivateKey) Public() *PublicKey {
@@ -61,7 +84,14 @@ func GenerateKey(s Suite, rnd io.Reader) (*PrivateKey, error) {
 	if !ok {
 		return nil, ErrInvalidSuite
 	}
+
+	// RFC 9497 requires private keys to be non-zero. Retry in the
+	// negligible-probability case that a zero scalar is sampled.
+	zero := p.group.NewScalar()
 	privateKey := p.group.RandomScalar(rnd)
+	for privateKey.IsEqual(zero) {
+		privateKey = p.group.RandomScalar(rnd)
+	}
 
 	return &PrivateKey{p, privateKey, nil}, nil
 }
