@@ -24,6 +24,10 @@ func (P *pointR1) SetIdentity() {
 	P.tb = fp.Elt{}
 }
 
+func (P *pointR1) IsIdentity() bool {
+	return fp.IsZero(&P.x) && !fp.IsZero(&P.y) && !fp.IsZero(&P.z) && P.y == P.z
+}
+
 func (P *pointR1) toAffine() {
 	fp.Inv(&P.z, &P.z)
 	fp.Mul(&P.x, &P.x, &P.z)

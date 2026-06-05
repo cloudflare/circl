@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/asn1"
 
+	"github.com/cloudflare/circl/ecc/goldilocks"
 	"github.com/cloudflare/circl/sign"
 )
 
@@ -74,6 +75,10 @@ func (*scheme) UnmarshalBinaryPublicKey(buf []byte) (sign.PublicKey, error) {
 	}
 	pub := make(PublicKey, PublicKeySize)
 	copy(pub, buf[:PublicKeySize])
+	P, err := goldilocks.FromBytes(pub)
+	if err != nil || P.IsIdentity() {
+		return nil, sign.ErrInvalidPublicKey
+	}
 	return pub, nil
 }
 
