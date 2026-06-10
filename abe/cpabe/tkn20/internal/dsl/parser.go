@@ -4,9 +4,15 @@ import (
 	"fmt"
 )
 
+// maxParseDepth bounds the recursion depth of the recursive-descent parser.
+const maxParseDepth = 64
+
+var errMaxDepth = fmt.Errorf("policy exceeds maximum nesting depth of %d", maxParseDepth)
+
 type Parser struct {
 	tokens   []Token
 	curr     int
+	depth    int
 	wires    map[attr]attrValue
 	gates    []gate
 	negative bool
@@ -16,6 +22,7 @@ func newParser(tokens []Token) Parser {
 	return Parser{
 		tokens:   tokens,
 		curr:     0,
+		depth:    0,
 		wires:    make(map[attr]attrValue),
 		gates:    make([]gate, 0),
 		negative: false,
@@ -34,6 +41,13 @@ func (p *Parser) parse() (Ast, error) {
 }
 
 func (p *Parser) expression() (Expr, error) {
+	// expression is entered once per level of parenthesis nesting (via
+	// primary), so guarding it bounds the depth of grouped sub-expressions.
+	p.depth++
+	defer func() { p.depth-- }()
+	if p.depth > maxParseDepth {
+		return nil, errMaxDepth
+	}
 	return p.or()
 }
 
@@ -117,6 +131,13 @@ func (p *Parser) and() (Expr, error) {
 
 func (p *Parser) not() (Expr, error) {
 	if p.tokens[p.curr].Type == Not {
+		// not recurses into itself for each chained "not", which bypasses
+		// expression, so it needs its own depth guard.
+		p.depth++
+		defer func() { p.depth-- }()
+		if p.depth > maxParseDepth {
+			return nil, errMaxDepth
+		}
 		p.curr++
 		currWires := make(map[attr]int)
 		for wire := range p.wires {

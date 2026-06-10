@@ -2,6 +2,7 @@ package dsl_test
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/cloudflare/circl/abe/cpabe/tkn20/internal/dsl"
@@ -140,5 +141,31 @@ func TestDsl(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestParserDepthLimit(t *testing.T) {
+	// Inputs nested far beyond maxParseDepth (64) must return the depth-limit
+	// error rather than recursing until the goroutine stack overflows. Both
+	// recursion drivers are exercised: nested groups and chained "not".
+	want := "policy exceeds maximum nesting depth of 64"
+	for _, in := range []string{
+		strings.Repeat("(", 1000),    // nested groups
+		strings.Repeat("not ", 1000), // chained "not"
+	} {
+		_, err := dsl.Run(in)
+		if err == nil {
+			t.Errorf("expected a depth-limit error for input of length %d, got nil", len(in))
+			continue
+		}
+		if err.Error() != want {
+			t.Errorf("expected error %q, received %q", want, err.Error())
+		}
+	}
+
+	// A policy nested well within the limit must still parse successfully.
+	valid := strings.Repeat("(", 16) + "region: US" + strings.Repeat(")", 16)
+	if _, err := dsl.Run(valid); err != nil {
+		t.Errorf("valid nested policy was rejected: %v", err)
 	}
 }
