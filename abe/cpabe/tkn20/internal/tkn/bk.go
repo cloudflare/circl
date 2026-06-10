@@ -141,7 +141,7 @@ type rmLenPref = func([]byte) ([]byte, []byte, error)
 
 func checkCiphertextFormat(ciphertext []byte) (ct []byte, fn rmLenPref) {
 	const N = len(CiphertextVersion)
-	if bytes.Equal(ciphertext[0:N], []byte(CiphertextVersion)) {
+	if len(ciphertext) >= N && bytes.Equal(ciphertext[0:N], []byte(CiphertextVersion)) {
 		return ciphertext[N:], removeLen32Prefixed
 	}
 	return ciphertext, removeLenPrefixed
@@ -157,9 +157,12 @@ func DecryptCCA(ciphertext []byte, key *AttributesKey) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	tag, _, err := removeLenPrefixed(rest)
+	tag, rest, err := removeLenPrefixed(rest)
 	if err != nil {
 		return nil, err
+	}
+	if len(rest) != 0 {
+		return nil, fmt.Errorf("malformed ciphertext: %d trailing byte(s)", len(rest))
 	}
 	C1, envRaw, err := removeLenPrefixedVar(macData)
 	if err != nil {
@@ -229,8 +232,15 @@ func CouldDecrypt(ciphertext []byte, a *Attributes) bool {
 	if err != nil {
 		return false
 	}
-	macData, _, err := removeLenPrefixedVar(rest)
+	macData, rest, err := removeLenPrefixedVar(rest)
 	if err != nil {
+		return false
+	}
+	// Enforce one canonical encoding: tag must follow, with nothing after it.
+	if _, rest, err = removeLenPrefixed(rest); err != nil {
+		return false
+	}
+	if len(rest) != 0 {
 		return false
 	}
 	C1, _, err := removeLenPrefixedVar(macData)
@@ -259,8 +269,14 @@ func (p *Policy) ExtractFromCiphertext(ct []byte) error {
 	if err != nil {
 		return fmt.Errorf("invalid ciphertext")
 	}
-	macData, _, err := removeLenPrefixedVar(rest)
+	macData, rest, err := removeLenPrefixedVar(rest)
 	if err != nil {
+		return fmt.Errorf("invalid ciphertext")
+	}
+	if _, rest, err = removeLenPrefixed(rest); err != nil {
+		return fmt.Errorf("invalid ciphertext")
+	}
+	if len(rest) != 0 {
 		return fmt.Errorf("invalid ciphertext")
 	}
 	C1, _, err := removeLenPrefixedVar(macData)
