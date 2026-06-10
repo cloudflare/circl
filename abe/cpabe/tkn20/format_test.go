@@ -97,3 +97,66 @@ func testCiphertext(t *testing.T, ctName string) {
 		t.Fatal("message incorrect")
 	}
 }
+
+func TestCiphertextRejectsTrailingData(t *testing.T) {
+	for _, ctName := range []string{"testdata/ciphertext", "testdata/ciphertext_v137"} {
+		ciphertext, err := os.ReadFile(filepath.Clean(ctName))
+		if err != nil {
+			t.Fatalf("%s: unable to read ciphertext", ctName)
+		}
+		attributeKey, err := os.ReadFile("testdata/attributeKey")
+		if err != nil {
+			t.Fatal("unable to read attribute key")
+		}
+		sk := AttributeKey{}
+		if err = sk.UnmarshalBinary(attributeKey); err != nil {
+			t.Fatal("unable to parse attribute key")
+		}
+		attrs := Attributes{}
+		attrs.FromMap(map[string]string{"country": "NL", "EU": "true"})
+
+		// Baseline: the canonical ciphertext is accepted by all parsers.
+		if _, err := sk.Decrypt(ciphertext); err != nil {
+			t.Fatalf("%s: baseline Decrypt failed: %v", ctName, err)
+		}
+		if !attrs.CouldDecrypt(ciphertext) {
+			t.Fatalf("%s: baseline CouldDecrypt failed", ctName)
+		}
+		if err := (&Policy{}).ExtractFromCiphertext(ciphertext); err != nil {
+			t.Fatalf("%s: baseline ExtractFromCiphertext failed: %v", ctName, err)
+		}
+
+		// ct || suffix must be rejected by every parser (canonical encoding).
+		for _, suffix := range [][]byte{{0x00}, {0xff}, {0xff, 0xff, 0xff, 0xff}, []byte("extra")} {
+			mutated := append(append([]byte{}, ciphertext...), suffix...)
+			if _, err := sk.Decrypt(mutated); err == nil {
+				t.Errorf("%s: Decrypt accepted %d trailing byte(s)", ctName, len(suffix))
+			}
+			if attrs.CouldDecrypt(mutated) {
+				t.Errorf("%s: CouldDecrypt accepted %d trailing byte(s)", ctName, len(suffix))
+			}
+			if err := (&Policy{}).ExtractFromCiphertext(mutated); err == nil {
+				t.Errorf("%s: ExtractFromCiphertext accepted %d trailing byte(s)", ctName, len(suffix))
+			}
+		}
+	}
+}
+
+func TestShortCiphertextNoPanic(t *testing.T) {
+	attributeKey, err := os.ReadFile("testdata/attributeKey")
+	if err != nil {
+		t.Fatal("unable to read attribute key")
+	}
+	sk := AttributeKey{}
+	if err = sk.UnmarshalBinary(attributeKey); err != nil {
+		t.Fatal("unable to parse attribute key")
+	}
+	attrs := Attributes{}
+	attrs.FromMap(map[string]string{"country": "NL", "EU": "true"})
+	for i := 0; i <= len("v1.3.8")+2; i++ { // shorter than the version prefix must not panic
+		in := make([]byte, i)
+		_, _ = sk.Decrypt(in)
+		_ = attrs.CouldDecrypt(in)
+		_ = (&Policy{}).ExtractFromCiphertext(in)
+	}
+}
