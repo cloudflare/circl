@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -231,5 +232,17 @@ func TestPolicyMethods(t *testing.T) {
 				t.Fatalf("expected and received values differ")
 			}
 		}
+	}
+}
+
+func TestPolicyFromStringStackOverflow(t *testing.T) {
+	// Regression test: 4 MB of '(' used to drive ~4,000,000 levels of
+	// expression->or->and->not->primary recursion, exhausting the goroutine
+	// stack and aborting the process with a fatal "stack overflow" error that
+	// no recover() can catch. The parser now bounds its recursion depth and
+	// returns an error instead.
+	var p Policy
+	if err := p.FromString(strings.Repeat("(", 4_000_000)); err == nil {
+		t.Fatal("expected an error for an excessively nested policy, got nil")
 	}
 }
