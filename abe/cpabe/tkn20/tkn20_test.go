@@ -374,3 +374,108 @@ func TestCouldDecryptPanicsOnOversizedWireList(t *testing.T) {
 		t.Fatal("malformed ciphertext should not be decryptable")
 	}
 }
+
+// truncateCiphertextHeader takes a legitimate v1.3.8 ciphertext and surgically
+// truncates the inner C1 header right after the (structurally valid) policy and
+// c1 fields, dropping the c2 count and everything after it. The outer envelope
+// is reassembled with corrected length prefixes. Such a header leaves zero bytes
+// where ciphertextHeader.unmarshalBinary reads the c2 element count, which must
+// be rejected with an error rather than an out-of-range panic.
+func truncateCiphertextHeader(t *testing.T, ct []byte) []byte {
+	t.Helper()
+
+	// Ciphertext layout (v1.3.8):
+	//   "v1.3.8" || len16(id) || len32(macData) || len16(tag)
+	//   macData = len32(C1) || len32(env)
+	//   C1      = len16(policy) || len16(c1) || u16(c2Len) || ... || u16(c3Len) || ...
+	const version = "v1.3.8"
+	rest := ct[len(version):]
+	idLen := int(binary.LittleEndian.Uint16(rest))
+	id := rest[2 : 2+idLen]
+	rest = rest[2+idLen:]
+	macLen := int(binary.LittleEndian.Uint32(rest))
+	macData := rest[4 : 4+macLen]
+	rest = rest[4+macLen:]
+	tagLen := int(binary.LittleEndian.Uint16(rest))
+	tag := rest[2 : 2+tagLen]
+
+	c1Len := int(binary.LittleEndian.Uint32(macData))
+	C1 := macData[4 : 4+c1Len]
+	envWithPrefix := macData[4+c1Len:]
+
+	// Truncate C1 right after the (still valid) policy and c1 fields,
+	// dropping the c2 count and everything after it.
+	pLen := int(binary.LittleEndian.Uint16(C1))
+	off := 2 + pLen
+	c1bLen := int(binary.LittleEndian.Uint16(C1[off:]))
+	off += 2 + c1bLen
+	truncC1 := C1[:off]
+
+	// Reassemble the outer ciphertext around the truncated header.
+	newMac := make([]byte, 4, 4+len(truncC1)+len(envWithPrefix))
+	binary.LittleEndian.PutUint32(newMac, uint32(len(truncC1)))
+	newMac = append(newMac, truncC1...)
+	newMac = append(newMac, envWithPrefix...)
+
+	evil := append([]byte{}, []byte(version)...)
+	evil = append(evil, 0, 0)
+	binary.LittleEndian.PutUint16(evil[len(evil)-2:], uint16(len(id)))
+	evil = append(evil, id...)
+	evil = append(evil, 0, 0, 0, 0)
+	binary.LittleEndian.PutUint32(evil[len(evil)-4:], uint32(len(newMac)))
+	evil = append(evil, newMac...)
+	evil = append(evil, 0, 0)
+	binary.LittleEndian.PutUint16(evil[len(evil)-2:], uint16(len(tag)))
+	evil = append(evil, tag...)
+	return evil
+}
+
+// TestTruncatedCiphertextHeaderPanic guards against a denial-of-service in
+// ciphertextHeader.unmarshalBinary: a ciphertext truncated right after the
+// policy and c1 fields must fail gracefully (returning an error / false) on all
+// three public entrypoints rather than panicking.
+func TestTruncatedCiphertextHeaderPanic(t *testing.T) {
+	pk, msk, err := Setup(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy := Policy{}
+	if err = policy.FromString("(country: US) and (top: secret)"); err != nil {
+		t.Fatal(err)
+	}
+	ct, err := pk.Encrypt(rand.Reader, policy, []byte("hello world"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	attrs := Attributes{}
+	attrs.FromMap(map[string]string{"country": "US", "top": "secret"})
+	key, err := msk.KeyGen(rand.Reader, attrs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	evil := truncateCiphertextHeader(t, ct)
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("truncated ciphertext header panicked instead of returning an error: %v", r)
+		}
+	}()
+
+	// Policy.ExtractFromCiphertext must return an error, not panic.
+	extracted := &Policy{}
+	if err := extracted.ExtractFromCiphertext(evil); err == nil {
+		t.Error("ExtractFromCiphertext accepted a malformed ciphertext")
+	}
+
+	// Attributes.CouldDecrypt must return false, not panic.
+	if attrs.CouldDecrypt(evil) {
+		t.Error("CouldDecrypt accepted a malformed ciphertext")
+	}
+
+	// AttributeKey.Decrypt must return an error, not panic.
+	if _, err := key.Decrypt(evil); err == nil {
+		t.Error("Decrypt accepted a malformed ciphertext")
+	}
+}

@@ -727,6 +727,17 @@ func decapsulate(header *ciphertextHeader, key *AttributesKey) (*pairing.Gt, err
 	// We use pi to determine which D to sum into
 	pi := header.p.pi()
 	d := max(pi) + 1
+
+	if len(header.c3) < len(header.p.Inputs) {
+		return nil, fmt.Errorf("invalid ciphertext: c3 length %d shorter than %d policy wires", len(header.c3), len(header.p.Inputs))
+	}
+	if len(header.c3neg) < len(header.p.Inputs) {
+		return nil, fmt.Errorf("invalid ciphertext: c3neg length %d shorter than %d policy wires", len(header.c3neg), len(header.p.Inputs))
+	}
+	if len(header.c2) < d {
+		return nil, fmt.Errorf("invalid ciphertext: c2 length %d shorter than required %d", len(header.c2), d)
+	}
+
 	// p1, p2 are the left halves of the pairings.
 	p1 := make([]*matrixG1, d)
 	p2 := make([]*matrixG1, d)
@@ -761,6 +772,13 @@ func decapsulate(header *ciphertextHeader, key *AttributesKey) (*pairing.Gt, err
 				p2[j].add(p2[j], key.k3[mt.label])
 			}
 		} else {
+			// c3neg is required for negative wires but is left nil by
+			// unmarshalBinary when its serialized entry is empty. Reject such a
+			// ciphertext instead of dereferencing nil at header.c3neg[mt.wire]
+			// below (this runs before the MAC check in DecryptCCA).
+			if header.c3neg[mt.wire] == nil {
+				return nil, fmt.Errorf("invalid ciphertext: missing c3neg data for negative wire %d", mt.wire)
+			}
 			keymat := newMatrixG1(0, 0)
 			y := &pairing.Scalar{}
 
@@ -800,6 +818,13 @@ func decapsulate(header *ciphertextHeader, key *AttributesKey) (*pairing.Gt, err
 			pTot.add(pTot, p1[i])
 			pairs.addDuals(p2[i], header.c2[i], 1)
 		}
+	}
+	// pTot is nil only when the satisfaction loop matched no wire (e.g. an empty
+	// policy). Satisfaction already returns an error in that case above, so this
+	// is a defensive guard: pairAccum.addDuals dereferences its first argument,
+	// so reaching it with a nil pTot would panic instead of failing cleanly.
+	if pTot == nil {
+		return nil, fmt.Errorf("invalid ciphertext: no satisfying policy wires")
 	}
 	pairs.addDuals(pTot, key.k1, -1)
 	pairs.addDuals(key.k2.copy(), header.c1, 1)
