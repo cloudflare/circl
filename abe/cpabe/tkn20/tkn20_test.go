@@ -3,6 +3,7 @@ package tkn20
 import (
 	"bytes"
 	"crypto/rand"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -317,5 +318,59 @@ func TestPolicyFromStringStackOverflow(t *testing.T) {
 	var p Policy
 	if err := p.FromString(strings.Repeat("(", 4_000_000)); err == nil {
 		t.Fatal("expected an error for an excessively nested policy, got nil")
+	}
+}
+
+func TestCouldDecryptPanicsOnOversizedWireList(t *testing.T) {
+	le16 := func(n int) []byte {
+		b := make([]byte, 2)
+		binary.LittleEndian.PutUint16(b, uint16(n))
+		return b
+	}
+	pre := func(b []byte) []byte { return append(le16(len(b)), b...) }
+
+	// One serialized Wire: label "x", empty raw value, 32-byte zero scalar, positive.
+	wire := append(pre([]byte("x")), pre([]byte{})...)
+	wire = append(wire, le16(32)...)
+	wire = append(wire, make([]byte, 32)...)
+	wire = append(wire, 1)
+
+	// Formula with zero gates (2 bytes: n=0).
+	formula := le16(0)
+
+	// Policy: 0-gate formula plus THREE wires. After the BK transform the formula
+	// has one gate (wire slots 0,1,2) but the appended BK wire sits at index 3.
+	policy := pre(formula)
+	policy = append(policy, le16(3)...)
+	for i := 0; i < 3; i++ {
+		policy = append(policy, pre(wire)...)
+	}
+
+	// c1: an empty (0x0) matrixG2 -- 4 zero bytes, accepted by unmarshalBinary.
+	c1 := []byte{0, 0, 0, 0}
+
+	// Ciphertext header C1: lenPrefixed(policy) || lenPrefixed(c1) || c2Len=0 || c3Len=0
+	c1Hdr := append(pre(policy), pre(c1)...)
+	c1Hdr = append(c1Hdr, le16(0)...)
+	c1Hdr = append(c1Hdr, le16(0)...)
+
+	macData := pre(c1Hdr)
+	macData = append(macData, pre(make([]byte, 100))...) // env (needed for the Decrypt path)
+
+	// Legacy (pre-v1.3.8) outer format: lenPrefixed(id) || lenPrefixed(macData) || lenPrefixed(tag)
+	ct := pre(make([]byte, 32))
+	ct = append(ct, pre(macData)...)
+	ct = append(ct, pre([]byte{})...)
+
+	attrs := Attributes{}
+	attrs.FromMap(map[string]string{"country": "US"})
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("CouldDecrypt panicked on attacker-controlled ciphertext: %v", r)
+		}
+	}()
+	if attrs.CouldDecrypt(ct) {
+		t.Fatal("malformed ciphertext should not be decryptable")
 	}
 }
