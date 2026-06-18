@@ -479,3 +479,51 @@ func TestTruncatedCiphertextHeaderPanic(t *testing.T) {
 		t.Error("Decrypt accepted a malformed ciphertext")
 	}
 }
+
+func TestPolicyExtractMutatedCiphertextStackOverflow(t *testing.T) {
+	pk, _, err := Setup(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var policy Policy
+	if err = policy.FromString("(country: US) and (region: EU)"); err != nil {
+		t.Fatal(err)
+	}
+	ct, err := pk.Encrypt(rand.Reader, policy, []byte("secret"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// One-gate formula serialization inside the ciphertext header:
+	// nGates(uint16) | class(byte) | In0(uint16) | In1(uint16) | Out(uint16), little-endian.
+	patterns := [][]byte{
+		{0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x02, 0x00}, // In0=0, In1=1, Out=2
+		{0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00}, // In0=1, In1=0, Out=2
+	}
+	idx := -1
+	for _, p := range patterns {
+		if i := bytes.Index(ct, p); i >= 0 {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		t.Fatal("gate encoding not found in ciphertext")
+	}
+	// Attacker mutation: 2 bytes, set the gate's In0 := 2 (its own output wire).
+	// Observed at offset 52+3=55 in the v1.3.8 ciphertext format.
+	ct[idx+3] = 0x02
+	ct[idx+4] = 0x00
+
+	var extracted Policy
+	if err := extracted.ExtractFromCiphertext(ct); err == nil {
+		t.Fatal("ExtractFromCiphertext() accepted a ciphertext with an invalid gate topology")
+	}
+	// Walking this graph would cause a stack overflow:
+	//defer func() {
+	//	if r := recover(); r != nil {
+	//		t.Logf("recovered (does NOT happen for stack overflow): %v", r)
+	//	}
+	//}()
+	//_ = extracted.String() // fatal error: stack overflow — kills the entire process
+	//t.Fatal("unreachable: String() should have crashed the process")
+}

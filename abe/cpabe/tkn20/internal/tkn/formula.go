@@ -86,6 +86,11 @@ func (f *Formula) UnmarshalBinary(data []byte) error {
 		f.Gates[i].In1 = int(binary.LittleEndian.Uint16(data[7*i+2+3:]))
 		f.Gates[i].Out = int(binary.LittleEndian.Uint16(data[7*i+2+5:]))
 	}
+	// Reject malformed or cyclic gate graphs coming from untrusted encodings.
+	check := Formula{Gates: append([]Gate(nil), f.Gates...)}
+	if err := check.toposort(); err != nil {
+		return fmt.Errorf("invalid formula: %w", err)
+	}
 	return nil
 }
 
