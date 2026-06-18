@@ -193,6 +193,9 @@ func (f *Formula) satisfaction(available []match) ([]match, error) {
 	n := len(f.Gates)
 	assignments := make([][]int, 2*n+1)
 	for _, match := range available {
+		if match.wire < 0 || match.wire >= len(assignments) {
+			return nil, fmt.Errorf("wire index %d out of range for formula with %d gates", match.wire, n)
+		}
 		assignments[match.wire] = []int{match.wire}
 	}
 	for _, gate := range f.Gates {

@@ -247,6 +247,9 @@ func (p *Policy) UnmarshalBinary(data []byte) error {
 		return fmt.Errorf("data not long enough")
 	}
 	nWires := int(binary.LittleEndian.Uint16(data))
+	if nWires != len(p.F.Gates)+1 {
+		return fmt.Errorf("invalid policy: %d wires declared, but a formula with %d gates requires exactly %d input wires", nWires, len(p.F.Gates), len(p.F.Gates)+1)
+	}
 	data = data[2:]
 	p.Inputs = make([]Wire, nWires)
 	for i := 0; i < nWires; i++ {
