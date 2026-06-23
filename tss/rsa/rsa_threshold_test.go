@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"runtime"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/test"
@@ -21,6 +22,15 @@ func TestGenerateKey(t *testing.T) {
 	// [Warning]: this is only for tests, use a secure bitlen above 2048 bits.
 	bitlen := 128
 	key, err := GenerateKey(rand.Reader, bitlen)
+	test.CheckNoErr(t, err, "failed to create key")
+	test.CheckOk(key.Validate() == nil, fmt.Sprintf("key is not valid: %v", key), t)
+}
+
+func TestGenerateKeyConcurrent(t *testing.T) {
+	// [Warning]: this is only for tests, use a secure bitlen above 2048 bits.
+	bitlen := 128
+	numCPU := runtime.NumCPU()
+	key, err := GenerateKeyConcurrent(bitlen, numCPU)
 	test.CheckNoErr(t, err, "failed to create key")
 	test.CheckOk(key.Validate() == nil, fmt.Sprintf("key is not valid: %v", key), t)
 }
