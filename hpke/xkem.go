@@ -81,8 +81,8 @@ func (x xKEM) GenerateKeyPair() (kem.PublicKey, kem.PrivateKey, error) {
 
 func (x xKEM) UnmarshalBinaryPrivateKey(data []byte) (kem.PrivateKey, error) {
 	l := x.PrivateKeySize()
-	if len(data) < l {
-		return nil, ErrInvalidKEMPrivateKey
+	if len(data) != l {
+		return nil, kem.ErrPrivKeySize
 	}
 	sk := &xKEMPrivKey{x, make([]byte, l), nil}
 	copy(sk.priv, data[:l])
@@ -94,8 +94,8 @@ func (x xKEM) UnmarshalBinaryPrivateKey(data []byte) (kem.PrivateKey, error) {
 
 func (x xKEM) UnmarshalBinaryPublicKey(data []byte) (kem.PublicKey, error) {
 	l := x.PublicKeySize()
-	if len(data) < l {
-		return nil, ErrInvalidKEMPublicKey
+	if len(data) != l {
+		return nil, kem.ErrPubKeySize
 	}
 	pk := &xKEMPubKey{x, make([]byte, l)}
 	copy(pk.pub, data[:l])
