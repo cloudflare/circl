@@ -77,6 +77,9 @@ func removeLen32Prefixed(data []byte) (next []byte, remainder []byte, err error)
 		return nil, nil, fmt.Errorf("data too short")
 	}
 	itemLen := int(binary.LittleEndian.Uint32(data))
+	if itemLen < 0 {
+		return nil, nil, fmt.Errorf("negative data length: possible overflow")
+	}
 	if (4 + itemLen) > len(data) {
 		return nil, nil, fmt.Errorf("data too short")
 	}
