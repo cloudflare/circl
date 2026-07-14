@@ -135,6 +135,37 @@ func TestApi(t *testing.T) {
 	}
 }
 
+func TestExactLengthUnmarshal(t *testing.T) {
+	allSchemes := schemes.All()
+	for _, scheme := range allSchemes {
+		t.Run(scheme.Name(), func(t *testing.T) {
+			pk, sk, err := scheme.GenerateKeyPair()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			packedPk, err := pk.MarshalBinary()
+			if err != nil {
+				t.Fatal(err)
+			}
+			packedSk, err := sk.MarshalBinary()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			oversizedPk := append(packedPk, 0x00)
+			if _, err := scheme.UnmarshalBinaryPublicKey(oversizedPk); err == nil {
+				t.Fatal("expected error for oversized public key")
+			}
+
+			oversizedSk := append(packedSk, 0x00)
+			if _, err := scheme.UnmarshalBinaryPrivateKey(oversizedSk); err == nil {
+				t.Fatal("expected error for oversized private key")
+			}
+		})
+	}
+}
+
 func Example_schemes() {
 	// import "github.com/cloudflare/circl/kem/schemes"
 
