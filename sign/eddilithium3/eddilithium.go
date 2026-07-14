@@ -88,6 +88,9 @@ func SignTo(sk *PrivateKey, msg []byte, signature []byte) {
 
 // Verify checks whether the given signature by pk on msg is valid.
 func Verify(pk *PublicKey, msg []byte, signature []byte) bool {
+	if len(signature) != SignatureSize {
+		return false
+	}
 	if !mode3.Verify(
 		&pk.d,
 		msg,
