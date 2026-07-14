@@ -88,10 +88,9 @@ func (sig *unpackedSignature) Pack(buf []byte) {
 //
 // Returns whether buf contains a properly packed signature.
 func (sig *unpackedSignature) Unpack(buf []byte) bool {
-	if len(buf) < SignatureSize {
-		return false
-	}
-	if NIST && len(buf) != SignatureSize {
+	// NOTE: Previously the Dilithium (but not ML-DSA) implementation accepted
+	// signatures with trailing data.
+	if len(buf) != SignatureSize {
 		return false
 	}
 	copy(sig.c[:], buf[:])
