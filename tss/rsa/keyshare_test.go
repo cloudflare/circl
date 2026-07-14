@@ -3,6 +3,8 @@ package rsa
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"encoding/binary"
+	"math"
 	"math/big"
 	"testing"
 )
@@ -140,6 +142,19 @@ func TestMarshallKeyShare(t *testing.T) {
 	unmarshalKeyShareTest(t, []byte{0, 1, 0, 1, 0, 1, 0, 2, 1})
 	unmarshalKeyShareTest(t, []byte{0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0})
 	unmarshalKeyShareTest(t, []byte{0, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1})
+}
+
+func TestUnmarshalKeyShareBoundsWrap(t *testing.T) {
+	for _, siLen := range []uint16{math.MaxUint16 - 7, math.MaxUint16 - 1, math.MaxUint16} {
+		data := make([]byte, 8+int(siLen))
+		binary.BigEndian.PutUint16(data[6:8], siLen)
+		data[8] = 1
+
+		share := KeyShare{}
+		if err := share.UnmarshalBinary(data); err == nil {
+			t.Fatalf("unmarshal unexpectedly succeeded for siLen=%d", siLen)
+		}
+	}
 }
 
 func TestMarshallKeyShareFull(t *testing.T) {

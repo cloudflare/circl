@@ -79,14 +79,14 @@ func (s *SignShare) UnmarshalBinary(data []byte) error {
 	players := binary.BigEndian.Uint16(data[0:2])
 	threshold := binary.BigEndian.Uint16(data[2:4])
 	index := binary.BigEndian.Uint16(data[4:6])
-	xiLen := binary.BigEndian.Uint16(data[6:8])
+	xiLen := int(binary.BigEndian.Uint16(data[6:8]))
 
 	if xiLen == 0 {
 		return fmt.Errorf("rsa_threshold: signshare unmarshalKeyShareTest failed: xi is a required field but xiLen was 0")
 	}
 
-	if uint16(len(data[8:])) < xiLen {
-		return fmt.Errorf("rsa_threshold: signshare unmarshalKeyShareTest failed: data length was too short for reading xi, needed: %d found: %d", xiLen, len(data[6:]))
+	if len(data[8:]) < xiLen {
+		return fmt.Errorf("rsa_threshold: signshare unmarshalKeyShareTest failed: data length was too short for reading xi, needed: %d found: %d", xiLen, len(data[8:]))
 	}
 
 	xi := big.Int{}
