@@ -60,7 +60,7 @@ func TestCompress(t *testing.T) {
 					if diff > bound {
 						t.Logf("%v\n", buf)
 						t.Fatalf("|%d - %d mod^± q| = %d > %d, j=%d",
-							p[i], q[j], diff, bound, j) //#nosec G602 -- indices bounded by loop
+						p[j], q[j], diff, bound, j)
 					}
 				}
 			}
