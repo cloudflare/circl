@@ -189,6 +189,10 @@ func (v Verifier) Verify(a, ka, b, kb group.Element, p *Proof) bool {
 }
 
 func (v Verifier) VerifyBatch(a, ka group.Element, bi, kbi []group.Element, p *Proof) bool {
+	if p == nil || p.c == nil || p.s == nil {
+		return false
+	}
+
 	g := v.Params.G
 	M, Z, err := v.Params.computeComposites(nil, ka, bi, kbi)
 	if err != nil {
