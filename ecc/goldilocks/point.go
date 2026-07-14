@@ -46,6 +46,9 @@ func FromBytes(in []byte) (*Point, error) {
 	}
 	err := errors.New("invalid decoding")
 	P := &Point{}
+	if in[fp.Size]&0x7F != 0 {
+		return nil, err
+	}
 	signX := in[fp.Size] >> 7
 	copy(P.y[:], in[:fp.Size])
 	p := fp.P()

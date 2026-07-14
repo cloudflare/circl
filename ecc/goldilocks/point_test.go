@@ -93,6 +93,34 @@ func TestPointMarshal(t *testing.T) {
 	}
 }
 
+func TestPointNonCanonical(t *testing.T) {
+	const testTimes = 1 << 8
+	for i := 0; i < testTimes; i++ {
+		P := randomPoint()
+		data, err := P.MarshalBinary()
+		test.CheckNoErr(t, err, "marshal failed")
+
+		// The canonical encoding must decode successfully.
+		if _, err := goldilocks.FromBytes(data); err != nil {
+			test.ReportError(t, err, nil, data)
+		}
+		// The last byte must only hold the sign bit; bits 448..454 are unused.
+		if data[len(data)-1]&0x7F != 0 {
+			test.ReportError(t, data[len(data)-1]&0x7F, 0, data)
+		}
+
+		// Setting any of the 7 unused high bits must make decoding fail.
+		for b := 0; b < 7; b++ {
+			bad := make([]byte, len(data))
+			copy(bad, data)
+			bad[len(bad)-1] |= 1 << uint(b)
+			if _, err := goldilocks.FromBytes(bad); err == nil {
+				test.ReportError(t, "decoded non-canonical encoding", "error", bad, b)
+			}
+		}
+	}
+}
+
 func BenchmarkPoint(b *testing.B) {
 	P := randomPoint()
 	Q := randomPoint()
