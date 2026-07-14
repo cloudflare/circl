@@ -129,7 +129,7 @@ func modExpRdcCommon(r, b, e *fp, fpBitLen int) {
 		// OPTIMIZE: implement fast squaring. Then interleaving fast squaring
 		// with multiplication should improve performance.
 		mulRdc(&precomp[i], &precomp[i/2], &precomp[i/2]) // sqr
-		mulRdc(&precomp[i+1], &precomp[i], b)
+		mulRdc(&precomp[i+1], &precomp[i], b)             //#nosec G602 -- precomp has fixed length 16
 	}
 
 	*r = one
