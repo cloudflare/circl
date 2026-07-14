@@ -23,6 +23,31 @@ func TestBls(t *testing.T) {
 	t.Run("G2/Aggregation", testAggregation[bls.G2])
 	t.Run("G1/DuplicatedMsg", testDuplicatedMsgs[bls.G1])
 	t.Run("G2/DuplicatedMsg", testDuplicatedMsgs[bls.G2])
+	t.Run("G1/NonCanonical", testNonCanonical[bls.G1])
+	t.Run("G2/NonCanonical", testNonCanonical[bls.G2])
+}
+
+func testNonCanonical[K bls.KeyGroup](t *testing.T) {
+	ikm := [32]byte{}
+	_, _ = rand.Reader.Read(ikm[:])
+
+	priv, err := bls.KeyGen[K](ikm[:], nil, nil)
+	test.CheckNoErr(t, err, "failed to keygen")
+	pub := priv.PublicKey()
+
+	msg := []byte("hello world")
+	sig := bls.Sign(priv, msg)
+	test.CheckOk(bls.Verify(pub, msg, sig), "baseline signature must verify", t)
+
+	longSig := append(append(bls.Signature{}, sig...), 0x00)
+	test.CheckOk(bls.Verify(pub, msg, longSig) == false,
+		"should fail: signature with trailing byte", t)
+
+	pubBytes, err := pub.MarshalBinary()
+	test.CheckNoErr(t, err, "failed to marshal public key")
+	longPub := new(bls.PublicKey[K])
+	err = longPub.UnmarshalBinary(append(append([]byte{}, pubBytes...), 0x00))
+	test.CheckIsErr(t, err, "should fail: public key with trailing byte")
 }
 
 func testBls[K bls.KeyGroup](t *testing.T) {

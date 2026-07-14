@@ -42,16 +42,18 @@ func (g *G2) SetBytes(b []byte) error {
 	isInfinity := int((b[0] >> 6) & 0x1)
 	isBigYCoord := int((b[0] >> 5) & 0x1)
 
+	wantLen := G2Size
+	if isCompressed == 1 {
+		wantLen = G2SizeCompressed
+	}
+	// NOTE Previous versions accepted trailing data.
+	if len(b) != wantLen {
+		return errInputLength
+	}
+
 	if isInfinity == 1 {
-		l := G2Size
-		if isCompressed == 1 {
-			l = G2SizeCompressed
-		}
-		if len(b) < l {
-			return errInputLength
-		}
-		zeros := make([]byte, l-1)
-		if (b[0]&0x1F) != 0 || subtle.ConstantTimeCompare(b[1:l], zeros) != 1 {
+		zeros := make([]byte, wantLen-1)
+		if (b[0]&0x1F) != 0 || subtle.ConstantTimeCompare(b[1:wantLen], zeros) != 1 {
 			return errEncoding
 		}
 		g.SetIdentity()
@@ -77,9 +79,6 @@ func (g *G2) SetBytes(b []byte) error {
 			g.y.Neg()
 		}
 	} else {
-		if len(b) < G2Size {
-			return errInputLength
-		}
 		if err := g.y.UnmarshalBinary(b[ff.Fp2Size:G2Size]); err != nil {
 			return err
 		}
