@@ -118,13 +118,13 @@ func TestG2Serial(t *testing.T) {
 		test.CheckIsErr(t, q.SetBytes(b[:G2Size-1]), mustErr)
 		test.CheckIsErr(t, q.SetBytes(b[:G2SizeCompressed]), mustErr)
 		test.CheckNoErr(t, q.SetBytes(b), mustOk)
-		test.CheckNoErr(t, q.SetBytes(append(b, 0)), mustOk)
+		test.CheckIsErr(t, q.SetBytes(append(b, 0)), mustErr)
 		b = p.BytesCompressed()
 		test.CheckIsErr(t, q.SetBytes(b[:0]), mustErr)
 		test.CheckIsErr(t, q.SetBytes(b[:1]), mustErr)
 		test.CheckIsErr(t, q.SetBytes(b[:G2SizeCompressed-1]), mustErr)
 		test.CheckNoErr(t, q.SetBytes(b), mustOk)
-		test.CheckNoErr(t, q.SetBytes(append(b, 0)), mustOk)
+		test.CheckIsErr(t, q.SetBytes(append(b, 0)), mustErr)
 	})
 	t.Run("badInfinity", func(t *testing.T) {
 		var badInf, p G2
