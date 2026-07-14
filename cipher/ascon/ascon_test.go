@@ -107,6 +107,28 @@ func TestBadInputs(t *testing.T) {
 	test.CheckIsErr(t, err, "should panic due to bad ciphertext")
 }
 
+func TestOpenClearsOnFailure(t *testing.T) {
+	key, _ := hex.DecodeString("000102030405060708090A0B0C0D0E0F")
+	nonce, _ := hex.DecodeString("000102030405060708090A0B0C0D0E0F")
+	c, _ := ascon.New(key, ascon.Ascon128)
+
+	pt := []byte("helloworld")
+	ct := c.Seal(nil, nonce, pt, nil)
+	ct[len(ct)-1] ^= 0xFF // tamper the tag so authentication fails
+
+	dst := make([]byte, 0, len(pt))
+	out, err := c.Open(dst, nonce, ct, nil)
+	test.CheckIsErr(t, err, "should fail due to bad tag")
+	if out != nil {
+		test.ReportError(t, out, nil)
+	}
+
+	buf := dst[:len(pt)]
+	if !bytes.Equal(buf, make([]byte, len(pt))) {
+		test.ReportError(t, buf, make([]byte, len(pt)))
+	}
+}
+
 func TestAPI(t *testing.T) {
 	key, _ := hex.DecodeString("000102030405060708090A0B0C0D0E0F")
 	nonce, _ := hex.DecodeString("000102030405060708090A0B0C0D0E0F")
