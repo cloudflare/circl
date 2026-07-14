@@ -414,7 +414,7 @@ func TestHybridKemRoundTrip(t *testing.T) {
 		return ret
 	}
 
-	encodedVector, err := json.Marshal([]vector{
+	encodedVector, err := json.Marshal([]vector{ //#nosec G117 -- test vector serialization, not a runtime secret
 		generateVector(modeBase),
 		generateVector(modePSK),
 	})

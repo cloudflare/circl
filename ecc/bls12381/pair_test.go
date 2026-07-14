@@ -244,7 +244,7 @@ func TestProdPairFracIdentity(t *testing.T) {
 		want.SetIdentity()
 		for i := range len(c.g1) {
 			e := Pair(c.g1[i], c.g2[i])
-			if listSign[i] == -1 {
+			if listSign[i] == -1 { //#nosec G602 -- listSign length matches c.g1
 				e.Inv(e)
 			}
 			want.Mul(&want, e)

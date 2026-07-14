@@ -37,6 +37,7 @@ linters:
       statements: 80
     goconst:
       min-occurrences: 4
+      ignore-tests: true
     gosec:
       excludes:
         - G115

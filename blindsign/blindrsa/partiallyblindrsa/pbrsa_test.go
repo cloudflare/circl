@@ -299,7 +299,7 @@ func TestPBRSAGenerateTestVector(t *testing.T) {
 
 	var outputFile string
 	if outputFile = os.Getenv(pbrsaTestVectorOutEnvironmentKey); len(outputFile) > 0 {
-		err := os.WriteFile(outputFile, encoded, 0o600)
+		err := os.WriteFile(outputFile, encoded, 0o600) //#nosec G703 -- output path is a test-controlled env var
 		if err != nil {
 			t.Fatalf("Error writing test vectors: %v", err)
 		}

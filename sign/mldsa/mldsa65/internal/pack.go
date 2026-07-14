@@ -10,7 +10,7 @@ import (
 // size PolyLeqEtaSize.
 //
 // Assumes coefficients of p are not normalized, but in [q-η,q+η].
-func PolyPackLeqEta(p *common.Poly, buf []byte) {
+func PolyPackLeqEta(p *common.Poly, buf []byte) { //#nosec G602 -- buf length is fixed (PolyLeqEtaSize)
 	if DoubleEtaBits == 4 { // compiler eliminates branch
 		j := 0
 		for i := 0; i < PolyLeqEtaSize; i++ {
@@ -46,7 +46,7 @@ func PolyPackLeqEta(p *common.Poly, buf []byte) {
 //
 // Beware, for arbitrary buf the coefficients of p might end up in
 // the interval [q-2^b,q+2^b] where b is the least b with η≤2^b.
-func PolyUnpackLeqEta(p *common.Poly, buf []byte) {
+func PolyUnpackLeqEta(p *common.Poly, buf []byte) { //#nosec G602 -- buf length is fixed (PolyLeqEtaSize)
 	if DoubleEtaBits == 4 { // compiler eliminates branch
 		j := 0
 		for i := 0; i < PolyLeqEtaSize; i++ {
@@ -143,7 +143,7 @@ func (v *VecK) UnpackHint(buf []byte) bool {
 // Sets p to the polynomial packed into buf by PolyPackLeGamma1.
 //
 // p will be normalized.
-func PolyUnpackLeGamma1(p *common.Poly, buf []byte) {
+func PolyUnpackLeGamma1(p *common.Poly, buf []byte) { //#nosec G602 -- buf length is fixed (PolyLeGamma1Size)
 	if Gamma1Bits == 17 {
 		j := 0
 		for i := 0; i < PolyLeGamma1Size; i += 9 {
@@ -202,7 +202,7 @@ func PolyUnpackLeGamma1(p *common.Poly, buf []byte) {
 // which has to be of length PolyLeGamma1Size.
 //
 // Assumes p is normalized.
-func PolyPackLeGamma1(p *common.Poly, buf []byte) {
+func PolyPackLeGamma1(p *common.Poly, buf []byte) { //#nosec G602 -- buf length is fixed (PolyLeGamma1Size)
 	if Gamma1Bits == 17 {
 		j := 0
 		// coefficients in [0,…,γ₁] ∪ (q-γ₁,…,q)
