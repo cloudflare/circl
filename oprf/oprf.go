@@ -41,6 +41,9 @@
 // All three modes can perform batches of PRF evaluations, so passing an array
 // of inputs will produce an array of outputs.
 //
+// Warning: Server operations for the SuiteP256, SuiteP384, and SuiteP521
+// suites are currently not constant time in the server's private key.
+//
 // # References
 //
 // [1] RFC-9497: https://www.rfc-editor.org/info/rfc9497

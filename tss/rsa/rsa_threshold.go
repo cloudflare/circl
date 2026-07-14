@@ -3,6 +3,9 @@
 // This package implements the Protocol 1 of "Practical Threshold Signatures"
 // by Victor Shoup [1].
 //
+// Warning: Sign operations rely on math/big and are not constant time in the
+// secret key share. Pass a non-nil random source to Sign to enable blinding.
+//
 // # References
 //
 // [1] https://www.iacr.org/archive/eurocrypt2000/1807/18070209-new.pdf

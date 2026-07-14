@@ -16,6 +16,9 @@
 // In this implementation, secret sharing is defined over the scalar field of
 // a prime order group.
 //
+// Warning: With the group.P256, group.P384, or group.P521 groups, splitting
+// and recovering a secret are currently not constant time in the secret.
+//
 // References
 //
 //	[1] Shamir, How to share a secret. https://dl.acm.org/doi/10.1145/359168.359176/

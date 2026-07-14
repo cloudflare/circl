@@ -4,6 +4,10 @@
 // It supports batching proofs to amortize the cost of the proof generation and
 // verification.
 //
+// Warning: When instantiated with the group.P256, group.P384, or group.P521
+// groups, proof generation is currently not constant time in the secret
+// scalar.
+//
 // References:
 //
 //	[1] RFC-9497: https://www.rfc-editor.org/info/rfc9497
