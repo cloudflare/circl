@@ -77,7 +77,7 @@ func (m Encoder) Encode(k []byte) (*Power, error) {
 	//
 	//	  c = (k >> i) + t		for t in {0,1}
 	//
-	// Base case is obvious. For induction, write kbit for the jth bit of k.
+	// Base case is obvious. For induction, write kbit for the i-th bit of k.
 	// Note lsb(c) = kbit ^ t. From that we can compute b_j. Now we need
 	// to compute the next t.
 	//
