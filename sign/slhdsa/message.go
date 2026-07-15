@@ -40,6 +40,10 @@ func NewPreHashWithHash(h crypto.Hash) (*PreHash, error) {
 		crypto.SHA3_512:   10,
 	}
 
+	if int(h) >= len(hash2oid) {
+		return nil, ErrPreHash
+	}
+
 	oid := hash2oid[h]
 	if oid == 0 {
 		return nil, ErrPreHash
