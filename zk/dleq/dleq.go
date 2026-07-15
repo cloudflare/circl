@@ -12,6 +12,7 @@ package dleq
 import (
 	"crypto"
 	"encoding/binary"
+	"fmt"
 	"io"
 
 	"github.com/cloudflare/circl/group"
@@ -257,7 +258,7 @@ func (p *Proof) UnmarshalBinary(g group.Group, data []byte) error {
 	scalarSize := int(g.Params().ScalarLength)
 	// NOTE Previously trailing data was accepted.
 	if len(data) != 2*scalarSize {
-		return io.ErrShortBuffer
+		return fmt.Errorf("dleq: invalid proof length: got %d bytes, want %d", len(data), 2*scalarSize)
 	}
 
 	c := g.NewScalar()
