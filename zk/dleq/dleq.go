@@ -255,7 +255,8 @@ func (p *Proof) MarshalBinary() ([]byte, error) {
 
 func (p *Proof) UnmarshalBinary(g group.Group, data []byte) error {
 	scalarSize := int(g.Params().ScalarLength)
-	if len(data) < 2*scalarSize {
+	// NOTE Previously trailing data was accepted.
+	if len(data) != 2*scalarSize {
 		return io.ErrShortBuffer
 	}
 
