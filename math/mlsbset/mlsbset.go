@@ -84,7 +84,7 @@ func (m Encoder) Encode(k []byte) (*Power, error) {
 	// Consider c >> 1 = (k >> (D+j)) + t) >> 1. This equals k >> (D+j+1)
 	// unless t = 1 = kbit.
 	//
-	// If b_j is negative, then we must have had 1=lsb(c)=kbit^t, and so
+	// If b_(i-D) is negative, then we must have had 1=lsb(c)=kbit^t, and so
 	// c >> 1 = k >> (D+j+1), as desired with new t equal to 1.
 	// For the other case assume b_(i-D) isn't negative. Now it is possible
 	// that t = 1 = kbit, and only in that case the new t is equal to 1.
