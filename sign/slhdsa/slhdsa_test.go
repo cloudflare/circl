@@ -79,6 +79,32 @@ func testSign(t *testing.T, id slhdsa.ID) {
 	test.CheckOk(valid, "Verify failed", t)
 }
 
+func TestPreHashWithHash(t *testing.T) {
+	// Supported hash functions must succeed.
+	for _, h := range []crypto.Hash{
+		crypto.SHA256, crypto.SHA384, crypto.SHA512,
+		crypto.SHA224, crypto.SHA512_224, crypto.SHA512_256,
+		crypto.SHA3_224, crypto.SHA3_256, crypto.SHA3_384, crypto.SHA3_512,
+	} {
+		ph, err := slhdsa.NewPreHashWithHash(h)
+		test.CheckNoErr(t, err, "NewPreHashWithHash failed for supported hash")
+		test.CheckOk(ph != nil, "expected non-nil PreHash", t)
+	}
+
+	// Unsupported hash functions must return ErrPreHash without panicking.
+	// crypto.BLAKE2b_256 (17) is out of range of the internal lookup table,
+	// which previously triggered an index-out-of-range panic.
+	for _, h := range []crypto.Hash{
+		crypto.MD5, crypto.SHA1, crypto.RIPEMD160,
+		crypto.BLAKE2s_256, crypto.BLAKE2b_256, crypto.BLAKE2b_384, crypto.BLAKE2b_512,
+		crypto.Hash(255),
+	} {
+		ph, err := slhdsa.NewPreHashWithHash(h)
+		test.CheckIsErr(t, err, "expected ErrPreHash for unsupported hash")
+		test.CheckOk(ph == nil, "expected nil PreHash on error", t)
+	}
+}
+
 func BenchmarkInnerFast(b *testing.B)  { slhdsa.BenchInner(b, fastSign[:]) }
 func BenchmarkInnerSmall(b *testing.B) { slhdsa.BenchInner(b, smallSign[:]) }
 func BenchmarkSlhdsaFast(b *testing.B) { benchmarkSlhdsa(b, fastSign[:]) }
