@@ -51,6 +51,9 @@ func (k *PublicKey) UnmarshalBinary(s Suite, data []byte) error {
 	k.p = p
 	k.e = k.p.group.NewElement()
 
+	// This accepts multiple encodings for the same point. Note that the
+	// transcript for the zk/dleq proof re-encodes canonically, and so
+	// different encodings do not change the derived output.
 	if err := k.e.UnmarshalBinary(data); err != nil {
 		return err
 	}
