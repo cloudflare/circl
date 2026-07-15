@@ -184,6 +184,9 @@ func (sender *Sender) Round2Sender(B group.Element) ([]byte, []byte) {
 // Input: choice, choice bit of receiver
 // Choose e0 or e1 based on choice bit in constant time
 func (receiver *Receiver) Round3Receiver(e0, e1 []byte, choice int) error {
+	if len(e0) != len(e1) {
+		return errors.New("simot: sender ciphertexts e0 and e1 have different lengths")
+	}
 	receiver.ec = make([]byte, len(e1))
 	// If c == 1, copy e1
 	subtle.ConstantTimeCopy(choice, receiver.ec, e1)
