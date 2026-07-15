@@ -78,6 +78,7 @@ func (c curve) toOdd(k []byte) ([]byte, int) {
 }
 
 // ScalarMult returns (Qx,Qy)=k*(Px,Py) where k is a number in big-endian form.
+// It is not fully constant time.
 func (c curve) ScalarMult(x1, y1 *big.Int, k []byte) (x, y *big.Int) {
 	return c.scalarMultOmega(x1, y1, k, 5)
 }
@@ -123,7 +124,7 @@ func (c curve) scalarMultOmega(x1, y1 *big.Int, k []byte, omega uint) (x, y *big
 }
 
 // ScalarBaseMult returns k*G, where G is the base point of the group
-// and k is an integer in big-endian form.
+// and k is an integer in big-endian form. It is not fully constant time.
 func (c curve) ScalarBaseMult(k []byte) (x, y *big.Int) {
 	params := c.Params()
 	return c.ScalarMult(params.Gx, params.Gy, k)
