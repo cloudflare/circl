@@ -95,6 +95,10 @@ func testErrors(
 	err = tamperedProof.UnmarshalBinary(g, proofBytes[:5])
 	test.CheckIsErr(t, err, "unmarshal must fail")
 
+	// Trailing bytes must be rejected to keep the encoding canonical.
+	err = tamperedProof.UnmarshalBinary(g, append(append([]byte{}, proofBytes...), 0x00))
+	test.CheckIsErr(t, err, "unmarshal with trailing bytes must fail")
+
 	err = tamperedProof.UnmarshalBinary(g, proofBytes)
 	test.CheckNoErr(t, err, "proof must be unmarshaled")
 	test.CheckOk(false == Victor.Verify(a, ka, b, kb, tamperedProof), "proof must not verify", t)
