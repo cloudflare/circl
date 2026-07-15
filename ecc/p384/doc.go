@@ -4,7 +4,10 @@
 //   - Around 10x faster in amd64 architecture.
 //   - Reduced number of memory allocations.
 //   - Native support for arm64 architecture.
-//   - ScalarMult is performed using a constant-time algorithm.
+//   - ScalarMult is more constant time, but not fully.
 //   - ScalarBaseMult fallbacks into ScalarMult.
 //   - A new method included for double-point multiplication.
+//
+// Note: the scalar-multiplication routines in this package are not fully
+// constant time.
 package p384
