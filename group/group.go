@@ -1,4 +1,7 @@
 // Package group provides prime-order groups based on elliptic curves.
+//
+// Warning: Scalar operations Add, Sub, Mul, Neg, Inv, and SetBigInt of P256,
+// P384, and P521 are currently not constant time.
 package group
 
 import (

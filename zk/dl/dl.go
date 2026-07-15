@@ -13,6 +13,10 @@
 // The otherInfo is also used as a domain separation tag (dst) for the hash
 // to scalar function.
 //
+// Warning: When instantiated with the group.P256, group.P384, or group.P521
+// groups, proof generation is currently not constant time in the secret
+// witness.
+//
 // Reference: https://datatracker.ietf.org/doc/html/rfc8235
 package dl
 

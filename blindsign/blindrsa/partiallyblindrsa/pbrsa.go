@@ -1,4 +1,7 @@
 // Package partiallyblindrsa implements a partially blind RSA protocol.
+//
+// Warning: The per-request derivation of the metadata-specific key uses
+// math/big and is not constant time in the private key.
 package partiallyblindrsa
 
 import (
