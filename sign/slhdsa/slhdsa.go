@@ -116,7 +116,7 @@ func readRandom(random io.Reader, size uint32) (out []byte, err error) {
 	if random == nil {
 		random = rand.Reader
 	}
-	_, err = random.Read(out)
+	_, err = io.ReadFull(random, out)
 	return
 }
 
