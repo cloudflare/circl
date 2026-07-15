@@ -24,7 +24,7 @@ func pack(out []byte, in []uint16) {
 		in6 := in[(i*8)+6] & logQMask
 		in7 := in[(i*8)+7] & logQMask
 
-		out[j] |= byte(in0 >> 7)
+		out[j] = byte(in0 >> 7)
 		out[j+1] = (byte(in0&0x7F) << 1) | byte(in1>>14)
 
 		out[j+2] = byte(in1 >> 6)
