@@ -23,12 +23,15 @@
 package secretsharing
 
 import (
+	"errors"
 	"fmt"
 	"io"
 
 	"github.com/cloudflare/circl/group"
 	"github.com/cloudflare/circl/math/polynomial"
 )
+
+var errZeroID = errors.New("secretsharing: share ID cannot be zero")
 
 // Share represents a share of a secret.
 type Share struct {
@@ -120,11 +123,18 @@ func Verify(t uint, s Share, c SecretCommitment) bool {
 }
 
 // Recover returns a secret provided more than t different shares are given.
-// Returns an error if the number of shares is not above the threshold t.
+// Returns an error if the number of shares is not above the threshold t, or if
+// any share has a zero ID.
 // Panics if some shares are duplicated, i.e., shares must have different IDs.
 func Recover(t uint, shares []Share) (secret group.Scalar, err error) {
 	if l := len(shares); l <= int(t) {
 		return nil, errThreshold(t, uint(l))
+	}
+
+	for i := range shares {
+		if shares[i].ID.IsZero() {
+			return nil, errZeroID
+		}
 	}
 
 	x := make([]group.Scalar, t+1)
