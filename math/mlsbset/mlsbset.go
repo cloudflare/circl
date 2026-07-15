@@ -81,7 +81,7 @@ func (m Encoder) Encode(k []byte) (*Power, error) {
 	// Note lsb(c) = kbit ^ t. From that we can compute b_j. Now we need
 	// to compute the next t.
 	//
-	// Consider c >> 1 = (k >> (D+j)) + t) >> 1. This equals k >> (D+j+1)
+	// Consider c >> 1 = (k >> i) + t) >> 1. This equals k >> (i+1)
 	// unless t = 1 = kbit.
 	//
 	// If b_(i-D) is negative, then we must have had 1=lsb(c)=kbit^t, and so
