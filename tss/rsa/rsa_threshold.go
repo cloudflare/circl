@@ -197,6 +197,10 @@ type Signature = []byte
 
 // CombineSignShares combines t SignShare's to produce a valid signature
 func CombineSignShares(pub *rsa.PublicKey, shares []SignShare, msg []byte) (Signature, error) {
+	if len(shares) == 0 {
+		return nil, errors.New("rsa_threshold: no shares provided")
+	}
+
 	players := shares[0].Players
 	threshold := shares[0].Threshold
 
