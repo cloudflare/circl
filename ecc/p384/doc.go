@@ -4,7 +4,7 @@
 //   - Around 10x faster in amd64 architecture.
 //   - Reduced number of memory allocations.
 //   - Native support for arm64 architecture.
-//   - ScalarMult is more constant time, but not fully.
+//   - ScalarMult is not fully constant time (see note below).
 //   - ScalarBaseMult fallbacks into ScalarMult.
 //   - A new method included for double-point multiplication.
 //
