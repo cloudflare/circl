@@ -69,7 +69,7 @@ func (m Encoder) Encode(k []byte) (*Power, error) {
 
 	// Original algorithm starts with c := k >> D, then computes
 	//
-	//	  b_j = s_(j%D) * lsb(c)
+	//	  b_(i-D) = s_(j%D) * lsb(c)
 	//	  c = [ (c>>1)+1   if b_j = -1
 	//		  [ c>>1       otherwise
 	//
