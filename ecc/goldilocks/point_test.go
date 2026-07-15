@@ -121,6 +121,29 @@ func TestPointNonCanonical(t *testing.T) {
 	}
 }
 
+func TestPointUnmarshalInvalid(t *testing.T) {
+	// A malformed encoding must return an error instead of panicking.
+	// This is a regression test: UnmarshalBinary used to dereference the
+	// pointer returned by FromBytes before checking the error, causing a
+	// nil-pointer panic on any invalid input.
+	var P goldilocks.Point
+
+	t.Run("short", func(t *testing.T) {
+		got := P.UnmarshalBinary([]byte{0x00})
+		test.CheckIsErr(t, got, "short input should return an error")
+	})
+
+	t.Run("notOnCurve", func(t *testing.T) {
+		// All-0xFF y-coordinate is >= p, so decoding must fail.
+		data := make([]byte, 57)
+		for i := range data {
+			data[i] = 0xFF
+		}
+		got := P.UnmarshalBinary(data)
+		test.CheckIsErr(t, got, "invalid encoding should return an error")
+	})
+}
+
 func BenchmarkPoint(b *testing.B) {
 	P := randomPoint()
 	Q := randomPoint()
