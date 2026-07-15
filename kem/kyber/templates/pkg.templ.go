@@ -315,6 +315,11 @@ func (pk *PublicKey) Unpack(buf []byte) error {
 	}
 {{- else -}}
 // Panics if buf is not of size PublicKeySize.
+//
+// Following the round-3 Kyber reference implementation, non-canonical
+// encodings (coefficients in {q, …, 4095}) are accepted and reduced mod q;
+// H(pk) binds the raw bytes. Note that this is different from final FIPS 203,
+// which checks whether the coefficients are reduced (§7.2).
 func (pk *PublicKey) Unpack(buf []byte) {
 	if len(buf) != PublicKeySize {
 		panic("buf must be of length PublicKeySize")
