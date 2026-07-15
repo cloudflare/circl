@@ -259,8 +259,21 @@ func (s *ristrettoScalar) MarshalBinary() ([]byte, error) {
 	return s.s.MarshalBinary()
 }
 
+// Unmarshals a scalar.
+//
+// Errors if not reduced as recommended in RFC 9496 §4.4.
+// Note that this behaviour changed. Previously we ignored the top 3 bits
+// and reduced the remainder.
 func (s *ristrettoScalar) UnmarshalBinary(data []byte) error {
-	return s.s.UnmarshalBinary(data)
+	if len(data) != 32 {
+		return ErrUnmarshal
+	}
+	var b [32]byte
+	copy(b[:], data)
+	if !s.s.SetBytesStrict(&b) {
+		return ErrUnmarshal
+	}
+	return nil
 }
 
 func (s *ristrettoScalar) Marshal(b *cryptobyte.Builder) error {
@@ -273,6 +286,6 @@ func (s *ristrettoScalar) Unmarshal(str *cryptobyte.String) bool {
 	if !str.CopyBytes(b[:]) {
 		return false
 	}
-	s.s.SetBytes(&b)
-	return true
+	// Reject non-canonical encodings; see UnmarshalBinary.
+	return s.s.SetBytesStrict(&b)
 }

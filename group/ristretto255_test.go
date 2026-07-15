@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"testing"
+
+	"golang.org/x/crypto/cryptobyte"
 )
 
 // https://tools.ietf.org/html/draft-irtf-cfrg-ristretto255-decaf448-00#appendix-A.1
@@ -102,6 +104,88 @@ func TestInvalidEncodings(t *testing.T) {
 		err = Ristretto255.NewElement().UnmarshalBinary(raw)
 		if err == nil {
 			t.Fatalf("Decode succeeded for vector %d: %v", i, enc)
+		}
+	}
+}
+
+// TestRistrettoScalarNonCanonical checks that scalar decoding rejects
+// non-canonical encodings, i.e. any 32-byte string that is not the canonical
+// little-endian encoding of an integer in the range [0, l). Previously the
+// decoding delegated to go-ristretto Scalar.SetBytes, which masked bits
+// 253-255 and reduced modulo l, silently accepting many distinct encodings of
+// the same scalar (proof/key byte malleability). See RFC 9496 §4.4 and
+// RFC 9497 §4.1.
+func TestRistrettoScalarNonCanonical(t *testing.T) {
+	// canonical encodings that MUST be accepted.
+	valid := []string{
+		// 0
+		"0000000000000000000000000000000000000000000000000000000000000000",
+		// 1
+		"0100000000000000000000000000000000000000000000000000000000000000",
+		// l-1, the largest canonical scalar.
+		"ecd3f55c1a631258d69cf7a2def9de1400000000000000000000000000000010",
+	}
+
+	// non-canonical encodings that MUST be rejected.
+	invalid := []string{
+		// l, the group order (out of range: valid range is [0, l)).
+		"edd3f55c1a631258d69cf7a2def9de1400000000000000000000000000000010",
+		// l+1.
+		"eed3f55c1a631258d69cf7a2def9de1400000000000000000000000000000010",
+		// All ones: a value far larger than l with the top three bits set.
+		"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+		// Scalar 1 with bit 255 set: the old masking behavior reduced this
+		// to 1; it MUST now be rejected as non-canonical.
+		"0100000000000000000000000000000000000000000000000000000000000080",
+		// l-1 with the top three bits set (bits 253-255): masked to l-1 by
+		// the old code; MUST now be rejected.
+		"ecd3f55c1a631258d69cf7a2def9de14000000000000000000000000000000f0",
+	}
+
+	for i, enc := range valid {
+		raw, err := hex.DecodeString(enc)
+		if err != nil {
+			t.Fatal("DecodeString")
+		}
+
+		s := Ristretto255.NewScalar()
+		if err = s.UnmarshalBinary(raw); err != nil {
+			t.Errorf("UnmarshalBinary rejected canonical vector %d (%v): %v", i, enc, err)
+		}
+
+		// re-encoding a canonical scalar must yield the same bytes.
+		out, err := s.MarshalBinary()
+		if err != nil {
+			t.Fatalf("MarshalBinary %d", i)
+		}
+		if !bytes.Equal(out, raw) {
+			t.Errorf("round-trip mismatch for vector %d: got %x want %s", i, out, enc)
+		}
+
+		// the cryptobyte path must also accept it.
+		str := cryptobyte.String(raw)
+		if ok := Ristretto255.NewScalar().(interface {
+			Unmarshal(*cryptobyte.String) bool
+		}).Unmarshal(&str); !ok {
+			t.Errorf("Unmarshal rejected canonical vector %d (%v)", i, enc)
+		}
+	}
+
+	for i, enc := range invalid {
+		raw, err := hex.DecodeString(enc)
+		if err != nil {
+			t.Fatal("DecodeString")
+		}
+
+		if err = Ristretto255.NewScalar().UnmarshalBinary(raw); err == nil {
+			t.Errorf("UnmarshalBinary accepted non-canonical vector %d (%v)", i, enc)
+		}
+
+		str := cryptobyte.String(raw)
+		if ok := Ristretto255.NewScalar().(interface {
+			Unmarshal(*cryptobyte.String) bool
+		}).Unmarshal(&str); ok {
+			t.Errorf("Unmarshal accepted non-canonical vector %d (%v)", i, enc)
 		}
 	}
 }
