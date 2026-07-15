@@ -121,6 +121,9 @@ func (c *sealContext) MarshalBinary() ([]byte, error) {
 // never be copied, restored more than once, or used concurrently with the
 // original context or any other restored copy.
 func UnmarshalSealer(raw []byte) (Sealer, error) {
+	if len(raw) == 0 {
+		return nil, errors.New("failed to parse context")
+	}
 	if raw[0] != 0 {
 		return nil, errors.New("incorrect role")
 	}
@@ -162,6 +165,9 @@ func (c *openContext) MarshalBinary() ([]byte, error) {
 // never be copied, restored more than once, or used concurrently with the
 // original context or any other restored copy.
 func UnmarshalOpener(raw []byte) (Opener, error) {
+	if len(raw) == 0 {
+		return nil, errors.New("failed to parse context")
+	}
 	if raw[0] != 1 {
 		return nil, errors.New("incorrect role")
 	}
