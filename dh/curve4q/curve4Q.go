@@ -17,6 +17,10 @@ func KeyGen(public, secret *Key) {
 
 // Shared calculates a shared key k from Alice's secret and Bob's public key.
 // Returns true on success.
+//
+// The public key is decoded leniently (see fourq.Point.Unmarshal) and the
+// cofactor is cleared during scalar multiplication. Hence public keys must
+// not be treated as unique identifiers without canonicalization.
 func Shared(shared, secret, public *Key) bool {
 	var P, Q fourq.Point
 	ok := P.Unmarshal((*[Size]byte)(public))
