@@ -70,7 +70,7 @@ func (m Encoder) Encode(k []byte) (*Power, error) {
 	// Original algorithm starts with c := k >> D, then computes
 	//
 	//	  b_(i-D) = s_(j%D) * lsb(c)
-	//	  c = [ (c>>1)+1   if b_j = -1
+	//	  c = [ (c>>1)+1   if b_(i-D) = -1
 	//		  [ c>>1       otherwise
 	//
 	// To prevent keeping a large k around, we note that at any step i we have
@@ -78,14 +78,14 @@ func (m Encoder) Encode(k []byte) (*Power, error) {
 	//	  c = (k >> i) + t		for t in {0,1}
 	//
 	// Base case is obvious. For induction, write kbit for the i-th bit of k.
-	// Note lsb(c) = kbit ^ t. From that we can compute b_j. Now we need
+	// Note lsb(c) = kbit ^ t. From that we can compute b_(i-D). Now we need
 	// to compute the next t.
 	//
 	// Consider c >> 1 = (k >> i) + t) >> 1. This equals k >> (i+1)
 	// unless t = 1 = kbit.
 	//
 	// If b_(i-D) is negative, then we must have had 1=lsb(c)=kbit^t, and so
-	// c >> 1 = k >> (D+j+1), as desired with new t equal to 1.
+	// c >> 1 = k >> (i+1), as desired with new t equal to 1.
 	// For the other case assume b_(i-D) isn't negative. Now it is possible
 	// that t = 1 = kbit, and only in that case the new t is equal to 1.
 	var t uint64
