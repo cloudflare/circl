@@ -248,6 +248,10 @@ func (P *Point) Marshal(out *[Size]byte) {
 }
 
 // Unmarshal retrieves a point P from the input buffer. On success, returns true.
+//
+// Decoding is lenient; distinct byte strings decode to the same point.
+// Callers must not treat an accepted encoding as a unique point identifier.
+// Marshal always emits the canonical form.
 func (P *Point) Unmarshal(in *[Size]byte) bool {
 	var Q Point
 	s := in[Size-1] >> 7
