@@ -104,6 +104,32 @@ func TestShareWithID(tt *testing.T) {
 	})
 }
 
+func TestRecoverZeroID(tt *testing.T) {
+	g := group.P256
+	t := uint(2)
+	n := uint(5)
+
+	secret := g.RandomScalar(rand.Reader)
+	ss := secretsharing.New(rand.Reader, t, secret)
+	shares := ss.Share(n)
+
+	// A single Share{ID:0, Value:V} would otherwise force Recover to return
+	// the attacker-chosen V, independent of the honest shares.
+	attackerValue := g.RandomScalar(rand.Reader)
+	tampered := make([]secretsharing.Share, 0, t+1)
+	tampered = append(tampered, secretsharing.Share{
+		ID:    g.NewScalar(),
+		Value: attackerValue,
+	})
+	for i := uint(0); i < t; i++ {
+		tampered = append(tampered, shares[i])
+	}
+
+	got, err := secretsharing.Recover(t, tampered)
+	test.CheckIsErr(tt, err, "must fail to recover with a zero share ID")
+	test.CheckOk(got == nil, "must not recover a secret with a zero share ID", tt)
+}
+
 func BenchmarkSecretSharing(b *testing.B) {
 	g := group.P256
 	t := uint(3)
