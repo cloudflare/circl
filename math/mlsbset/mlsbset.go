@@ -86,7 +86,7 @@ func (m Encoder) Encode(k []byte) (*Power, error) {
 	//
 	// If b_j is negative, then we must have had 1=lsb(c)=kbit^t, and so
 	// c >> 1 = k >> (D+j+1), as desired with new t equal to 1.
-	// For the other case assume b_j isn't negative. Now it is possible
+	// For the other case assume b_(i-D) isn't negative. Now it is possible
 	// that t = 1 = kbit, and only in that case the new t is equal to 1.
 	var t uint64
 	for i := m.p.D; i < m.p.L; i++ {
