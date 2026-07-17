@@ -38,6 +38,20 @@ func TestExpander(t *testing.T) {
 	}
 }
 
+func TestXOFExpandLengthLimit(t *testing.T) {
+	exp := expander.NewExpanderXOF(xof.SHAKE128, 128, []byte("dst"))
+	if got := exp.Expand(nil, 1<<16-1); len(got) != 1<<16-1 {
+		t.Fatalf("unexpected output length: got %d, want %d", len(got), 1<<16-1)
+	}
+
+	defer func() {
+		if recover() == nil {
+			t.Fatal("Expand did not panic for an output length exceeding 65535 bytes")
+		}
+	}()
+	exp.Expand(nil, 1<<16)
+}
+
 func (vs *vectorExpanderSuite) testExpander(t *testing.T) {
 	var exp expander.Expander
 	switch vs.Hash {

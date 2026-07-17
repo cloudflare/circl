@@ -95,8 +95,12 @@ func NewExpanderXOF(id xof.ID, kSecLevel uint, dst []byte) *expanderXOF {
 	return &expanderXOF{id, kSecLevel, dst}
 }
 
-// Expand panics if output's length is longer than 2^16 bytes.
+// Expand panics if output's length exceeds 65535 bytes.
 func (e *expanderXOF) Expand(in []byte, n uint) []byte {
+	if n >= 1<<16 {
+		panic(errorLongOutput)
+	}
+
 	bLen := []byte{0, 0}
 	binary.BigEndian.PutUint16(bLen, uint16(n))
 	pseudo := make([]byte, n)
