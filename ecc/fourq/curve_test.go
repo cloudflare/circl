@@ -2,6 +2,8 @@ package fourq
 
 import (
 	"crypto/rand"
+	"encoding/binary"
+	"math/big"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/conv"
@@ -105,4 +107,52 @@ func BenchmarkCurve(b *testing.B) {
 			P.ScalarMult(&k, &Q)
 		}
 	})
+}
+
+func TestFqSqrBorrowBug(t *testing.T) {
+	P := getModulus()
+	x, gotAsm, gotGen := &Fq{}, &Fq{}, &Fq{}
+
+	bigX0 := big.NewInt(0)                       // a0 = 0
+	bigX1 := new(big.Int).Lsh(big.NewInt(1), 64) // a1 = 2^64  (canonical, < p), so a0_lo == a1_lo and a0 < a1
+
+	x.setBigInt(bigX0, bigX1)
+	fqSqr(gotAsm, x)        // dispatched implementation (BMI2 asm on default amd64 build)
+	fqSqrGeneric(gotGen, x) // portable reference
+
+	// want = x^2 over GF(p^2): re = x0^2 - x1^2, im = 2*x0*x1 (mod p)
+	x0x0 := new(big.Int).Mul(bigX0, bigX0)
+	x0x1 := new(big.Int).Mul(bigX0, bigX1)
+	x1x1 := new(big.Int).Mul(bigX1, bigX1)
+	want0 := new(big.Int).Mod(new(big.Int).Sub(x0x0, x1x1), P)
+	want1 := new(big.Int).Mod(new(big.Int).Lsh(x0x1, 1), P)
+
+	g0, g1 := gotGen.toBigInt()
+	if g0.Cmp(want0) != 0 || g1.Cmp(want1) != 0 {
+		t.Fatalf("generic fqSqr disagrees with math/big:\n got (%v, %v)\nwant (%v, %v)", g0, g1, want0, want1)
+	}
+	a0, a1 := gotAsm.toBigInt()
+	if a0.Cmp(want0) != 0 || a1.Cmp(want1) != 0 {
+		t.Fatalf("fqSqr disagrees with math/big and the generic implementation:\n got (%v, %v)\nwant (%v, %v)", a0, a1, want0, want1)
+	}
+}
+
+func TestUnmarshalBorrowBug(t *testing.T) {
+	var in [Size]byte
+	var P Point
+	accepted := []uint64{}
+	for j := uint64(1); j <= 64; j++ {
+		for i := range in {
+			in[i] = 0
+		}
+		// bytes [0:16]  = y[0] = 0
+		// bytes [16:32] = y[1] = j * 2^64  (little endian) -> y0_lo == y1_lo, y0 < y1
+		binary.LittleEndian.PutUint64(in[24:32], j)
+		if P.Unmarshal(&in) {
+			accepted = append(accepted, j)
+		}
+	}
+	// purego/reference build accepts 29 keys: [1 2 8 10 13 15 17 22 23 25 26 28 30 33 35 38 39 41 42 46 47 48 49 52 53 54 56 58 62]
+	// default amd64 (BMI2) build accepts 0.
+	t.Logf("accepted %d of 64 candidate keys: %v", len(accepted), accepted)
 }
