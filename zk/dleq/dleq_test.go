@@ -57,6 +57,45 @@ func TestDLEQ(t *testing.T) {
 	}
 }
 
+func TestChallengeBindsBase(t *testing.T) {
+	g := group.P256
+	params := dleq.Params{G: g, H: crypto.SHA256, DST: []byte("domain_sep_string")}
+	prover := dleq.Prover{Params: params}
+	verifier := dleq.Verifier{Params: params}
+
+	k := g.RandomScalar(rand.Reader)
+	b := g.RandomElement(rand.Reader)
+	kb := g.NewElement().Mul(b, k)
+	ka := g.RandomElement(rand.Reader)
+
+	r := g.RandomScalar(rand.Reader)
+	a := g.Generator()
+	proof, err := prover.ProveWithRandomness(k, a, ka, b, kb, r)
+	test.CheckNoErr(t, err, "wrong proof generation")
+
+	rawProof, err := proof.MarshalBinary()
+	test.CheckNoErr(t, err, "error on marshaling proof")
+	scalarLen := int(g.Params().ScalarLength)
+	c := g.NewScalar()
+	err = c.UnmarshalBinary(rawProof[:scalarLen])
+	test.CheckNoErr(t, err, "error on unmarshaling challenge")
+	s := g.NewScalar()
+	err = s.UnmarshalBinary(rawProof[scalarLen:])
+	test.CheckNoErr(t, err, "error on unmarshaling response")
+
+	rA := g.NewElement().Mul(a, r)
+	cKA := g.NewElement().Mul(ka, c)
+	diff := g.NewElement().Add(rA, g.NewElement().Neg(cKA))
+	forgedA := g.NewElement().Mul(diff, g.NewScalar().Inv(s))
+
+	if g.NewElement().Mul(forgedA, k).IsEqual(ka) {
+		t.Fatal("unexpected true statement")
+	}
+	if verifier.Verify(forgedA, ka, b, kb, proof) {
+		t.Fatal("Verify accepted a proof for a false statement with an adaptively chosen base")
+	}
+}
+
 func testMarshal(t *testing.T, g group.Group, proof *dleq.Proof) {
 	t.Helper()
 

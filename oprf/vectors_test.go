@@ -185,9 +185,8 @@ func (v *vector) test(t *testing.T) {
 			case VerifiableMode:
 				ss := server.(VerifiableServer)
 				prover := dleq.Prover{Params: ss.getDLEQParams()}
-				proof, err = prover.ProveBatchWithRandomness(
+				proof, err = prover.ProveBatchWithRandomnessRFC9497(
 					ss.privateKey.k,
-					ss.params.group.Generator(),
 					server.PublicKey().e,
 					evalReq.Elements,
 					eval.Elements,
@@ -196,9 +195,8 @@ func (v *vector) test(t *testing.T) {
 				ss := server.(*s1)
 				keyProof, _, _ := ss.secretFromInfo(ss.info)
 				prover := dleq.Prover{Params: ss.getDLEQParams()}
-				proof, err = prover.ProveBatchWithRandomness(
+				proof, err = prover.ProveBatchWithRandomnessRFC9497(
 					keyProof,
-					ss.params.group.Generator(),
 					ss.params.group.NewElement().MulGen(keyProof),
 					eval.Elements,
 					evalReq.Elements,
