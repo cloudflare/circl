@@ -1,6 +1,7 @@
 package fourq
 
 import (
+	"crypto/subtle"
 	"math/big"
 
 	"github.com/cloudflare/circl/internal/conv"
@@ -18,9 +19,19 @@ const SizeFp = 16
 type Fp [SizeFp]byte
 
 func (f *Fp) String() string       { return conv.BytesLe2Hex(f[:]) }
-func (f *Fp) isZero() bool         { fpMod(f); return *f == Fp{} }
+func (f *Fp) isZero() bool         { return f.isZeroCT() == 1 }
 func (f *Fp) toBigInt() *big.Int   { fpMod(f); return conv.BytesLe2BigInt(f[:]) }
 func (f *Fp) setBigInt(b *big.Int) { conv.BigInt2BytesLe((*f)[:], b); fpMod(f) }
+
+func (f *Fp) isZeroCT() int {
+	fpMod(f)
+	var v byte
+	for i := range f {
+		v |= f[i]
+	}
+	return subtle.ConstantTimeByteEq(v, 0)
+}
+
 func (f *Fp) toBytes(buf []byte) {
 	if len(buf) == SizeFp {
 		fpMod(f)
@@ -46,12 +57,9 @@ func fpNeg(c, a *Fp) { fpSub(c, &modulusP, a) }
 //	 0 if x == 0
 //	+1 if x >  (p+1)/2.
 func fpSgn(c *Fp) int {
-	s := 0
-	if !c.isZero() {
-		b := int(c[SizeFp-1]>>6) & 0x1
-		s = 1 - (b << 1)
-	}
-	return s
+	nonzero := 1 - c.isZeroCT()
+	b := int(c[SizeFp-1]>>6) & 0x1
+	return subtle.ConstantTimeSelect(nonzero, 1-(b<<1), 0)
 }
 
 // fpTwo1251 sets c = a^(2^125-1).

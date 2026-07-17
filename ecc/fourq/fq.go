@@ -69,9 +69,8 @@ func fqSqrt(c, u, v *Fq, s int) {
 		fpSqr(t0, t0)
 	}
 	fpAdd(t, a, t0)
-	if t.isZero() {
-		fpSub(t, a, t0)
-	}
+	fpSub(t1, a, t0)
+	subtle.ConstantTimeCopy(t.isZeroCT(), t[:], t1[:])
 	fpAdd(t, t, t)
 
 	// r = (t*b^3)^(2^125-1)
@@ -87,20 +86,18 @@ func fqSqrt(c, u, v *Fq, s int) {
 	fpHlf(&c[0], &c[0])
 	fpMul(&c[1], &c[1], g)
 
-	// if b*(2*x0)^2 == t then (x0,x1) <- (x1,x0)
+	// if b*(2*x0)^2 != t then (x0,x1) <- (x1,x0)
 	fpAdd(t0, &c[0], &c[0])
 	fpSqr(t0, t0)
 	fpMul(t0, t0, b)
 	fpSub(t0, t0, t)
-	if !t0.isZero() {
-		*t0 = c[0]
-		c[0] = c[1]
-		c[1] = *t0
-	}
+	swapped := &Fq{c[1], c[0]}
+	fqCmov(c, swapped, 1-t0.isZeroCT())
 
-	if fqSgn(c) != s {
-		fqNeg(c, c)
-	}
+	doNeg := 1 - subtle.ConstantTimeEq(int32(fqSgn(c)), int32(s))
+	neg := &Fq{}
+	fqNeg(neg, c)
+	fqCmov(c, neg, doNeg)
 }
 
 func fqInv(c, a *Fq) {

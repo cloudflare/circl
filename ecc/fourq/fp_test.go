@@ -104,6 +104,15 @@ func TestFpIsZero(t *testing.T) {
 	}
 }
 
+func TestFpIsZeroCT(t *testing.T) {
+	zero := Fp{}
+	one := Fp{1}
+	nonCanonicalZero := modulusP
+	if zero.isZeroCT() != 1 || nonCanonicalZero.isZeroCT() != 1 || one.isZeroCT() != 0 {
+		t.Fatal("isZeroCT returned an incorrect result")
+	}
+}
+
 func testFpModp(t *testing.T, f tFpModp) {
 	const testTimes = 1 << 9
 	P := getModulus()
