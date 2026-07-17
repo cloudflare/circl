@@ -183,15 +183,6 @@ func emsaPSSVerify(mHash, em []byte, emBits, sLen int, hash hash.Hash) error {
 	//     to zero.
 	db[0] &= bitMask
 
-	// If we don't know the salt length, look for the 0x01 delimiter.
-	if sLen == rsa.PSSSaltLengthAuto {
-		psLen := bytes.IndexByte(db, 0x01)
-		if psLen < 0 {
-			return rsa.ErrVerification
-		}
-		sLen = len(db) - psLen - 1
-	}
-
 	// 10. If the emLen - hLen - sLen - 2 leftmost octets of DB are not zero
 	//     or if the octet at position emLen - hLen - sLen - 1 (the leftmost
 	//     position is "position 1") does not have hexadecimal value 0x01,
