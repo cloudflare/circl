@@ -146,6 +146,7 @@
     \
     BTRQ $63, R11 \
     SBBQ $0, R10 \
+    SBBQ $0, R11 \
     \
     \ // t1 = R11:R10 = a0 - a1
     MOVQ R10, DX \
@@ -156,7 +157,6 @@
     \
     \ //  c0 = t0 * t1 = (a0 + a1)*(a0 - a1), CX:R14:R13:R12 <- R9:R8 * R11:R10
     MULXQ R8, R12, R13 \
-    SBBQ $0, R11 \
     MULXQ R9, R14, AX \
     MOVQ R11, DX \
     ADDQ R14, R13 \
