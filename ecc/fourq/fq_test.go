@@ -136,6 +136,34 @@ func TestFqIsZero(t *testing.T) {
 	}
 }
 
+func TestFqSqrtSelections(t *testing.T) {
+	tests := []Fq{
+		{Fp{1}, Fp{}},
+		{Fp{}, Fp{1}},
+		{Fp{1}, Fp{1}},
+	}
+	one := &Fq{}
+	one.setOne()
+
+	for i := range tests {
+		x := &tests[i]
+		u, got, want, diff := &Fq{}, &Fq{}, &Fq{}, &Fq{}
+		fqSqr(u, x)
+
+		for _, sign := range []int{fqSgn(x), -fqSgn(x)} {
+			fqSqrt(got, u, one, sign)
+			fqCopy(want, x)
+			if fqSgn(x) != sign {
+				fqNeg(want, want)
+			}
+			fqSub(diff, got, want)
+			if !diff.isZero() {
+				t.Fatalf("fqSqrt returned the wrong root for case %d and sign %d", i, sign)
+			}
+		}
+	}
+}
+
 func TestFqNeg(t *testing.T) {
 	testTimes := 1 << 9
 	x, z := &Fq{}, &Fq{}
