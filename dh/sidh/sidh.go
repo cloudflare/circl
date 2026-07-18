@@ -78,7 +78,8 @@ func NewPublicKey(id uint8, v KeyVariant) *PublicKey {
 
 // Import clears content of the public key currently stored in the structure
 // and imports key stored in the byte string. Returns error in case byte string
-// size is wrong. Doesn't perform any validation.
+// size is wrong. Doesn't perform any validation. In particular, sikep434,
+// sikep503, and sikep751 all accept non-canonical encoding of field elements.
 func (pub *PublicKey) Import(input []byte) error {
 	if len(input) != pub.Size() {
 		return errors.New("sidh: input to short")
