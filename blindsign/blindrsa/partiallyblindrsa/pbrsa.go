@@ -46,11 +46,29 @@ type randomizedVerifier struct {
 // https://datatracker.ietf.org/doc/html/draft-amjad-cfrg-partially-blind-rsa#name-rsapbssa-variants
 func NewVerifier(pk *rsa.PublicKey, hash crypto.Hash) Verifier {
 	h := common.ConvertHashFunction(hash)
+	var bigPK *keys.BigPublicKey
+	if pk != nil && pk.N != nil {
+		bigPK = keys.NewBigPublicKey(pk)
+	}
 	return randomizedVerifier{
-		pk:         keys.NewBigPublicKey(pk),
+		pk:         bigPK,
 		cryptoHash: hash,
 		hash:       h,
 	}
+}
+
+func validatePublicKey(h crypto.Hash, pk *keys.BigPublicKey) error {
+	if pk == nil || pk.N == nil || pk.N.Sign() <= 0 {
+		return ErrInvalidPublicKey
+	}
+
+	lambda := pk.N.BitLen() / 2
+	expandLen := (lambda + 128) / 8
+	if lambda < 2 || expandLen > 255*h.Size() {
+		return ErrInvalidPublicKey
+	}
+
+	return nil
 }
 
 // derivePublicKey tweaks the public key based on the input metadata.
@@ -60,11 +78,17 @@ func NewVerifier(pk *rsa.PublicKey, hash crypto.Hash) Verifier {
 //
 // See the following issue for more discussion on HKDF vs hash-to-field:
 // https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/issues/202
-func derivePublicKey(h crypto.Hash, pk *keys.BigPublicKey, metadata []byte) *keys.BigPublicKey {
+func derivePublicKey(h crypto.Hash, pk *keys.BigPublicKey, metadata []byte) (*keys.BigPublicKey, error) {
+	if err := validatePublicKey(h, pk); err != nil {
+		return nil, err
+	}
+
+	// The draft specifies hkdf_len = lambda_len + 16, where the extra 16 bytes
+	// provide the 128-bit security margin. See draft-amjad-cfrg-partially-blind-rsa-00, Section 4.6.
 	// expandLen = ceil((ceil(log2(\lambda)/2) + k) / 8), where k is the security parameter of the suite (e.g., k = 128).
 	// We stretch the input metadata beyond \lambda bits s.t. the output bytes are indifferentiable from truly random bytes
 	lambda := pk.N.BitLen() / 2
-	expandLen := uint((lambda + 128) / 8)
+	expandLen := (lambda + 128) / 8
 
 	hkdfSalt := make([]byte, (pk.N.BitLen()+7)/8)
 	pk.N.FillBytes(hkdfSalt)
@@ -74,7 +98,7 @@ func derivePublicKey(h crypto.Hash, pk *keys.BigPublicKey, metadata []byte) *key
 	bytes := make([]byte, expandLen)
 	_, err := hkdf.Read(bytes)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	// H_MD(D) = 1 || G(x), where G(x) is output of length \lambda-2 bits
@@ -89,14 +113,14 @@ func derivePublicKey(h crypto.Hash, pk *keys.BigPublicKey, metadata []byte) *key
 	return &keys.BigPublicKey{
 		N: pk.N,
 		E: newE,
-	}
+	}, nil
 }
 
 // deriveKeyPair tweaks the private key using the metadata as input.
 //
 // See the specification for more details:
 // https://datatracker.ietf.org/doc/html/draft-amjad-cfrg-partially-blind-rsa-00#name-private-key-augmentation
-func deriveKeyPair(h crypto.Hash, sk *keys.BigPrivateKey, metadata []byte) *keys.BigPrivateKey {
+func deriveKeyPair(h crypto.Hash, sk *keys.BigPrivateKey, metadata []byte) (*keys.BigPrivateKey, error) {
 	// pih(N) = (p-1)(q-1)
 	pm1 := new(big.Int).Set(sk.P)
 	pm1.Sub(pm1, new(big.Int).SetInt64(int64(1)))
@@ -105,7 +129,10 @@ func deriveKeyPair(h crypto.Hash, sk *keys.BigPrivateKey, metadata []byte) *keys
 	phi := new(big.Int).Mul(pm1, qm1)
 
 	// d = e^-1 mod phi(N)
-	pk := derivePublicKey(h, sk.Pk, metadata)
+	pk, err := derivePublicKey(h, sk.Pk, metadata)
+	if err != nil {
+		return nil, err
+	}
 	bigE := new(big.Int).Mod(pk.E, phi)
 	d := new(big.Int).ModInverse(bigE, phi)
 	return &keys.BigPrivateKey{
@@ -113,7 +140,7 @@ func deriveKeyPair(h crypto.Hash, sk *keys.BigPrivateKey, metadata []byte) *keys
 		D:  d,
 		P:  sk.P,
 		Q:  sk.Q,
-	}
+	}, nil
 }
 
 func fixedPartiallyBlind(message, salt []byte, r, rInv *big.Int, pk *keys.BigPublicKey, hash hash.Hash) ([]byte, VerifierState, error) {
@@ -179,6 +206,9 @@ func (v randomizedVerifier) Blind(random io.Reader, message, metadata []byte) ([
 	if random == nil {
 		return nil, VerifierState{}, common.ErrInvalidRandomness
 	}
+	if err := validatePublicKey(v.cryptoHash, v.pk); err != nil {
+		return nil, VerifierState{}, err
+	}
 
 	salt := make([]byte, v.hash.Size())
 	_, err := io.ReadFull(rand.Reader, salt)
@@ -198,7 +228,10 @@ func (v randomizedVerifier) Blind(random io.Reader, message, metadata []byte) ([
 func (v randomizedVerifier) FixedBlind(message, metadata, salt, blind, blindInv []byte) ([]byte, VerifierState, error) {
 	r := new(big.Int).SetBytes(blind)
 	rInv := new(big.Int).SetBytes(blindInv)
-	metadataKey := derivePublicKey(v.cryptoHash, v.pk, metadata)
+	metadataKey, err := derivePublicKey(v.cryptoHash, v.pk, metadata)
+	if err != nil {
+		return nil, VerifierState{}, err
+	}
 	inputMsg := encodeMessageMetadata(message, metadata)
 	return fixedPartiallyBlind(inputMsg, salt, r, rInv, metadataKey, v.hash)
 }
@@ -209,7 +242,10 @@ func (v randomizedVerifier) FixedBlind(message, metadata, salt, blind, blindInv 
 // See the specification for more details:
 // https://datatracker.ietf.org/doc/html/draft-amjad-cfrg-partially-blind-rsa-00#name-verification-2
 func (v randomizedVerifier) Verify(message, metadata, signature []byte) error {
-	metadataKey := derivePublicKey(v.cryptoHash, v.pk, metadata)
+	metadataKey, err := derivePublicKey(v.cryptoHash, v.pk, metadata)
+	if err != nil {
+		return err
+	}
 	inputMsg := encodeMessageMetadata(message, metadata)
 	return common.VerifyMessageSignature(inputMsg, signature, v.hash.Size(), metadataKey, v.cryptoHash)
 }
@@ -322,7 +358,10 @@ func (signer Signer) BlindSign(data, metadata []byte) ([]byte, error) {
 		return nil, common.ErrInvalidMessageLength
 	}
 
-	skPrime := deriveKeyPair(signer.h, signer.sk, metadata)
+	skPrime, err := deriveKeyPair(signer.h, signer.sk, metadata)
+	if err != nil {
+		return nil, err
+	}
 
 	s, err := common.DecryptAndCheck(rand.Reader, skPrime, m)
 	if err != nil {
@@ -337,7 +376,9 @@ func (signer Signer) BlindSign(data, metadata []byte) ([]byte, error) {
 
 var (
 	// ErrInvalidPrivateKey is the error used if a private key is invalid
-	ErrInvalidPrivateKey    = errors.New("blindsign/blindrsa/partiallyblindrsa: invalid private key")
+	ErrInvalidPrivateKey = errors.New("blindsign/blindrsa/partiallyblindrsa: invalid private key")
+	// ErrInvalidPublicKey is the error used if a public key is invalid.
+	ErrInvalidPublicKey     = errors.New("blindsign/blindrsa/partiallyblindrsa: invalid public key")
 	ErrUnexpectedSize       = common.ErrUnexpectedSize
 	ErrInvalidMessageLength = common.ErrInvalidMessageLength
 	ErrInvalidRandomness    = common.ErrInvalidRandomness

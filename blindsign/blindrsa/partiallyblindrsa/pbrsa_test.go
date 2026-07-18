@@ -7,6 +7,7 @@ import (
 	"crypto/rsa"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -181,7 +182,10 @@ func generatePBRSATestVector(t *testing.T, msg, metadata []byte) rawPBRSATestVec
 	}
 
 	publicKey := keys.NewBigPublicKey(&key.PublicKey)
-	metadataKey := derivePublicKey(hash, publicKey, metadata)
+	metadataKey, err := derivePublicKey(hash, publicKey, metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	blindedMsg, state, err := verifier.Blind(rand.Reader, msg, metadata)
 	if err != nil {
@@ -338,6 +342,50 @@ func TestNonCanonicalSignatureRejection(t *testing.T) {
 
 	if verifier.Verify(message, metadata, sigPlusN) == nil {
 		t.Fatal("expected verification to fail for non-canonical signature s+N")
+	}
+}
+
+func TestInvalidPublicKeyRejection(t *testing.T) {
+	oversizedN := new(big.Int).Lsh(big.NewInt(1), 195599)
+	oversizedN.SetBit(oversizedN, 0, 1)
+	testCases := []struct {
+		name string
+		key  *rsa.PublicKey
+	}{
+		{"nil key", nil},
+		{"nil modulus", &rsa.PublicKey{E: 65537}},
+		{"zero modulus", &rsa.PublicKey{N: new(big.Int), E: 65537}},
+		{"negative modulus", &rsa.PublicKey{N: big.NewInt(-1), E: 65537}},
+		{"tiny modulus", &rsa.PublicKey{N: big.NewInt(1), E: 65537}},
+		{"oversized modulus", &rsa.PublicKey{N: oversizedN, E: 65537}},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			verifier := NewVerifier(testCase.key, crypto.SHA384)
+			operations := []struct {
+				name string
+				run  func() error
+			}{
+				{"Blind", func() error {
+					_, _, err := verifier.Blind(rand.Reader, nil, nil)
+					return err
+				}},
+				{"FixedBlind", func() error {
+					_, _, err := verifier.FixedBlind(nil, nil, nil, nil, nil)
+					return err
+				}},
+				{"Verify", func() error { return verifier.Verify(nil, nil, nil) }},
+			}
+
+			for _, operation := range operations {
+				t.Run(operation.name, func(t *testing.T) {
+					if err := operation.run(); !errors.Is(err, ErrInvalidPublicKey) {
+						t.Fatalf("expected ErrInvalidPublicKey, got %v", err)
+					}
+				})
+			}
+		})
 	}
 }
 
