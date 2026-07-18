@@ -2,8 +2,10 @@ package blindrsa
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha512"
 	"crypto/x509"
 	"encoding/hex"
 	"encoding/json"
@@ -613,4 +615,73 @@ func Example_blindrsa() {
 
 	fmt.Printf("Valid signature: %v", ok == nil)
 	// Output: Valid signature: true
+}
+
+func TestPSSZeroVerifierAcceptsSaltedSignatures(t *testing.T) {
+	key, err := loadPrivateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	message := []byte("double-spendable token")
+
+	// Verifier configured for the zero-salt, deterministic variant.
+	verifier, err := NewVerifier(SHA384PSSZeroDeterministic, &key.PublicKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	digest := sha512.Sum384(message) // import "crypto/sha512"
+
+	// Standard PSS signatures with a 48-byte random salt over the same message.
+	// Under RFC 9474 PSSZERO these are INVALID (salt must be empty), and each
+	// signing run produces a different signature.
+	saltedSig1, err := rsa.SignPSS(rand.Reader, key, crypto.SHA384, digest[:],
+		&rsa.PSSOptions{Hash: crypto.SHA384, SaltLength: 48})
+	if err != nil {
+		t.Fatal(err)
+	}
+	saltedSig2, err := rsa.SignPSS(rand.Reader, key, crypto.SHA384, digest[:],
+		&rsa.PSSOptions{Hash: crypto.SHA384, SaltLength: 48})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(saltedSig1) == string(saltedSig2) {
+		t.Fatal("expected two distinct randomized-salt signatures")
+	}
+
+	// The PSSZERO verifier must reject both salted signatures. It does not.
+	if err = verifier.Verify(message, saltedSig1); err == nil {
+		t.Errorf("PSSZERO verifier accepted a 48-byte-salt PSS signature (#1)")
+	}
+	if err = verifier.Verify(message, saltedSig2); err == nil {
+		t.Errorf("PSSZERO verifier accepted a second, distinct 48-byte-salt PSS signature (#2) over the same message - signature uniqueness is broken")
+	}
+
+	// Cross-variant confusion: a full blind-signature run under the PSS
+	// (48-byte salt) variant also verifies under the PSSZERO verifier.
+	clientPSS, err := NewClient(SHA384PSSDeterministic, &key.PublicKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	signer := NewSigner(key)
+	inputMsg, err := clientPSS.Prepare(rand.Reader, message)
+	if err != nil {
+		t.Fatal(err)
+	}
+	blindedMsg, state, err := clientPSS.Blind(rand.Reader, inputMsg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	blindSig, err := signer.BlindSign(blindedMsg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pssSig, err := clientPSS.Finalize(state, blindSig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := verifier.Verify(inputMsg, pssSig); err == nil {
+		t.Errorf("PSSZERO verifier accepted an RSABSSA-SHA384-PSS (48-byte salt) blind signature")
+	}
 }
