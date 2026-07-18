@@ -39,9 +39,8 @@ func (s Server) Evaluate(req *EvaluationRequest) (*Evaluation, error) {
 func (s VerifiableServer) Evaluate(req *EvaluationRequest) (*Evaluation, error) {
 	evaluations := s.server.evaluate(req.Elements, s.privateKey.k)
 
-	proof, err := dleq.Prover{Params: s.getDLEQParams()}.ProveBatch(
+	proof, err := dleq.Prover{Params: s.getDLEQParams()}.ProveBatchRFC9497(
 		s.privateKey.k,
-		s.params.group.Generator(),
 		s.PublicKey().e,
 		req.Elements,
 		evaluations,
@@ -62,9 +61,8 @@ func (s PartialObliviousServer) Evaluate(req *EvaluationRequest, info []byte) (*
 
 	evaluations := s.server.evaluate(req.Elements, evalSecret)
 
-	proof, err := dleq.Prover{Params: s.getDLEQParams()}.ProveBatch(
+	proof, err := dleq.Prover{Params: s.getDLEQParams()}.ProveBatchRFC9497(
 		keyProof,
-		s.params.group.Generator(),
 		s.params.group.NewElement().MulGen(keyProof),
 		evaluations,
 		req.Elements,

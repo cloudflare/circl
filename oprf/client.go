@@ -117,8 +117,7 @@ func (c VerifiableClient) Finalize(f *FinalizeData, e *Evaluation) (outputs [][]
 		return nil, err
 	}
 
-	if !(dleq.Verifier{Params: c.getDLEQParams()}).VerifyBatch(
-		c.params.group.Generator(),
+	if !(dleq.Verifier{Params: c.getDLEQParams()}).VerifyBatchRFC9497(
 		c.pkS.e,
 		f.evalReq.Elements,
 		e.Elements,
@@ -140,8 +139,7 @@ func (c PartialObliviousClient) Finalize(f *FinalizeData, e *Evaluation, info []
 		return nil, err
 	}
 
-	if !(dleq.Verifier{Params: c.getDLEQParams()}).VerifyBatch(
-		c.params.group.Generator(),
+	if !(dleq.Verifier{Params: c.getDLEQParams()}).VerifyBatchRFC9497(
 		tweakedKey,
 		e.Elements,
 		f.evalReq.Elements,
