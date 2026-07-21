@@ -3,7 +3,6 @@ MK_FILE_PATH = $(lastword $(MAKEFILE_LIST))
 PRJ_DIR      = $(abspath $(dir $(MK_FILE_PATH)))
 GOPATH_BUILD = $(PRJ_DIR)/build
 COVER_DIR    = $(GOPATH_BUILD)/coverage
-TOOLS_DIR   ?= $(GOPATH)/bin
 ETC_DIR      = $(PRJ_DIR)/.etc
 OPTS         ?=
 NOASM        ?=
@@ -50,7 +49,8 @@ generate: clean
 	$(GO) generate -v ./...
 
 bootstrap:
-	curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(TOOLS_DIR) v1.18.0
+	go install mvdan.cc/gofumpt@latest
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
 clean:
 	rm -rf $(GOPATH_BUILD)
