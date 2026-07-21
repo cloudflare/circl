@@ -28,58 +28,11 @@ func TestACVP(t *testing.T) {
 
 // nolint:funlen,gocyclo
 func testACVP(t *testing.T, sub string) {
-	buf, err := test.ReadGzip("../testdata/ML-DSA-" + sub + "-FIPS204/prompt.json.gz")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var prompt struct {
-		TestGroups []json.RawMessage `json:"testGroups"`
-	}
-
-	if err = json.Unmarshal(buf, &prompt); err != nil {
-		t.Fatal(err)
-	}
-
-	buf, err = test.ReadGzip("../testdata/ML-DSA-" + sub + "-FIPS204/expectedResults.json.gz")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var results struct {
-		TestGroups []json.RawMessage `json:"testGroups"`
-	}
-
-	if err := json.Unmarshal(buf, &results); err != nil {
-		t.Fatal(err)
-	}
-
-	rawResults := make(map[int]json.RawMessage)
-
-	for _, rawGroup := range results.TestGroups {
-		var abstractGroup struct {
-			Tests []json.RawMessage `json:"tests"`
-		}
-		if err := json.Unmarshal(rawGroup, &abstractGroup); err != nil {
-			t.Fatal(err)
-		}
-		for _, rawTest := range abstractGroup.Tests {
-			var abstractTest struct {
-				TcID int `json:"tcId"`
-			}
-			if err := json.Unmarshal(rawTest, &abstractTest); err != nil {
-				t.Fatal(err)
-			}
-			if _, exists := rawResults[abstractTest.TcID]; exists {
-				t.Fatalf("Duplicate test id: %d", abstractTest.TcID)
-			}
-			rawResults[abstractTest.TcID] = rawTest
-		}
-	}
+	vectors := test.ReadACVP(t, "../testdata/ML-DSA-"+sub+"-FIPS204")
 
 	scheme := Scheme()
 
-	for _, rawGroup := range prompt.TestGroups {
+	for _, rawGroup := range vectors.Groups {
 		var abstractGroup struct {
 			TestType string `json:"testType"`
 		}
@@ -109,13 +62,7 @@ func testACVP(t *testing.T, sub string) {
 					Pk test.HexBytes `json:"pk"`
 					Sk test.HexBytes `json:"sk"`
 				}
-				rawResult, ok := rawResults[tst.TcID]
-				if !ok {
-					t.Fatalf("Missing result: %d", tst.TcID)
-				}
-				if err := json.Unmarshal(rawResult, &result); err != nil {
-					t.Fatal(err)
-				}
+				vectors.Result(t, tst.TcID, &result)
 
 				pk, sk := scheme.DeriveKey(tst.Seed)
 
@@ -159,13 +106,7 @@ func testACVP(t *testing.T, sub string) {
 				var result struct {
 					Signature test.HexBytes `json:"signature"`
 				}
-				rawResult, ok := rawResults[tst.TcID]
-				if !ok {
-					t.Fatalf("Missing result: %d", tst.TcID)
-				}
-				if err := json.Unmarshal(rawResult, &result); err != nil {
-					t.Fatal(err)
-				}
+				vectors.Result(t, tst.TcID, &result)
 
 				sk, err := scheme.UnmarshalBinaryPrivateKey(tst.Sk)
 				if err != nil {
@@ -212,13 +153,7 @@ func testACVP(t *testing.T, sub string) {
 				var result struct {
 					TestPassed bool `json:"testPassed"`
 				}
-				rawResult, ok := rawResults[tst.TcID]
-				if !ok {
-					t.Fatalf("Missing result: %d", tst.TcID)
-				}
-				if err := json.Unmarshal(rawResult, &result); err != nil {
-					t.Fatal(err)
-				}
+				vectors.Result(t, tst.TcID, &result)
 
 				passed2 := unsafeVerifyInternal(pk.(*PublicKey), tst.Message, tst.Signature)
 				if passed2 != result.TestPassed {
