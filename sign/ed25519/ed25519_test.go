@@ -3,6 +3,7 @@ package ed25519_test
 import (
 	"testing"
 
+	"github.com/cloudflare/circl/sign"
 	"github.com/cloudflare/circl/sign/ed25519"
 )
 
@@ -36,6 +37,34 @@ func TestMalleability(t *testing.T) {
 
 	if ed25519.Verify(publicKey, msg, sig) {
 		t.Fatal("non-canonical signature accepted")
+	}
+}
+
+func TestIdentityPublicKey(t *testing.T) {
+	// Identity public key encoding: y=1, x=0, sign bit of x is 0.
+	identityPub := make([]byte, ed25519.PublicKeySize)
+	identityPub[0] = 0x01
+
+	// Signature with R=identity, S=0.
+	identitySig := make([]byte, ed25519.SignatureSize)
+	identitySig[0] = 0x01
+
+	msg := []byte("any message")
+
+	if ed25519.Verify(identityPub, msg, identitySig) {
+		t.Error("identity public key accepted by Verify")
+	}
+	if ed25519.VerifyPh(identityPub, msg, identitySig, "") {
+		t.Error("identity public key accepted by VerifyPh")
+	}
+	if ed25519.VerifyWithCtx(identityPub, msg, identitySig, "ctx") {
+		t.Error("identity public key accepted by VerifyWithCtx")
+	}
+
+	scheme := ed25519.Scheme()
+	_, err := scheme.UnmarshalBinaryPublicKey(identityPub)
+	if err != sign.ErrInvalidPublicKey {
+		t.Errorf("UnmarshalBinaryPublicKey returned %v, want %v", err, sign.ErrInvalidPublicKey)
 	}
 }
 

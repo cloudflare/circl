@@ -75,6 +75,10 @@ func (*scheme) UnmarshalBinaryPublicKey(buf []byte) (sign.PublicKey, error) {
 	}
 	pub := make(PublicKey, PublicKeySize)
 	copy(pub, buf[:PublicKeySize])
+	var P pointR1
+	if ok := P.FromBytes(pub); !ok || P.IsIdentity() {
+		return nil, sign.ErrInvalidPublicKey
+	}
 	return pub, nil
 }
 

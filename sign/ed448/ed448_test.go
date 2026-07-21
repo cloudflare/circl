@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/cloudflare/circl/internal/test"
+	"github.com/cloudflare/circl/sign"
 	"github.com/cloudflare/circl/sign/ed448"
 )
 
@@ -40,6 +41,31 @@ func TestEqual(t *testing.T) {
 	}
 	if private.Equal(otherPriv) {
 		t.Errorf("different private keys are Equal")
+	}
+}
+
+func TestIdentityPublicKey(t *testing.T) {
+	// Identity public key encoding: y=1, x=0, sign bit of x is 0.
+	identityPub := make([]byte, ed448.PublicKeySize)
+	identityPub[0] = 0x01
+
+	// Signature with R=identity, S=0.
+	identitySig := make([]byte, ed448.SignatureSize)
+	identitySig[0] = 0x01
+
+	msg := []byte("any message")
+
+	if ed448.Verify(identityPub, msg, identitySig, "") {
+		t.Error("identity public key accepted by Verify")
+	}
+	if ed448.VerifyPh(identityPub, msg, identitySig, "") {
+		t.Error("identity public key accepted by VerifyPh")
+	}
+
+	scheme := ed448.Scheme()
+	_, err := scheme.UnmarshalBinaryPublicKey(identityPub)
+	if err != sign.ErrInvalidPublicKey {
+		t.Errorf("UnmarshalBinaryPublicKey returned %v, want %v", err, sign.ErrInvalidPublicKey)
 	}
 }
 

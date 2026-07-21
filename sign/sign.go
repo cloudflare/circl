@@ -110,6 +110,10 @@ var (
 	// the wrong size.
 	ErrPrivKeySize = errors.New("wrong size for private key")
 
+	// ErrInvalidPublicKey is the error used if the provided public key is
+	// invalid (e.g., it is the identity point).
+	ErrInvalidPublicKey = errors.New("invalid public key")
+
 	// ErrContextNotSupported is the error used if a context is not
 	// supported.
 	ErrContextNotSupported = errors.New("context not supported")
