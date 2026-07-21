@@ -17,6 +17,15 @@ Curve Cryptography (ECC).
 
 🚨 This library is offered as-is, and without a guarantee. Therefore, it is expected that changes in the code, repository, and API occur in the future. We recommend to take caution before using this library in a production application since part of its content is experimental. All security issues must be reported, please notify us immediately following the instructions given in our [Security Policy](https://github.com/cloudflare/circl/security/policy).
 
+### Constant-Time Caveats
+
+⚠️ Not every package in CIRCL is constant time. The following packages document, at the
+top of their `doc.go` or main source file, the specific operations that are known to
+leak timing information: [`group/`](./group), [`oprf/`](./oprf),
+[`blindsign/blindrsa/partiallyblindrsa/`](./blindsign/blindrsa/partiallyblindrsa),
+[`secretsharing/`](./secretsharing), [`tss/rsa/`](./tss/rsa), [`zk/dl/`](./zk/dl),
+[`zk/dleq/`](./zk/dleq), and [`ecc/p384/`](./ecc/p384).
+
 ## Installation
 
 You can get CIRCL by fetching:
