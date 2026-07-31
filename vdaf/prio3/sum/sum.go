@@ -2,6 +2,7 @@
 package sum
 
 import (
+	"errors"
 	"math/bits"
 
 	"github.com/cloudflare/circl/vdaf/prio3/arith/fp64"
@@ -86,16 +87,22 @@ func (s *Sum) Unshard(aggShares []AggShare, numMeas uint) (aggregate *uint64, er
 
 type flpSum struct {
 	flp.FLP[flp.GadgetPolyEvalx2x, poly, Vec, Fp, *Fp]
-	bits   uint
-	offset Fp
+	bits           uint
+	maxMeasurement uint64
+	offset         Fp
 }
 
 func newFlpSum(maxMeasurement uint64) (*flpSum, error) {
+	if maxMeasurement >= 1<<63 {
+		return nil, ErrMaxMeasurement
+	}
+
 	bits := uint(bits.Len64(maxMeasurement))
 	offset := (uint64(1) << uint64(bits)) - 1 - maxMeasurement
 
 	s := new(flpSum)
 	s.bits = bits
+	s.maxMeasurement = maxMeasurement
 	err := s.offset.SetUint64(offset)
 	if err != nil {
 		return nil, err
@@ -134,6 +141,10 @@ func (s *flpSum) Eval(
 }
 
 func (s *flpSum) Encode(measurement uint64) (Vec, error) {
+	if measurement > s.maxMeasurement {
+		return nil, flp.ErrMeasurementValue
+	}
+
 	offset, err := s.offset.GetUint64()
 	if err != nil {
 		return nil, err
@@ -170,3 +181,7 @@ func (s *flpSum) Decode(output Vec, numMeas uint) (*uint64, error) {
 
 	return &n, nil
 }
+
+// ErrMaxMeasurement indicates that the maximum measurement cannot be
+// represented injectively in Fp64.
+var ErrMaxMeasurement = errors.New("max measurement must be less than 2^63")
