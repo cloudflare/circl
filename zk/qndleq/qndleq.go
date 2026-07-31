@@ -118,6 +118,10 @@ func Prove(random io.Reader, x, g, gx, h, hx, N *big.Int, secParam uint) (*Proof
 }
 
 // Verify checks whether x = Log_g(g^x) = Log_h(h^x).
+//
+// The caller must ensure that g, gx, h, and hx are in Qn. Verify only checks
+// their bounds; Qn membership cannot be checked without additional information
+// about N and must be established separately for attacker-controlled inputs.
 func (p Proof) Verify(g, gx, h, hx, N *big.Int) bool {
 	err := checkBounds(N, g, gx, h, hx)
 	if err != nil {
