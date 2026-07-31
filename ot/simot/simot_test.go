@@ -88,6 +88,25 @@ func testNegativeSimOT(t *testing.T, myGroup group.Group, choice int) {
 	}
 }
 
+func TestRound2SenderPanicsOnReuse(t *testing.T) {
+	var sender Sender
+	var receiver0, receiver1 Receiver
+	myGroup := group.P256
+	m0, m1 := []byte("message zero"), []byte("message one")
+
+	A := sender.InitSender(myGroup, m0, m1, 0)
+	B0 := receiver0.Round1Receiver(myGroup, 0, 0, A)
+	sender.Round2Sender(B0)
+	B1 := receiver1.Round1Receiver(myGroup, 1, 0, A)
+
+	defer func() {
+		if recover() == nil {
+			t.Fatal("second Round2Sender call did not panic")
+		}
+	}()
+	sender.Round2Sender(B1)
+}
+
 // Input: myGroup, the group we operate in
 func testSimOT(t *testing.T, myGroup group.Group, choice int) {
 	var sender Sender
@@ -176,10 +195,16 @@ func benchmarkSimOTRound(b *testing.B, myGroup group.Group) {
 
 	b.Run("Sender-Round2", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
+			b.StopTimer()
+			A = sender.InitSender(myGroup, m0, m1, 0)
+			B = receiver.Round1Receiver(myGroup, 0, 0, A)
+			b.StartTimer()
 			sender.Round2Sender(B)
 		}
 	})
 
+	A = sender.InitSender(myGroup, m0, m1, 0)
+	B = receiver.Round1Receiver(myGroup, 0, 0, A)
 	e0, e1 := sender.Round2Sender(B)
 
 	b.Run("Receiver-Round3", func(b *testing.B) {

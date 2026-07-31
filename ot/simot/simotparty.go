@@ -3,17 +3,18 @@ package simot
 import "github.com/cloudflare/circl/group"
 
 type Sender struct {
-	index   int           // Indicate which OT
-	m0      []byte        // The M0 message from sender
-	m1      []byte        // The M1 message from sender
-	a       group.Scalar  // The randomness of the sender
-	A       group.Element // [a]G
-	B       group.Element // The random group element from the receiver
-	k0      []byte        // The encryption key of M0
-	k1      []byte        // The encryption key of M1
-	e0      []byte        // The encryption of M0 under k0
-	e1      []byte        // The encryption of M1 under k1
-	myGroup group.Group   // The elliptic curve we operate in
+	index    int           // Indicate which OT
+	m0       []byte        // The M0 message from sender
+	m1       []byte        // The M1 message from sender
+	a        group.Scalar  // The randomness of the sender
+	A        group.Element // [a]G
+	B        group.Element // The random group element from the receiver
+	k0       []byte        // The encryption key of M0
+	k1       []byte        // The encryption key of M1
+	e0       []byte        // The encryption of M0 under k0
+	e1       []byte        // The encryption of M1 under k1
+	myGroup  group.Group   // The elliptic curve we operate in
+	consumed bool          // Whether Round2Sender has consumed this session
 }
 
 type Receiver struct {
