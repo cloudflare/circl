@@ -188,9 +188,9 @@ type Verifier interface {
 	// FixedBlind initializes the partially blind RSA protocol using an input message, metadata, and randomness values.
 	FixedBlind(message, metadata, salt, blind, blindInv []byte) ([]byte, VerifierState, error)
 
-	// Verify verifies the input (message, signature) pair using the augmented public key
-	// and produces an error upon failure.
-	Verify(message, signature, metadata []byte) error
+	// Verify verifies the input (message, metadata, signature) triple using the public
+	// key augmented with metadata, and produces an error upon failure.
+	Verify(message, metadata, signature []byte) error
 
 	// Hash returns the hash function associated with the Verifier.
 	Hash() hash.Hash
@@ -236,8 +236,8 @@ func (v randomizedVerifier) FixedBlind(message, metadata, salt, blind, blindInv 
 	return fixedPartiallyBlind(inputMsg, salt, r, rInv, metadataKey, v.hash)
 }
 
-// Verify verifies the input (message, signature) pair using the augmented public key
-// and produces an error upon failure.
+// Verify verifies the input (message, metadata, signature) triple using the public key
+// augmented with metadata, and produces an error upon failure.
 //
 // See the specification for more details:
 // https://datatracker.ietf.org/doc/html/draft-amjad-cfrg-partially-blind-rsa-00#name-verification-2
