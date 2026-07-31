@@ -11,11 +11,15 @@ import (
 
 const sizeFp = 48
 
+// fp384 is an element of the base field, stored as a little-endian byte array.
+// Only guaranteed to be reduced below 2^384.
 type fp384 [sizeFp]byte
 
 func (e fp384) BigInt() *big.Int { return conv.BytesLe2BigInt(e[:]) }
 func (e fp384) String() string   { return conv.BytesLe2Hex(e[:]) }
 
+// SetBigInt stores b into e, reducing it modulo p as necessary. Any b is
+// accepted, including negative and out-of-range values.
 func (e *fp384) SetBigInt(b *big.Int) {
 	if b.BitLen() > 384 || b.Sign() < 0 {
 		b = new(big.Int).Mod(b, p.BigInt())
@@ -105,15 +109,24 @@ func fp384Inv(z, x *fp384) {
 //go:noescape
 func fp384Cmov(x, y *fp384, b int)
 
+// fp384Neg requires a reduced a, as it computes p-a.
+//
 //go:noescape
 func fp384Neg(c, a *fp384)
 
+// fp384Add requires at least one of a and b to be reduced, and c may itself be
+// non-reduced, as only a single p is conditionally subtracted.
+//
 //go:noescape
 func fp384Add(c, a, b *fp384)
 
+// fp384Sub requires a reduced b.
+//
 //go:noescape
 func fp384Sub(c, a, b *fp384)
 
+// fp384Mul accepts non-reduced operands and always returns a reduced c.
+//
 //go:noescape
 func fp384Mul(c, a, b *fp384)
 
