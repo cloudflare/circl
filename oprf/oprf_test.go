@@ -277,6 +277,67 @@ func TestDeterministicBlindRejectsInvalidBlind(t *testing.T) {
 	}
 }
 
+func TestFinalizeRejectsMalformedState(t *testing.T) {
+	key, err := GenerateKey(SuiteP256, rand.Reader)
+	test.CheckNoErr(t, err, "failed private key generation")
+	info := []byte("shared info")
+	clients := []struct {
+		name   string
+		client commonClient
+	}{
+		{"OPRF", NewClient(SuiteP256)},
+		{"VOPRF", NewVerifiableClient(SuiteP256, key.Public())},
+		{"POPRF", &c1{NewPartialObliviousClient(SuiteP256, key.Public()), info}},
+	}
+
+	for _, tc := range clients {
+		t.Run(tc.name, func(t *testing.T) {
+			newFinalizeData := func(t *testing.T) *FinalizeData {
+				t.Helper()
+				f, _, err := tc.client.Blind([][]byte{[]byte("input")})
+				test.CheckNoErr(t, err, "blind failed")
+				return f
+			}
+			goodEvaluation := func() *Evaluation {
+				return &Evaluation{Elements: []Evaluated{group.P256.Generator()}}
+			}
+
+			tests := []struct {
+				name string
+				f    func(*FinalizeData)
+				e    *Evaluation
+			}{
+				{"nil evaluation", nil, nil},
+				{"nil request", func(f *FinalizeData) { f.evalReq = nil }, goodEvaluation()},
+				{"nil blind", func(f *FinalizeData) { f.blinds[0] = nil }, goodEvaluation()},
+				{"wrong-group blind", func(f *FinalizeData) { f.blinds[0] = group.P384.NewScalar() }, goodEvaluation()},
+				{"nil request element", func(f *FinalizeData) { f.evalReq.Elements[0] = nil }, goodEvaluation()},
+				{"identity request element", func(f *FinalizeData) { f.evalReq.Elements[0] = group.P256.Identity() }, goodEvaluation()},
+				{"wrong-group request element", func(f *FinalizeData) { f.evalReq.Elements[0] = group.P384.Generator() }, goodEvaluation()},
+				{"nil evaluated element", nil, &Evaluation{Elements: []Evaluated{nil}}},
+				{"identity evaluated element", nil, &Evaluation{Elements: []Evaluated{group.P256.Identity()}}},
+				{"wrong-group evaluated element", nil, &Evaluation{Elements: []Evaluated{group.P384.Generator()}}},
+			}
+			for _, malformed := range tests {
+				t.Run(malformed.name, func(t *testing.T) {
+					f := newFinalizeData(t)
+					if malformed.f != nil {
+						malformed.f(f)
+					}
+					if out, err := tc.client.Finalize(f, malformed.e); err != ErrInvalidInput || out != nil {
+						t.Fatalf("got output %v and error %v, want nil and %v", out, err, ErrInvalidInput)
+					}
+				})
+			}
+
+			if out, err := tc.client.Finalize(nil, goodEvaluation()); err != ErrInvalidInput || out != nil {
+				t.Fatalf("nil finalize data: got output %v and error %v, want nil and %v",
+					out, err, ErrInvalidInput)
+			}
+		})
+	}
+}
+
 // TestIdentityKeyRejection ensures the OPRF parsing boundary rejects the
 // identity public key and the zero private key, as required by RFC 9497.
 // Accepting them would let an attacker impersonate a verifiable OPRF server

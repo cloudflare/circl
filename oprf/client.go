@@ -89,11 +89,30 @@ func (c client) unblind(serUnblindeds [][]byte, blindeds []group.Element, blind 
 }
 
 func (c client) validate(f *FinalizeData, e *Evaluation) (err error) {
-	if l := len(f.blinds); len(f.evalReq.Elements) != l || len(e.Elements) != l {
-		err = ErrInvalidInput
+	if f == nil || e == nil || f.evalReq == nil {
+		return ErrInvalidInput
 	}
 
-	return
+	l := len(f.inputs)
+	if l == 0 || len(f.blinds) != l || len(f.evalReq.Elements) != l || len(e.Elements) != l {
+		return ErrInvalidInput
+	}
+
+	wantGroup := *c.params.group.Params()
+	for i := range l {
+		blind := f.blinds[i]
+		blinded := f.evalReq.Elements[i]
+		evaluated := e.Elements[i]
+		if blind == nil || blinded == nil || evaluated == nil ||
+			*blind.Group().Params() != wantGroup ||
+			*blinded.Group().Params() != wantGroup ||
+			*evaluated.Group().Params() != wantGroup ||
+			blinded.IsIdentity() || evaluated.IsIdentity() {
+			return ErrInvalidInput
+		}
+	}
+
+	return nil
 }
 
 func (c client) finalize(f *FinalizeData, e *Evaluation, info []byte) ([][]byte, error) {
