@@ -74,6 +74,9 @@ func (m *MultiHotCountVec) PrepSharesToPrep(prepShares []PrepShare) (*PrepMessag
 	return m.p.PrepSharesToPrep(prepShares)
 }
 
+// PrepNext produces an output share after successful preparation. The caller
+// must provide a message derived from one authenticated prep share from each
+// aggregator; PrepNext does not independently verify the FLP proof.
 func (m *MultiHotCountVec) PrepNext(state *PrepState, msg *PrepMessage) (*OutShare, error) {
 	return m.p.PrepNext(state, msg)
 }

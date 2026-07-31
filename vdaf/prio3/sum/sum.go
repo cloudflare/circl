@@ -70,6 +70,9 @@ func (s *Sum) PrepSharesToPrep(prepShares []PrepShare) (*PrepMessage, error) {
 	return s.p.PrepSharesToPrep(prepShares)
 }
 
+// PrepNext produces an output share after successful preparation. The caller
+// must provide a message derived from one authenticated prep share from each
+// aggregator; PrepNext does not independently verify the FLP proof.
 func (s *Sum) PrepNext(state *PrepState, msg *PrepMessage) (*OutShare, error) {
 	return s.p.PrepNext(state, msg)
 }
