@@ -1,0 +1,19 @@
+ot/simot/simotparty.go
+  s_fbc59b8468c788::t_183e665904d78a 6-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "f0e6225ea8d926820195b6d00c48f0bf3725157f",
+  "prompts": {},
+  "sessions": {
+    "s_fbc59b8468c788": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_047c17931ffeHoihBHcGXvYbSu",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Bas Westerbaan <bas@cloudflare.com>"
+    }
+  }
+}
