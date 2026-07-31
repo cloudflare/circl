@@ -248,6 +248,35 @@ func TestErrors(t *testing.T) {
 	})
 }
 
+func TestDeterministicBlindRejectsInvalidBlind(t *testing.T) {
+	for _, suite := range []Suite{
+		SuiteRistretto255,
+		SuiteP256,
+		SuiteP384,
+		SuiteP521,
+	} {
+		t.Run(suite.(fmt.Stringer).String(), func(t *testing.T) {
+			client := NewClient(suite)
+			for _, tc := range []struct {
+				name  string
+				blind Blind
+			}{
+				{"nil", nil},
+				{"zero", suite.Group().NewScalar()},
+			} {
+				t.Run(tc.name, func(t *testing.T) {
+					finData, evalReq, err := client.DeterministicBlind(
+						[][]byte{[]byte("input")}, []Blind{tc.blind})
+					if err != ErrInvalidInput || finData != nil || evalReq != nil {
+						t.Fatalf("got finalize data %v, request %v, and error %v; want nil, nil, and %v",
+							finData, evalReq, err, ErrInvalidInput)
+					}
+				})
+			}
+		})
+	}
+}
+
 // TestIdentityKeyRejection ensures the OPRF parsing boundary rejects the
 // identity public key and the zero private key, as required by RFC 9497.
 // Accepting them would let an attacker impersonate a verifiable OPRF server

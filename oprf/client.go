@@ -51,11 +51,19 @@ func (c client) blind(inputs [][]byte, blinds []Blind) (*FinalizeData, *Evaluati
 	blindedElements := make([]Blinded, len(inputs))
 	dst := c.params.getDST(hashToGroupDST)
 	for i := range inputs {
+		blind := blinds[i]
+		if blind == nil || *blind.Group().Params() != *c.params.group.Params() || blind.IsZero() {
+			return nil, nil, ErrInvalidInput
+		}
+
 		point := c.params.group.HashToElement(inputs[i], dst)
 		if point.IsIdentity() {
 			return nil, nil, ErrInvalidInput
 		}
-		blindedElements[i] = c.params.group.NewElement().Mul(point, blinds[i])
+		blindedElements[i] = c.params.group.NewElement().Mul(point, blind)
+		if blindedElements[i].IsIdentity() {
+			return nil, nil, ErrInvalidInput
+		}
 	}
 
 	evalReq := &EvaluationRequest{blindedElements}
