@@ -1,0 +1,19 @@
+vdaf/prio3/histogram/histogram.go
+  s_7da66f7666df42::t_4cdc053641a742 117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "78916abd5e6d85831dc8c9afb6afa412a679806e",
+  "prompts": {},
+  "sessions": {
+    "s_7da66f7666df42": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_047f0b6a3ffeZGn6DlYrlXnOZc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Bas Westerbaan <bas@cloudflare.com>"
+    }
+  }
+}
