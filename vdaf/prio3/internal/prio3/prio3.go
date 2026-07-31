@@ -415,6 +415,11 @@ func (v *Prio3[M, A, T, V, E, F]) aggregateMerge(
 // Unshard is used by the Collector to recover the aggregate result from a set
 // of aggregation shares.
 //
+// The aggregation shares must come from authenticated, protocol-compliant
+// Aggregators, and numMeas must be trusted protocol metadata. Unshard combines
+// the shares but does not prove their correctness; a malicious Aggregator can
+// bias the aggregate result.
+//
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-vdaf-13#section-7.2.5
 func (v *Prio3[M, A, T, V, E, F]) Unshard(
 	aggShares []AggShare[V, E], numMeas uint,

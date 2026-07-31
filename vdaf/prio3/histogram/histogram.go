@@ -73,6 +73,9 @@ func (h *Histogram) AggregateUpdate(aggShare *AggShare, outShare *OutShare) {
 	h.p.AggregateUpdate(aggShare, outShare)
 }
 
+// Unshard combines aggregation shares from authenticated, protocol-compliant
+// Aggregators using trusted numMeas metadata. It does not prove the shares are
+// correct; a malicious Aggregator can bias the result.
 func (h *Histogram) Unshard(aggShares []AggShare, numMeas uint) (aggregate *[]uint64, err error) {
 	return h.p.Unshard(aggShares, numMeas)
 }

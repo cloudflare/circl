@@ -80,6 +80,9 @@ func (s *SumVec) AggregateUpdate(aggShare *AggShare, outShare *OutShare) {
 	s.p.AggregateUpdate(aggShare, outShare)
 }
 
+// Unshard combines aggregation shares from authenticated, protocol-compliant
+// Aggregators using trusted numMeas metadata. It does not prove the shares are
+// correct; a malicious Aggregator can bias the result.
 func (s *SumVec) Unshard(aggShares []AggShare, numMeas uint) (aggregate *[]uint64, err error) {
 	return s.p.Unshard(aggShares, numMeas)
 }
