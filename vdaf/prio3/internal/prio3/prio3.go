@@ -324,6 +324,10 @@ func (v *Prio3[M, A, T, V, E, F]) PrepInit(
 func (v *Prio3[M, A, T, V, E, F]) PrepSharesToPrep(
 	prepShares []PrepShare[V, E],
 ) (*PrepMessage, error) {
+	if len(prepShares) != int(v.shares) {
+		return nil, ErrPrepShareSize
+	}
+
 	params := v.Params()
 	msg := new(PrepMessage)
 	// Unshard the verifier shares into the verifier message.
@@ -529,6 +533,7 @@ var (
 	ErrNonceSize     = errors.New("invalid nonce length, (NonceSize)")
 	ErrVerifyKeySize = errors.New("invalid verify key length, (VerifyKeySize)")
 	ErrRandSize      = errors.New("invalid randomness length")
+	ErrPrepShareSize = errors.New("invalid prep shares length")
 	ErrAggShareSize  = errors.New("invalid aggregate shares length")
 	ErrAggID         = errors.New("invalid aggregation ID")
 	ErrJointRand     = errors.New("invalid joint randomness")

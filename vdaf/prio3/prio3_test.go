@@ -2,6 +2,7 @@ package prio3
 
 import (
 	"crypto/rand"
+	"errors"
 	"io"
 	"slices"
 	"testing"
@@ -157,6 +158,22 @@ func testPrio3[
 
 			prepStates = append(prepStates, state)
 			outboundPrepShares = append(outboundPrepShares, *share)
+		}
+
+		invalidPrepShares := [][]PrepShare{
+			nil,
+			outboundPrepShares[:len(outboundPrepShares)-1],
+			append(slices.Clone(outboundPrepShares), outboundPrepShares[0]),
+		}
+		for _, prepShares := range invalidPrepShares {
+			prepMsg, errx := p.PrepSharesToPrep(prepShares)
+			if !errors.Is(errx, prio3.ErrPrepShareSize) {
+				t.Fatalf("PrepSharesToPrep(%d shares): got error %v, want %v",
+					len(prepShares), errx, prio3.ErrPrepShareSize)
+			}
+			if prepMsg != nil {
+				t.Fatalf("PrepSharesToPrep(%d shares): got non-nil message", len(prepShares))
+			}
 		}
 
 		var prepMsg *PrepMessage
