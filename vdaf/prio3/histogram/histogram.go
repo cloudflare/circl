@@ -114,7 +114,7 @@ func (h *flpHistogram) Eval(
 }
 
 func (h *flpHistogram) Encode(measurement uint64) (out Vec, err error) {
-	if measurement > uint64(h.length) {
+	if measurement >= uint64(h.length) {
 		return nil, flp.ErrMeasurementValue
 	}
 
