@@ -5,6 +5,9 @@
 //
 // Warning: Sign operations rely on math/big and are not constant time in the
 // secret key share. Pass a non-nil random source to Sign to enable blinding.
+// The public key passed to KeyShare.Sign must correspond to the private key
+// originally passed to Deal and must not be attacker controlled. Substituting
+// another RSA modulus can disclose the secret key share.
 //
 // # References
 //
