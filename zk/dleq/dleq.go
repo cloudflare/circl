@@ -16,6 +16,7 @@ package dleq
 import (
 	"crypto"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 
@@ -40,6 +41,10 @@ type Proof struct {
 }
 
 type Prover struct{ Params }
+
+// ErrInvalidBatch indicates that a DLEQ batch is empty or its input vectors
+// have different lengths.
+var ErrInvalidBatch = errors.New("dleq: invalid batch shape")
 
 func (p Prover) Prove(k group.Scalar, a, ka, b, kb group.Element, rnd io.Reader) (*Proof, error) {
 	return p.ProveBatch(k, a, ka, []group.Element{b}, []group.Element{kb}, rnd)
@@ -148,6 +153,10 @@ func (p Params) computeComposites(
 	bi []group.Element,
 	kbi []group.Element,
 ) (m, z group.Element, err error) {
+	if len(bi) == 0 || len(bi) != len(kbi) {
+		return nil, nil, ErrInvalidBatch
+	}
+
 	kAm, err := ka.MarshalBinaryCompress()
 	if err != nil {
 		return nil, nil, err
