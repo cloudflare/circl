@@ -63,6 +63,9 @@ func (h *Histogram) PrepSharesToPrep(prepShares []PrepShare) (*PrepMessage, erro
 	return h.p.PrepSharesToPrep(prepShares)
 }
 
+// PrepNext produces an output share after successful preparation. The caller
+// must provide a message derived from one authenticated prep share from each
+// aggregator; PrepNext does not independently verify the FLP proof.
 func (h *Histogram) PrepNext(state *PrepState, msg *PrepMessage) (*OutShare, error) {
 	return h.p.PrepNext(state, msg)
 }

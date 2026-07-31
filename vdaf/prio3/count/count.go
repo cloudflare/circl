@@ -64,6 +64,9 @@ func (c *Count) PrepSharesToPrep(prepShares []PrepShare) (*PrepMessage, error) {
 	return c.p.PrepSharesToPrep(prepShares)
 }
 
+// PrepNext produces an output share after successful preparation. The caller
+// must provide a message derived from one authenticated prep share from each
+// aggregator; PrepNext does not independently verify the FLP proof.
 func (c *Count) PrepNext(state *PrepState, msg *PrepMessage) (*OutShare, error) {
 	return c.p.PrepNext(state, msg)
 }

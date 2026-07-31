@@ -370,6 +370,10 @@ func (v *Prio3[M, A, T, V, E, F]) PrepSharesToPrep(
 
 // PrepNext is used by each aggregator to produce its output share.
 //
+// The caller must only call PrepNext with a message produced by a successful
+// PrepSharesToPrep call over one authenticated prep share from each aggregator.
+// PrepNext does not independently verify the FLP proof.
+//
 // https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-vdaf-13#section-7.2.2
 func (v *Prio3[M, A, T, V, E, F]) PrepNext(
 	state *PrepState[V, E], msg *PrepMessage,
