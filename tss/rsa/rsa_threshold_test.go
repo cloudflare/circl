@@ -298,7 +298,7 @@ func testIntegration(t *testing.T, algo crypto.Hash, priv *rsa.PrivateKey, thres
 		}
 	}
 
-	sig, err := CombineSignShares(pub, signshares, msgPH)
+	sig, err := CombineSignShares(pub, keys[0].Players, threshold, signshares, msgPH)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -328,6 +328,21 @@ func testIntegration(t *testing.T, algo crypto.Hash, priv *rsa.PrivateKey, thres
 		}
 		t.Logf("sig: %x\n", sig)
 		t.Fatal(err)
+	}
+}
+
+func TestCombineSignSharesRejectsUntrustedParameters(t *testing.T) {
+	// Players=65535, Threshold=1, Index=1, xiLen=1, xi=2.
+	encoded := []byte{0xff, 0xff, 0, 1, 0, 1, 0, 1, 2}
+	var share SignShare
+	if err := share.UnmarshalBinary(encoded); err != nil {
+		t.Fatal(err)
+	}
+
+	pub := &rsa.PublicKey{N: big.NewInt(3233), E: 17}
+	_, err := CombineSignShares(pub, 3, 1, []SignShare{share}, []byte{1})
+	if err == nil || err.Error() != "rsa_threshold: share players did not match protocol players" {
+		t.Fatalf("expected protocol players mismatch, got %v", err)
 	}
 }
 
@@ -404,7 +419,7 @@ func benchmarkSignCombineHelper(randSource io.Reader, parallel bool, b *testing.
 				b.Fatal(err)
 			}
 		}
-		_, err = CombineSignShares(&pub, signshares, msgPH)
+		_, err = CombineSignShares(&pub, players, threshold, signshares, msgPH)
 		if err != nil {
 			b.Fatal(err)
 		}

@@ -198,21 +198,23 @@ func PadHash(padder Padder, hash crypto.Hash, pub *rsa.PublicKey, msg []byte) ([
 
 type Signature = []byte
 
-// CombineSignShares combines t SignShare's to produce a valid signature
-func CombineSignShares(pub *rsa.PublicKey, shares []SignShare, msg []byte) (Signature, error) {
+// CombineSignShares combines SignShares to produce a valid signature. Players
+// and threshold must be trusted protocol parameters; the function checks them
+// against every share before combining.
+func CombineSignShares(pub *rsa.PublicKey, players, threshold uint, shares []SignShare, msg []byte) (Signature, error) {
+	if err := validateParams(players, threshold); err != nil {
+		return nil, err
+	}
 	if len(shares) == 0 {
 		return nil, errors.New("rsa_threshold: no shares provided")
 	}
 
-	players := shares[0].Players
-	threshold := shares[0].Threshold
-
 	for i := range shares {
 		if shares[i].Players != players {
-			return nil, errors.New("rsa_threshold: shares didn't have consistent players")
+			return nil, errors.New("rsa_threshold: share players did not match protocol players")
 		}
 		if shares[i].Threshold != threshold {
-			return nil, errors.New("rsa_threshold: shares didn't have consistent threshold")
+			return nil, errors.New("rsa_threshold: share threshold did not match protocol threshold")
 		}
 	}
 
