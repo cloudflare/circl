@@ -197,7 +197,7 @@ func groupAction(pub *PublicKey, prv *PrivateKey, rng io.Reader) {
 // PrivateKey operations
 
 func (c *PrivateKey) Import(key []byte) bool {
-	if len(key) < len(c.e) {
+	if len(key) != len(c.e) {
 		return false
 	}
 	for i, v := range key {
@@ -254,11 +254,13 @@ func (c *PublicKey) Import(key []byte) bool {
 	if len(key) != numWords*limbByteSize {
 		return false
 	}
+	var a fp
 	for i := 0; i < len(key); i++ {
 		j := i / limbByteSize
 		k := uint64(i % 8)
-		c.a[j] |= uint64(key[i]) << (8 * k)
+		a[j] |= uint64(key[i]) << (8 * k)
 	}
+	c.a = a
 	return true
 }
 

@@ -97,6 +97,11 @@ func TestPrivateKeyExportImport(t *testing.T) {
 			}
 		}
 	}
+
+	var prv PrivateKey
+	if prv.Import(make([]byte, PrivateKeySize+1)) {
+		t.Error("PrivateKey.Import accepted an overlong key")
+	}
 }
 
 func TestValidateNegative(t *testing.T) {
@@ -145,6 +150,19 @@ func TestPublicKeyExportImport(t *testing.T) {
 		if !eq64(pub1.a[:], pub2.a[:]) {
 			t.Error("Error occurred when public key export/import")
 		}
+	}
+
+	var pub PublicKey
+	ones := bytes.Repeat([]byte{0xff}, PublicKeySize)
+	zeros := make([]byte, PublicKeySize)
+	if !pub.Import(ones) || !pub.Import(zeros) {
+		t.Fatal("PublicKey.Import rejected a correctly sized key")
+	}
+	if !pub.Export(buf[:]) {
+		t.Fatal("PublicKey.Export rejected a correctly sized buffer")
+	}
+	if !bytes.Equal(buf[:], zeros) {
+		t.Error("PublicKey.Import retained bits from the previous key")
 	}
 }
 
