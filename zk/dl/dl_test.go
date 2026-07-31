@@ -43,6 +43,49 @@ func testzkDLNegative(t *testing.T, myGroup group.Group) {
 	}
 }
 
+func TestIdentityPublicKey(t *testing.T) {
+	myGroup := group.P256
+	proof := dl.Proof{
+		V: myGroup.Identity(),
+		R: myGroup.NewScalar(),
+	}
+
+	if dl.Verify(
+		myGroup,
+		myGroup.Generator(),
+		myGroup.Identity(),
+		proof,
+		[]byte("Prover"),
+		[]byte("zeroknowledge"),
+	) {
+		t.Fatal("identity public key accepted with identity commitment and zero response")
+	}
+}
+
+func TestProvePanicsOnIdentityInputs(t *testing.T) {
+	myGroup := group.P256
+	k := myGroup.RandomNonZeroScalar(rand.Reader)
+
+	tests := []struct {
+		name string
+		G    group.Element
+		kG   group.Element
+	}{
+		{"base", myGroup.Identity(), myGroup.Generator()},
+		{"public key", myGroup.Generator(), myGroup.Identity()},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			defer func() {
+				if recover() == nil {
+					t.Fatal("Prove did not panic")
+				}
+			}()
+			dl.Prove(myGroup, tc.G, tc.kG, k, nil, nil, rand.Reader)
+		})
+	}
+}
+
 func TestZKDL(t *testing.T) {
 	t.Run("zkDL", func(t *testing.T) {
 		for i := 0; i < testzkDLCount; i++ {

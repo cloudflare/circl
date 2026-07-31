@@ -60,8 +60,16 @@ func calcChallenge(myGroup group.Group, G, V, A group.Element, userID, otherInfo
 	return myGroup.HashToScalar(hashByte, otherInfo)
 }
 
-// Prove returns a proof attesting that kG = [k]G.
+// Prove returns a proof attesting that kG = [k]G. It panics if the base G or
+// public key kG is the identity element.
 func Prove(myGroup group.Group, G, kG group.Element, k group.Scalar, userID, otherInfo []byte, rnd io.Reader) Proof {
+	if G.IsIdentity() {
+		panic("zk/dl: identity base")
+	}
+	if kG.IsIdentity() {
+		panic("zk/dl: identity public key")
+	}
+
 	v := myGroup.RandomNonZeroScalar(rnd)
 	V := myGroup.NewElement()
 	V.Mul(G, v)
@@ -74,8 +82,13 @@ func Prove(myGroup group.Group, G, kG group.Element, k group.Scalar, userID, oth
 	return Proof{V, r}
 }
 
-// Verify checks whether the proof attests that kG = [k]G.
+// Verify checks whether the proof attests that kG = [k]G. The base G, public
+// key kG, and proof commitment must not be the identity element.
 func Verify(myGroup group.Group, G, kG group.Element, p Proof, userID, otherInfo []byte) bool {
+	if G.IsIdentity() || kG.IsIdentity() || p.V.IsIdentity() {
+		return false
+	}
+
 	c := calcChallenge(myGroup, G, p.V, kG, userID, otherInfo)
 
 	rG := myGroup.NewElement()
