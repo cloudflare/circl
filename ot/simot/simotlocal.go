@@ -70,6 +70,7 @@ func aesDecGCM(key, ciphertext []byte) ([]byte, error) {
 // Output: A = [a]G, a the sender randomness
 func (sender *Sender) InitSender(myGroup group.Group, m0, m1 []byte, index int) group.Element {
 	sender.a = myGroup.RandomNonZeroScalar(rand.Reader)
+	sender.consumed = false
 	sender.k0 = make([]byte, keyLength)
 	sender.k1 = make([]byte, keyLength)
 	sender.m0 = m0
@@ -114,13 +115,20 @@ func (receiver *Receiver) Round1Receiver(myGroup group.Group, choice int, index 
 
 // Input: B from the receiver
 // Output: e0, e1, encryption of m0 and m1 under key k0, k1
+// Round2Sender must be called at most once after each call to InitSender. It
+// panics on subsequent calls to prevent reuse of the sender randomness.
 func (sender *Sender) Round2Sender(B group.Element) ([]byte, []byte) {
+	if sender.consumed {
+		panic("simot: sender session already consumed")
+	}
+	sender.consumed = true
 	sender.B = B
 
 	aB := sender.myGroup.NewElement()
 	aB.Mul(sender.B, sender.a)
 	maA := sender.myGroup.NewElement()
 	maA.Mul(sender.A, sender.a)
+	sender.a = nil
 	maA.Neg(maA)
 	aBaA := sender.myGroup.NewElement()
 	aBaA.Add(aB, maA)
