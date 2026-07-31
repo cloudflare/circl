@@ -1,0 +1,19 @@
+ecc/fourq/fq_legacy_amd64_test.go
+  s_6be695d51d524f::t_9b6b3c4c77be06 1-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "61f426790d8b629f40a6b5498a273723996b3ec2",
+  "prompts": {},
+  "sessions": {
+    "s_6be695d51d524f": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_04832cdf7ffeGiiYLzl2FjNhIq",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Bas Westerbaan <bas@cloudflare.com>"
+    }
+  }
+}
