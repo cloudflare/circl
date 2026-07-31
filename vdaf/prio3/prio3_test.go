@@ -2,6 +2,7 @@ package prio3
 
 import (
 	"crypto/rand"
+	"errors"
 	"io"
 	"slices"
 	"testing"
@@ -109,6 +110,60 @@ func TestMultiHotCountVec(t *testing.T) {
 	test.CheckOk(got != nil, "prio3 multiHotCountVec failed", t)
 	if !slices.Equal(*got, want) {
 		test.ReportError(t, *got, want)
+	}
+}
+
+func TestPreparationValidation(t *testing.T) {
+	h, err := histogram.New(NumShares, 4, 3, Context)
+	test.CheckNoErr(t, err, "new histogram failed")
+	params := h.Params()
+	nonce := fromReader[histogram.Nonce](t, rand.Reader)
+	verifyKey := fromReader[histogram.VerifyKey](t, rand.Reader)
+	randb := make([]byte, params.RandSize())
+	_, err = io.ReadFull(rand.Reader, randb)
+	test.CheckNoErr(t, err, "read rand bytes failed")
+	publicShare, inputShares, err := h.Shard(0, &nonce, randb)
+	test.CheckNoErr(t, err, "Shard failed")
+
+	if _, _, err = h.PrepInit(
+		&verifyKey, &nonce, NumShares, publicShare, inputShares[1],
+	); !errors.Is(err, prio3.ErrAggID) {
+		t.Fatalf("got error %v for out-of-range aggregator ID, want %v", err, prio3.ErrAggID)
+	}
+
+	invalidPublicShares := []histogram.PublicShare{
+		nil,
+		publicShare[:len(publicShare)-1],
+		append(slices.Clone(publicShare), 0),
+	}
+	for _, invalidPublicShare := range invalidPublicShares {
+		if _, _, err = h.PrepInit(
+			&verifyKey, &nonce, 0, invalidPublicShare, inputShares[0],
+		); !errors.Is(err, prio3.ErrJointRand) {
+			t.Fatalf("PrepInit with %d-byte public share: got error %v, want %v",
+				len(invalidPublicShare), err, prio3.ErrJointRand)
+		}
+	}
+
+	corruptedPublicShare := slices.Clone(publicShare)
+	corruptedPublicShare[0] ^= 1
+	if _, _, err = h.PrepInit(
+		&verifyKey, &nonce, 0, corruptedPublicShare, inputShares[0],
+	); !errors.Is(err, prio3.ErrJointRand) {
+		t.Fatalf("got error %v for corrupted joint randomness part, want %v",
+			err, prio3.ErrJointRand)
+	}
+
+	state, _, err := h.PrepInit(&verifyKey, &nonce, 0, publicShare, inputShares[0])
+	test.CheckNoErr(t, err, "PrepInit failed")
+	if _, err = h.PrepNext(state, nil); !errors.Is(err, prio3.ErrJointRand) {
+		t.Fatalf("PrepNext with nil message: got error %v, want %v", err, prio3.ErrJointRand)
+	}
+	if _, err = h.PrepNext(state, new(histogram.PrepMessage)); !errors.Is(err, prio3.ErrJointRand) {
+		t.Fatalf("PrepNext with empty message: got error %v, want %v", err, prio3.ErrJointRand)
+	}
+	if _, err = h.PrepNext(nil, nil); !errors.Is(err, prio3.ErrShare) {
+		t.Fatalf("PrepNext with nil state: got error %v, want %v", err, prio3.ErrShare)
 	}
 }
 

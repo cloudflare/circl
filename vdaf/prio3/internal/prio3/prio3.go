@@ -247,7 +247,7 @@ func (v *Prio3[M, A, T, V, E, F]) PrepInit(
 	ps PublicShare, inputShare InputShare[V, E],
 ) (*PrepState[V, E], *PrepShare[V, E], error) {
 	params := v.Params()
-	if aggID > v.shares {
+	if aggID >= v.shares {
 		return nil, nil, ErrAggID
 	}
 
@@ -264,7 +264,7 @@ func (v *Prio3[M, A, T, V, E, F]) PrepInit(
 	var jointRand V
 	jointRandLen := params.JointRandLength()
 	if jointRandLen > 0 {
-		if share.blind == nil || len(ps) == 0 {
+		if share.blind == nil || len(ps) != int(SeedSize)*int(v.shares) {
 			return nil, nil, ErrJointRand
 		}
 
@@ -280,9 +280,17 @@ func (v *Prio3[M, A, T, V, E, F]) PrepInit(
 		if err != nil {
 			return nil, nil, err
 		}
+		partStart := int(aggID) * int(SeedSize)
+		partEnd := partStart + int(SeedSize)
+		if subtle.ConstantTimeCompare(
+			ps[partStart:partEnd], prepShare.jointRandPart[:]) != 1 {
+			return nil, nil, ErrJointRand
+		}
+		correctedJointRandParts := append(PublicShare(nil), ps...)
+		copy(correctedJointRandParts[partStart:partEnd], prepShare.jointRandPart[:])
 
 		prepState.correctedJointRandSeed = &Seed{}
-		*prepState.correctedJointRandSeed, err = v.xof.jointRandSeed(ps)
+		*prepState.correctedJointRandSeed, err = v.xof.jointRandSeed(correctedJointRandParts)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -370,8 +378,13 @@ func (v *Prio3[M, A, T, V, E, F]) PrepSharesToPrep(
 func (v *Prio3[M, A, T, V, E, F]) PrepNext(
 	state *PrepState[V, E], msg *PrepMessage,
 ) (*OutShare[V, E], error) {
-	if msg != nil && state != nil && msg.joinRand != nil &&
-		state.correctedJointRandSeed != nil {
+	if state == nil {
+		return nil, ErrShare
+	}
+	if state.correctedJointRandSeed != nil {
+		if msg == nil || msg.joinRand == nil {
+			return nil, ErrJointRand
+		}
 		if subtle.ConstantTimeCompare(
 			msg.joinRand[:], state.correctedJointRandSeed[:]) != 1 {
 			return nil, ErrJointRand
