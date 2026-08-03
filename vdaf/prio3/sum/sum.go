@@ -177,6 +177,12 @@ func (s *flpSum) Decode(output Vec, numMeas uint) (*uint64, error) {
 		return nil, flp.ErrOutputLen
 	}
 
+	hi, maxAggregate := bits.Mul64(uint64(numMeas), s.maxMeasurement)
+	var fieldBound Fp
+	if hi != 0 || fieldBound.SetUint64(maxAggregate) != nil {
+		return nil, ErrAggregateBound
+	}
+
 	n, err := output[0].GetUint64()
 	if err != nil {
 		return nil, err
@@ -188,3 +194,7 @@ func (s *flpSum) Decode(output Vec, numMeas uint) (*uint64, error) {
 // ErrMaxMeasurement indicates that the maximum measurement cannot be
 // represented injectively in Fp64.
 var ErrMaxMeasurement = errors.New("max measurement must be less than 2^63")
+
+// ErrAggregateBound indicates that a Sum aggregate may wrap around the Fp64
+// field for the supplied number of measurements.
+var ErrAggregateBound = errors.New("sum aggregate bound is not representable in Fp64")
