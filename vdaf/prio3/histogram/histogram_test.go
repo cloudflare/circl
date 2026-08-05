@@ -58,3 +58,22 @@ func TestHistogram(t *testing.T) {
 		}
 	})
 }
+
+func TestNewRejectsZeroParameters(t *testing.T) {
+	tests := []struct {
+		name     string
+		length   uint
+		chunkLen uint
+		want     error
+	}{
+		{"length", 0, 1, ErrLength},
+		{"chunk length", 1, 0, ErrChunkLength},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := New(2, tc.length, tc.chunkLen, []byte("test")); !errors.Is(err, tc.want) {
+				t.Fatalf("got error %v, want %v", err, tc.want)
+			}
+		})
+	}
+}
