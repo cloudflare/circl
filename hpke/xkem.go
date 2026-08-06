@@ -55,9 +55,6 @@ func (x xKEM) calcDH(dh []byte, sk kem.PrivateKey, pk kem.PublicKey) error {
 func (x xKEM) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 	// Implementation based on
 	// https://www.ietf.org/archive/id/draft-irtf-cfrg-hpke-07.html#name-derivekeypair
-	if len(seed) != x.SeedSize() {
-		panic(kem.ErrSeedSize)
-	}
 	sk := &xKEMPrivKey{scheme: x, priv: make([]byte, x.size)}
 	dkpPrk := x.labeledExtract([]byte(""), []byte("dkp_prk"), seed)
 	bytes := x.labeledExpand(
