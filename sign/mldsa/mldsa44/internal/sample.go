@@ -10,9 +10,16 @@ import (
 	"github.com/cloudflare/circl/simd/keccakf1600"
 )
 
+// The rate of SHAKE-256 in bytes.
+const shake256Rate = 136
+
 // DeriveX4Available indicates whether the system supports the quick fourway
 // sampling variants like PolyDeriveUniformX4.
 var DeriveX4Available = keccakf1600.IsEnabledX4()
+
+// DeriveX2Available indicates whether the system supports the quick twoway
+// sampling variants like PolyDeriveUniformX2.
+var DeriveX2Available = keccakf1600.IsEnabledX2()
 
 // For each i, sample ps[i] uniformly from the given seed and nonces[i].
 // ps[i] may be nil and is ignored in that case.
@@ -70,6 +77,78 @@ func PolyDeriveUniformX4(ps [4]*common.Poly, seed *[32]byte, nonces [4]uint16) {
 					((state[(i*3+2)*4+j] & 0x7fff) << 8))
 				t[6] = uint32((state[(i*3+2)*4+j] >> 16) & 0x7fffff)
 				t[7] = uint32((state[(i*3+2)*4+j] >> 40) & 0x7fffff)
+
+				for k := 0; k < 8; k++ {
+					if t[k] < common.Q {
+						ps[j][idx[j]] = t[k]
+						idx[j]++
+						if idx[j] == common.N {
+							continue PolyLoop
+						}
+					}
+				}
+			}
+			done = false
+		}
+	}
+}
+
+// For each i, sample ps[i] uniformly from the given seed and nonces[i].
+// ps[i] may be nil and is ignored in that case.
+//
+// Can only be called when DeriveX2Available is true.
+func PolyDeriveUniformX2(ps [2]*common.Poly, seed *[32]byte, nonces [2]uint16) {
+	var perm keccakf1600.StateX2
+	state := perm.Initialize(false)
+
+	// Absorb the seed in the two states
+	for i := 0; i < 4; i++ {
+		v := binary.LittleEndian.Uint64(seed[8*i : 8*(i+1)])
+		for j := 0; j < 2; j++ {
+			state[i*2+j] = v
+		}
+	}
+
+	// Absorb the nonces, the SHAKE128 domain separator (0b1111), the
+	// start of the padding (0b...001) and the end of the padding 0b100...
+	// Recall that the rate of SHAKE128 is 168 --- i.e. 21 uint64s.
+	for j := 0; j < 2; j++ {
+		state[4*2+j] = uint64(nonces[j]) | (0x1f << 16)
+		state[20*2+j] = 0x80 << 56
+	}
+
+	var idx [2]int // indices into ps
+	for j := 0; j < 2; j++ {
+		if ps[j] == nil {
+			idx[j] = common.N // mark nil polynomial as completed
+		}
+	}
+
+	done := false
+	for !done {
+		// Applies KeccaK-f[1600] to state to get the next 21 uint64s of each
+		// of the two SHAKE128 streams.
+		perm.Permute()
+
+		done = true
+
+	PolyLoop:
+		for j := 0; j < 2; j++ {
+			if idx[j] == common.N {
+				continue
+			}
+			for i := 0; i < 7; i++ {
+				var t [8]uint32
+				t[0] = uint32(state[i*3*2+j] & 0x7fffff)
+				t[1] = uint32((state[i*3*2+j] >> 24) & 0x7fffff)
+				t[2] = uint32((state[i*3*2+j] >> 48) |
+					((state[(i*3+1)*2+j] & 0x7f) << 16))
+				t[3] = uint32((state[(i*3+1)*2+j] >> 8) & 0x7fffff)
+				t[4] = uint32((state[(i*3+1)*2+j] >> 32) & 0x7fffff)
+				t[5] = uint32((state[(i*3+1)*2+j] >> 56) |
+					((state[(i*3+2)*2+j] & 0x7fff) << 8))
+				t[6] = uint32((state[(i*3+2)*2+j] >> 16) & 0x7fffff)
+				t[7] = uint32((state[(i*3+2)*2+j] >> 40) & 0x7fffff)
 
 				for k := 0; k < 8; k++ {
 					if t[k] < common.Q {
@@ -185,8 +264,157 @@ func PolyDeriveUniformLeqEta(p *common.Poly, seed *[64]byte, nonce uint16) {
 //
 // p will be normalized.
 func VecLDeriveUniformLeGamma1(v *VecL, seed *[64]byte, nonce uint16) {
-	for i := 0; i < L; i++ {
+	var i int
+
+	if DeriveX4Available {
+		var ps [4]*common.Poly
+		var nonces [4]uint16
+
+		for i < L {
+			n := L - i
+			if n > 4 {
+				n = 4
+			}
+			if n == 1 {
+				// A single leftover polynomial is cheaper with the scalar
+				// implementation than with a fourway permutation of which
+				// three quarters is thrown away.
+				break
+			}
+			for j := 0; j < 4; j++ {
+				if j >= n {
+					ps[j] = nil
+					continue
+				}
+				ps[j] = &v[i+j]
+				nonces[j] = nonce + uint16(i+j)
+			}
+			PolyDeriveUniformLeGamma1X4(ps, seed, nonces)
+			i += n
+		}
+	} else if DeriveX2Available {
+		var ps [2]*common.Poly
+		var nonces [2]uint16
+
+		for ; i+2 <= L; i += 2 {
+			ps[0], ps[1] = &v[i], &v[i+1]
+			nonces[0], nonces[1] = nonce+uint16(i), nonce+uint16(i)+1
+			PolyDeriveUniformLeGamma1X2(ps, seed, nonces)
+		}
+	}
+
+	for ; i < L; i++ {
 		PolyDeriveUniformLeGamma1(&v[i], seed, nonce+uint16(i))
+	}
+}
+
+// For each i, sample ps[i] uniformly with coefficients in (-γ₁,…,γ₁] using
+// the given seed and nonces[i].  ps[i] may be nil and is ignored in that
+// case.  ps[i] will be normalized.
+//
+// Can only be called when DeriveX4Available is true.
+func PolyDeriveUniformLeGamma1X4(
+	ps [4]*common.Poly, seed *[64]byte, nonces [4]uint16,
+) {
+	var perm keccakf1600.StateX4
+	var buf [4][PolyLeGamma1Size]byte
+	state := perm.Initialize(false)
+
+	// Absorb the seed in the four states.
+	for i := 0; i < 8; i++ {
+		v := binary.LittleEndian.Uint64(seed[8*i : 8*(i+1)])
+		for j := 0; j < 4; j++ {
+			state[i*4+j] = v
+		}
+	}
+
+	// Absorb the nonces, the SHAKE256 domain separator (0b1111), the
+	// start of the padding (0b...001) and the end of the padding 0b100...
+	// Recall that the rate of SHAKE256 is 136 --- i.e. 17 uint64s.
+	for j := 0; j < 4; j++ {
+		state[8*4+j] = uint64(nonces[j]) | (0x1f << 16)
+		state[16*4+j] = 0x80 << 56
+	}
+
+	// Squeeze PolyLeGamma1Size bytes out of each of the four streams.
+	// Note that shake256Rate and PolyLeGamma1Size are both multiples of
+	// eight, so we never have to deal with a partial uint64.
+	for offset := 0; offset < PolyLeGamma1Size; offset += shake256Rate {
+		perm.Permute()
+
+		for j := 0; j < 4; j++ {
+			if ps[j] == nil {
+				continue
+			}
+			for i := 0; i < shake256Rate/8; i++ {
+				o := offset + 8*i
+				if o >= PolyLeGamma1Size {
+					break
+				}
+				binary.LittleEndian.PutUint64(buf[j][o:o+8], state[i*4+j])
+			}
+		}
+	}
+
+	for j := 0; j < 4; j++ {
+		if ps[j] != nil {
+			PolyUnpackLeGamma1(ps[j], buf[j][:])
+		}
+	}
+}
+
+// For each i, sample ps[i] uniformly with coefficients in (-γ₁,…,γ₁] using
+// the given seed and nonces[i].  ps[i] may be nil and is ignored in that
+// case.  ps[i] will be normalized.
+//
+// Can only be called when DeriveX2Available is true.
+func PolyDeriveUniformLeGamma1X2(
+	ps [2]*common.Poly, seed *[64]byte, nonces [2]uint16,
+) {
+	var perm keccakf1600.StateX2
+	var buf [2][PolyLeGamma1Size]byte
+	state := perm.Initialize(false)
+
+	// Absorb the seed in the two states.
+	for i := 0; i < 8; i++ {
+		v := binary.LittleEndian.Uint64(seed[8*i : 8*(i+1)])
+		for j := 0; j < 2; j++ {
+			state[i*2+j] = v
+		}
+	}
+
+	// Absorb the nonces, the SHAKE256 domain separator (0b1111), the
+	// start of the padding (0b...001) and the end of the padding 0b100...
+	// Recall that the rate of SHAKE256 is 136 --- i.e. 17 uint64s.
+	for j := 0; j < 2; j++ {
+		state[8*2+j] = uint64(nonces[j]) | (0x1f << 16)
+		state[16*2+j] = 0x80 << 56
+	}
+
+	// Squeeze PolyLeGamma1Size bytes out of each of the two streams.
+	// Note that shake256Rate and PolyLeGamma1Size are both multiples of
+	// eight, so we never have to deal with a partial uint64.
+	for offset := 0; offset < PolyLeGamma1Size; offset += shake256Rate {
+		perm.Permute()
+
+		for j := 0; j < 2; j++ {
+			if ps[j] == nil {
+				continue
+			}
+			for i := 0; i < shake256Rate/8; i++ {
+				o := offset + 8*i
+				if o >= PolyLeGamma1Size {
+					break
+				}
+				binary.LittleEndian.PutUint64(buf[j][o:o+8], state[i*2+j])
+			}
+		}
+	}
+
+	for j := 0; j < 2; j++ {
+		if ps[j] != nil {
+			PolyUnpackLeGamma1(ps[j], buf[j][:])
+		}
 	}
 }
 

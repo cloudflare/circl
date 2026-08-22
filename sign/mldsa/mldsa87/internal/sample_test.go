@@ -146,6 +146,28 @@ func TestDeriveUniformX4(t *testing.T) {
 	}
 }
 
+func TestDeriveUniformX2(t *testing.T) {
+	if !DeriveX2Available {
+		t.SkipNow()
+	}
+	var ps [2]common.Poly
+	var p common.Poly
+	var seed [32]byte
+	nonces := [2]uint16{12345, 54321}
+
+	for i := 0; i < len(seed); i++ {
+		seed[i] = byte(i)
+	}
+
+	PolyDeriveUniformX2([2]*common.Poly{&ps[0], &ps[1]}, &seed, nonces)
+	for i := 0; i < 2; i++ {
+		PolyDeriveUniform(&p, &seed, nonces[i])
+		if ps[i] != p {
+			t.Fatal()
+		}
+	}
+}
+
 func TestDeriveUniformBallX4(t *testing.T) {
 	if !DeriveX4Available {
 		t.SkipNow()
@@ -209,10 +231,148 @@ func BenchmarkPolyDeriveUniformX4(b *testing.B) {
 	}
 }
 
+// Note that these are not gated on Derive{X2,X4}Available: keccakf1600 falls
+// back on a scalar implementation of the interleaved permutation, so the
+// sampler is exercised on every platform.
+func TestDeriveUniformLeGamma1X4(t *testing.T) {
+	if PolyLeGamma1Size%8 != 0 {
+		t.Fatal("PolyDeriveUniformLeGamma1X4 assumes a whole number of uint64s")
+	}
+
+	var ps [4]common.Poly
+	var p common.Poly
+	var seed [64]byte
+	nonces := [4]uint16{12345, 54321, 13532, 37377}
+
+	for i := 0; i < len(seed); i++ {
+		seed[i] = byte(i)
+	}
+
+	PolyDeriveUniformLeGamma1X4(
+		[4]*common.Poly{&ps[0], &ps[1], &ps[2], &ps[3]}, &seed, nonces)
+	for i := 0; i < 4; i++ {
+		PolyDeriveUniformLeGamma1(&p, &seed, nonces[i])
+		if ps[i] != p {
+			t.Fatalf("%d", i)
+		}
+	}
+
+	// Check that nil lanes are skipped without disturbing the others.
+	ps = [4]common.Poly{}
+	PolyDeriveUniformLeGamma1X4(
+		[4]*common.Poly{nil, &ps[1], nil, &ps[3]}, &seed, nonces)
+	for _, i := range []int{1, 3} {
+		PolyDeriveUniformLeGamma1(&p, &seed, nonces[i])
+		if ps[i] != p {
+			t.Fatalf("%d", i)
+		}
+	}
+	if ps[0] != (common.Poly{}) || ps[2] != (common.Poly{}) {
+		t.Fatal("nil lane was written to")
+	}
+}
+
+func TestDeriveUniformLeGamma1X2(t *testing.T) {
+	var ps [2]common.Poly
+	var p common.Poly
+	var seed [64]byte
+	nonces := [2]uint16{12345, 54321}
+
+	for i := 0; i < len(seed); i++ {
+		seed[i] = byte(i)
+	}
+
+	PolyDeriveUniformLeGamma1X2([2]*common.Poly{&ps[0], &ps[1]}, &seed, nonces)
+	for i := 0; i < 2; i++ {
+		PolyDeriveUniformLeGamma1(&p, &seed, nonces[i])
+		if ps[i] != p {
+			t.Fatalf("%d", i)
+		}
+	}
+}
+
+// VecLDeriveUniformLeGamma1 picks a different batching strategy depending on
+// what the platform supports; check that all of them agree.
+func TestVecLDeriveUniformLeGamma1(t *testing.T) {
+	var seed [64]byte
+	var want VecL
+
+	for i := 0; i < len(seed); i++ {
+		seed[i] = byte(i)
+	}
+
+	for i := 0; i < L; i++ {
+		PolyDeriveUniformLeGamma1(&want[i], &seed, 1234+uint16(i))
+	}
+
+	x4, x2 := DeriveX4Available, DeriveX2Available
+	defer func() { DeriveX4Available, DeriveX2Available = x4, x2 }()
+
+	for _, tc := range []struct{ x4, x2 bool }{
+		{false, false}, {false, true}, {true, false}, {true, true},
+	} {
+		DeriveX4Available, DeriveX2Available = tc.x4, tc.x2
+
+		var got VecL
+		VecLDeriveUniformLeGamma1(&got, &seed, 1234)
+		if got != want {
+			t.Fatalf("x4=%v x2=%v", tc.x4, tc.x2)
+		}
+	}
+}
+
+func BenchmarkPolyDeriveUniformX2(b *testing.B) {
+	if !DeriveX2Available {
+		b.SkipNow()
+	}
+	var seed [32]byte
+	var p [2]common.Poly
+	for i := 0; i < b.N; i++ {
+		nonce := uint16(2 * i)
+		PolyDeriveUniformX2([2]*common.Poly{&p[0], &p[1]},
+			&seed, [2]uint16{nonce, nonce + 1})
+	}
+}
+
 func BenchmarkPolyDeriveUniformLeGamma1(b *testing.B) {
 	var seed [64]byte
 	var p common.Poly
 	for i := 0; i < b.N; i++ {
 		PolyDeriveUniformLeGamma1(&p, &seed, uint16(i))
+	}
+}
+
+func BenchmarkPolyDeriveUniformLeGamma1X4(b *testing.B) {
+	if !DeriveX4Available {
+		b.SkipNow()
+	}
+	var seed [64]byte
+	var p [4]common.Poly
+	for i := 0; i < b.N; i++ {
+		nonce := uint16(4 * i)
+		PolyDeriveUniformLeGamma1X4(
+			[4]*common.Poly{&p[0], &p[1], &p[2], &p[3]}, &seed,
+			[4]uint16{nonce, nonce + 1, nonce + 2, nonce + 3})
+	}
+}
+
+func BenchmarkPolyDeriveUniformLeGamma1X2(b *testing.B) {
+	if !DeriveX2Available {
+		b.SkipNow()
+	}
+	var seed [64]byte
+	var p [2]common.Poly
+	for i := 0; i < b.N; i++ {
+		nonce := uint16(2 * i)
+		PolyDeriveUniformLeGamma1X2([2]*common.Poly{&p[0], &p[1]}, &seed,
+			[2]uint16{nonce, nonce + 1})
+	}
+}
+
+func BenchmarkVecLDeriveUniformLeGamma1(b *testing.B) {
+	var seed [64]byte
+	var v VecL
+	for i := 0; i < b.N; i++ {
+		VecLDeriveUniformLeGamma1(&v, &seed, uint16(L*i))
 	}
 }
