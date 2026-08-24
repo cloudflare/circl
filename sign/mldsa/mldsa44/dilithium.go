@@ -55,6 +55,7 @@ func NewKeyFromSeed(seed *[SeedSize]byte) (*PublicKey, *PrivateKey) {
 // A nil context string is equivalent to an empty context string.
 func SignTo(sk *PrivateKey, msg, ctx []byte, randomized bool, sig []byte) error {
 	var rnd [32]byte
+
 	if randomized {
 		_, err := cryptoRand.Read(rnd[:])
 		if err != nil {
@@ -62,25 +63,62 @@ func SignTo(sk *PrivateKey, msg, ctx []byte, randomized bool, sig []byte) error 
 		}
 	}
 
+	return signTo(sk, msg, ctx, rnd, sig)
+}
+
+func signTo(sk *PrivateKey, msg, ctx []byte, rnd [32]byte, sig []byte) error {
 	if len(ctx) > 255 {
 		return sign.ErrContextTooLong
 	}
 
 	internal.SignTo(
 		(*internal.PrivateKey)(sk),
-		func(w io.Writer) {
-			_, _ = w.Write([]byte{0})
-			_, _ = w.Write([]byte{byte(len(ctx))})
-
-			if ctx != nil {
-				_, _ = w.Write(ctx)
-			}
-			w.Write(msg)
-		},
+		internal.MPrime(msg, ctx),
 		rnd,
 		sig,
 	)
+
 	return nil
+}
+
+// ComputeMu returns the message representative μ of msg with the optional
+// context string ctx, to be passed to SignMuTo.
+//
+// Errors if ctx is larger than 255 bytes. A nil context string is equivalent
+// to an empty context string. See appendix D of RFC 9881 for more context.
+func (pk *PublicKey) ComputeMu(msg, ctx []byte) (*[64]byte, error) {
+	var mu [64]byte
+	if len(ctx) > 255 {
+		return nil, sign.ErrContextTooLong
+	}
+
+	(*internal.PublicKey)(pk).ComputeMu(msg, ctx, &mu)
+	return &mu, nil
+}
+
+// ComputeMu is like [PublicKey.ComputeMu].
+func (sk *PrivateKey) ComputeMu(msg, ctx []byte) (*[64]byte, error) {
+	var mu [64]byte
+	if len(ctx) > 255 {
+		return nil, sign.ErrContextTooLong
+	}
+
+	(*internal.PrivateKey)(sk).ComputeMu(msg, ctx, &mu)
+	return &mu, nil
+}
+
+// SignMuTo signs a supplied message representation μ and writes out the
+// signature. It will panic if sig is not of length at least SignatureSize.
+//
+// rnd is the per-signature randomizer; a nil rnd signs deterministically.
+// See appendix D of RFC 9881 for more context.
+func SignMuTo(sk *PrivateKey, mu *[64]byte, rnd *[32]byte, sig []byte) {
+	var r [32]byte
+	if rnd != nil {
+		r = *rnd
+	}
+
+	internal.SignMuTo((*internal.PrivateKey)(sk), mu, r, sig)
 }
 
 // Do not use. Implements ML-DSA.Sign_internal used for compatibility tests.
@@ -116,17 +154,10 @@ func Verify(pk *PublicKey, msg, ctx, sig []byte) bool {
 	if len(ctx) > 255 {
 		return false
 	}
+
 	return internal.Verify(
 		(*internal.PublicKey)(pk),
-		func(w io.Writer) {
-			_, _ = w.Write([]byte{0})
-			_, _ = w.Write([]byte{byte(len(ctx))})
-
-			if ctx != nil {
-				_, _ = w.Write(ctx)
-			}
-			_, _ = w.Write(msg)
-		},
+		internal.MPrime(msg, ctx),
 		sig,
 	)
 }
@@ -204,9 +235,9 @@ func (sk *PrivateKey) Seed() []byte {
 
 // Sign signs the given message.
 //
-// opts.HashFunc() must return zero, which can be achieved by passing
-// crypto.Hash(0) or nil for opts.  rand is ignored.  Will only return an error
-// if opts.HashFunc() is non-zero.
+// opts.HashFunc() must return either zero, or sign.MLDSAMu to sign msg as a
+// precomputed μ. opts may be a sign.SignatureOpts to set a context string.
+// rand is ignored.
 //
 // This function is used to make PrivateKey implement the crypto.Signer
 // interface.  The package-level SignTo function might be more convenient
@@ -214,12 +245,46 @@ func (sk *PrivateKey) Seed() []byte {
 func (sk *PrivateKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) (
 	sig []byte, err error) {
 	var ret [SignatureSize]byte
+	var rnd [32]byte
+	var ctx []byte
 
-	if opts != nil && opts.HashFunc() != crypto.Hash(0) {
-		return nil, errors.New("dilithium: cannot sign hashed message")
+	hash := crypto.Hash(0)
+	if opts != nil {
+		hash = opts.HashFunc()
 	}
-	if err = SignTo(sk, msg, nil, false, ret[:]); err != nil {
-		return nil, err
+
+	switch o := opts.(type) {
+	case sign.TestingSignerOpts:
+		if o.Randomness != nil {
+			if len(o.Randomness) != len(rnd) {
+				return nil, errors.New("mldsa: randomness must be 32 bytes")
+			}
+			copy(rnd[:], o.Randomness)
+		}
+		ctx = []byte(o.Context)
+	case sign.SignatureOpts:
+		ctx = []byte(o.Context)
+	case *sign.SignatureOpts:
+		ctx = []byte(o.Context)
+	}
+
+	switch hash {
+	case crypto.Hash(0):
+		if err = signTo(sk, msg, ctx, rnd, ret[:]); err != nil {
+			return nil, err
+		}
+	case sign.MLDSAMu:
+		if len(ctx) != 0 {
+			return nil, errors.New("mldsa: context not allowed with external μ")
+		}
+		if len(msg) != 64 {
+			return nil, errors.New("mldsa: μ must be 64 bytes")
+		}
+		var mu [64]byte
+		copy(mu[:], msg)
+		SignMuTo(sk, &mu, &rnd, ret[:])
+	default:
+		return nil, errors.New("mldsa: cannot sign hashed message")
 	}
 
 	return ret[:], nil
@@ -284,17 +349,16 @@ func (*scheme) Sign(
 	msg []byte,
 	opts *sign.SignatureOpts,
 ) []byte {
-	var ctx []byte
-	sig := make([]byte, SignatureSize)
-
 	priv, ok := sk.(*PrivateKey)
 	if !ok {
 		panic(sign.ErrTypeMismatch)
 	}
-	if opts != nil && opts.Context != "" {
-		ctx = []byte(opts.Context)
+	var sOpts crypto.SignerOpts
+	if opts != nil {
+		sOpts = opts
 	}
-	err := SignTo(priv, msg, ctx, false, sig)
+
+	sig, err := priv.Sign(nil, msg, sOpts)
 	if err != nil {
 		panic(err)
 	}
@@ -312,9 +376,16 @@ func (*scheme) Verify(
 	if !ok {
 		panic(sign.ErrTypeMismatch)
 	}
-	if opts != nil && opts.Context != "" {
+
+	// Verifying a precomputed μ is not supported.
+	if opts != nil && opts.Hash != crypto.Hash(0) {
+		return false
+	}
+
+	if opts != nil {
 		ctx = []byte(opts.Context)
 	}
+
 	return Verify(pub, msg, ctx, sig)
 }
 
