@@ -1,0 +1,49 @@
+sign/dilithium/gen.go
+  s_4d2f30e1de860e::t_234f9f379e6c79 167-170,174-177,183,188,199,201-202,215
+sign/dilithium/mode2/dilithium.go
+  s_4d2f30e1de860e::t_782748097a5a49 164,234,252
+sign/dilithium/mode2/internal/dilithium.go
+  s_4d2f30e1de860e::t_0a4bf11881404b 269-276,296,330,342-349,352-353,366
+sign/dilithium/mode3/dilithium.go
+  s_4d2f30e1de860e::t_f06cb8eba227c7 164,234,252
+sign/dilithium/mode5/dilithium.go
+  s_4d2f30e1de860e::t_30f4fc7f912aa5 164,234,252
+sign/dilithium/mode5/internal/dilithium.go
+  s_4d2f30e1de860e::t_c4e5770c2bcf50 269-276,296,330,342-349,352-353,366
+sign/mldsa/mldsa44/dilithium.go
+  s_4d2f30e1de860e::t_f1bf7b21912787 58,66-69,76,80,84-123,157,160,238-240,248-254,256-268,270-287,356-358,360-361,379-385,388
+sign/mldsa/mldsa44/internal/dilithium.go
+  s_4d2f30e1de860e::t_497d4d0a4ecb87 269-276,296,330,342-349,352-353,366
+sign/mldsa/mldsa44/internal/mu.go
+  s_4d2f30e1de860e::t_4581b30eab7dc2 1-27
+sign/mldsa/mldsa65/dilithium.go
+  s_4d2f30e1de860e::t_9acc1711a7ba68 58,66-69,76,80,84-123,157,160,238-240,248-254,256-268,270-287,356-358,360-361,379-385,388
+sign/mldsa/mldsa65/internal/dilithium.go
+  s_4d2f30e1de860e::t_2aab48a3063d1f 269-276,296,330,342-349,352-353,366
+sign/mldsa/mldsa65/internal/mu.go
+  s_4d2f30e1de860e::t_bea039dba966a5 1-27
+sign/mldsa/mldsa87/dilithium.go
+  s_4d2f30e1de860e::t_2067397b60e9d3 58,66-69,76,80,84-123,157,160,238-240,248-254,256-268,270-287,356-358,360-361,379-385,388
+sign/mldsa/mldsa87/internal/dilithium.go
+  s_4d2f30e1de860e::t_0ddd383eac9701 269-276,296,330,342-349,352-353,366
+sign/mldsa/mldsa87/internal/mu.go
+  s_4d2f30e1de860e::t_a2b449bbdc6b98 1-27
+sign/schemes/wycheproof_test.go
+  s_4d2f30e1de860e::t_a79c1f089aedbf 6,9,21-22,28,44-203,220-221,224,226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "99a9b9f3e5830a385cc453d7db2a4f9f0e51b0bb",
+  "prompts": {},
+  "sessions": {
+    "s_4d2f30e1de860e": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fcc6c1324ffejtspx8BO4Xkc44",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Bas Westerbaan <bas@cloudflare.com>"
+    }
+  }
+}
