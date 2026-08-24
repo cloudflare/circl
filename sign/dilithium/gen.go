@@ -164,90 +164,28 @@ var (
 )
 
 func main() {
-	generateModePackageFiles()
-	generateACVPTest()
-	generateParamsFiles()
+	generate("pkg.templ.go", "dilithium.go", false)
+	generate("params.templ.go", "internal/params.go", false)
+	generate("acvp.templ.go", "acvp_test.go", true)
+	generate("mu.templ.go", "internal/mu.go", true)
 	generateSourceFiles()
 }
 
-// Generates modeX/internal/params.go from templates/params.templ.go
-func generateParamsFiles() {
-	tl, err := template.ParseFiles("templates/params.templ.go")
+// Generates modeX/<out> from templates/<templ> for every mode, or only for
+// the ML-DSA modes if nistOnly is set.
+func generate(templ, out string, nistOnly bool) {
+	tl, err := template.ParseFiles(path.Join("templates", templ))
 	if err != nil {
 		panic(err)
 	}
 
 	for _, mode := range Modes {
-		buf := new(bytes.Buffer)
-		err := tl.Execute(buf, mode)
-		if err != nil {
-			panic(err)
-		}
-
-		// Formating output code
-		code, err := format.Source(buf.Bytes())
-		if err != nil {
-			panic("error formating code")
-		}
-
-		res := string(code)
-		offset := strings.Index(res, TemplateWarning)
-		if offset == -1 {
-			panic("Missing template warning in params.templ.go")
-		}
-		err = os.WriteFile(mode.PkgPath()+"/internal/params.go",
-			[]byte(res[offset:]), 0o644)
-		if err != nil {
-			panic(err)
-		}
-	}
-}
-
-// Generates modeX/dilithium.go from templates/pkg.templ.go
-func generateModePackageFiles() {
-	tl, err := template.ParseFiles("templates/pkg.templ.go")
-	if err != nil {
-		panic(err)
-	}
-
-	for _, mode := range Modes {
-		buf := new(bytes.Buffer)
-		err := tl.Execute(buf, mode)
-		if err != nil {
-			panic(err)
-		}
-
-		res, err := format.Source(buf.Bytes())
-		if err != nil {
-			panic("error formating code")
-		}
-
-		offset := strings.Index(string(res), TemplateWarning)
-		if offset == -1 {
-			panic("Missing template warning in pkg.templ.go")
-		}
-		err = os.WriteFile(mode.PkgPath()+"/dilithium.go", res[offset:], 0o644)
-		if err != nil {
-			panic(err)
-		}
-	}
-}
-
-// Generates modeX/dilithium.go from templates/pkg.templ.go
-func generateACVPTest() {
-	tl, err := template.ParseFiles("templates/acvp.templ.go")
-	if err != nil {
-		panic(err)
-	}
-
-	for _, mode := range Modes {
-		if !strings.HasPrefix(mode.Name, "ML-DSA") {
+		if nistOnly && !mode.NIST() {
 			continue
 		}
 
 		buf := new(bytes.Buffer)
-		err := tl.Execute(buf, mode)
-		if err != nil {
+		if err := tl.Execute(buf, mode); err != nil {
 			panic(err)
 		}
 
@@ -258,9 +196,10 @@ func generateACVPTest() {
 
 		offset := strings.Index(string(res), TemplateWarning)
 		if offset == -1 {
-			panic("Missing template warning in pkg.templ.go")
+			panic("Missing template warning in " + templ)
 		}
-		err = os.WriteFile(mode.PkgPath()+"/acvp_test.go", res[offset:], 0o644)
+
+		err = os.WriteFile(path.Join(mode.PkgPath(), out), res[offset:], 0o644)
 		if err != nil {
 			panic(err)
 		}
@@ -273,7 +212,7 @@ func generateSourceFiles() {
 
 	// Ignore mode specific files.
 	ignored := func(x string) bool {
-		return x == "params.go" || x == "params_test.go" ||
+		return x == "params.go" || x == "params_test.go" || x == "mu.go" ||
 			strings.HasSuffix(x, ".swp")
 	}
 

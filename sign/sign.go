@@ -15,6 +15,23 @@ type SignatureOpts struct {
 	// If non-empty, includes the given context in the signature if supported
 	// and will cause an error during signing otherwise.
 	Context string
+
+	crypto.Hash
+}
+
+// MLDSAMu is the value of crypto.MLDSAMu, which is only available from
+// Go 1.27. Used as crypto.SignerOpts hash to mark the message passed to
+// Sign as a precomputed 64 byte μ. See appendix D of RFC 9881.
+const MLDSAMu = crypto.Hash(20)
+
+// TestingSignerOpts adds extra options to test the implementation.
+// Do no use in production.
+type TestingSignerOpts struct {
+	SignatureOpts
+
+	// Randomness to use to generate a randomized signature. Currently
+	// implemented by ML-DSA.
+	Randomness []byte
 }
 
 // A public key is used to verify a signature set by the corresponding private

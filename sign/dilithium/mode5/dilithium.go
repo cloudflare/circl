@@ -158,10 +158,10 @@ func (sk *PrivateKey) Seed() []byte {
 func (sk *PrivateKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) (
 	sig []byte, err error) {
 	var ret [SignatureSize]byte
-
 	if opts != nil && opts.HashFunc() != crypto.Hash(0) {
 		return nil, errors.New("dilithium: cannot sign hashed message")
 	}
+
 	SignTo(sk, msg, ret[:])
 
 	return ret[:], nil
@@ -224,7 +224,6 @@ func (*scheme) Sign(
 	opts *sign.SignatureOpts,
 ) []byte {
 	sig := make([]byte, SignatureSize)
-
 	priv, ok := sk.(*PrivateKey)
 	if !ok {
 		panic(sign.ErrTypeMismatch)
@@ -232,6 +231,7 @@ func (*scheme) Sign(
 	if opts != nil && opts.Context != "" {
 		panic(sign.ErrContextNotSupported)
 	}
+
 	SignTo(priv, msg, sig)
 
 	return sig
@@ -249,6 +249,7 @@ func (*scheme) Verify(
 	if opts != nil && opts.Context != "" {
 		panic(sign.ErrContextNotSupported)
 	}
+
 	return Verify(pub, msg, sig)
 }
 
