@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"math"
 	"sort"
 
 	pairing "github.com/cloudflare/circl/ecc/bls12381"
@@ -42,11 +43,14 @@ func HashStringToScalar(key []byte, value string) *pairing.Scalar {
 	return s
 }
 
-func appendLen16Prefixed(a []byte, b []byte) []byte {
+func appendLen16Prefixed(a []byte, b []byte) ([]byte, error) {
+	if len(b) > math.MaxUint16 {
+		return nil, fmt.Errorf("data too large (overflow)")
+	}
 	a = append(a, 0, 0)
 	binary.LittleEndian.PutUint16(a[len(a)-2:], uint16(len(b)))
 	a = append(a, b...)
-	return a
+	return a, nil
 }
 
 func removeLen16Prefixed(data []byte) (next []byte, remainder []byte, err error) {
@@ -65,11 +69,14 @@ var (
 	removeLenPrefixed = removeLen16Prefixed
 )
 
-func appendLen32Prefixed(a []byte, b []byte) []byte {
+func appendLen32Prefixed(a []byte, b []byte) ([]byte, error) {
+	if len(b) > math.MaxUint32 {
+		return nil, fmt.Errorf("data too large (overflow)")
+	}
 	a = append(a, 0, 0, 0, 0)
 	binary.LittleEndian.PutUint32(a[len(a)-4:], uint32(len(b)))
 	a = append(a, b...)
-	return a
+	return a, nil
 }
 
 func removeLen32Prefixed(data []byte) (next []byte, remainder []byte, err error) {
@@ -100,8 +107,14 @@ func marshalBinarySortedMapMatrixG1(m map[string]*matrixG1) ([]byte, error) {
 			return nil, err
 		}
 
-		ret = appendLenPrefixed(ret, []byte(key))
-		ret = appendLenPrefixed(ret, b)
+		ret, err = appendLenPrefixed(ret, []byte(key))
+		if err != nil {
+			return nil, err
+		}
+		ret, err = appendLenPrefixed(ret, b)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return ret, nil
@@ -122,7 +135,10 @@ func marshalBinarySortedMapAttribute(m map[string]Attribute) ([]byte, error) {
 			return nil, err
 		}
 
-		ret = appendLenPrefixed(ret, []byte(key))
+		ret, err = appendLenPrefixed(ret, []byte(key))
+		if err != nil {
+			return nil, err
+		}
 		ret = append(ret, b...)
 	}
 
