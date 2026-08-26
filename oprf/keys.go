@@ -3,6 +3,7 @@ package oprf
 import (
 	"encoding/binary"
 	"io"
+	"math"
 
 	"github.com/cloudflare/circl/group"
 )
@@ -111,6 +112,11 @@ func DeriveKey(s Suite, mode Mode, seed, info []byte) (*PrivateKey, error) {
 	}
 	if len(seed) != 32 {
 		return nil, ErrInvalidSeed
+	}
+	// deriveInput frames info with I2OSP(len(info), 2), so info of 2^16 bytes
+	// or more silently wraps the length prefix.
+	if len(info) > math.MaxUint16 {
+		return nil, ErrInvalidInfo
 	}
 	p.m = mode
 

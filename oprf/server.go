@@ -3,6 +3,7 @@ package oprf
 import (
 	"crypto/rand"
 	"crypto/subtle"
+	"math"
 
 	"github.com/cloudflare/circl/group"
 	"github.com/cloudflare/circl/zk/dleq"
@@ -91,6 +92,12 @@ func (s server) secretFromInfo(info []byte) (t, tInv group.Scalar, err error) {
 }
 
 func (s server) fullEvaluate(input, info []byte) ([]byte, error) {
+	// finalizeHash frames the input with I2OSP(len(input), 2), so an input of
+	// 2^16 bytes or more silently wraps the length prefix. Reject it, as
+	// scalarFromInfo already does for info.
+	if len(input) > math.MaxUint16 {
+		return nil, ErrInvalidInput
+	}
 	evalSecret := s.privateKey.k
 	if s.params.m == PartialObliviousMode {
 		var err error
