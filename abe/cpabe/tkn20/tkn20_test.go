@@ -527,3 +527,74 @@ func TestPolicyExtractMutatedCiphertextStackOverflow(t *testing.T) {
 	//_ = extracted.String() // fatal error: stack overflow — kills the entire process
 	//t.Fatal("unreachable: String() should have crashed the process")
 }
+
+// Encrypt was allowed to build a large enough ciphertext such that it cannot be decrypted later
+//
+// ciphertextHeader.marshalBinary stores the length in a uint16 field, so any value above 65535
+// bytes wraps around. Decryption (obviously) fails on this, but it also cannot recover the data,
+// and gives a confusing 'too short' error message
+//
+// Note the issue is the overall length, not purely number of attributes or purely their lengths
+func TestEncryptWrapsAroundWithLongValues(t *testing.T) {
+	const label = "contributor_email_address"
+	const n = 700 // ~630 or so is necessary to trigger this
+	const idx = n / 2
+
+	adjectives := []string{"billowy", "righteous", "abstracted", "statuesque", "furry", "responsible", "cluttered", "quietly", "calmly", "strange"}
+	descriptors := []string{"pupil", "newsletter", "puppy", "stormy", "stupendous", "sugar", "supportive", "rebirth", "pacific", "reform"}
+	nouns := []string{"reaction", "rabbit", "argument", "reading", "song", "heat", "books", "wash", "trip", "instrument"}
+
+	value := func(i int) string {
+		return fmt.Sprintf("%08d_%s_%s_%s", 10_000_000+i, adjectives[i%len(adjectives)], descriptors[(i/3)%len(descriptors)], nouns[(i/7)%len(nouns)])
+	}
+
+	clauses := make([]string, n)
+	var val string
+	for i := range n {
+		v := value(i)
+		clauses[i] = fmt.Sprintf("%s:%s", label, v)
+		if i == idx {
+			// Pick a 'random' value we know must suffice
+			val = v
+		}
+	}
+	// OR is chosen for speed/simplicity; there is nothing particular about it that causes the
+	// issue
+	policyStr := strings.Join(clauses, " or ")
+
+	var policy Policy
+	if err := policy.FromString(policyStr); err != nil {
+		t.Fatalf("Failed to parse clause policy: %v", err)
+	}
+
+	pk, msk, err := Setup(rand.Reader)
+	if err != nil {
+		t.Fatalf("Failed to complete setup: %v", err)
+	}
+
+	msg := []byte("CIRCL (Cloudflare Interoperable, Reusable Cryptographic Library) is a collection of cryptographic primitives written in Go.")
+	ct, err := pk.Encrypt(rand.Reader, policy, msg)
+	if err != nil {
+		// Expected, return
+		return
+	}
+
+	// otherwise we should assert the following on fail
+	var attrs Attributes
+	attrs.FromMap(map[string]string{label: val})
+	key, err := msk.KeyGen(rand.Reader, attrs)
+	if err != nil {
+		t.Fatalf("Key generation failed: %v", err)
+	}
+
+	pt, err := key.Decrypt(ct)
+	if err != nil {
+		t.Fatalf("Failed to decrypt despite knowing %q satisfies: %v", val, err)
+	}
+	// Sanity check
+	if string(pt) != string(msg) {
+		t.Fatalf("Decryption succeeded, but %q != %q", pt, msg)
+	}
+	// Failsafe
+	t.Fatalf("Failed to encrypt message: %v", err)
+}
