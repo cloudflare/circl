@@ -6,6 +6,7 @@ import (
 	"encoding"
 	"encoding/binary"
 	"fmt"
+	"math"
 	"testing"
 
 	"github.com/cloudflare/circl/group"
@@ -275,6 +276,43 @@ func TestDeterministicBlindRejectsInvalidBlind(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRejectsOversizedInput(t *testing.T) {
+	// RFC 9497 frames the input and info with I2OSP(len, 2), so a length of
+	// 2^16 or more wraps the prefix. Reject those, but keep accepting the
+	// maximum admissible length so valid callers are unaffected.
+	key, err := GenerateKey(SuiteP256, rand.Reader)
+	test.CheckNoErr(t, err, "failed private key generation")
+
+	oversized := make([]byte, math.MaxUint16+1)
+	maxSized := make([]byte, math.MaxUint16)
+
+	t.Run("blind", func(t *testing.T) {
+		client := NewClient(SuiteP256)
+		if _, _, err := client.Blind([][]byte{oversized}); err != ErrInvalidInput {
+			t.Fatalf("got %v, want %v", err, ErrInvalidInput)
+		}
+		_, _, err := client.Blind([][]byte{maxSized})
+		test.CheckNoErr(t, err, "max-length input must be accepted")
+	})
+
+	t.Run("fullEvaluate", func(t *testing.T) {
+		server := NewServer(SuiteP256, key)
+		if _, err := server.FullEvaluate(oversized); err != ErrInvalidInput {
+			t.Fatalf("got %v, want %v", err, ErrInvalidInput)
+		}
+		_, err := server.FullEvaluate(maxSized)
+		test.CheckNoErr(t, err, "max-length input must be accepted")
+	})
+
+	t.Run("deriveKey", func(t *testing.T) {
+		if _, err := DeriveKey(SuiteP256, BaseMode, make([]byte, 32), oversized); err != ErrInvalidInfo {
+			t.Fatalf("got %v, want %v", err, ErrInvalidInfo)
+		}
+		_, err := DeriveKey(SuiteP256, BaseMode, make([]byte, 32), maxSized)
+		test.CheckNoErr(t, err, "max-length info must be accepted")
+	})
 }
 
 func TestFinalizeRejectsMalformedState(t *testing.T) {
