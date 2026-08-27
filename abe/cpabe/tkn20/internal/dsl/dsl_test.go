@@ -169,3 +169,54 @@ func TestParserDepthLimit(t *testing.T) {
 		t.Errorf("valid nested policy was rejected: %v", err)
 	}
 }
+
+// Parser.parse() parses an expresion and returns without checking that it read all tokens. This
+// allows for masking policies by manipulating it such that the policy is made to be 'complete' up
+// to the portion of the policy one wishes to apply. No errors/information is returned to make this
+// obvious
+func TestParserSilentlyDropsTrailingContent(t *testing.T) {
+	for _, policy := range []string{"country:US)", "country:US) or admin:true", "country:US)))", "country:US and region:US) ignored:garbage"} {
+		t.Run(policy, func(t *testing.T) {
+			if _, err := dsl.Run(policy); err == nil {
+				t.Errorf("Parsed incomplete policy: %v", policy)
+			}
+		})
+	}
+}
+
+// DSL should allow for case-mismatching overlap between the "and" and "or" delimiters
+func TestLookalikeOperatorsAreParsedAsIdentifiers(t *testing.T) {
+	if _, err := dsl.Run("AND:foo"); err != nil {
+		t.Errorf("'AND' failed to parse as an identifier: %v", err)
+	}
+	if _, err := dsl.Run("OR:foo"); err != nil {
+		t.Errorf("'OR' failed to parse as an identifier: %v", err)
+	}
+	if _, err := dsl.Run("Not:foo"); err != nil {
+		t.Errorf("'Not' failed to parse as an identifier: %v", err)
+	}
+
+	if _, err := dsl.Run("key:AND"); err != nil {
+		t.Errorf("'AND' failed to parse as an identifier: %v", err)
+	}
+	if _, err := dsl.Run("key:OR"); err != nil {
+		t.Errorf("'AND' failed to parse as an identifier: %v", err)
+	}
+
+	if _, err := dsl.Run("and:foo"); err == nil {
+		t.Errorf("'and' was parsed as an identifier: %v", err)
+	}
+	if _, err := dsl.Run("key:and"); err == nil {
+		t.Errorf("'and' was parsed as an identifier: %v", err)
+	}
+	if _, err := dsl.Run("or:foo"); err == nil {
+		t.Errorf("'or' failed to parse as an identifier: %v", err)
+	}
+	if _, err := dsl.Run("key:or"); err == nil {
+		t.Errorf("'or' failed to parse as an identifier: %v", err)
+	}
+	if _, err := dsl.Run("not:foo"); err == nil {
+		t.Errorf("'not' failed to parse as an identifier: %v", err)
+	}
+
+}
