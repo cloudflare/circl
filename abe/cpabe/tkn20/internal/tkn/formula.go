@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 )
 
 const (
@@ -60,13 +61,22 @@ func (g Gate) Equal(g2 Gate) bool {
 
 func (f *Formula) MarshalBinary() ([]byte, error) {
 	n := len(f.Gates)
+	if n > math.MaxUint16 {
+		return nil, fmt.Errorf("too many gates")
+	}
 	ret := make([]byte, 2+7*n)
 	binary.LittleEndian.PutUint16(ret, uint16(len(f.Gates)))
-	for i := 0; i < n; i++ {
-		ret[7*i+2] = byte(f.Gates[i].Class)
-		binary.LittleEndian.PutUint16(ret[7*i+2+1:], uint16(f.Gates[i].In0))
-		binary.LittleEndian.PutUint16(ret[7*i+2+3:], uint16(f.Gates[i].In1))
-		binary.LittleEndian.PutUint16(ret[7*i+2+5:], uint16(f.Gates[i].Out))
+	for i, gate := range f.Gates {
+		if gate.In0 < 0 || gate.In0 > math.MaxUint16 ||
+			gate.In1 < 0 || gate.In1 > math.MaxUint16 ||
+			gate.Out < 0 || gate.Out > math.MaxUint16 {
+			return nil, fmt.Errorf("wire index out of range")
+		}
+
+		ret[7*i+2] = byte(gate.Class)
+		binary.LittleEndian.PutUint16(ret[7*i+2+1:], uint16(gate.In0))
+		binary.LittleEndian.PutUint16(ret[7*i+2+3:], uint16(gate.In1))
+		binary.LittleEndian.PutUint16(ret[7*i+2+5:], uint16(gate.Out))
 	}
 	return ret, nil
 }
