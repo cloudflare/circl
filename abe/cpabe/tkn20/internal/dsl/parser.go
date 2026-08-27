@@ -34,6 +34,9 @@ func (p *Parser) parse() (Ast, error) {
 	if err != nil {
 		return Ast{}, err
 	}
+	if p.tokens[p.curr].Type != EOF {
+		return Ast{}, fmt.Errorf("policy is ill-formed, found %v, expected EOF", p.tokens[p.curr])
+	}
 	return Ast{
 		wires: p.wires,
 		gates: p.gates,

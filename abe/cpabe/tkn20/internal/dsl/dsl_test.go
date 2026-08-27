@@ -169,3 +169,54 @@ func TestParserDepthLimit(t *testing.T) {
 		t.Errorf("valid nested policy was rejected: %v", err)
 	}
 }
+
+// Parser.parse() parsed and returned expressions without checking that they
+// read all tokens. This allowed for masking policies by manipulating it such
+// that the policy is made to be 'complete' up to the portion of the policy
+// one wishes to apply. Errors should be returned in this case
+func TestParserDoesNotSilentlyDropTrailingContent(t *testing.T) {
+	for _, policy := range []string{"country:US)", "country:US) or admin:true", "country:US)))", "country:US and region:US) ignored:garbage"} {
+		t.Run(policy, func(t *testing.T) {
+			if _, err := dsl.Run(policy); err == nil {
+				t.Errorf("Parsed incomplete policy: %v", policy)
+			}
+		})
+	}
+}
+
+// DSL should allow for case-mismatching overlap between the "and" and "or"
+// delimiters
+func TestLookalikeOperatorsAreParsedAsIdentifiers(t *testing.T) {
+	if _, err := dsl.Run("AND:foo"); err != nil {
+		t.Errorf("'AND' failed to parse as an identifier: %v", err)
+	}
+	if _, err := dsl.Run("OR:foo"); err != nil {
+		t.Errorf("'OR' failed to parse as an identifier: %v", err)
+	}
+	if _, err := dsl.Run("Not:foo"); err != nil {
+		t.Errorf("'Not' failed to parse as an identifier: %v", err)
+	}
+
+	if _, err := dsl.Run("key:AND"); err != nil {
+		t.Errorf("'AND' failed to parse as an identifier: %v", err)
+	}
+	if _, err := dsl.Run("key:OR"); err != nil {
+		t.Errorf("'OR' failed to parse as an identifier: %v", err)
+	}
+
+	if _, err := dsl.Run("and:foo"); err == nil {
+		t.Errorf("'and' was parsed as an identifier: %v", err)
+	}
+	if _, err := dsl.Run("key:and"); err == nil {
+		t.Errorf("'and' was parsed as an identifier: %v", err)
+	}
+	if _, err := dsl.Run("or:foo"); err == nil {
+		t.Errorf("'or' was parsed as an identifier: %v", err)
+	}
+	if _, err := dsl.Run("key:or"); err == nil {
+		t.Errorf("'or' was parsed as an identifier: %v", err)
+	}
+	if _, err := dsl.Run("not:foo"); err == nil {
+		t.Errorf("'not' was parsed as an identifier: %v", err)
+	}
+}
