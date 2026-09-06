@@ -5,6 +5,7 @@ import (
 	"encoding/asn1"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/cloudflare/circl/sign"
@@ -36,6 +37,18 @@ func init() {
 			allSchemesByTLS[tlsScheme.TLSIdentifier()] = scheme
 		}
 	}
+}
+
+// schemeOid returns the object identifier of scheme, or an error if it has none.
+func schemeOid(scheme sign.Scheme) (asn1.ObjectIdentifier, error) {
+	cert, ok := scheme.(CertificateScheme)
+	if !ok {
+		return nil, fmt.Errorf(
+			"scheme %s is not supported in X509: it has no object identifier",
+			scheme.Name(),
+		)
+	}
+	return cert.Oid(), nil
 }
 
 func SchemeByOid(oid asn1.ObjectIdentifier) sign.Scheme { return allSchemesByOID[oid.String()] }
@@ -199,12 +212,16 @@ func MarshalPKIXPublicKey(pk sign.PublicKey) ([]byte, error) {
 	}
 
 	scheme := pk.Scheme()
+	oid, err := schemeOid(scheme)
+	if err != nil {
+		return nil, err
+	}
 	return asn1.Marshal(struct {
 		pkix.AlgorithmIdentifier
 		asn1.BitString
 	}{
 		pkix.AlgorithmIdentifier{
-			Algorithm: scheme.(CertificateScheme).Oid(),
+			Algorithm: oid,
 		},
 		asn1.BitString{
 			Bytes:     data,
@@ -232,10 +249,18 @@ func MarshalPKIXPrivateKey(sk sign.PrivateKey) ([]byte, error) {
 		err  error
 	)
 	scheme := sk.Scheme()
+	oid, err := schemeOid(scheme)
+	if err != nil {
+		return nil, err
+	}
 
 	// ML-DSA is special. See comment in UnmarshalPKIXPrivateKey().
 	if isMLDSA(scheme) {
-		seed := sk.(sign.Seeded).Seed()
+		seeded, ok := sk.(sign.Seeded)
+		if !ok {
+			return nil, errors.New("ML-DSA private key does not carry a seed")
+		}
+		seed := seeded.Seed()
 		if seed == nil {
 			return nil, errors.New("seed not retained in ML-DSA private key")
 		}
@@ -262,7 +287,7 @@ func MarshalPKIXPrivateKey(sk sign.PrivateKey) ([]byte, error) {
 	return asn1.Marshal(pkixPrivKey{
 		0,
 		pkix.AlgorithmIdentifier{
-			Algorithm: scheme.(CertificateScheme).Oid(),
+			Algorithm: oid,
 		},
 		data,
 	})
