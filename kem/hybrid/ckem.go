@@ -134,8 +134,9 @@ func (sch cScheme) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 	h := xof.SHAKE256.New()
 	_, _ = h.Write(seed)
 
-	// crypto/ecdh's GenerateKey may read an extra byte from the reader
-	// (randutil.MaybeReadByte), so the scalar is sampled here instead.
+	// crypto/ecdh's GenerateKey reads an extra byte from the reader on
+	// purpose (randutil.MaybeReadByte), to defeat exactly this kind of
+	// deterministic derivation, so the scalar is sampled here instead.
 	bitmask := byte(0xFF)
 	if sch.curve == ecdh.P521() {
 		// The scalar is 521 bits carried in 66 bytes.
