@@ -125,22 +125,38 @@ func (sch cScheme) GenerateKeyPair() (kem.PublicKey, kem.PrivateKey, error) {
 	return pk, sk, nil
 }
 
+// DeriveKeyPair deterministically derives a key pair from seed.
+// Panics if seed is not of length SeedSize().
 func (sch cScheme) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 	if len(seed) != sch.SeedSize() {
 		panic(kem.ErrSeedSize)
 	}
 	h := xof.SHAKE256.New()
 	_, _ = h.Write(seed)
-	privKey, err := sch.curve.GenerateKey(h)
-	if err != nil {
-		panic(err)
+
+	// crypto/ecdh's GenerateKey reads an extra byte from the reader on
+	// purpose (randutil.MaybeReadByte), to defeat exactly this kind of
+	// deterministic derivation, so the scalar is sampled here instead.
+	bitmask := byte(0xFF)
+	if sch.curve == ecdh.P521() {
+		// The scalar is 521 bits carried in 66 bytes.
+		bitmask = 0x01
 	}
-	pubKey := privKey.PublicKey()
+	candidate := make([]byte, sch.PrivateKeySize())
+	for ctr := 0; ctr < 256; ctr++ {
+		_, _ = h.Read(candidate)
+		candidate[0] &= bitmask
+		privKey, err := sch.curve.NewPrivateKey(candidate)
+		if err != nil {
+			// Out of range or zero; draw the next candidate.
+			continue
+		}
+		sk := cPrivateKey{scheme: sch, key: privKey}
+		pk := cPublicKey{scheme: sch, key: privKey.PublicKey()}
+		return &pk, &sk
+	}
 
-	sk := cPrivateKey{scheme: sch, key: privKey}
-	pk := cPublicKey{scheme: sch, key: pubKey}
-
-	return &pk, &sk
+	panic("hybrid: cannot derive a key pair from this seed")
 }
 
 func (sch cScheme) Encapsulate(pk kem.PublicKey) (ct, ss []byte, err error) {
