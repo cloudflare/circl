@@ -3,6 +3,7 @@ package tkn
 import (
 	"encoding/binary"
 	"fmt"
+	"math"
 
 	pairing "github.com/cloudflare/circl/ecc/bls12381"
 )
@@ -74,6 +75,9 @@ func (a *Attribute) Equal(b *Attribute) bool {
 type Attributes map[string]Attribute
 
 func (a *Attributes) marshalBinary() ([]byte, error) {
+	if len(*a) > math.MaxUint16 {
+		return nil, fmt.Errorf("too many attributes (overflow)")
+	}
 	ret := make([]byte, 2)
 	binary.LittleEndian.PutUint16(ret[0:], uint16(len(*a)))
 
@@ -134,6 +138,9 @@ func (w *Wire) MarshalBinary() ([]byte, error) {
 	intBytes, err := w.Value.MarshalBinary()
 	if err != nil {
 		return nil, err
+	}
+	if len(strBytes) > math.MaxUint16 || len(valBytes) > math.MaxUint16 || len(intBytes) > math.MaxUint16 {
+		return nil, fmt.Errorf("data too long")
 	}
 	totalLen := len(strBytes) + len(valBytes) + len(intBytes) + 2 + 2 + 2 + 1
 	ret := make([]byte, totalLen)
@@ -211,14 +218,23 @@ func (p *Policy) MarshalBinary() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(fBytes) > math.MaxUint16 {
+		return nil, fmt.Errorf("data too long")
+	}
 	binary.LittleEndian.PutUint16(ret[0:2], uint16(len(fBytes)))
 	ret = append(ret, fBytes...)
+	if len(p.Inputs) > math.MaxUint16 {
+		return nil, fmt.Errorf("too many wires")
+	}
 	ret = append(ret, 0, 0)
 	binary.LittleEndian.PutUint16(ret[len(ret)-2:], uint16(len(p.Inputs)))
 	for i := 0; i < len(p.Inputs); i++ {
 		input, err := p.Inputs[i].MarshalBinary()
 		if err != nil {
 			return nil, err
+		}
+		if len(input) > math.MaxUint16 {
+			return nil, fmt.Errorf("data too long")
 		}
 		ret = append(ret, 0, 0)
 		binary.LittleEndian.PutUint16(ret[len(ret)-2:], uint16(len(input)))
