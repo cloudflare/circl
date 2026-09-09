@@ -1,0 +1,43 @@
+abe/cpabe/tkn20/internal/tkn/tk.go
+  s_ab804085c696e4::t_0bd45a339e6cf3 790
+dh/sidh/internal/common/utils.go
+  s_ab804085c696e4::t_8fb53fd4074794 10
+ecc/bls12381/ff/cyclo6.go
+  s_ab804085c696e4::t_9dcf7944aaca49 6-7,81,110
+ecc/bls12381/ff/cyclo6_test.go
+  s_ab804085c696e4::t_bd63cd33680764 106
+ecc/bls12381/ff/fp6.go
+  s_ab804085c696e4::t_583d0ed2673cb4 18,20
+ecc/bls12381/ff/uroot.go
+  s_ab804085c696e4::t_a2a91182444061 10,12,14
+ecc/bls12381/g1_test.go
+  s_ab804085c696e4::t_14b477ddbd3f50 267-272
+ecc/bls12381/g2_test.go
+  s_ab804085c696e4::t_ed9c5b0cb0e0ab 231-236
+ecc/p384/point.go
+  s_ab804085c696e4::t_c47beb275f2d76 232
+hpke/vectors_test.go
+  s_ab804085c696e4::t_04ad751e95b3aa 49-50
+internal/sha3/sha3_test.go
+  s_ab804085c696e4::t_f35a99d711acd5 234
+kem/xwing/scheme.go
+  s_ab804085c696e4::t_57914975745f06 96
+pke/kyber/internal/common/poly.go
+  s_ab804085c696e4::t_6ec4a5267e475a 162,188,190-191,193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2df6623b3e8a22196574f435e65b1a721ada587b",
+  "prompts": {},
+  "sessions": {
+    "s_ab804085c696e4": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f7a028259ffexe8yz2o3SItvAf",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Bas Westerbaan <bas@cloudflare.com>"
+    }
+  }
+}
