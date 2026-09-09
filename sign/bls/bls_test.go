@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/cloudflare/circl/ecc/bls12381"
 	"github.com/cloudflare/circl/internal/test"
 	"github.com/cloudflare/circl/sign/bls"
 )
@@ -25,6 +26,49 @@ func TestBls(t *testing.T) {
 	t.Run("G2/DuplicatedMsg", testDuplicatedMsgs[bls.G2])
 	t.Run("G1/NonCanonical", testNonCanonical[bls.G1])
 	t.Run("G2/NonCanonical", testNonCanonical[bls.G2])
+	t.Run("G1/CompressedOnly", testCompressedOnly[bls.G1])
+	t.Run("G2/CompressedOnly", testCompressedOnly[bls.G2])
+}
+
+func testCompressedOnly[K bls.KeyGroup](t *testing.T) {
+	ikm := [32]byte{}
+	priv, err := bls.KeyGen[K](ikm[:], nil, nil)
+	test.CheckNoErr(t, err, "failed to keygen")
+	pub := priv.PublicKey()
+	msg := []byte("hello world")
+	sig := bls.Sign(priv, msg)
+	pubBytes, err := pub.MarshalBinary()
+	test.CheckNoErr(t, err, "failed to marshal public key")
+
+	var uncompressedPub, uncompressedSig []byte
+	switch any(*new(K)).(type) {
+	case bls.G1:
+		var pubPoint bls12381.G1
+		test.CheckNoErr(t, pubPoint.SetBytes(pubBytes), "failed to decode public key")
+		uncompressedPub = pubPoint.Bytes()
+
+		var sigPoint bls12381.G2
+		test.CheckNoErr(t, sigPoint.SetBytes(sig), "failed to decode signature")
+		uncompressedSig = sigPoint.Bytes()
+	case bls.G2:
+		var pubPoint bls12381.G2
+		test.CheckNoErr(t, pubPoint.SetBytes(pubBytes), "failed to decode public key")
+		uncompressedPub = pubPoint.Bytes()
+
+		var sigPoint bls12381.G1
+		test.CheckNoErr(t, sigPoint.SetBytes(sig), "failed to decode signature")
+		uncompressedSig = sigPoint.Bytes()
+	}
+
+	decodedPub := new(bls.PublicKey[K])
+	test.CheckIsErr(t, decodedPub.UnmarshalBinary(uncompressedPub),
+		"should reject uncompressed public key")
+	test.CheckOk(!bls.Verify(pub, msg, uncompressedSig),
+		"should reject uncompressed signature", t)
+	_, err = bls.Aggregate(*new(K), []bls.Signature{uncompressedSig})
+	test.CheckIsErr(t, err, "should not aggregate uncompressed signature")
+	test.CheckOk(!bls.VerifyAggregate([]*bls.PublicKey[K]{pub}, [][]byte{msg}, uncompressedSig),
+		"should reject uncompressed aggregate signature", t)
 }
 
 func testNonCanonical[K bls.KeyGroup](t *testing.T) {

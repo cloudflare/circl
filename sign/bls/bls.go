@@ -66,6 +66,10 @@ type (
 )
 
 func (f *G1) setBytes(b []byte) error {
+	if len(b) == 0 || b[0]&0xC0 != 0x80 {
+		return ErrInvalidSig
+	}
+
 	err := f.g.SetBytes(b)
 	if err != nil {
 		return err
@@ -79,6 +83,10 @@ func (f *G1) setBytes(b []byte) error {
 }
 
 func (f *G2) setBytes(b []byte) error {
+	if len(b) == 0 || b[0]&0xC0 != 0x80 {
+		return ErrInvalidSig
+	}
+
 	err := f.g.SetBytes(b)
 	if err != nil {
 		return err
@@ -429,10 +437,11 @@ func VerifyAggregate[K KeyGroup](pubs []*PublicKey[K], msgs [][]byte, aggSig Sig
 			listSigns[i] = 1
 		}
 
-		err := listG2[n].SetBytes(aggSig)
-		if err != nil || listG2[n].IsIdentity() {
+		var sig G2
+		if err := sig.setBytes(aggSig); err != nil {
 			return false
 		}
+		listG2[n] = &sig.g
 
 	case []*PublicKey[G2]:
 		for i := range msgs {
@@ -444,10 +453,11 @@ func VerifyAggregate[K KeyGroup](pubs []*PublicKey[K], msgs [][]byte, aggSig Sig
 			listSigns[i] = 1
 		}
 
-		err := listG1[n].SetBytes(aggSig)
-		if err != nil || listG1[n].IsIdentity() {
+		var sig G1
+		if err := sig.setBytes(aggSig); err != nil {
 			return false
 		}
+		listG1[n] = &sig.g
 
 	default:
 		panic(ErrInvalid)
