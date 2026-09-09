@@ -159,7 +159,7 @@ func (p *Poly) CompressMessageTo(m []byte) {
 			// Note (x >> 15)ˣ if x≥0 and -x-1 otherwise. Thus now we want
 			// to return 1 iff x ≤ 831, ie. x - 832 < 0.
 			x -= 832
-			m[i] |= ((byte(x >> 15)) & 1) << uint(j)
+			m[i] |= (byte(x>>15) & 1) << uint(j)
 		}
 	}
 }
@@ -185,12 +185,12 @@ func (p *Poly) Decompress(m []byte, d int) {
 		idx := 0
 		for i := 0; i < N/8; i++ {
 			t[0] = uint16(m[idx])
-			t[1] = (uint16(m[idx]) >> 5) | (uint16(m[idx+1] << 3))
+			t[1] = (uint16(m[idx]) >> 5) | uint16(m[idx+1]<<3)
 			t[2] = uint16(m[idx+1]) >> 2
-			t[3] = (uint16(m[idx+1]) >> 7) | (uint16(m[idx+2] << 1))
-			t[4] = (uint16(m[idx+2]) >> 4) | (uint16(m[idx+3] << 4))
+			t[3] = (uint16(m[idx+1]) >> 7) | uint16(m[idx+2]<<1)
+			t[4] = (uint16(m[idx+2]) >> 4) | uint16(m[idx+3]<<4)
 			t[5] = uint16(m[idx+3]) >> 1
-			t[6] = (uint16(m[idx+3]) >> 6) | (uint16(m[idx+4] << 2))
+			t[6] = (uint16(m[idx+3]) >> 6) | uint16(m[idx+4]<<2)
 			t[7] = uint16(m[idx+4]) >> 3
 
 			for j := 0; j < 8; j++ {
