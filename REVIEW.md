@@ -6,7 +6,7 @@ for rationale.
 ## CI must be green
 
 - [ ] `go build ./...` and `go test -count=1 ./...` pass on amd64 for Go
-      1.25 and 1.26.
+      1.26 and 1.27.
 - [ ] `golangci-lint run` is clean (config: `.golangci.yaml`).
 - [ ] `go vet ./...` and `go vet -vettool=shadow ./...` are clean.
 - [ ] `go generate -v ./...` leaves the working tree unchanged.
