@@ -1,0 +1,19 @@
+go.sum
+  s_ab804085c696e4::t_67401ecb55a29c 3-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "347a0e1ff08e446e067ae7ad1302a96bd46e5d47",
+  "prompts": {},
+  "sessions": {
+    "s_ab804085c696e4": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f7a028259ffexe8yz2o3SItvAf",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Bas Westerbaan <bas@cloudflare.com>"
+    }
+  }
+}
