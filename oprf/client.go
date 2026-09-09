@@ -2,6 +2,7 @@ package oprf
 
 import (
 	"crypto/rand"
+	"math"
 
 	"github.com/cloudflare/circl/group"
 	"github.com/cloudflare/circl/zk/dleq"
@@ -51,6 +52,12 @@ func (c client) blind(inputs [][]byte, blinds []Blind) (*FinalizeData, *Evaluati
 	blindedElements := make([]Blinded, len(inputs))
 	dst := c.params.getDST(hashToGroupDST)
 	for i := range inputs {
+		// finalizeHash frames the input with I2OSP(len(input), 2), so an input
+		// of 2^16 bytes or more silently wraps the length prefix. Reject it, as
+		// scalarFromInfo already does for info.
+		if len(inputs[i]) > math.MaxUint16 {
+			return nil, nil, ErrInvalidInput
+		}
 		blind := blinds[i]
 		if blind == nil || *blind.Group().Params() != *c.params.group.Params() || blind.IsZero() {
 			return nil, nil, ErrInvalidInput
