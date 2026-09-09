@@ -27,7 +27,8 @@ jobs:
           version: v2.12.2
       - name: Check shadowing
         run: |
-         go install golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow@latest
+         # Pin x/tools to a version compatible with the oldest Go version in the CI matrix.
+         go install golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow@v0.49.0
          go vet -vettool=$(which shadow) ./... 2>&1 | awk -f .etc/action.awk
         shell: bash
       - name: Verifying Code
