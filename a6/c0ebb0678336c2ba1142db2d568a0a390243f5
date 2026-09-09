@@ -1,0 +1,19 @@
+sign/bls/bls_test.go
+  s_dd6a8fbcef4eff::t_8dc0d0ed48cbe7 11,29-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "a6c0ebb0678336c2ba1142db2d568a0a390243f5",
+  "prompts": {},
+  "sessions": {
+    "s_dd6a8fbcef4eff": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f7f128580ffexLfu50yCOIq6xC",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Bas Westerbaan <bas@cloudflare.com>"
+    }
+  }
+}
