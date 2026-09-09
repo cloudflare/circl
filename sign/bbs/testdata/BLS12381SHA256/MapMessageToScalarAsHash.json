@@ -1,0 +1,46 @@
+{
+  "caseName": "MapMessageToScalar fixture",
+  "dst": "4242535f424c53313233383147315f584d443a5348412d3235365f535357555f524f5f4832475f484d32535f4d41505f4d53475f544f5f5343414c41525f41535f484153485f",
+  "cases": [
+    {
+      "message": "9872ad089e452c7b6e283dfac2a80d58e8d0ff71cc4d5e310a1debdda4a45f02",
+      "scalar": "1cb5bb86114b34dc438a911617655a1db595abafac92f47c5001799cf624b430"
+    },
+    {
+      "message": "c344136d9ab02da4dd5908bbba913ae6f58c2cc844b802a6f811f5fb075f9b80",
+      "scalar": "154249d503c093ac2df516d4bb88b510d54fd97e8d7121aede420a25d9521952"
+    },
+    {
+      "message": "7372e9daa5ed31e6cd5c825eac1b855e84476a1d94932aa348e07b73",
+      "scalar": "0c7c4c85cdab32e6fdb0de267b16fa3212733d4e3a3f0d0f751657578b26fe22"
+    },
+    {
+      "message": "77fe97eb97a1ebe2e81e4e3597a3ee740a66e9ef2412472c",
+      "scalar": "4a196deafee5c23f630156ae13be3e46e53b7e39094d22877b8cba7f14640888"
+    },
+    {
+      "message": "496694774c5604ab1b2544eababcf0f53278ff50",
+      "scalar": "34c5ea4f2ba49117015a02c711bb173c11b06b3f1571b88a2952b93d0ed4cf7e"
+    },
+    {
+      "message": "515ae153e22aae04ad16f759e07237b4",
+      "scalar": "4045b39b83055cd57a4d0203e1660800fabe434004dbdc8730c21ce3f0048b08"
+    },
+    {
+      "message": "d183ddc6e2665aa4e2f088af",
+      "scalar": "064621da4377b6b1d05ecc37cf3b9dfc94b9498d7013dc5c4a82bf3bb1750743"
+    },
+    {
+      "message": "ac55fb33a75909ed",
+      "scalar": "34ac9196ace0a37e147e32319ea9b3d8cc7d21870d3c3ba071246859cca49b02"
+    },
+    {
+      "message": "96012096",
+      "scalar": "57eb93f417c43200e9784fa5ea5a59168d3dbc38df707a13bb597c871b2a5f74"
+    },
+    {
+      "message": "",
+      "scalar": "08e3afeb2b4f2b5f907924ef42856616e6f2d5f1fb373736db1cca32707a7d16"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "caseName": "valid single message signature",
+  "signerKeyPair": {
+    "secretKey": "60e55110f76883a13d030b2f6bd11883422d5abde717569fc0731f51237169fc",
+    "publicKey": "a820f230f6ae38503b86c70dc50b61c58a77e45c39ab25c0652bbaa8fa136f2851bd4781c9dcde39fc9d1d52c9e60268061e7d7632171d91aa8d460acee0e96f1e7c4cfb12d3ff9ab5d5dc91c277db75c845d649ef3c4f63aebc364cd55ded0c"
+  },
+  "header": "11223344556677889900aabbccddeeff",
+  "messages": [
+    "9872ad089e452c7b6e283dfac2a80d58e8d0ff71cc4d5e310a1debdda4a45f02"
+  ],
+  "signature": "84773160b824e194073a57493dac1a20b667af70cd2352d8af241c77658da5253aa8458317cca0eae615690d55b1f27164657dcafee1d5c1973947aa70e2cfbb4c892340be5969920d0916067b4565a0",
+  "result": {
+    "valid": true
+  },
+  "trace": {
+    "B": "92d264aed02bf23de022ebe778c4f929fddf829f504e451d011ed89a313b8167ac947332e1648157ceffc6e6e41ab255",
+    "domain": "25d57fab92a8274c68fde5c3f16d4b275e4a156f211ae34b3ab32fbaf506ed5c"
+  }
+}
