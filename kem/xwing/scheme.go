@@ -93,7 +93,7 @@ func (sk *PrivateKey) Equal(other kem.PrivateKey) bool {
 
 func (sk *PrivateKey) Public() kem.PublicKey {
 	var pk PublicKey
-	pk.m = *(sk.m.Public().(*mlkem768.PublicKey))
+	pk.m = *sk.m.Public().(*mlkem768.PublicKey)
 	pk.x = sk.xpk
 	return &pk
 }

@@ -103,7 +103,7 @@ func TestCyclo6(t *testing.T) {
 			x := randomCyclo6(t)
 
 			y.Inv(x)
-			got = (Fp12)(y)
+			got = Fp12(y)
 			want.Inv((*Fp12)(x))
 
 			if got.IsEqual(&want) == 0 {
