@@ -52,12 +52,6 @@ func (c client) blind(inputs [][]byte, blinds []Blind) (*FinalizeData, *Evaluati
 	blindedElements := make([]Blinded, len(inputs))
 	dst := c.params.getDST(hashToGroupDST)
 	for i := range inputs {
-		// finalizeHash frames the input with I2OSP(len(input), 2), so an input
-		// of 2^16 bytes or more silently wraps the length prefix. Reject it, as
-		// scalarFromInfo already does for info.
-		if len(inputs[i]) > math.MaxUint16 {
-			return nil, nil, ErrInvalidInput
-		}
 		blind := blinds[i]
 		if blind == nil || *blind.Group().Params() != *c.params.group.Params() || blind.IsZero() {
 			return nil, nil, ErrInvalidInput
@@ -107,6 +101,12 @@ func (c client) validate(f *FinalizeData, e *Evaluation) (err error) {
 
 	wantGroup := *c.params.group.Params()
 	for i := range l {
+		// finalizeHash frames the input with I2OSP(len(input), 2), so an input
+		// of 2^16 bytes or more silently wraps the length prefix. Reject it, as
+		// scalarFromInfo already does for info.
+		if len(f.inputs[i]) > math.MaxUint16 {
+			return ErrInvalidInput
+		}
 		blind := f.blinds[i]
 		blinded := f.evalReq.Elements[i]
 		evaluated := e.Elements[i]

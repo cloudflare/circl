@@ -288,13 +288,21 @@ func TestRejectsOversizedInput(t *testing.T) {
 	oversized := make([]byte, math.MaxUint16+1)
 	maxSized := make([]byte, math.MaxUint16)
 
-	t.Run("blind", func(t *testing.T) {
+	t.Run("finalize", func(t *testing.T) {
 		client := NewClient(SuiteP256)
-		if _, _, err := client.Blind([][]byte{oversized}); err != ErrInvalidInput {
+		server := NewServer(SuiteP256, key)
+		finalize := func(input []byte) error {
+			finData, evalReq, err := client.Blind([][]byte{input})
+			test.CheckNoErr(t, err, "blind failed")
+			evaluation, err := server.Evaluate(evalReq)
+			test.CheckNoErr(t, err, "evaluate failed")
+			_, err = client.Finalize(finData, evaluation)
+			return err
+		}
+		if err := finalize(oversized); err != ErrInvalidInput {
 			t.Fatalf("got %v, want %v", err, ErrInvalidInput)
 		}
-		_, _, err := client.Blind([][]byte{maxSized})
-		test.CheckNoErr(t, err, "max-length input must be accepted")
+		test.CheckNoErr(t, finalize(maxSized), "max-length input must be accepted")
 	})
 
 	t.Run("fullEvaluate", func(t *testing.T) {
