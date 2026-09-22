@@ -595,6 +595,4 @@ func TestEncryptWrapsAroundWithLongValues(t *testing.T) {
 	if string(pt) != string(msg) {
 		t.Fatalf("Decryption succeeded, but %q != %q", pt, msg)
 	}
-	// Failsafe
-	t.Fatalf("Failed to encrypt message: %v", err)
 }

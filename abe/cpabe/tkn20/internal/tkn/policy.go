@@ -1,11 +1,10 @@
 package tkn
 
 import (
-	"encoding/binary"
 	"fmt"
-	"math"
 
 	pairing "github.com/cloudflare/circl/ecc/bls12381"
+	"golang.org/x/crypto/cryptobyte"
 )
 
 const (
@@ -75,29 +74,28 @@ func (a *Attribute) Equal(b *Attribute) bool {
 type Attributes map[string]Attribute
 
 func (a *Attributes) marshalBinary() ([]byte, error) {
-	if len(*a) > math.MaxUint16 {
-		return nil, fmt.Errorf("too many attributes (overflow)")
-	}
-	ret := make([]byte, 2)
-	binary.LittleEndian.PutUint16(ret[0:], uint16(len(*a)))
-
 	aBytes, err := marshalBinarySortedMapAttribute(*a)
 	if err != nil {
 		return nil, fmt.Errorf("marshalling Attributes failed: %w", err)
 	}
-	ret = append(ret, aBytes...)
-
-	return ret, nil
+	b := cryptobyte.NewBuilder(nil)
+	if err = leUint16(len(*a)).Marshal(b); err != nil {
+		return nil, fmt.Errorf("too many attributes")
+	}
+	b.AddBytes(aBytes)
+	return b.Bytes()
 }
 
 func (a *Attributes) unmarshalBinary(data []byte) error {
-	if len(data) < 2 {
+	s := cryptobyte.String(data)
+	n16, ok := readLEUint16(&s)
+	if !ok {
 		return fmt.Errorf("unmarshalling Attributes failed: data too short")
 	}
-	n := int(binary.LittleEndian.Uint16(data))
-	data = data[2:]
+	n := int(n16)
+	data = s
 	*a = make(map[string]Attribute, n)
-	for i := 0; i < n; i++ {
+	for range n {
 		labelBytes, rem, err := removeLenPrefixed(data)
 		if err != nil {
 			return fmt.Errorf("unmarshalling Attributes failed: %w", err)
@@ -139,72 +137,48 @@ func (w *Wire) MarshalBinary() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(strBytes) > math.MaxUint16 || len(valBytes) > math.MaxUint16 || len(intBytes) > math.MaxUint16 {
-		return nil, fmt.Errorf("data too long")
-	}
-	totalLen := len(strBytes) + len(valBytes) + len(intBytes) + 2 + 2 + 2 + 1
-	ret := make([]byte, totalLen)
-	where := 0
-	binary.LittleEndian.PutUint16(ret[where:], uint16(len(strBytes)))
-	where += 2
-	where += copy(ret[where:], strBytes)
-	binary.LittleEndian.PutUint16(ret[where:], uint16(len(valBytes)))
-	where += 2
-	where += copy(ret[where:], valBytes)
-	binary.LittleEndian.PutUint16(ret[where:], uint16(len(intBytes)))
-	where += 2
-	where += copy(ret[where:], intBytes)
+	b := cryptobyte.NewBuilder(nil)
+	b.AddValue(lenPrefixed16(strBytes))
+	b.AddValue(lenPrefixed16(valBytes))
+	b.AddValue(lenPrefixed16(intBytes))
 	if w.Positive {
-		ret[where] = 1
+		b.AddUint8(1)
 	} else {
-		ret[where] = 0
+		b.AddUint8(0)
 	}
-	return ret, nil
+	return b.Bytes()
 }
 
 func (w *Wire) UnmarshalBinary(data []byte) error {
-	where := 0
-	if len(data) < 2 {
-		return fmt.Errorf("data not long enough")
-	}
-	strLen := int(binary.LittleEndian.Uint16(data[where:]))
-	where += 2
-	if len(data[where:]) < strLen {
-		return fmt.Errorf("data not long enough")
-	}
-	w.Label = string(data[where : where+strLen])
-	where += strLen
+	s := cryptobyte.String(data)
 
-	if len(data[where:]) < 2 {
+	strLen, ok := readLEUint16(&s)
+	var strBytes []byte
+	if !ok || !s.ReadBytes(&strBytes, int(strLen)) {
 		return fmt.Errorf("data not long enough")
 	}
-	valLen := int(binary.LittleEndian.Uint16(data[where:]))
-	where += 2
-	if len(data[where:]) < valLen {
-		return fmt.Errorf("data not long enough")
-	}
-	w.RawValue = string(data[where : where+valLen])
-	where += valLen
+	w.Label = string(strBytes)
 
-	if len(data[where:]) < 2 {
+	valLen, ok := readLEUint16(&s)
+	var valBytes []byte
+	if !ok || !s.ReadBytes(&valBytes, int(valLen)) {
 		return fmt.Errorf("data not long enough")
 	}
-	intLen := int(binary.LittleEndian.Uint16(data[where:]))
-	where += 2
-	if len(data[where:]) < intLen {
+	w.RawValue = string(valBytes)
+
+	intLen, ok := readLEUint16(&s)
+	var intBytes []byte
+	if !ok || !s.ReadBytes(&intBytes, int(intLen)) {
 		return fmt.Errorf("data not long enough")
 	}
 	w.Value = &pairing.Scalar{}
-	w.Value.SetBytes(data[where : where+intLen])
-	where += intLen
-	if len(data[where:]) < 1 {
+	w.Value.SetBytes(intBytes)
+
+	var positive uint8
+	if !s.ReadUint8(&positive) {
 		return fmt.Errorf("data not long enough")
 	}
-	if data[where] == 1 {
-		w.Positive = true
-	} else {
-		w.Positive = false
-	}
+	w.Positive = positive == 1
 	return nil
 }
 
@@ -213,75 +187,57 @@ func (w *Wire) Equal(w2 *Wire) bool {
 }
 
 func (p *Policy) MarshalBinary() ([]byte, error) {
-	ret := make([]byte, 2)
 	fBytes, err := p.F.MarshalBinary()
 	if err != nil {
 		return nil, err
 	}
-	if len(fBytes) > math.MaxUint16 {
-		return nil, fmt.Errorf("data too long")
-	}
-	binary.LittleEndian.PutUint16(ret[0:2], uint16(len(fBytes)))
-	ret = append(ret, fBytes...)
-	if len(p.Inputs) > math.MaxUint16 {
+	b := cryptobyte.NewBuilder(nil)
+	b.AddValue(lenPrefixed16(fBytes))
+	if err = leUint16(len(p.Inputs)).Marshal(b); err != nil {
 		return nil, fmt.Errorf("too many wires")
 	}
-	ret = append(ret, 0, 0)
-	binary.LittleEndian.PutUint16(ret[len(ret)-2:], uint16(len(p.Inputs)))
 	for i := 0; i < len(p.Inputs); i++ {
 		input, err := p.Inputs[i].MarshalBinary()
 		if err != nil {
 			return nil, err
 		}
-		if len(input) > math.MaxUint16 {
-			return nil, fmt.Errorf("data too long")
-		}
-		ret = append(ret, 0, 0)
-		binary.LittleEndian.PutUint16(ret[len(ret)-2:], uint16(len(input)))
-		ret = append(ret, input...)
+		b.AddValue(lenPrefixed16(input))
 	}
-	return ret, nil
+	return b.Bytes()
 }
 
 func (p *Policy) UnmarshalBinary(data []byte) error {
+	s := cryptobyte.String(data)
+
 	// Extract formula
-	if len(data) < 2 {
+	fLen, ok := readLEUint16(&s)
+	var fBytes []byte
+	if !ok || !s.ReadBytes(&fBytes, int(fLen)) {
 		return fmt.Errorf("data not long enough")
 	}
-	fLen := uint(binary.LittleEndian.Uint16(data))
-	data = data[2:]
-	if uint(len(data)) < fLen {
-		return fmt.Errorf("data not long enough")
-	}
-	err := p.F.UnmarshalBinary(data[:fLen])
-	if err != nil {
+	if err := p.F.UnmarshalBinary(fBytes); err != nil {
 		return err
 	}
-	data = data[fLen:]
+
 	// Extract wires
-	if len(data) < 2 {
+	nWires16, ok := readLEUint16(&s)
+	if !ok {
 		return fmt.Errorf("data not long enough")
 	}
-	nWires := int(binary.LittleEndian.Uint16(data))
+	nWires := int(nWires16)
 	if nWires != len(p.F.Gates)+1 {
 		return fmt.Errorf("invalid policy: %d wires declared, but a formula with %d gates requires exactly %d input wires", nWires, len(p.F.Gates), len(p.F.Gates)+1)
 	}
-	data = data[2:]
 	p.Inputs = make([]Wire, nWires)
-	for i := 0; i < nWires; i++ {
-		if len(data) < 2 {
+	for i := range nWires {
+		wireLen, ok := readLEUint16(&s)
+		var wireBytes []byte
+		if !ok || !s.ReadBytes(&wireBytes, int(wireLen)) {
 			return fmt.Errorf("data not long enough")
 		}
-		wireLen := uint(binary.LittleEndian.Uint16(data))
-		data = data[2:]
-		if uint(len(data)) < wireLen {
+		if err := p.Inputs[i].UnmarshalBinary(wireBytes); err != nil {
 			return fmt.Errorf("data not long enough")
 		}
-		err = p.Inputs[i].UnmarshalBinary(data[:wireLen])
-		if err != nil {
-			return fmt.Errorf("data not long enough")
-		}
-		data = data[wireLen:]
 	}
 	return nil
 }

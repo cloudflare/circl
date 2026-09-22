@@ -9,6 +9,7 @@ import (
 
 	pairing "github.com/cloudflare/circl/ecc/bls12381"
 	"golang.org/x/crypto/blake2b"
+	"golang.org/x/crypto/cryptobyte"
 )
 
 var gtBaseVal *pairing.Gt
@@ -43,25 +44,93 @@ func HashStringToScalar(key []byte, value string) *pairing.Scalar {
 	return s
 }
 
-func appendLen16Prefixed(a []byte, b []byte) ([]byte, error) {
-	if len(b) > math.MaxUint16 {
-		return nil, fmt.Errorf("data too large (overflow)")
+// The tkn20 on-the-wire format uses little-endian length prefixes, but
+// cryptobyte works in big-endian
+//
+// leUint16/leUint32 use cryptobyte.Builder as a bounds-checker but write the
+// little-endian "by hand" and centralize the over/underflow check
+type leUint16 int
+
+func (v leUint16) Marshal(b *cryptobyte.Builder) error {
+	if v < 0 || v > math.MaxUint16 {
+		return fmt.Errorf("data too long")
 	}
-	a = append(a, 0, 0)
-	binary.LittleEndian.PutUint16(a[len(a)-2:], uint16(len(b)))
-	a = append(a, b...)
-	return a, nil
+	var buf [2]byte
+	binary.LittleEndian.PutUint16(buf[:], uint16(v))
+	b.AddBytes(buf[:])
+	return nil
 }
 
+type leUint32 int
+
+func (v leUint32) Marshal(b *cryptobyte.Builder) error {
+	if v < 0 || v > math.MaxUint32 {
+		return fmt.Errorf("data too long")
+	}
+	var buf [4]byte
+	binary.LittleEndian.PutUint32(buf[:], uint32(v))
+	b.AddBytes(buf[:])
+	return nil
+}
+
+type lenPrefixed16 []byte
+
+func (v lenPrefixed16) Marshal(b *cryptobyte.Builder) error {
+	if err := leUint16(len(v)).Marshal(b); err != nil {
+		return err
+	}
+	b.AddBytes(v)
+	return nil
+}
+
+type lenPrefixed32 []byte
+
+func (v lenPrefixed32) Marshal(b *cryptobyte.Builder) error {
+	if err := leUint32(len(v)).Marshal(b); err != nil {
+		return err
+	}
+	b.AddBytes(v)
+	return nil
+}
+
+// readLEUint16 and readLEUint32 read a little-endian length field which is
+// bounds-checked by cryptobyte.String
+func readLEUint16(s *cryptobyte.String) (uint16, bool) {
+	var raw []byte
+	if !s.ReadBytes(&raw, 2) {
+		return 0, false
+	}
+	return binary.LittleEndian.Uint16(raw), true
+}
+
+func readLEUint32(s *cryptobyte.String) (uint32, bool) {
+	var raw []byte
+	if !s.ReadBytes(&raw, 4) {
+		return 0, false
+	}
+	return binary.LittleEndian.Uint32(raw), true
+}
+
+func appendLen16Prefixed(a []byte, b []byte) ([]byte, error) {
+	bld := cryptobyte.NewBuilder(a)
+	bld.AddValue(lenPrefixed16(b))
+	return bld.Bytes()
+}
+
+// removeLen16Prefixed reads a little-endian uint16 length prefix from data
+// via cryptobyte.String (ReadBytes rejects both short input and a negative
+// length)
 func removeLen16Prefixed(data []byte) (next []byte, remainder []byte, err error) {
-	if len(data) < 2 {
+	s := cryptobyte.String(data)
+	n, ok := readLEUint16(&s)
+	if !ok {
 		return nil, nil, fmt.Errorf("data too short")
 	}
-	itemLen := int(binary.LittleEndian.Uint16(data))
-	if (2 + itemLen) > len(data) {
+	var item []byte
+	if !s.ReadBytes(&item, int(n)) {
 		return nil, nil, fmt.Errorf("data too short")
 	}
-	return data[2 : 2+itemLen], data[2+itemLen:], nil
+	return item, s, nil
 }
 
 var (
@@ -70,27 +139,22 @@ var (
 )
 
 func appendLen32Prefixed(a []byte, b []byte) ([]byte, error) {
-	if len(b) > math.MaxUint32 {
-		return nil, fmt.Errorf("data too large (overflow)")
-	}
-	a = append(a, 0, 0, 0, 0)
-	binary.LittleEndian.PutUint32(a[len(a)-4:], uint32(len(b)))
-	a = append(a, b...)
-	return a, nil
+	bld := cryptobyte.NewBuilder(a)
+	bld.AddValue(lenPrefixed32(b))
+	return bld.Bytes()
 }
 
 func removeLen32Prefixed(data []byte) (next []byte, remainder []byte, err error) {
-	if len(data) < 4 {
+	s := cryptobyte.String(data)
+	n, ok := readLEUint32(&s)
+	if !ok {
 		return nil, nil, fmt.Errorf("data too short")
 	}
-	itemLen := int(binary.LittleEndian.Uint32(data))
-	if itemLen < 0 {
-		return nil, nil, fmt.Errorf("negative data length: possible overflow")
-	}
-	if (4 + itemLen) > len(data) {
+	var item []byte
+	if !s.ReadBytes(&item, int(n)) {
 		return nil, nil, fmt.Errorf("data too short")
 	}
-	return data[4 : 4+itemLen], data[4+itemLen:], nil
+	return item, s, nil
 }
 
 func marshalBinarySortedMapMatrixG1(m map[string]*matrixG1) ([]byte, error) {
