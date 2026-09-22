@@ -1,10 +1,10 @@
 package tkn
 
 import (
-	"encoding/binary"
 	"fmt"
 	"io"
-	"math"
+
+	"golang.org/x/crypto/cryptobyte"
 )
 
 const (
@@ -61,40 +61,44 @@ func (g Gate) Equal(g2 Gate) bool {
 
 func (f *Formula) MarshalBinary() ([]byte, error) {
 	n := len(f.Gates)
-	if n > math.MaxUint16 {
-		return nil, fmt.Errorf("too many gates")
+	b := cryptobyte.NewBuilder(nil)
+	b.AddValue(leUint16(n))
+	for _, gate := range f.Gates {
+		b.AddUint8(byte(gate.Class))
+		b.AddValue(leUint16(gate.In0))
+		b.AddValue(leUint16(gate.In1))
+		b.AddValue(leUint16(gate.Out))
 	}
-	ret := make([]byte, 2+7*n)
-	binary.LittleEndian.PutUint16(ret, uint16(len(f.Gates)))
-	for i, gate := range f.Gates {
-		if gate.In0 < 0 || gate.In0 > math.MaxUint16 ||
-			gate.In1 < 0 || gate.In1 > math.MaxUint16 ||
-			gate.Out < 0 || gate.Out > math.MaxUint16 {
-			return nil, fmt.Errorf("wire index out of range")
-		}
-
-		ret[7*i+2] = byte(gate.Class)
-		binary.LittleEndian.PutUint16(ret[7*i+2+1:], uint16(gate.In0))
-		binary.LittleEndian.PutUint16(ret[7*i+2+3:], uint16(gate.In1))
-		binary.LittleEndian.PutUint16(ret[7*i+2+5:], uint16(gate.Out))
+	ret, err := b.Bytes()
+	if err != nil {
+		return nil, err
 	}
 	return ret, nil
 }
 
 func (f *Formula) UnmarshalBinary(data []byte) error {
-	if len(data) < 2 {
+	s := cryptobyte.String(data)
+	n16, ok := readLEUint16(&s)
+	if !ok {
 		return fmt.Errorf("too short data")
 	}
-	n := int(binary.LittleEndian.Uint16(data[0:2]))
-	if len(data) < 2+7*n {
-		return fmt.Errorf("too short data")
-	}
+	n := int(n16)
 	f.Gates = make([]Gate, n)
-	for i := 0; i < n; i++ {
-		f.Gates[i].Class = int(data[7*i+2])
-		f.Gates[i].In0 = int(binary.LittleEndian.Uint16(data[7*i+2+1:]))
-		f.Gates[i].In1 = int(binary.LittleEndian.Uint16(data[7*i+2+3:]))
-		f.Gates[i].Out = int(binary.LittleEndian.Uint16(data[7*i+2+5:]))
+	for i := range n {
+		var class uint8
+		if !s.ReadUint8(&class) {
+			return fmt.Errorf("too short data")
+		}
+		in0, ok0 := readLEUint16(&s)
+		in1, ok1 := readLEUint16(&s)
+		out, ok2 := readLEUint16(&s)
+		if !ok0 || !ok1 || !ok2 {
+			return fmt.Errorf("too short data")
+		}
+		f.Gates[i].Class = int(class)
+		f.Gates[i].In0 = int(in0)
+		f.Gates[i].In1 = int(in1)
+		f.Gates[i].Out = int(out)
 	}
 	// Reject malformed or cyclic gate graphs coming from untrusted encodings.
 	check := Formula{Gates: append([]Gate(nil), f.Gates...)}
