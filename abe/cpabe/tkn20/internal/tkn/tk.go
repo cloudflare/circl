@@ -4,12 +4,11 @@ package tkn
 
 import (
 	"crypto/subtle"
-	"encoding/binary"
 	"fmt"
 	"io"
-	"math"
 
 	pairing "github.com/cloudflare/circl/ecc/bls12381"
+	"golang.org/x/crypto/cryptobyte"
 )
 
 type PublicParams struct {
@@ -234,29 +233,27 @@ func (a *AttributesKey) MarshalBinary() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("AttributesKey serializing failed: %w", err)
 	}
-	if len(a.k3) > math.MaxUint16 {
-		return nil, fmt.Errorf("AttributesKey serializing failed: too large (overflow)")
-	}
-	ret = append(ret, 0, 0)
-	binary.LittleEndian.PutUint16(ret[len(ret)-2:], uint16(len(a.k3)))
+
 	k3Bytes, err := marshalBinarySortedMapMatrixG1(a.k3)
 	if err != nil {
 		return nil, fmt.Errorf("AttributesKey serializing failed: %w", err)
 	}
-	ret = append(ret, k3Bytes...)
-
-	if len(a.k3wild) > math.MaxUint16 {
-		return nil, fmt.Errorf("AttributesKey serializing failed: too large (overflow)")
-	}
-	ret = append(ret, 0, 0)
-	binary.LittleEndian.PutUint16(ret[len(ret)-2:], uint16(len(a.k3wild)))
 	k3wildBytes, err := marshalBinarySortedMapMatrixG1(a.k3wild)
 	if err != nil {
 		return nil, fmt.Errorf("AttributesKey serializing failed: %w", err)
 	}
-	ret = append(ret, k3wildBytes...)
 
-	return ret, nil
+	b := cryptobyte.NewBuilder(ret)
+	if err = leUint16(len(a.k3)).Marshal(b); err != nil {
+		return nil, fmt.Errorf("AttributesKey serializing failed: too many entries")
+	}
+	b.AddBytes(k3Bytes)
+	if err = leUint16(len(a.k3wild)).Marshal(b); err != nil {
+		return nil, fmt.Errorf("AttributesKey serializing failed: too many entries")
+	}
+	b.AddBytes(k3wildBytes)
+
+	return b.Bytes()
 }
 
 func (a *AttributesKey) UnmarshalBinary(data []byte) error {
@@ -288,11 +285,13 @@ func (a *AttributesKey) UnmarshalBinary(data []byte) error {
 		return fmt.Errorf("AttributesKey deserialization failure: %w", err)
 	}
 
-	if len(data) < 2 {
+	s := cryptobyte.String(data)
+	n16, ok := readLEUint16(&s)
+	if !ok {
 		return fmt.Errorf("AttributesKey deserialization failure: data too short")
 	}
-	n := int(binary.LittleEndian.Uint16(data))
-	data = data[2:]
+	n := int(n16)
+	data = s
 	a.k3 = make(map[string]*matrixG1, n)
 	for i := 0; i < n; i++ {
 		sBytes, rem, err := removeLenPrefixed(data)
@@ -312,11 +311,13 @@ func (a *AttributesKey) UnmarshalBinary(data []byte) error {
 		data = rem
 	}
 
-	if len(data) < 2 {
+	s = cryptobyte.String(data)
+	n16, ok = readLEUint16(&s)
+	if !ok {
 		return fmt.Errorf("AttributesKey deserialization failure: data too short")
 	}
-	n = int(binary.LittleEndian.Uint16(data))
-	data = data[2:]
+	n = int(n16)
+	data = s
 	a.k3wild = make(map[string]*matrixG1, n)
 	for i := 0; i < n; i++ {
 		sBytes, rem, err := removeLenPrefixed(data)
@@ -376,7 +377,7 @@ func (hdr *ciphertextHeader) marshalBinary() ([]byte, error) {
 	}
 	ret, err := appendLenPrefixed(nil, pBytes)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("policy serializing: %w", err)
 	}
 
 	c1Bytes, err := hdr.c1.marshalBinary()
@@ -385,7 +386,7 @@ func (hdr *ciphertextHeader) marshalBinary() ([]byte, error) {
 	}
 	ret, err = appendLenPrefixed(ret, c1Bytes)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("c1 serializing: %w", err)
 	}
 
 	// Now we need to indicate how long c2, c3, c3neg are.
@@ -393,13 +394,15 @@ func (hdr *ciphertextHeader) marshalBinary() ([]byte, error) {
 	// but for now we will ignore that.
 
 	c2Len := len(hdr.c2)
-	if c2Len > math.MaxUint16 {
-		return nil, fmt.Errorf("c2 too long (overflow)")
+	b := cryptobyte.NewBuilder(ret)
+	if err = leUint16(c2Len).Marshal(b); err != nil {
+		return nil, fmt.Errorf("c2 too long")
 	}
-
-	ret = append(ret, 0, 0)
-	binary.LittleEndian.PutUint16(ret[len(ret)-2:], uint16(c2Len))
-	for i := 0; i < c2Len; i++ {
+	ret, err = b.Bytes()
+	if err != nil {
+		return nil, fmt.Errorf("c2 too long")
+	}
+	for i := range c2Len {
 		c2dat, errM := hdr.c2[i].marshalBinary()
 		if errM != nil {
 			return nil, fmt.Errorf("c2 serializing %d: %w", i, errM)
@@ -410,22 +413,25 @@ func (hdr *ciphertextHeader) marshalBinary() ([]byte, error) {
 		}
 	}
 	c3Len := len(hdr.c3)
-	if c3Len > math.MaxUint16 {
-		return nil, fmt.Errorf("c3 too long (overflow)")
+	b = cryptobyte.NewBuilder(ret)
+	if err = leUint16(c3Len).Marshal(b); err != nil {
+		return nil, fmt.Errorf("c3 too long")
 	}
-	ret = append(ret, 0, 0)
-	binary.LittleEndian.PutUint16(ret[len(ret)-2:], uint16(c3Len))
-	for i := 0; i < c3Len; i++ {
+	ret, err = b.Bytes()
+	if err != nil {
+		return nil, fmt.Errorf("c3 too long")
+	}
+	for i := range c3Len {
 		c3dat, errM := hdr.c3[i].marshalBinary()
 		if errM != nil {
 			return nil, fmt.Errorf("c3 serializing %d: %w", i, errM)
 		}
 		ret, err = appendLenPrefixed(ret, c3dat)
 		if err != nil {
-			return nil, fmt.Errorf("c3 seriaizing %d: %w", i, err)
+			return nil, fmt.Errorf("c3 serializing %d: %w", i, err)
 		}
 	}
-	for i := 0; i < c3Len; i++ {
+	for i := range c3Len {
 		var c3negdat []byte
 		if hdr.c3neg[i] != nil {
 			c3negdat, err = hdr.c3neg[i].marshalBinary()
@@ -462,17 +468,19 @@ func (hdr *ciphertextHeader) unmarshalBinary(data []byte) error {
 	if err != nil {
 		return err
 	}
-	if len(data) < 2 {
+	s := cryptobyte.String(data)
+	c2Len16, ok := readLEUint16(&s)
+	if !ok {
 		return fmt.Errorf("ciphertext header too short")
 	}
-	c2Len := int(binary.LittleEndian.Uint16(data))
+	c2Len := int(c2Len16)
 	hdr.c2 = make([]*matrixG2, c2Len)
-	data = data[2:]
+	data = s
 	var c2data []byte
 	var c3data []byte
 	var c3negdata []byte
 
-	for i := 0; i < c2Len; i++ {
+	for i := range c2Len {
 		c2data, data, err = removeLenPrefixed(data)
 		if err != nil {
 			return err
@@ -484,15 +492,17 @@ func (hdr *ciphertextHeader) unmarshalBinary(data []byte) error {
 		}
 	}
 
-	if len(data) < 2 {
+	s = cryptobyte.String(data)
+	c3Len16, ok := readLEUint16(&s)
+	if !ok {
 		return fmt.Errorf("ciphertext header too short")
 	}
-	c3Len := int(binary.LittleEndian.Uint16(data))
+	c3Len := int(c3Len16)
 	hdr.c3 = make([]*matrixG1, c3Len)
 	hdr.c3neg = make([]*matrixG1, c3Len)
-	data = data[2:]
+	data = s
 
-	for i := 0; i < c3Len; i++ {
+	for i := range c3Len {
 		c3data, data, err = removeLenPrefixed(data)
 		if err != nil {
 			return err
@@ -504,7 +514,7 @@ func (hdr *ciphertextHeader) unmarshalBinary(data []byte) error {
 		}
 	}
 
-	for i := 0; i < c3Len; i++ {
+	for i := range c3Len {
 		c3negdata, data, err = removeLenPrefixed(data)
 		if err != nil {
 			return err
@@ -839,7 +849,7 @@ func decapsulate(header *ciphertextHeader, key *AttributesKey) (*pairing.Gt, err
 				keymat.scalarMult(y, key.k3[mt.label])
 				keymat.add(keymat, key.k3wild[mt.label])
 			} else {
-				y.Set((*(key.a))[mt.label].Value)
+				y.Set((*key.a)[mt.label].Value)
 				keymat.set(key.k3[mt.label])
 			}
 			diff := &pairing.Scalar{}
