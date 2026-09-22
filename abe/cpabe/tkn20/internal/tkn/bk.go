@@ -81,8 +81,17 @@ func DeriveAttributeKeysCCA(rand io.Reader, sp *SecretParams, attrs *Attributes)
 }
 
 func EncryptCCA(rand io.Reader, public *PublicParams, policy *Policy, msg []byte) ([]byte, error) {
+	pBytes, err := policy.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	// Reject oversized policies before doing sharing/curve operations
+	if err = checkPolicySize(pBytes); err != nil {
+		return nil, err
+	}
+
 	seed := make([]byte, macKeySeedSize)
-	_, err := io.ReadFull(rand, seed)
+	_, err = io.ReadFull(rand, seed)
 	if err != nil {
 		return nil, err
 	}

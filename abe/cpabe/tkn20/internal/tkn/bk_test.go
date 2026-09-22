@@ -3,6 +3,8 @@ package tkn
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"errors"
+	"strings"
 	"testing"
 )
 
@@ -426,4 +428,67 @@ func BenchmarkTkDerivation(b *testing.B) {
 			b.Fatalf("error generating Attribute keys: %s", err)
 		}
 	}
+}
+
+type failingReader struct{}
+
+func (failingReader) Read([]byte) (int, error) {
+	return 0, errors.New("failingReader: unexpected read")
+}
+
+func policyOfSize(t *testing.T, size int) *Policy {
+	t.Helper()
+	p := &Policy{
+		Inputs: []Wire{{"a", "", ToScalar(1), true}},
+		F:      Formula{Gates: []Gate{}},
+	}
+	base, err := p.MarshalBinary()
+	if err != nil {
+		t.Fatalf("marshalling base policy: %v", err)
+	}
+	p.Inputs[0].RawValue = strings.Repeat("x", size-len(base))
+	got, err := p.MarshalBinary()
+	if err != nil {
+		t.Fatalf("marshalling padded policy: %v", err)
+	}
+	if len(got) != size {
+		t.Fatalf("padded policy is %d bytes, want %d", len(got), size)
+	}
+	return p
+}
+
+func TestEncryptCCAPolicySizeBoundary(t *testing.T) {
+	public, secret, err := GenerateParams(rand.Reader)
+	if err != nil {
+		t.Fatalf("error generating parameters: %s", err)
+	}
+	msg := []byte("a crummy commercial?!")
+
+	t.Run("65535", func(t *testing.T) {
+		policy := policyOfSize(t, 65535)
+		attrs := &Attributes{"a": {wild: false, Value: ToScalar(1)}}
+		userKey, err := DeriveAttributeKeysCCA(rand.Reader, secret, attrs)
+		if err != nil {
+			t.Fatalf("error generating Attribute keys: %s", err)
+		}
+		ct, err := EncryptCCA(rand.Reader, public, policy, msg)
+		if err != nil {
+			t.Fatalf("largest encodable policy rejected: %v", err)
+		}
+		pt, err := DecryptCCA(ct, userKey)
+		if err != nil {
+			t.Fatalf("error decrypting: %v", err)
+		}
+		if string(pt) != string(msg) {
+			t.Fatalf("got %q, expected %q", pt, msg)
+		}
+	})
+
+	t.Run("65536", func(t *testing.T) {
+		policy := policyOfSize(t, 65536)
+		_, err := EncryptCCA(failingReader{}, public, policy, msg)
+		if !errors.Is(err, errPolicyTooLong) {
+			t.Fatalf("got error %v, expected %v", err, errPolicyTooLong)
+		}
+	})
 }

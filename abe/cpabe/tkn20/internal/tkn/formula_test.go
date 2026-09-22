@@ -2,6 +2,7 @@ package tkn
 
 import (
 	"crypto/rand"
+	"runtime"
 	"testing"
 )
 
@@ -93,5 +94,26 @@ func TestFormulaMarshal(t *testing.T) {
 	}
 	if !f.Equal(*g) {
 		t.Fatal("failure to recover formula")
+	}
+}
+
+// A formula whichdeclares more gates than it contains shoudl be rejected before
+// the gate slice has been allocated
+func TestFormulaUnmarshalDeclaredGatesExceedData(t *testing.T) {
+	// 65535 gates declared, one gate's worth (length 7) actually present
+	data := []byte{0xff, 0xff, 0, 0, 0, 1, 0, 2, 0}
+
+	var before, after runtime.MemStats
+	runtime.ReadMemStats(&before)
+	var f Formula
+	err := f.UnmarshalBinary(data)
+	runtime.ReadMemStats(&after)
+
+	if err == nil {
+		t.Fatal("expected error for truncated formula")
+	}
+	const limit = 64 << 10
+	if allocated := after.TotalAlloc - before.TotalAlloc; allocated > limit {
+		t.Fatalf("allocated %d bytes rejecting a truncated formula, should be <= %d", allocated, limit)
 	}
 }
