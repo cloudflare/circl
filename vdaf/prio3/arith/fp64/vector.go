@@ -4,6 +4,7 @@ package fp64
 
 import (
 	"encoding/binary"
+	"errors"
 	"io"
 	"math/bits"
 	"slices"
@@ -181,6 +182,34 @@ func (v Vec) MarshalBinary() ([]byte, error) {
 
 func (v Vec) UnmarshalBinary(b []byte) error {
 	return conv.UnmarshalBinary(v, b)
+}
+
+// ExportRaw serializes the vector as a sequence of raw field elements
+func (v Vec) ExportRaw() ([]byte, error) {
+	buf := make([]byte, Size*len(v))
+	for i, f := range v {
+		// Convert from Montgomery form to standard form
+		standard := f.fromMont()
+		// Serialize as little-endian uint64
+		binary.LittleEndian.PutUint64(buf[i*Size:(i+1)*Size], standard[0])
+	}
+	return buf, nil
+}
+
+// ImportRaw deserializes the vector from raw field elements
+func (v *Vec) ImportRaw(data []byte) error {
+	if len(data)%Size != 0 {
+		return errors.New("ImportRaw: data length not a multiple of field size")
+	}
+	n := len(data) / Size
+	*v = make(Vec, n)
+	for i := 0; i < n; i++ {
+		// Deserialize as little-endian uint64
+		val := binary.LittleEndian.Uint64(data[i*Size:(i+1)*Size])
+		// Set the field element and convert to Montgomery form
+		(*v)[i].SetUint64(val)
+	}
+	return nil
 }
 
 func (v Vec) Marshal(b *cryptobyte.Builder) error {
