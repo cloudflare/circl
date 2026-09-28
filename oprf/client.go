@@ -2,6 +2,7 @@ package oprf
 
 import (
 	"crypto/rand"
+	"math"
 
 	"github.com/cloudflare/circl/group"
 	"github.com/cloudflare/circl/zk/dleq"
@@ -100,6 +101,12 @@ func (c client) validate(f *FinalizeData, e *Evaluation) (err error) {
 
 	wantGroup := *c.params.group.Params()
 	for i := range l {
+		// finalizeHash frames the input with I2OSP(len(input), 2), so an input
+		// of 2^16 bytes or more silently wraps the length prefix. Reject it, as
+		// scalarFromInfo already does for info.
+		if len(f.inputs[i]) > math.MaxUint16 {
+			return ErrInvalidInput
+		}
 		blind := f.blinds[i]
 		blinded := f.evalReq.Elements[i]
 		evaluated := e.Elements[i]
