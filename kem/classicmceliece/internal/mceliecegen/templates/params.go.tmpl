@@ -1,0 +1,29 @@
+// Package {{ .Name }} implements the Classic McEliece {{ .Name }}
+// Round 4 parameter set. The code is a direct, scalar Go port of the official
+// 2022-10-23 reference implementation.
+package {{ .Name }}
+
+const (
+	GFBits = {{ .GFBits }}
+	SysN   = {{ .SysN }}
+	SysT   = {{ .SysT }}
+
+	CondBytes = (1 << (GFBits - 4)) * (2*GFBits - 1)
+	IrrBytes  = SysT * 2
+
+	PKNRows    = SysT * GFBits
+	PKNCols    = SysN - PKNRows
+	PKRowBytes = (PKNCols + 7) / 8
+	SyndBytes  = (PKNRows + 7) / 8
+	PKNRowsMod8 = PKNRows % 8
+
+	GFMask = (1 << GFBits) - 1
+
+	PublicKeySize  = {{ .PublicKeySize }}
+	PrivateKeySize = {{ .PrivateKeySize }}
+	CiphertextSize = {{ .CiphertextSize }}
+	SharedKeySize  = 32
+	SeedSize       = 32
+)
+
+type gf uint16

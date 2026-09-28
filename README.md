@@ -96,6 +96,7 @@ Alternatively, look at the [Cloudflare Go](https://github.com/cloudflare/go/tree
  - [X-Wing](./kem/xwing) ([draft-connolly-cfrg-xwing-kem](https://datatracker.ietf.org/doc/draft-connolly-cfrg-xwing-kem/)).
  - [Kyber KEM](./kem/kyber): modes 512, 768, 1024 ([KYBER](https://pq-crystals.org/kyber/)).
  - [FrodoKEM](./kem/frodo): modes 640-SHAKE. ([FrodoKEM](https://frodokem.org/))
+ - [Classic McEliece](./kem/classicmceliece): parameter sets 348864, 348864f, 460896, 460896f, 6688128, 6688128f, 6960119, 6960119f, 8192128, 8192128f ([Classic McEliece](https://classic.mceliece.org/)).
  - [CSIDH](./dh/csidh): Post-Quantum Commutative Group Action ([CSIDH](https://csidh.isogeny.org/)).
  - (**insecure, deprecated**) ~~[SIDH/SIKE](./kem/sike)~~: Supersingular Key Encapsulation with primes p434, p503, p751 ([SIKE](https://sike.org/)).
 

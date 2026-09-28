@@ -13,6 +13,16 @@
 // Post-quantum kems:
 //
 //	FrodoKEM-640-SHAKE
+//	Classic-McEliece-348864
+//	Classic-McEliece-348864f
+//	Classic-McEliece-460896
+//	Classic-McEliece-460896f
+//	Classic-McEliece-6688128
+//	Classic-McEliece-6688128f
+//	Classic-McEliece-6960119
+//	Classic-McEliece-6960119f
+//	Classic-McEliece-8192128
+//	Classic-McEliece-8192128f
 //	Kyber512, Kyber768, Kyber1024
 package schemes
 
@@ -21,6 +31,16 @@ import (
 
 	"github.com/cloudflare/circl/hpke"
 	"github.com/cloudflare/circl/kem"
+	"github.com/cloudflare/circl/kem/classicmceliece/mceliece348864"
+	"github.com/cloudflare/circl/kem/classicmceliece/mceliece348864f"
+	"github.com/cloudflare/circl/kem/classicmceliece/mceliece460896"
+	"github.com/cloudflare/circl/kem/classicmceliece/mceliece460896f"
+	"github.com/cloudflare/circl/kem/classicmceliece/mceliece6688128"
+	"github.com/cloudflare/circl/kem/classicmceliece/mceliece6688128f"
+	"github.com/cloudflare/circl/kem/classicmceliece/mceliece6960119"
+	"github.com/cloudflare/circl/kem/classicmceliece/mceliece6960119f"
+	"github.com/cloudflare/circl/kem/classicmceliece/mceliece8192128"
+	"github.com/cloudflare/circl/kem/classicmceliece/mceliece8192128f"
 	"github.com/cloudflare/circl/kem/frodo/frodo640shake"
 	"github.com/cloudflare/circl/kem/hybrid"
 	"github.com/cloudflare/circl/kem/kyber/kyber1024"
@@ -52,6 +72,16 @@ var allSchemes = [...]kem.Scheme{
 	hybrid.P256Kyber768Draft00(),
 	hybrid.X25519MLKEM768(),
 	xwing.Scheme(),
+	mceliece348864.Scheme(),
+	mceliece348864f.Scheme(),
+	mceliece460896.Scheme(),
+	mceliece460896f.Scheme(),
+	mceliece6688128.Scheme(),
+	mceliece6688128f.Scheme(),
+	mceliece6960119.Scheme(),
+	mceliece6960119f.Scheme(),
+	mceliece8192128.Scheme(),
+	mceliece8192128f.Scheme(),
 }
 
 var allSchemeNames map[string]kem.Scheme
