@@ -40,8 +40,10 @@ func isLessThan(x, y []byte) bool {
 }
 
 // FromBytes returns a point from the input buffer.
+//
+// Note, previous versions of Circl accepted trailing data.
 func FromBytes(in []byte) (*Point, error) {
-	if len(in) < fp.Size+1 {
+	if len(in) != fp.Size+1 {
 		return nil, errors.New("wrong input length")
 	}
 	err := errors.New("invalid decoding")
