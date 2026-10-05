@@ -41,7 +41,9 @@ func isLessThan(x, y []byte) bool {
 
 // FromBytes returns a point from the input buffer.
 func FromBytes(in []byte) (*Point, error) {
-	if len(in) < fp.Size+1 {
+	// The length check is exact: previous versions accepted trailing data
+	// after the fp.Size+1 byte encoding.
+	if len(in) != fp.Size+1 {
 		return nil, errors.New("wrong input length")
 	}
 	err := errors.New("invalid decoding")
