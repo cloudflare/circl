@@ -155,6 +155,8 @@ func BenchmarkSign(b *testing.B) {
 		_, sk, _ := scheme.GenerateKey()
 		b.Run(scheme.Name(), func(b *testing.B) {
 			for i := 0; i < b.N; i++ {
+				msg[0] = byte(i)
+				msg[1] = byte(i>>8)
 				_ = scheme.Sign(sk, msg, opts)
 			}
 		})
