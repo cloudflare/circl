@@ -46,8 +46,8 @@ func (v *vector) verify(t *testing.T) {
 	sender, recv := v.getActors(t, kem.Scheme(), s)
 	sealer, opener := v.setup(t, kem.Scheme(), sender, recv, m, s)
 
-	v.checkAead(t, (sealer.(*sealContext)).encdecContext, m)
-	v.checkAead(t, (opener.(*openContext)).encdecContext, m)
+	v.checkAead(t, sealer.(*sealContext).encdecContext, m)
+	v.checkAead(t, opener.(*openContext).encdecContext, m)
 	v.checkEncryptions(t, sealer, opener, m)
 	v.checkExports(t, sealer, m)
 	v.checkExports(t, opener, m)

@@ -3,8 +3,8 @@ package ff
 // Cyclo6 represents an element of the 6th cyclotomic group.
 type Cyclo6 Fp12
 
-func (z Cyclo6) String() string           { return (Fp12)(z).String() }
-func (z Cyclo6) IsEqual(x *Cyclo6) int    { return (Fp12)(z).IsEqual((*Fp12)(x)) }
+func (z Cyclo6) String() string           { return Fp12(z).String() }
+func (z Cyclo6) IsEqual(x *Cyclo6) int    { return Fp12(z).IsEqual((*Fp12)(x)) }
 func (z Cyclo6) IsIdentity() int          { i := &Fp12{}; i.SetOne(); return z.IsEqual((*Cyclo6)(i)) }
 func (z *Cyclo6) Frob(x *Cyclo6)          { (*Fp12)(z).Frob((*Fp12)(x)) }
 func (z *Cyclo6) Mul(x, y *Cyclo6)        { (*Fp12)(z).Mul((*Fp12)(x), (*Fp12)(y)) }
@@ -78,7 +78,7 @@ func EasyExponentiation(g *Cyclo6, f *Fp12) {
 	t0.Inv(&t0)      // t0 = f^-(p^2 + 1)
 	t0.Mul(&t0, &t1) // t0 = f^(p^2 + 1)*(p^6 - 1)
 
-	*g = (Cyclo6)(t0)
+	*g = Cyclo6(t0)
 }
 
 // HardExponentiation calculates u = g^(Cy_6(p)/r), where u is a root of unity.
@@ -107,5 +107,5 @@ func HardExponentiation(u *URoot, g *Cyclo6) {
 	c.PowToX(&c)   // c = g^(a3*x^2+a2*x+a1)*x = g^(a3*x^3+a2*x^2+a1*x)
 	c.Mul(&c, &a0) // c = g^(a3*x^3+a2*x^2+a1*x+a0)
 
-	*u = (URoot)(c)
+	*u = URoot(c)
 }

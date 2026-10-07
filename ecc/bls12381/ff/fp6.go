@@ -15,7 +15,9 @@ func (z Fp6) IsEqual(x *Fp6) int {
 }
 func (z *Fp6) Neg()          { z[0].Neg(); z[1].Neg(); z[2].Neg() }
 func (z *Fp6) Add(x, y *Fp6) { z[0].Add(&x[0], &y[0]); z[1].Add(&x[1], &y[1]); z[2].Add(&x[2], &y[2]) }
+
 func (z *Fp6) Sub(x, y *Fp6) { z[0].Sub(&x[0], &y[0]); z[1].Sub(&x[1], &y[1]); z[2].Sub(&x[2], &y[2]) }
+
 func (z *Fp6) MulBeta() {
 	t := z[2]
 	t.MulBeta()

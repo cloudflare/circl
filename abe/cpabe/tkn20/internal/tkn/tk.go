@@ -787,7 +787,7 @@ func decapsulate(header *ciphertextHeader, key *AttributesKey) (*pairing.Gt, err
 				keymat.scalarMult(y, key.k3[mt.label])
 				keymat.add(keymat, key.k3wild[mt.label])
 			} else {
-				y.Set((*(key.a))[mt.label].Value)
+				y.Set((*key.a)[mt.label].Value)
 				keymat.set(key.k3[mt.label])
 			}
 			diff := &pairing.Scalar{}
