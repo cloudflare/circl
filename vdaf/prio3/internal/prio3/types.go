@@ -1,6 +1,7 @@
 package prio3
 
 import (
+	"errors"
 	"github.com/cloudflare/circl/internal/conv"
 	"github.com/cloudflare/circl/vdaf/prio3/arith"
 	"golang.org/x/crypto/cryptobyte"
@@ -358,6 +359,32 @@ func (s *OutShare[V, E]) Marshal(b *cryptobyte.Builder) error {
 
 func (s *OutShare[V, E]) Unmarshal(str *cryptobyte.String) bool {
 	return s.share.Unmarshal(str)
+}
+
+// ExportBytes returns the portable binary encoding of the OutShare.
+func (s *OutShare[V, E]) ExportBytes() ([]byte, error) {
+	return s.MarshalBinary()
+}
+
+// ImportBytes sets the OutShare from a portable binary encoding.
+func (s *OutShare[V, E]) ImportBytes(data []byte) error {
+	return s.UnmarshalBinary(data)
+}
+
+// ExportRaw returns the underlying vector as a byte slice.
+func (s *OutShare[V, E]) ExportRaw() ([]byte, error) {
+	if b, ok := any(s.share).(interface{ ExportRaw() ([]byte, error) }); ok {
+		return b.ExportRaw()
+	}
+	return nil, errors.New("ExportRaw: underlying vector does not support ExportRaw")
+}
+
+// ImportRaw sets the underlying vector from a byte slice.
+func (s *OutShare[V, E]) ImportRaw(data []byte) error {
+	if b, ok := any(&s.share).(interface{ ImportRaw([]byte) error }); ok {
+		return b.ImportRaw(data)
+	}
+	return errors.New("ImportRaw: underlying vector does not support ImportRaw")
 }
 
 // AggShare represents the following structure.
