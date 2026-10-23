@@ -437,3 +437,38 @@ func BenchmarkPBRSA(b *testing.B) {
 		b.Fatal(err)
 	}
 }
+
+// seqReader is a deterministic io.Reader: it emits an incrementing byte
+// sequence, so two fresh instances produce identical streams.
+type seqReader struct{ next byte }
+
+func (r *seqReader) Read(p []byte) (int, error) {
+	for i := range p {
+		p[i] = r.next
+		r.next++
+	}
+	return len(p), nil
+}
+
+// TestBlindUsesSuppliedReader pins Blind to its caller supplied source of
+// randomness: two calls with identical deterministic readers must produce
+// identical blinded messages. It fails if any part of Blind (for example
+// the salt) draws from crypto/rand instead of the supplied reader.
+func TestBlindUsesSuppliedReader(t *testing.T) {
+	key := loadStrongRSAKey()
+	verifier := NewVerifier(&key.PublicKey, crypto.SHA384)
+	message := []byte("hello world")
+	metadata := []byte("metadata")
+
+	blinded1, _, err := verifier.Blind(&seqReader{}, message, metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	blinded2, _, err := verifier.Blind(&seqReader{}, message, metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(blinded1, blinded2) {
+		t.Fatal("Blind with identical deterministic readers produced different blinded messages: some randomness did not come from the supplied reader")
+	}
+}
