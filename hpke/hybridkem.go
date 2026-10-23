@@ -190,12 +190,14 @@ func (h hybridKEM) DeriveKeyPair(seed []byte) (kem.PublicKey, kem.PrivateKey) {
 	pubB, privB := h.kemB.DeriveKeyPair(seedB)
 
 	privKey := &hybridKEMPrivKey{
-		privA: privA,
-		privB: privB,
+		scheme: h,
+		privA:  privA,
+		privB:  privB,
 	}
 	pubKey := &hybridKEMPubKey{
-		pubA: pubA,
-		pubB: pubB,
+		scheme: h,
+		pubA:   pubA,
+		pubB:   pubB,
 	}
 
 	return pubKey, privKey
@@ -225,8 +227,9 @@ func (h hybridKEM) UnmarshalBinaryPrivateKey(data []byte) (kem.PrivateKey, error
 	}
 
 	return &hybridKEMPrivKey{
-		privA: skA,
-		privB: skB,
+		scheme: h,
+		privA:  skA,
+		privB:  skB,
 	}, nil
 }
 
@@ -244,7 +247,8 @@ func (h hybridKEM) UnmarshalBinaryPublicKey(data []byte) (kem.PublicKey, error) 
 	}
 
 	return &hybridKEMPubKey{
-		pubA: pkA,
-		pubB: pkB,
+		scheme: h,
+		pubA:   pkA,
+		pubB:   pkB,
 	}, nil
 }
