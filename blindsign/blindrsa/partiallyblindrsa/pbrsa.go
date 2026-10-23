@@ -211,7 +211,7 @@ func (v randomizedVerifier) Blind(random io.Reader, message, metadata []byte) ([
 	}
 
 	salt := make([]byte, v.hash.Size())
-	_, err := io.ReadFull(rand.Reader, salt)
+	_, err := io.ReadFull(random, salt)
 	if err != nil {
 		return nil, VerifierState{}, err
 	}
