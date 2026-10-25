@@ -345,6 +345,25 @@ func TestNonCanonicalSignatureRejection(t *testing.T) {
 	}
 }
 
+func TestBlindSignRejectsModulus(t *testing.T) {
+	key := loadStrongRSAKey()
+	signer, err := NewSigner(key, crypto.SHA384)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// RFC 8017, Section 5.2.1: RSASP1 requires 0 <= m < n, so a blinded
+	// message equal to the modulus must be rejected before signing.
+	kLen := (key.N.BitLen() + 7) / 8
+	blindedMsg := make([]byte, kLen)
+	key.N.FillBytes(blindedMsg)
+
+	_, err = signer.BlindSign(blindedMsg, []byte("metadata"))
+	if !errors.Is(err, ErrInvalidMessageLength) {
+		t.Fatalf("expected ErrInvalidMessageLength, got %v", err)
+	}
+}
+
 func TestInvalidPublicKeyRejection(t *testing.T) {
 	oversizedN := new(big.Int).Lsh(big.NewInt(1), 195599)
 	oversizedN.SetBit(oversizedN, 0, 1)
