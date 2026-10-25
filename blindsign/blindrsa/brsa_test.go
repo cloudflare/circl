@@ -237,6 +237,25 @@ func TestBlindRejectsNonCoprimeMessage(t *testing.T) {
 	}
 }
 
+func TestBlindSignRejectsModulus(t *testing.T) {
+	key, err := loadPrivateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// RFC 8017, Section 5.2.1: RSASP1 requires 0 <= m < n, so a blinded
+	// message equal to the modulus must be rejected before signing.
+	kLen := (key.N.BitLen() + 7) / 8
+	blindedMsg := make([]byte, kLen)
+	key.N.FillBytes(blindedMsg)
+
+	signer := NewSigner(key)
+	_, err = signer.BlindSign(blindedMsg)
+	if err != ErrInvalidMessageLength {
+		t.Fatalf("expected ErrInvalidMessageLength, got %v", err)
+	}
+}
+
 func TestRandomSignVerify(t *testing.T) {
 	message := []byte("hello world")
 	key, err := loadPrivateKey()

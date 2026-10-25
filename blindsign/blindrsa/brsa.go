@@ -241,7 +241,7 @@ func (signer Signer) BlindSign(data []byte) ([]byte, error) {
 	}
 
 	m := new(big.Int).SetBytes(data)
-	if m.Cmp(signer.sk.N) > 0 {
+	if m.Cmp(signer.sk.N) >= 0 {
 		return nil, common.ErrInvalidMessageLength
 	}
 
