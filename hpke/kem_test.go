@@ -6,27 +6,42 @@ import (
 
 	"github.com/cloudflare/circl/hpke"
 	"github.com/cloudflare/circl/internal/test"
+	"github.com/cloudflare/circl/kem"
 )
 
+var kemIDs = []hpke.KEM{
+	hpke.KEM_P256_HKDF_SHA256,
+	hpke.KEM_P384_HKDF_SHA384,
+	hpke.KEM_P521_HKDF_SHA512,
+	hpke.KEM_X25519_HKDF_SHA256,
+	hpke.KEM_X448_HKDF_SHA512,
+	hpke.KEM_X25519_KYBER768_DRAFT00,
+}
+
 func TestKemKeysExactLength(t *testing.T) {
-	for _, kemID := range []hpke.KEM{
-		hpke.KEM_P256_HKDF_SHA256,
-		hpke.KEM_P384_HKDF_SHA384,
-		hpke.KEM_P521_HKDF_SHA512,
-		hpke.KEM_X25519_HKDF_SHA256,
-		hpke.KEM_X448_HKDF_SHA512,
-		hpke.KEM_X25519_KYBER768_DRAFT00,
-	} {
+	for _, kemID := range kemIDs {
 		checkExactLengthUnmarshal(t, kemID)
 	}
 }
 
-func checkExactLengthUnmarshal(t *testing.T, kemID hpke.KEM) {
+func TestKemKeysScheme(t *testing.T) {
+	for _, kemID := range kemIDs {
+		checkKeysScheme(t, kemID)
+	}
+}
+
+func genKeyPair(t *testing.T, kemID hpke.KEM) (kem.Scheme, kem.PublicKey, kem.PrivateKey) {
+	t.Helper()
 	scheme := kemID.Scheme()
 	pk, sk, err := scheme.GenerateKeyPair()
 	if err != nil {
 		t.Fatal(err)
 	}
+	return scheme, pk, sk
+}
+
+func checkExactLengthUnmarshal(t *testing.T, kemID hpke.KEM) {
+	scheme, pk, sk := genKeyPair(t, kemID)
 	skBytes, err := sk.MarshalBinary()
 	test.CheckNoErr(t, err, "marshal private key")
 	pkBytes, err := pk.MarshalBinary()
@@ -56,5 +71,27 @@ func checkExactLengthUnmarshal(t *testing.T, kemID hpke.KEM) {
 		gotPk, err := scheme.UnmarshalBinaryPublicKey(buffer[:n])
 		test.CheckNoErr(t, err, "exact-size public key must succeed")
 		test.CheckOk(pk.Equal(gotPk), "public keys must match", t)
+	})
+}
+
+func checkKeysScheme(t *testing.T, kemID hpke.KEM) {
+	scheme, pk, sk := genKeyPair(t, kemID)
+
+	t.Run(scheme.Name(), func(t *testing.T) {
+		test.CheckOk(sk.Scheme().Name() == scheme.Name(), "private key scheme must match", t)
+		test.CheckOk(pk.Scheme().Name() == scheme.Name(), "public key scheme must match", t)
+		test.CheckOk(sk.Public().Scheme().Name() == scheme.Name(), "derived public key scheme must match", t)
+
+		skBytes, err := sk.MarshalBinary()
+		test.CheckNoErr(t, err, "marshal private key")
+		gotSk, err := scheme.UnmarshalBinaryPrivateKey(skBytes)
+		test.CheckNoErr(t, err, "unmarshal private key")
+		test.CheckOk(gotSk.Scheme().Name() == scheme.Name(), "unmarshaled private key scheme must match", t)
+
+		pkBytes, err := pk.MarshalBinary()
+		test.CheckNoErr(t, err, "marshal public key")
+		gotPk, err := scheme.UnmarshalBinaryPublicKey(pkBytes)
+		test.CheckNoErr(t, err, "unmarshal public key")
+		test.CheckOk(gotPk.Scheme().Name() == scheme.Name(), "unmarshaled public key scheme must match", t)
 	})
 }
