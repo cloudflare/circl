@@ -87,7 +87,7 @@ func encrypt(c *big.Int, N *big.Int, e *big.Int, m *big.Int) *big.Int {
 // random source is given, RSA blinding is used.
 func decrypt(random io.Reader, priv *keys.BigPrivateKey, c *big.Int) (m *big.Int, err error) {
 	// TODO(agl): can we get away with reusing blinds?
-	if c.Cmp(priv.Pk.N) > 0 {
+	if c.Cmp(priv.Pk.N) >= 0 {
 		return nil, rsa.ErrDecryption
 	}
 	if priv.Pk.N.Sign() == 0 {
