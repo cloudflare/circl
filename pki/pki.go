@@ -98,6 +98,10 @@ func UnmarshalPKIXPublicKey(data []byte) (sign.PublicKey, error) {
 	if scheme == nil {
 		return nil, errors.New("unsupported public key algorithm")
 	}
+	// NOTE Previous versions accepted algorithm parameters.
+	if len(pkix.Algorithm.Parameters.FullBytes) != 0 {
+		return nil, errors.New("unexpected algorithm parameters")
+	}
 	return scheme.UnmarshalBinaryPublicKey(pkix.PublicKey.RightAlign())
 }
 
@@ -131,6 +135,10 @@ func UnmarshalPKIXPrivateKey(data []byte) (sign.PrivateKey, error) {
 	scheme := SchemeByOid(pkix.Algorithm.Algorithm)
 	if scheme == nil {
 		return nil, errors.New("unsupported public key algorithm")
+	}
+	// NOTE Previous versions accepted algorithm parameters.
+	if len(pkix.Algorithm.Parameters.FullBytes) != 0 {
+		return nil, errors.New("unexpected algorithm parameters")
 	}
 
 	// ML-DSA unfortunately has a complex private key format, which we
