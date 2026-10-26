@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"fmt"
+	"math/big"
 	"testing"
 
 	"github.com/cloudflare/circl/group"
@@ -30,6 +31,7 @@ func TestGroup(t *testing.T) {
 		t.Run(n+"/Order", func(tt *testing.T) { testOrder(tt, testTimes, g) })
 		t.Run(n+"/Marshal", func(tt *testing.T) { testMarshal(tt, testTimes, g) })
 		t.Run(n+"/Scalar", func(tt *testing.T) { testScalar(tt, testTimes, g) })
+		t.Run(n+"/SetBigInt", func(tt *testing.T) { testSetBigInt(tt, g) })
 	}
 }
 
@@ -318,6 +320,28 @@ func testScalar(t *testing.T, testTimes int, g group.Group) {
 	c.Sub(c, one)
 	if !c.IsZero() {
 		test.ReportError(t, c, one, a)
+	}
+}
+
+func testSetBigInt(t *testing.T, g group.Group) {
+	one := g.NewScalar().SetUint64(1)
+	minusOne := g.NewScalar().Neg(one)
+
+	x := big.NewInt(-1)
+	got := g.NewScalar().SetBigInt(x)
+	if !got.IsEqual(minusOne) {
+		test.ReportError(t, got, minusOne)
+	}
+	if x.Cmp(big.NewInt(-1)) != 0 {
+		test.ReportError(t, x, -1)
+	}
+
+	// Larger than the order of every group.
+	y := new(big.Int).Lsh(big.NewInt(1), 1024)
+	want := new(big.Int).Set(y)
+	g.NewScalar().SetBigInt(y)
+	if y.Cmp(want) != 0 {
+		test.ReportError(t, y, want)
 	}
 }
 

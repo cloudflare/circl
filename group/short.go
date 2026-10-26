@@ -296,7 +296,7 @@ func (s *wScl) SetUint64(n uint64) Scalar {
 
 func (s *wScl) SetBigInt(x *big.Int) Scalar {
 	s.k = slices.Grow(s.k, s.wG.byteSize())
-	x.Mod(x, s.c.Params().N).FillBytes(s.k)
+	new(big.Int).Mod(x, s.c.Params().N).FillBytes(s.k)
 	return s
 }
 
