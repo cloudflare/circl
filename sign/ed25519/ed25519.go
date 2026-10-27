@@ -329,6 +329,7 @@ func SignWithCtx(privateKey PrivateKey, message []byte, ctx string) []byte {
 func verify(public PublicKey, message, signature, ctx []byte, preHash bool) bool {
 	if len(public) != PublicKeySize ||
 		len(signature) != SignatureSize ||
+		len(ctx) > ContextMaxSize ||
 		!isLessThanOrder(signature[paramB:]) {
 		return false
 	}
