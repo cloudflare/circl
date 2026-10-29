@@ -59,7 +59,10 @@ func SchemeByTLSID(id uint) sign.Scheme { return allSchemesByTLS[id] }
 type CertificateScheme interface {
 	// Return the appropriate OIDs for this instance.  It is implicitly
 	// assumed that the encoding is simple: e.g. uses the same OID for
-	// signature and public key like Ed25519.
+	// signature and public key like Ed25519, and the AlgorithmIdentifier
+	// parameters are absent. The PKIX functions in this package neither
+	// write nor accept parameters, so a scheme that needs them will
+	// require its own handling there.
 	Oid() asn1.ObjectIdentifier
 }
 
@@ -98,6 +101,10 @@ func UnmarshalPKIXPublicKey(data []byte) (sign.PublicKey, error) {
 	if scheme == nil {
 		return nil, errors.New("unsupported public key algorithm")
 	}
+	// NOTE Previous versions accepted algorithm parameters.
+	if len(pkix.Algorithm.Parameters.FullBytes) != 0 {
+		return nil, errors.New("unexpected algorithm parameters")
+	}
 	return scheme.UnmarshalBinaryPublicKey(pkix.PublicKey.RightAlign())
 }
 
@@ -131,6 +138,10 @@ func UnmarshalPKIXPrivateKey(data []byte) (sign.PrivateKey, error) {
 	scheme := SchemeByOid(pkix.Algorithm.Algorithm)
 	if scheme == nil {
 		return nil, errors.New("unsupported public key algorithm")
+	}
+	// NOTE Previous versions accepted algorithm parameters.
+	if len(pkix.Algorithm.Parameters.FullBytes) != 0 {
+		return nil, errors.New("unexpected algorithm parameters")
 	}
 
 	// ML-DSA unfortunately has a complex private key format, which we
