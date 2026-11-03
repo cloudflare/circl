@@ -1,0 +1,125 @@
+package {{ .Name }}
+
+func benesLayerIn(data *[2][64]uint64, bits *[64]uint64, lgs int) {
+	s := 1 << lgs
+	idx := 0
+	for i := 0; i < 64; i += s * 2 {
+		for j := i; j < i+s; j++ {
+			d := (data[0][j] ^ data[0][j+s]) & bits[idx]
+			data[0][j] ^= d
+			data[0][j+s] ^= d
+			idx++
+
+			d = (data[1][j] ^ data[1][j+s]) & bits[idx]
+			data[1][j] ^= d
+			data[1][j+s] ^= d
+			idx++
+		}
+	}
+}
+
+func benesLayerEx(data *[128]uint64, bits *[64]uint64, lgs int) {
+	s := 1 << lgs
+	idx := 0
+	for i := 0; i < 128; i += s * 2 {
+		for j := i; j < i+s; j++ {
+			d := (data[j] ^ data[j+s]) & bits[idx]
+			data[j] ^= d
+			data[j+s] ^= d
+			idx++
+		}
+	}
+}
+
+func loadBenesBits(bits []byte, ptr *int, inc int, out *[64]uint64) {
+	for i := 0; i < 64; i++ {
+		out[i] = load8(bits[*ptr:])
+		*ptr += 8
+	}
+	*ptr += inc
+}
+
+func applyBenes(r []byte, bits []byte, rev bool) {
+	var rV [2][64]uint64
+	var rH [128]uint64
+	var bV, bH [64]uint64
+	var tmp [64]uint64
+
+	bitsPtr := 0
+	inc := 0
+	if rev {
+		bitsPtr = 12288
+		inc = -1024
+	}
+
+	for i := 0; i < 64; i++ {
+		rV[0][i] = load8(r[i*16:])
+		rV[1][i] = load8(r[i*16+8:])
+	}
+
+	transpose64x64(&tmp, &rV[0])
+	copy(rH[0:64], tmp[:])
+	transpose64x64(&tmp, &rV[1])
+	copy(rH[64:128], tmp[:])
+
+	for iter := 0; iter <= 6; iter++ {
+		loadBenesBits(bits, &bitsPtr, inc, &bV)
+		transpose64x64(&bH, &bV)
+		benesLayerEx(&rH, &bH, iter)
+	}
+
+	copy(tmp[:], rH[0:64])
+	transpose64x64(&rV[0], &tmp)
+	copy(tmp[:], rH[64:128])
+	transpose64x64(&rV[1], &tmp)
+
+	for iter := 0; iter <= 5; iter++ {
+		loadBenesBits(bits, &bitsPtr, inc, &bV)
+		benesLayerIn(&rV, &bV, iter)
+	}
+	for iter := 4; iter >= 0; iter-- {
+		loadBenesBits(bits, &bitsPtr, inc, &bV)
+		benesLayerIn(&rV, &bV, iter)
+	}
+
+	transpose64x64(&tmp, &rV[0])
+	copy(rH[0:64], tmp[:])
+	transpose64x64(&tmp, &rV[1])
+	copy(rH[64:128], tmp[:])
+
+	for iter := 6; iter >= 0; iter-- {
+		loadBenesBits(bits, &bitsPtr, inc, &bV)
+		transpose64x64(&bH, &bV)
+		benesLayerEx(&rH, &bH, iter)
+	}
+
+	copy(tmp[:], rH[0:64])
+	transpose64x64(&rV[0], &tmp)
+	copy(tmp[:], rH[64:128])
+	transpose64x64(&rV[1], &tmp)
+
+	for i := 0; i < 64; i++ {
+		store8(r[i*16:], rV[0][i])
+		store8(r[i*16+8:], rV[1][i])
+	}
+}
+
+func supportGen(s *[SysN]gf, c []byte) {
+	var L [GFBits][(1 << GFBits) / 8]byte
+	for i := 0; i < (1 << GFBits); i++ {
+		a := bitrev(gf(i))
+		for j := 0; j < GFBits; j++ {
+			L[j][i/8] |= byte((uint16(a)>>uint(j))&1) << uint(i%8)
+		}
+	}
+	for j := 0; j < GFBits; j++ {
+		applyBenes(L[j][:], c, false)
+	}
+	for i := 0; i < SysN; i++ {
+		s[i] = 0
+		for j := GFBits - 1; j >= 0; j-- {
+			s[i] <<= 1
+			s[i] |= gf((L[j][i/8] >> uint(i%8)) & 1)
+		}
+	}
+}
