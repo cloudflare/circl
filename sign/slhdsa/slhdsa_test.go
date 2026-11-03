@@ -1,6 +1,7 @@
 package slhdsa_test
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/rand"
 	"io"
@@ -65,6 +66,17 @@ func testKeys(t *testing.T, id slhdsa.ID) {
 
 	test.CheckOk(priv2.Equal(priv3), "private key not equal", t)
 	test.CheckOk(pub2.Equal(pub3), "public key not equal", t)
+
+	// Every byte of the seed must contribute to the derived key, and the
+	// seed must not be modified.
+	seed4 := make([]byte, scheme.SeedSize())
+	seed4[len(seed4)-1] = 0xFF
+	seed4Copy := append([]byte{}, seed4...)
+	pub4, priv4 := scheme.DeriveKey(seed4)
+
+	test.CheckOk(bytes.Equal(seed4, seed4Copy), "seed was modified", t)
+	test.CheckOk(!priv4.Equal(priv2), "private keys equal for different seeds", t)
+	test.CheckOk(!pub4.Equal(pub2), "public keys equal for different seeds", t)
 }
 
 func testSign(t *testing.T, id slhdsa.ID) {

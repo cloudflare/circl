@@ -80,7 +80,12 @@ func (s scheme) DeriveKey(seed []byte) (sign.PublicKey, sign.PrivateKey) {
 	n := s.n
 	buf := make([]byte, 3*n)
 	if s.isSHA2 {
-		s.mgf1(buf, seed, 3*n)
+		// mgf1 appends the counter in the last four bytes of its seed
+		// argument. Previous versions passed seed directly, which ignored
+		// its last four bytes and overwrote them in the caller's buffer.
+		mgfSeed := make([]byte, len(seed)+4)
+		copy(mgfSeed, seed)
+		s.mgf1(buf, mgfSeed, 3*n)
 	} else {
 		sha3.ShakeSum256(buf, seed)
 	}
