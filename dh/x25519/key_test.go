@@ -139,6 +139,58 @@ func TestWycheproof(t *testing.T) {
 	}
 }
 
+func TestWycheproofV1(t *testing.T) {
+	// Test vectors from Wycheproof testvectors_v1/x25519_test.json at commit 3fa63dd.
+	const nameFile = "testdata/wycheproof_v1_x25519_test.json.gz"
+	input, err := test.ReadGzip(nameFile)
+	if err != nil {
+		t.Fatalf("File %v can not be opened. Error: %v", nameFile, err)
+	}
+
+	var vecRaw struct {
+		TestGroups []struct {
+			Tests []struct {
+				TcID    int           `json:"tcId"`
+				Comment string        `json:"comment"`
+				Public  test.HexBytes `json:"public"`
+				Private test.HexBytes `json:"private"`
+				Shared  test.HexBytes `json:"shared"`
+				Result  string        `json:"result"`
+				Flags   []string      `json:"flags"`
+			} `json:"tests"`
+		} `json:"testGroups"`
+	}
+
+	err = json.Unmarshal(input, &vecRaw)
+	if err != nil {
+		t.Fatalf("File %v can not be loaded. Error: %v", nameFile, err)
+	}
+
+	var got Key
+	for _, g := range vecRaw.TestGroups {
+		for _, v := range g.Tests {
+			if len(v.Public) != Size || len(v.Private) != Size {
+				// A Key has a fixed size, so keys of any other size are rejected
+				// by the type; only invalid test cases have them.
+				if v.Result != "invalid" {
+					t.Errorf("%d: %s: unexpected key size", v.TcID, v.Comment)
+				}
+				continue
+			}
+			pub := Key(v.Public)
+			priv := Key(v.Private)
+			ok := Shared(&got, &priv, &pub)
+			want := Key(v.Shared)
+			if got != want {
+				test.ReportError(t, got, want, v.TcID, v.Private, v.Public)
+			}
+			if !ok && v.Result != "acceptable" {
+				test.ReportError(t, got, want, v.TcID, v.Private, v.Public)
+			}
+		}
+	}
+}
+
 func BenchmarkX25519(b *testing.B) {
 	var x, y, z Key
 
