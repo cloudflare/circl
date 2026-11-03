@@ -264,12 +264,12 @@ func TestG1Bytes(t *testing.T) {
 	}
 
 	for i, v := range []testCase{
-		{headerEncoding(0, 0, 0), G1Size, randomG1(t), (G1).Bytes},
-		{headerEncoding(0, 0, 0), G1Size, g, (G1).Bytes},
-		{headerEncoding(1, 0, 0), G1SizeCompressed, g, (G1).BytesCompressed},
-		{headerEncoding(1, 0, 1), G1SizeCompressed, minusG, (G1).BytesCompressed},
-		{headerEncoding(0, 1, 0), G1Size, id, (G1).Bytes},
-		{headerEncoding(1, 1, 0), G1SizeCompressed, id, (G1).BytesCompressed},
+		{headerEncoding(0, 0, 0), G1Size, randomG1(t), G1.Bytes},
+		{headerEncoding(0, 0, 0), G1Size, g, G1.Bytes},
+		{headerEncoding(1, 0, 0), G1SizeCompressed, g, G1.BytesCompressed},
+		{headerEncoding(1, 0, 1), G1SizeCompressed, minusG, G1.BytesCompressed},
+		{headerEncoding(0, 1, 0), G1Size, id, G1.Bytes},
+		{headerEncoding(1, 1, 0), G1SizeCompressed, id, G1.BytesCompressed},
 	} {
 		b := v.toBytes(*v.point)
 		test.CheckOk(len(b) == v.length, fmt.Sprintf("bad encoding size (case:%v point:%v b:%x)", i, v.point, b), t)

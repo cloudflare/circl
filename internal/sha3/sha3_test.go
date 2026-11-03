@@ -231,6 +231,7 @@ func BenchmarkShake256_16x(b *testing.B)  { benchmarkShake(b, NewShake256(), 16,
 func BenchmarkShake256_1MiB(b *testing.B) { benchmarkShake(b, NewShake256(), 1024, 1024) }
 
 func BenchmarkTurboShake128_1MiB(b *testing.B) { benchmarkShake(b, NewTurboShake128(0x37), 1024, 1024) }
+
 func BenchmarkTurboShake256_1MiB(b *testing.B) { benchmarkShake(b, NewTurboShake256(0x37), 1024, 1024) }
 
 func BenchmarkSha3_512_1MiB(b *testing.B) { benchmarkHash(b, New512(), 1024, 1024) }

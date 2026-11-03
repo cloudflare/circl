@@ -33,7 +33,7 @@ stability — the bar is **"correct and justified,"** not "frozen."
 
 ## Testing
 
-- **`go test ./...` must pass on amd64.** CI also runs Go 1.25/1.26 on
+- **`go test ./...` must pass on amd64.** CI also runs Go 1.26/1.27 on
   arm64, WASM (`GOOS=js GOARCH=wasm`), macOS, and Windows. If you touch
   assembly or `unsafe`, also try `NOASM=1` (purego).
 - **KATs:** the repo uses Known Answer Tests extensively (e.g.

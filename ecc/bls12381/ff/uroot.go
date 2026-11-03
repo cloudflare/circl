@@ -7,11 +7,11 @@ const URootSize = Fp12Size
 // that x^n=1, where n = ScalarOrder().
 type URoot Cyclo6
 
-func (z URoot) String() string                  { return (Cyclo6)(z).String() }
+func (z URoot) String() string                  { return Cyclo6(z).String() }
 func (z *URoot) UnmarshalBinary(b []byte) error { return (*Fp12)(z).UnmarshalBinary(b) }
-func (z URoot) MarshalBinary() ([]byte, error)  { return (Fp12)(z).MarshalBinary() }
+func (z URoot) MarshalBinary() ([]byte, error)  { return Fp12(z).MarshalBinary() }
 func (z *URoot) SetIdentity()                   { (*Fp12)(z).SetOne() }
-func (z URoot) IsEqual(x *URoot) int            { return (Cyclo6)(z).IsEqual((*Cyclo6)(x)) }
+func (z URoot) IsEqual(x *URoot) int            { return Cyclo6(z).IsEqual((*Cyclo6)(x)) }
 func (z URoot) IsIdentity() int                 { i := &URoot{}; i.SetIdentity(); return z.IsEqual(i) }
 func (z *URoot) Exp(x *URoot, n []byte)         { (*Cyclo6)(z).exp((*Cyclo6)(x), n) }
 func (z *URoot) Mul(x, y *URoot)                { (*Cyclo6)(z).Mul((*Cyclo6)(x), (*Cyclo6)(y)) }
