@@ -44,7 +44,12 @@ func (g wG) Identity() Element   { return g.zeroElement() }
 func (g wG) byteSize() int       { return (g.c.Params().BitSize + 7) / 8 }
 func (g wG) zeroScalar() *wScl   { return &wScl{g, make([]byte, g.byteSize())} }
 func (g wG) zeroElement() *wElt  { return &wElt{new(big.Int), new(big.Int), g} }
-func (g wG) Generator() Element  { return &wElt{g.c.Params().Gx, g.c.Params().Gy, g} }
+
+func (g wG) Generator() Element {
+	params := g.c.Params()
+	return &wElt{new(big.Int).Set(params.Gx), new(big.Int).Set(params.Gy), g}
+}
+
 func (g wG) RandomElement(rd io.Reader) Element {
 	b := make([]byte, g.byteSize())
 	if n, err := io.ReadFull(rd, b); err != nil || n != len(b) {
