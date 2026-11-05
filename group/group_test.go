@@ -32,6 +32,7 @@ func TestGroup(t *testing.T) {
 		t.Run(n+"/Marshal", func(tt *testing.T) { testMarshal(tt, testTimes, g) })
 		t.Run(n+"/Scalar", func(tt *testing.T) { testScalar(tt, testTimes, g) })
 		t.Run(n+"/SetBigInt", func(tt *testing.T) { testSetBigInt(tt, g) })
+		t.Run(n+"/Generator", func(tt *testing.T) { testGenerator(tt, g) })
 	}
 }
 
@@ -394,5 +395,17 @@ func BenchmarkScalar(b *testing.B) {
 				y.Inv(x)
 			}
 		})
+	}
+}
+
+func testGenerator(t *testing.T, g group.Group) {
+	want := g.NewElement().MulGen(g.NewScalar().SetUint64(1))
+
+	G := g.Generator()
+	G.Neg(G)
+
+	got := g.Generator()
+	if !got.IsEqual(want) {
+		test.ReportError(t, got, want)
 	}
 }
