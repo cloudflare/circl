@@ -12,9 +12,10 @@ import (
 )
 
 var (
-	errInputLength = errors.New("incorrect input length")
-	errInputRange  = errors.New("value out of range [0,order)")
-	errInputString = errors.New("invalid string")
+	errInputLength   = errors.New("incorrect input length")
+	errInputRange    = errors.New("value out of range [0,order)")
+	errInputString   = errors.New("invalid string")
+	errInputSubgroup = errors.New("value not in subgroup")
 )
 
 func errFirst(e ...error) (err error) {
