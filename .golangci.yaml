@@ -54,6 +54,11 @@ linters:
         - -QF1008
   exclusions:
     generated: lax
+    rules:
+      # These two interactive command-line tools deliberately print prompts/results.
+      - path: '^ecc/curvegen/(binaryfields/)?curvegen\.go$'
+        linters:
+          - forbidigo
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0

@@ -9,8 +9,8 @@ import (
 func contextEqual(a, b *encdecContext) bool {
 	an := make([]byte, a.NonceSize())
 	bn := make([]byte, b.NonceSize())
-	ac := a.AEAD.Seal(nil, an, nil, nil)
-	bc := b.AEAD.Seal(nil, bn, nil, nil)
+	ac := a.AEAD.Seal(nil, an, nil, nil) // #nosec G407 -- A fixed nonce compares test contexts deterministically.
+	bc := b.AEAD.Seal(nil, bn, nil, nil) // #nosec G407 -- A fixed nonce compares test contexts deterministically.
 	return a.suite == b.suite &&
 		bytes.Equal(a.exporterSecret, b.exporterSecret) &&
 		bytes.Equal(a.key, b.key) &&

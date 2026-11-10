@@ -1,3 +1,8 @@
+// Copyright (c) 2026 OmniTrust Security LLC. All rights reserved.
+// OmniTrust Security LLC's additions and modifications are licensed under the
+// Apache License, Version 2.0 (see LICENSE-APACHE).
+// Existing third-party code remains under its original terms (see LICENSE).
+
 package pki_test
 
 import (
@@ -11,11 +16,28 @@ import (
 	"github.com/cloudflare/circl/sign/schemes"
 )
 
-// Schemes without an object identifier, such as Dilithium and SLH-DSA, must
-// get an error from the marshal functions rather than a panic.
+// Embedding only sign.Scheme deliberately hides the underlying scheme's Oid method.
+type schemeWithoutOID struct{ sign.Scheme }
+
+type publicKeyWithoutOID struct{ sign.PublicKey }
+
+type privateKeyWithoutOID struct{ sign.PrivateKey }
+
+func (k publicKeyWithoutOID) Scheme() sign.Scheme  { return schemeWithoutOID{k.PublicKey.Scheme()} }
+func (k privateKeyWithoutOID) Scheme() sign.Scheme { return schemeWithoutOID{k.PrivateKey.Scheme()} }
+
+func (s schemeWithoutOID) GenerateKey() (sign.PublicKey, sign.PrivateKey, error) {
+	pk, sk, err := s.Scheme.GenerateKey()
+	if err != nil {
+		return nil, nil, err
+	}
+	return publicKeyWithoutOID{pk}, privateKeyWithoutOID{sk}, nil
+}
+
+// Schemes without an object identifier must get an error rather than a panic.
 func TestMarshalSchemeWithoutOid(t *testing.T) {
 	n := 0
-	for _, scheme := range schemes.All() {
+	for _, scheme := range append(schemes.All(), schemeWithoutOID{schemes.ByName("ML-DSA-44")}) {
 		if _, ok := scheme.(pki.CertificateScheme); ok {
 			continue
 		}

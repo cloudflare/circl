@@ -24,7 +24,7 @@ jobs:
       - name: Linting
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.12.2
+          version: v2.15.0
       - name: Check shadowing
         run: |
          # Pin x/tools to a version compatible with the oldest Go version in the CI matrix.

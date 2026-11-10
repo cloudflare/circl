@@ -1,3 +1,8 @@
+// Copyright (c) 2026 OmniTrust Security LLC. All rights reserved.
+// OmniTrust Security LLC's additions and modifications are licensed under the
+// Apache License, Version 2.0 (see LICENSE-APACHE).
+// Existing third-party code remains under its original terms (see LICENSE).
+
 package pki
 
 import (
@@ -8,6 +13,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/cloudflare/circl/ecc"
+	"github.com/cloudflare/circl/ecc/curves"
 	"github.com/cloudflare/circl/sign"
 	"github.com/cloudflare/circl/sign/schemes"
 
@@ -18,6 +25,7 @@ import (
 var (
 	allSchemesByOID map[string]sign.Scheme
 	allSchemesByTLS map[uint]sign.Scheme
+	allCurvesByOID  map[string]ecc.Curve
 )
 
 type pkixPrivKey struct {
@@ -29,6 +37,7 @@ type pkixPrivKey struct {
 func init() {
 	allSchemesByOID = make(map[string]sign.Scheme)
 	allSchemesByTLS = make(map[uint]sign.Scheme)
+	allCurvesByOID = make(map[string]ecc.Curve)
 	for _, scheme := range schemes.All() {
 		if cert, ok := scheme.(CertificateScheme); ok {
 			allSchemesByOID[cert.Oid().String()] = scheme
@@ -36,6 +45,9 @@ func init() {
 		if tlsScheme, ok := scheme.(TLSScheme); ok {
 			allSchemesByTLS[tlsScheme.TLSIdentifier()] = scheme
 		}
+	}
+	for _, curve := range curves.All() {
+		allCurvesByOID[curve.Oid().String()] = curve
 	}
 }
 
@@ -54,6 +66,10 @@ func schemeOid(scheme sign.Scheme) (asn1.ObjectIdentifier, error) {
 func SchemeByOid(oid asn1.ObjectIdentifier) sign.Scheme { return allSchemesByOID[oid.String()] }
 
 func SchemeByTLSID(id uint) sign.Scheme { return allSchemesByTLS[id] }
+
+// CurveByOid returns the registered curve for oid, or nil if it is unknown.
+// Registration does not imply constant-time operations; see package ecc.
+func CurveByOid(oid asn1.ObjectIdentifier) ecc.Curve { return allCurvesByOID[oid.String()] }
 
 // Additional methods when the signature scheme is supported in X509.
 type CertificateScheme interface {

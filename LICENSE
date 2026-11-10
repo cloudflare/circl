@@ -1,3 +1,13 @@
+Licensing of this fork
+
+Original CIRCL code remains subject to the BSD-3-Clause terms reproduced below.
+Original additions and modifications copyright (c) 2026 OmniTrust Security LLC
+are licensed under the Apache License, Version 2.0; see LICENSE-APACHE.
+Existing third-party notices and license terms remain applicable, including
+those in ecc/p384/LICENSE.
+
+========================================================================
+
 Copyright (c) 2019 Cloudflare. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without

@@ -1,3 +1,8 @@
+// Copyright (c) 2026 OmniTrust Security LLC. All rights reserved.
+// OmniTrust Security LLC's additions and modifications are licensed under the
+// Apache License, Version 2.0 (see LICENSE-APACHE).
+// Existing third-party code remains under its original terms (see LICENSE).
+
 //go:build ignore
 // +build ignore
 

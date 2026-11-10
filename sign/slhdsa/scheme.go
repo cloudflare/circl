@@ -1,7 +1,13 @@
+// Copyright (c) 2026 OmniTrust Security LLC. All rights reserved.
+// OmniTrust Security LLC's additions and modifications are licensed under the
+// Apache License, Version 2.0 (see LICENSE-APACHE).
+// Existing third-party code remains under its original terms (see LICENSE).
+
 package slhdsa
 
 import (
 	"crypto/rand"
+	"encoding/asn1"
 
 	"github.com/cloudflare/circl/internal/sha3"
 	"github.com/cloudflare/circl/sign"
@@ -111,4 +117,47 @@ func (s scheme) UnmarshalBinaryPrivateKey(b []byte) (sign.PrivateKey, error) {
 	}
 
 	return k, nil
+}
+
+func (s scheme) Oid() asn1.ObjectIdentifier {
+	// https://datatracker.ietf.org/doc/html/rfc9814
+	// base OID for sigAlgs (2.16.840.1.101.3.4.3)
+	baseOID := asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3}
+
+	// clone the base OID and append a parameter-specific digit
+	oid := make(asn1.ObjectIdentifier, len(baseOID)+1)
+	copy(oid, baseOID)
+
+	// add the parameter-specific digit based on the ID
+	switch s.ID {
+	case SHA2_128s:
+		oid[len(baseOID)] = 20 // 2.16.840.1.101.3.4.3.20
+	case SHA2_128f:
+		oid[len(baseOID)] = 21 // 2.16.840.1.101.3.4.3.21
+	case SHA2_192s:
+		oid[len(baseOID)] = 22 // 2.16.840.1.101.3.4.3.22
+	case SHA2_192f:
+		oid[len(baseOID)] = 23 // 2.16.840.1.101.3.4.3.23
+	case SHA2_256s:
+		oid[len(baseOID)] = 24 // 2.16.840.1.101.3.4.3.24
+	case SHA2_256f:
+		oid[len(baseOID)] = 25 // 2.16.840.1.101.3.4.3.25
+	case SHAKE_128s:
+		oid[len(baseOID)] = 26 // 2.16.840.1.101.3.4.3.26
+	case SHAKE_128f:
+		oid[len(baseOID)] = 27 // 2.16.840.1.101.3.4.3.27
+	case SHAKE_192s:
+		oid[len(baseOID)] = 28 // 2.16.840.1.101.3.4.3.28
+	case SHAKE_192f:
+		oid[len(baseOID)] = 29 // 2.16.840.1.101.3.4.3.29
+	case SHAKE_256s:
+		oid[len(baseOID)] = 30 // 2.16.840.1.101.3.4.3.30
+	case SHAKE_256f:
+		oid[len(baseOID)] = 31 // 2.16.840.1.101.3.4.3.31
+	default:
+		// for invalid schemes, return the base sigAlgs
+		return baseOID
+	}
+
+	return oid
 }

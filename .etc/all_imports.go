@@ -1,3 +1,8 @@
+// Copyright (c) 2026 OmniTrust Security LLC. All rights reserved.
+// OmniTrust Security LLC's additions and modifications are licensed under the
+// Apache License, Version 2.0 (see LICENSE-APACHE).
+// Existing third-party code remains under its original terms (see LICENSE).
+
 //go:build ignore
 // +build ignore
 
@@ -9,6 +14,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"go/build"
 	"io/fs"
 	"os"
 	"strings"
@@ -37,6 +43,16 @@ func main() {
 				if strings.Contains(path, sd) {
 					return nil
 				}
+			}
+			pkg, err := build.ImportDir(path, 0)
+			if _, ok := err.(*build.NoGoError); ok {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+			if pkg.Name == "main" {
+				return nil
 			}
 			fmt.Fprintf(f, "import _ \"%v%v\"\n", circl, path)
 		}

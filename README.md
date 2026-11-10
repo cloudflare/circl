@@ -2,6 +2,10 @@
 
 # CIRCL
 
+This is OmniTrust Security LLC’s fork of [Cloudflare CIRCL](https://github.com/cloudflare/circl),
+adding elliptic curves, curve/OID registries, and signature OIDs. The module path
+remains `github.com/cloudflare/circl`. The badges below refer to upstream CIRCL.
+
 [![GitHub release](https://img.shields.io/github/release/cloudflare/circl.svg)](https://GitHub.com/cloudflare/circl/releases/)
 [![CIRCL](https://github.com/cloudflare/circl/workflows/CIRCL/badge.svg)](https://github.com/cloudflare/circl/actions)
 [![GoDoc](https://godoc.org/github.com/cloudflare/circl?status.svg)](https://pkg.go.dev/github.com/cloudflare/circl?tab=overview)
@@ -18,6 +22,15 @@ Curve Cryptography (ECC).
 
 ### Constant-Time Caveats
 
+⚠️ **Fork-specific warning:** the added binary-curve arithmetic in `ecc/`,
+custom prime curves (including Brainpool and P-192), and interactive tools in
+`ecc/curvegen/` are not constant time. Their branches, loop bounds, and
+`math/big` operations can leak secret values through timing. Do not use these
+implementations with secret scalars, including private keys or signing nonces.
+Curve/OID registration does not imply suitability for cryptographic use or
+modern security strength. This warning does not change the guarantees of the
+existing constant-time implementations to which some curves delegate.
+
 ⚠️ Not every package in CIRCL is constant time. The following packages document, at the
 top of their `doc.go` or main source file, the specific operations that are known to
 leak timing information: [`group/`](./group), [`oprf/`](./oprf),
@@ -27,11 +40,20 @@ leak timing information: [`group/`](./group), [`oprf/`](./oprf),
 
 ## Installation
 
-You can get CIRCL by fetching:
+The fork retains the upstream module path and imports. Each consuming application
+must replace upstream CIRCL with this fork in its own `go.mod`. Replacements in
+library dependencies do not propagate to consumers.
+
+Replace `COMMIT_HASH` below with a published fork commit (or use a published tag),
+then run:
 
 ```sh
-go get -u github.com/cloudflare/circl
+go mod edit -replace=github.com/cloudflare/circl=github.com/otpki/circl@COMMIT_HASH
+go mod tidy
 ```
+
+Libraries using this fork should also apply the replacement for their own builds
+and tests, while continuing to import `github.com/cloudflare/circl/...`.
 
 Alternatively, look at the [Cloudflare Go](https://github.com/cloudflare/go/tree/cf) fork to see how to integrate CIRCL natively in Go.
 
@@ -202,4 +224,10 @@ See attached [CITATION.cff](CITATION.cff) file.
 
 ## License
 
-The project is licensed under the [BSD-3-Clause License](./LICENSE).
+Original CIRCL code remains licensed under the BSD-3-Clause terms in
+[LICENSE](./LICENSE). Original additions and modifications copyright (c) 2026
+OmniTrust Security LLC are licensed under the
+[Apache License, Version 2.0](./LICENSE-APACHE).
+
+Existing upstream and third-party attribution and license terms remain
+applicable, including [ecc/p384/LICENSE](./ecc/p384/LICENSE).
