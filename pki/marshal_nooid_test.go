@@ -11,7 +11,7 @@ import (
 	"github.com/cloudflare/circl/sign/schemes"
 )
 
-// Schemes without an object identifier, such as Dilithium and SLH-DSA, must
+// Schemes without an object identifier, such as Dilithium, must
 // get an error from the marshal functions rather than a panic.
 func TestMarshalSchemeWithoutOid(t *testing.T) {
 	n := 0

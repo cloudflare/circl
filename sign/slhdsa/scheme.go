@@ -2,6 +2,7 @@ package slhdsa
 
 import (
 	"crypto/rand"
+	"encoding/asn1"
 
 	"github.com/cloudflare/circl/internal/sha3"
 	"github.com/cloudflare/circl/sign"
@@ -14,6 +15,29 @@ type scheme struct{ *params }
 func (s scheme) Name() string          { return s.name }
 func (s scheme) SeedSize() int         { return s.PrivateKeySize() }
 func (s scheme) SupportsContext() bool { return true }
+
+// Last arc of the object identifier of each parameter set, under
+// sigAlgs (2.16.840.1.101.3.4.3). See RFC 9909, Section 3.
+var oidArc = [_MaxParams]int{
+	SHA2_128s:  20,
+	SHA2_128f:  21,
+	SHA2_192s:  22,
+	SHA2_192f:  23,
+	SHA2_256s:  24,
+	SHA2_256f:  25,
+	SHAKE_128s: 26,
+	SHAKE_128f: 27,
+	SHAKE_192s: 28,
+	SHAKE_192f: 29,
+	SHAKE_256s: 30,
+	SHAKE_256f: 31,
+}
+
+// Oid returns the object identifier of the parameter set, as assigned
+// in RFC 9909. It is the same for the public key and the signature.
+func (s scheme) Oid() asn1.ObjectIdentifier {
+	return asn1.ObjectIdentifier{2, 16, 840, 1, 101, 3, 4, 3, oidArc[s.ID]}
+}
 
 // GenerateKey is similar to [GenerateKey] function, except it always reads
 // random bytes from [rand.Reader].
