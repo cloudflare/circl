@@ -46,7 +46,8 @@ func unmarshalContext(raw []byte) (*encdecContext, error) {
 		!s.ReadUint8LengthPrefixed(&t) ||
 		!t.ReadBytes(&c.baseNonce, len(t)) ||
 		!s.ReadUint8LengthPrefixed(&t) ||
-		!t.ReadBytes(&c.sequenceNumber, len(t)) {
+		!t.ReadBytes(&c.sequenceNumber, len(t)) ||
+		!s.Empty() {
 		return nil, errors.New("failed to parse context")
 	}
 
