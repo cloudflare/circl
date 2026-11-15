@@ -81,4 +81,13 @@ func TestContextSerialization(t *testing.T) {
 	if err == nil {
 		t.Error("parsing an opener as a sealer succeeded; want failure")
 	}
+
+	_, err = UnmarshalSealer(append(rawSealer, 0))
+	if err == nil {
+		t.Error("parsing a sealer with trailing data succeeded; want failure")
+	}
+	_, err = UnmarshalOpener(append(rawOpener, 0))
+	if err == nil {
+		t.Error("parsing an opener with trailing data succeeded; want failure")
+	}
 }
