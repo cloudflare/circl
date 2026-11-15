@@ -11,6 +11,11 @@ import (
 	"github.com/cloudflare/circl/internal/test"
 	"github.com/cloudflare/circl/pki"
 	"github.com/cloudflare/circl/sign"
+	"github.com/cloudflare/circl/sign/ed25519"
+	"github.com/cloudflare/circl/sign/ed448"
+	"github.com/cloudflare/circl/sign/mldsa/mldsa44"
+	"github.com/cloudflare/circl/sign/mldsa/mldsa65"
+	"github.com/cloudflare/circl/sign/mldsa/mldsa87"
 	"github.com/cloudflare/circl/sign/schemes"
 )
 
@@ -129,7 +134,15 @@ func TestUnmarshalPEMNoBlock(t *testing.T) {
 
 func TestUnmarshalAlgorithmParameters(t *testing.T) {
 	// RFC 8410 and RFC 9881 require the AlgorithmIdentifier parameters to be
-	// absent. Re-encode valid keys with an ASN.1 NULL parameter.
+	// absent. Re-encode valid keys with an ASN.1 NULL parameter, which must
+	// be rejected for those schemes only.
+	strict := map[sign.Scheme]bool{
+		ed25519.Scheme(): true,
+		ed448.Scheme():   true,
+		mldsa44.Scheme(): true,
+		mldsa65.Scheme(): true,
+		mldsa87.Scheme(): true,
+	}
 	null := asn1.RawValue{FullBytes: asn1.NullBytes}
 	for _, scheme := range schemes.All() {
 		cert, ok := scheme.(pki.CertificateScheme)
@@ -156,8 +169,11 @@ func TestUnmarshalAlgorithmParameters(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err = pki.UnmarshalPKIXPublicKey(spki); err == nil {
+			_, err = pki.UnmarshalPKIXPublicKey(spki)
+			if strict[scheme] && err == nil {
 				t.Error("UnmarshalPKIXPublicKey accepted algorithm parameters")
+			} else if !strict[scheme] && err != nil {
+				t.Errorf("UnmarshalPKIXPublicKey: %v", err)
 			}
 
 			packedSk, err := pki.MarshalPKIXPrivateKey(sk)
@@ -177,8 +193,11 @@ func TestUnmarshalAlgorithmParameters(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := pki.UnmarshalPKIXPrivateKey(packedSk); err == nil {
+			_, err = pki.UnmarshalPKIXPrivateKey(packedSk)
+			if strict[scheme] && err == nil {
 				t.Error("UnmarshalPKIXPrivateKey accepted algorithm parameters")
+			} else if !strict[scheme] && err != nil {
+				t.Errorf("UnmarshalPKIXPrivateKey: %v", err)
 			}
 		})
 	}

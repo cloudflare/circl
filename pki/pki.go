@@ -59,10 +59,7 @@ func SchemeByTLSID(id uint) sign.Scheme { return allSchemesByTLS[id] }
 type CertificateScheme interface {
 	// Return the appropriate OIDs for this instance.  It is implicitly
 	// assumed that the encoding is simple: e.g. uses the same OID for
-	// signature and public key like Ed25519, and the AlgorithmIdentifier
-	// parameters are absent. The PKIX functions in this package neither
-	// write nor accept parameters, so a scheme that needs them will
-	// require its own handling there.
+	// signature and public key like Ed25519.
 	Oid() asn1.ObjectIdentifier
 }
 
@@ -102,7 +99,7 @@ func UnmarshalPKIXPublicKey(data []byte) (sign.PublicKey, error) {
 		return nil, errors.New("unsupported public key algorithm")
 	}
 	// NOTE Previous versions accepted algorithm parameters.
-	if len(pkix.Algorithm.Parameters.FullBytes) != 0 {
+	if requiresAbsentParams(scheme) && len(pkix.Algorithm.Parameters.FullBytes) != 0 {
 		return nil, errors.New("unexpected algorithm parameters")
 	}
 	return scheme.UnmarshalBinaryPublicKey(pkix.PublicKey.RightAlign())
@@ -128,6 +125,14 @@ func isMLDSA(scheme sign.Scheme) bool {
 	return name == "ML-DSA-44" || name == "ML-DSA-65" || name == "ML-DSA-87"
 }
 
+// requiresAbsentParams reports whether the specification of scheme requires
+// the AlgorithmIdentifier parameters to be absent: RFC 8410, Section 3 for
+// Ed25519 and Ed448, and RFC 9881 for ML-DSA.
+func requiresAbsentParams(scheme sign.Scheme) bool {
+	name := scheme.Name()
+	return name == "Ed25519" || name == "Ed448" || isMLDSA(scheme)
+}
+
 func UnmarshalPKIXPrivateKey(data []byte) (sign.PrivateKey, error) {
 	var pkix pkixPrivKey
 	if rest, err := asn1.Unmarshal(data, &pkix); err != nil {
@@ -140,7 +145,7 @@ func UnmarshalPKIXPrivateKey(data []byte) (sign.PrivateKey, error) {
 		return nil, errors.New("unsupported public key algorithm")
 	}
 	// NOTE Previous versions accepted algorithm parameters.
-	if len(pkix.Algorithm.Parameters.FullBytes) != 0 {
+	if requiresAbsentParams(scheme) && len(pkix.Algorithm.Parameters.FullBytes) != 0 {
 		return nil, errors.New("unexpected algorithm parameters")
 	}
 
