@@ -121,6 +121,12 @@ func isMLDSA(scheme sign.Scheme) bool {
 	return name == "ML-DSA-44" || name == "ML-DSA-65" || name == "ML-DSA-87"
 }
 
+// SLH-DSA puts the raw private key directly in the privateKey OCTET STRING,
+// with no inner OCTET STRING as in RFC 8410. See RFC 9909, Section 7.
+func isSLHDSA(scheme sign.Scheme) bool {
+	return strings.HasPrefix(scheme.Name(), "SLH-DSA-")
+}
+
 func UnmarshalPKIXPrivateKey(data []byte) (sign.PrivateKey, error) {
 	var pkix pkixPrivKey
 	if rest, err := asn1.Unmarshal(data, &pkix); err != nil {
@@ -182,6 +188,10 @@ func UnmarshalPKIXPrivateKey(data []byte) (sign.PrivateKey, error) {
 			return nil, errors.New("mismatching seed and expanded private key")
 		}
 		return sk, nil
+	}
+
+	if isSLHDSA(scheme) {
+		return scheme.UnmarshalBinaryPrivateKey(pkix.PrivateKey)
 	}
 
 	var sk []byte
@@ -269,6 +279,11 @@ func MarshalPKIXPrivateKey(sk sign.PrivateKey) ([]byte, error) {
 			b.AddBytes(seed)
 		})
 		data, err = b.Bytes()
+		if err != nil {
+			return nil, err
+		}
+	} else if isSLHDSA(scheme) {
+		data, err = sk.MarshalBinary()
 		if err != nil {
 			return nil, err
 		}
