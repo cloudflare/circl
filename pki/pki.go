@@ -98,6 +98,10 @@ func UnmarshalPKIXPublicKey(data []byte) (sign.PublicKey, error) {
 	if scheme == nil {
 		return nil, errors.New("unsupported public key algorithm")
 	}
+	// NOTE Previous versions accepted algorithm parameters.
+	if requiresAbsentParams(scheme) && len(pkix.Algorithm.Parameters.FullBytes) != 0 {
+		return nil, errors.New("unexpected algorithm parameters")
+	}
 	return scheme.UnmarshalBinaryPublicKey(pkix.PublicKey.RightAlign())
 }
 
@@ -121,6 +125,14 @@ func isMLDSA(scheme sign.Scheme) bool {
 	return name == "ML-DSA-44" || name == "ML-DSA-65" || name == "ML-DSA-87"
 }
 
+// requiresAbsentParams reports whether the specification of scheme requires
+// the AlgorithmIdentifier parameters to be absent: RFC 8410, Section 3 for
+// Ed25519 and Ed448, and RFC 9881 for ML-DSA.
+func requiresAbsentParams(scheme sign.Scheme) bool {
+	name := scheme.Name()
+	return name == "Ed25519" || name == "Ed448" || isMLDSA(scheme)
+}
+
 func UnmarshalPKIXPrivateKey(data []byte) (sign.PrivateKey, error) {
 	var pkix pkixPrivKey
 	if rest, err := asn1.Unmarshal(data, &pkix); err != nil {
@@ -131,6 +143,10 @@ func UnmarshalPKIXPrivateKey(data []byte) (sign.PrivateKey, error) {
 	scheme := SchemeByOid(pkix.Algorithm.Algorithm)
 	if scheme == nil {
 		return nil, errors.New("unsupported public key algorithm")
+	}
+	// NOTE Previous versions accepted algorithm parameters.
+	if requiresAbsentParams(scheme) && len(pkix.Algorithm.Parameters.FullBytes) != 0 {
+		return nil, errors.New("unexpected algorithm parameters")
 	}
 
 	// ML-DSA unfortunately has a complex private key format, which we

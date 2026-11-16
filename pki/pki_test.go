@@ -2,6 +2,8 @@ package pki_test
 
 import (
 	"bytes"
+	"crypto/x509/pkix"
+	"encoding/asn1"
 	"errors"
 	"fmt"
 	"testing"
@@ -9,6 +11,11 @@ import (
 	"github.com/cloudflare/circl/internal/test"
 	"github.com/cloudflare/circl/pki"
 	"github.com/cloudflare/circl/sign"
+	"github.com/cloudflare/circl/sign/ed25519"
+	"github.com/cloudflare/circl/sign/ed448"
+	"github.com/cloudflare/circl/sign/mldsa/mldsa44"
+	"github.com/cloudflare/circl/sign/mldsa/mldsa65"
+	"github.com/cloudflare/circl/sign/mldsa/mldsa87"
 	"github.com/cloudflare/circl/sign/schemes"
 )
 
@@ -122,5 +129,76 @@ func TestUnmarshalPEMNoBlock(t *testing.T) {
 		if _, err := pki.UnmarshalPEMPrivateKey(in); err == nil {
 			t.Errorf("UnmarshalPEMPrivateKey(%q) expected error, got nil", in)
 		}
+	}
+}
+
+func TestUnmarshalAlgorithmParameters(t *testing.T) {
+	// RFC 8410 and RFC 9881 require the AlgorithmIdentifier parameters to be
+	// absent. Re-encode valid keys with an ASN.1 NULL parameter, which must
+	// be rejected for those schemes only.
+	strict := map[sign.Scheme]bool{
+		ed25519.Scheme(): true,
+		ed448.Scheme():   true,
+		mldsa44.Scheme(): true,
+		mldsa65.Scheme(): true,
+		mldsa87.Scheme(): true,
+	}
+	null := asn1.RawValue{FullBytes: asn1.NullBytes}
+	for _, scheme := range schemes.All() {
+		cert, ok := scheme.(pki.CertificateScheme)
+		if !ok {
+			continue
+		}
+		t.Run(scheme.Name(), func(t *testing.T) {
+			pk, sk, err := scheme.GenerateKey()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			packedPk, err := pk.MarshalBinary()
+			if err != nil {
+				t.Fatal(err)
+			}
+			spki, err := asn1.Marshal(struct {
+				pkix.AlgorithmIdentifier
+				asn1.BitString
+			}{
+				pkix.AlgorithmIdentifier{Algorithm: cert.Oid(), Parameters: null},
+				asn1.BitString{Bytes: packedPk, BitLength: len(packedPk) * 8},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = pki.UnmarshalPKIXPublicKey(spki)
+			if strict[scheme] && err == nil {
+				t.Error("UnmarshalPKIXPublicKey accepted algorithm parameters")
+			} else if !strict[scheme] && err != nil {
+				t.Errorf("UnmarshalPKIXPublicKey: %v", err)
+			}
+
+			packedSk, err := pki.MarshalPKIXPrivateKey(sk)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var priv struct {
+				Version    int
+				Algorithm  pkix.AlgorithmIdentifier
+				PrivateKey []byte
+			}
+			if _, err = asn1.Unmarshal(packedSk, &priv); err != nil {
+				t.Fatal(err)
+			}
+			priv.Algorithm.Parameters = null
+			packedSk, err = asn1.Marshal(priv)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = pki.UnmarshalPKIXPrivateKey(packedSk)
+			if strict[scheme] && err == nil {
+				t.Error("UnmarshalPKIXPrivateKey accepted algorithm parameters")
+			} else if !strict[scheme] && err != nil {
+				t.Errorf("UnmarshalPKIXPrivateKey: %v", err)
+			}
+		})
 	}
 }
