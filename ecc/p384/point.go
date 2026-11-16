@@ -229,7 +229,7 @@ func (P *jacobianPoint) mixadd(Q *jacobianPoint, R *affinePoint) {
 	fp384Mul(s2, s2, z1z1)
 	if Q.x == *u2 {
 		if Q.y != *s2 {
-			*P = *(zeroPoint().toJacobian())
+			*P = *zeroPoint().toJacobian()
 			return
 		}
 		*P = *Q
