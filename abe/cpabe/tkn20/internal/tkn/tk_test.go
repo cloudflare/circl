@@ -434,7 +434,22 @@ func TestDecapsulateRejectsBadMatrixDimensions(t *testing.T) {
 
 	t.Run("c3 too tall", func(t *testing.T) {
 		header, key := buildSatisfiedHeaderAndKey(t)
-		header.c3[0] = newMatrixG1(header.c3[0].rows+1, 1)
+		// Grow every c3, and every non-nil c3neg, to the same height. The
+		// helper policy has several matched wires; enlarging only one c3
+		// is rejected by the earlier conformal checks, and never reaches
+		// the pTot.rows > key.k1.rows guard.
+		tallRows := key.k1.rows + 1
+		for i, m := range header.c3 {
+			if m == nil {
+				t.Fatalf("expected c3[%d] to be set", i)
+			}
+			header.c3[i] = newMatrixG1(tallRows, 1)
+		}
+		for i, m := range header.c3neg {
+			if m != nil {
+				header.c3neg[i] = newMatrixG1(tallRows, 1)
+			}
+		}
 		assertDecapsulateErrors(t, roundTripHeader(t, header), key)
 	})
 
