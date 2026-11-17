@@ -15,8 +15,14 @@ type curve struct{}
 // P384 returns a Curve which implements P-384 (see FIPS 186-3, section D.2.4).
 func P384() Curve { return curve{} }
 
-// IsOnCurve reports whether the given (x,y) lies on the curve.
+// IsOnCurve reports whether the given (x,y) lies on the curve. Coordinates
+// outside [0, p) are rejected, as in crypto/elliptic.
 func (c curve) IsOnCurve(x, y *big.Int) bool {
+	P := c.Params().P
+	if x.Sign() < 0 || x.Cmp(P) >= 0 || y.Sign() < 0 || y.Cmp(P) >= 0 {
+		return false
+	}
+
 	x1, y1 := &fp384{}, &fp384{}
 	x1.SetBigInt(x)
 	y1.SetBigInt(y)

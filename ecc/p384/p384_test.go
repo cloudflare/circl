@@ -4,6 +4,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"fmt"
+	"math/big"
 	"testing"
 
 	"github.com/cloudflare/circl/ecc/p384"
@@ -28,6 +29,22 @@ func TestIsOnCurveTrue(t *testing.T) {
 		want = false
 		if got != want {
 			test.ReportError(t, got, want, k)
+		}
+	}
+}
+
+func TestIsOnCurveRange(t *testing.T) {
+	CirclCurve := p384.P384()
+	params := elliptic.P384().Params()
+	x, y := params.Gx, params.Gy
+	for _, c := range []struct{ x, y *big.Int }{
+		{new(big.Int).Add(x, params.P), y},
+		{x, new(big.Int).Add(y, params.P)},
+		{x, new(big.Int).Neg(y)},
+		{new(big.Int).Sub(x, params.P), y},
+	} {
+		if CirclCurve.IsOnCurve(c.x, c.y) {
+			test.ReportError(t, true, false, c.x, c.y)
 		}
 	}
 }
