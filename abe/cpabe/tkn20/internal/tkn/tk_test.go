@@ -374,3 +374,113 @@ func TestDecapsulateRejectsNilC3neg(t *testing.T) {
 
 	assertDecapsulateErrors(t, tampered, key)
 }
+
+func roundTripHeader(t *testing.T, header *ciphertextHeader) *ciphertextHeader {
+	t.Helper()
+	raw, err := header.marshalBinary()
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := &ciphertextHeader{}
+	if err := out.unmarshalBinary(raw); err != nil {
+		t.Fatal(err)
+	}
+	return out
+}
+
+// TestDecapsulateRejectsBadMatrixDimensions checks that ciphertext matrices
+// whose declared rows or columns do not match what decapsulate later assumes
+// (single-column matrices, and row counts compatible with the key) make
+// decapsulate return an error rather than panic in addDuals or matrix add.
+// The checks run before the MAC compare in DecryptCCA. Each tampered header
+// is round-tripped through marshalBinary/unmarshalBinary so the change goes
+// through the wire format, except for the in-memory nil cases, which cannot
+// be serialized.
+func TestDecapsulateRejectsBadMatrixDimensions(t *testing.T) {
+	header, key := buildSatisfiedHeaderAndKey(t)
+	if _, err := decapsulate(header, key); err != nil {
+		t.Fatalf("baseline decapsulate failed: %v", err)
+	}
+
+	t.Run("c1 two columns", func(t *testing.T) {
+		header, key := buildSatisfiedHeaderAndKey(t)
+		header.c1 = newMatrixG2(header.c1.rows, 2)
+		assertDecapsulateErrors(t, roundTripHeader(t, header), key)
+	})
+
+	t.Run("c1 too few rows", func(t *testing.T) {
+		header, key := buildSatisfiedHeaderAndKey(t)
+		header.c1 = newMatrixG2(0, 1)
+		assertDecapsulateErrors(t, roundTripHeader(t, header), key)
+	})
+
+	t.Run("c2 two columns", func(t *testing.T) {
+		header, key := buildSatisfiedHeaderAndKey(t)
+		header.c2[0] = newMatrixG2(0, 2)
+		assertDecapsulateErrors(t, roundTripHeader(t, header), key)
+	})
+
+	t.Run("c2 too few rows", func(t *testing.T) {
+		header, key := buildSatisfiedHeaderAndKey(t)
+		header.c2[0] = newMatrixG2(0, 1)
+		assertDecapsulateErrors(t, roundTripHeader(t, header), key)
+	})
+
+	t.Run("c3 two columns", func(t *testing.T) {
+		header, key := buildSatisfiedHeaderAndKey(t)
+		header.c3[0] = newMatrixG1(header.c3[0].rows, 2)
+		assertDecapsulateErrors(t, roundTripHeader(t, header), key)
+	})
+
+	t.Run("c3 too tall", func(t *testing.T) {
+		header, key := buildSatisfiedHeaderAndKey(t)
+		header.c3[0] = newMatrixG1(header.c3[0].rows+1, 1)
+		assertDecapsulateErrors(t, roundTripHeader(t, header), key)
+	})
+
+	t.Run("c3neg two columns", func(t *testing.T) {
+		pp, sp, err := GenerateParams(rand.Reader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		hashKey := []byte("bad-c3neg-dims")
+		policy := &Policy{
+			Inputs: []Wire{
+				{Label: "country", RawValue: "US", Value: HashStringToScalar(hashKey, "US"), Positive: false},
+			},
+			F: Formula{Gates: []Gate{}},
+		}
+		attrs := Attributes{"country": {Value: HashStringToScalar(hashKey, "CA")}}
+		key, err := DeriveAttributeKeysCCA(rand.Reader, sp, &attrs)
+		if err != nil {
+			t.Fatal(err)
+		}
+		header, _, err := encapsulate(rand.Reader, pp, policy.transformBK(ToScalar(99)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if header.c3neg[0] == nil {
+			t.Fatal("expected c3neg[0] to be set for the negative wire")
+		}
+		header.c3neg[0] = newMatrixG1(header.c3neg[0].rows, 2)
+		assertDecapsulateErrors(t, roundTripHeader(t, header), key)
+	})
+
+	t.Run("nil c1", func(t *testing.T) {
+		header, key := buildSatisfiedHeaderAndKey(t)
+		header.c1 = nil
+		assertDecapsulateErrors(t, header, key)
+	})
+
+	t.Run("nil c2[0]", func(t *testing.T) {
+		header, key := buildSatisfiedHeaderAndKey(t)
+		header.c2[0] = nil
+		assertDecapsulateErrors(t, header, key)
+	})
+
+	t.Run("nil c3[0]", func(t *testing.T) {
+		header, key := buildSatisfiedHeaderAndKey(t)
+		header.c3[0] = nil
+		assertDecapsulateErrors(t, header, key)
+	})
+}
