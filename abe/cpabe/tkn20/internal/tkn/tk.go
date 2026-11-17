@@ -750,8 +750,13 @@ func decapsulate(header *ciphertextHeader, key *AttributesKey) (*pairing.Gt, err
 		mt := sat.matches[k]
 		j := pi[mt.wire]
 
+		if header.c3[mt.wire] == nil || header.c3[mt.wire].cols != 1 {
+			return nil, fmt.Errorf("invalid ciphertext: bad c3[%d] dimensions", mt.wire)
+		}
 		if p1[j] == nil {
 			p1[j] = newMatrixG1(header.c3[mt.wire].rows, header.c3[mt.wire].cols)
+		} else if !p1[j].conformal(header.c3[mt.wire]) {
+			return nil, fmt.Errorf("invalid ciphertext: bad c3[%d] dimensions", mt.wire)
 		}
 		if p2[j] == nil {
 			p2[j] = newMatrixG1(key.k3[mt.label].rows, key.k3[mt.label].cols)
@@ -778,6 +783,9 @@ func decapsulate(header *ciphertextHeader, key *AttributesKey) (*pairing.Gt, err
 			// below (this runs before the MAC check in DecryptCCA).
 			if header.c3neg[mt.wire] == nil {
 				return nil, fmt.Errorf("invalid ciphertext: missing c3neg data for negative wire %d", mt.wire)
+			}
+			if !header.c3neg[mt.wire].conformal(header.c3[mt.wire]) {
+				return nil, fmt.Errorf("invalid ciphertext: bad c3neg[%d] dimensions", mt.wire)
 			}
 			keymat := newMatrixG1(0, 0)
 			y := &pairing.Scalar{}
@@ -814,6 +822,11 @@ func decapsulate(header *ciphertextHeader, key *AttributesKey) (*pairing.Gt, err
 		if p1[i] != nil {
 			if pTot == nil {
 				pTot = newMatrixG1(p1[i].rows, p1[i].cols)
+			} else if !pTot.conformal(p1[i]) {
+				return nil, fmt.Errorf("invalid ciphertext: non-conformal c3 matrices")
+			}
+			if header.c2[i] == nil || header.c2[i].cols != 1 || header.c2[i].rows < p2[i].rows {
+				return nil, fmt.Errorf("invalid ciphertext: bad c2[%d] dimensions", i)
 			}
 			pTot.add(pTot, p1[i])
 			pairs.addDuals(p2[i], header.c2[i], 1)
@@ -825,6 +838,12 @@ func decapsulate(header *ciphertextHeader, key *AttributesKey) (*pairing.Gt, err
 	// so reaching it with a nil pTot would panic instead of failing cleanly.
 	if pTot == nil {
 		return nil, fmt.Errorf("invalid ciphertext: no satisfying policy wires")
+	}
+	if pTot.rows > key.k1.rows {
+		return nil, fmt.Errorf("invalid ciphertext: c3 matrices too tall")
+	}
+	if header.c1 == nil || header.c1.cols != 1 || header.c1.rows < key.k2.rows {
+		return nil, fmt.Errorf("invalid ciphertext: bad c1 dimensions")
 	}
 	pairs.addDuals(pTot, key.k1, -1)
 	pairs.addDuals(key.k2.copy(), header.c1, 1)
