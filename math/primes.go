@@ -32,3 +32,56 @@ func SafePrime(random io.Reader, bits int) (*big.Int, error) {
 		}
 	}
 }
+
+// SafePrimeConcurrent generates a safe prime concurrently.
+func SafePrimeConcurrent(bits int, workers int) (*big.Int, error) {
+	found := make(chan *big.Int, 1)
+	errChan := make(chan error, workers)
+	exitFlag := false
+
+	worker := func() {
+		defer func() {
+			exitFlag = true
+		}()
+		for {
+			if exitFlag {
+				return
+			}
+			// Generate a candidate prime q
+			q, err := rand.Prime(rand.Reader, bits-1)
+			if err != nil {
+				errChan <- err
+				return
+			}
+
+			one := big.NewInt(1)
+			p := new(big.Int)
+			p.Lsh(q, 1).Add(p, one)
+
+			// Check if p is prime
+			if p.ProbablyPrime(20) {
+				select {
+				case found <- p:
+					return
+				default:
+					return
+				}
+			}
+		}
+	}
+
+	// Start worker goroutines
+	for i := 0; i < workers; i++ {
+		go worker()
+	}
+
+	// Return the first result from any worker
+	for {
+		select {
+		case p := <-found:
+			return p, nil
+		case err := <-errChan:
+			return nil, err
+		}
+	}
+}
