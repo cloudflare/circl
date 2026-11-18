@@ -3,6 +3,7 @@ package slhdsa
 import (
 	"crypto/sha256"
 	"crypto/sha512"
+	"encoding"
 	"hash"
 	"io"
 
@@ -71,6 +72,7 @@ func sha512sum(out, in []byte) { s := sha512.Sum512(in); copy(out, s[:]) }
 
 type baseHasher struct {
 	hash          func(out, in []byte)
+	clearHash     func()
 	input, output []byte
 	address
 }
@@ -80,6 +82,11 @@ func (b *baseHasher) Size(p *params) uint32 {
 }
 
 func (b *baseHasher) Clear() {
+	if b.clearHash != nil {
+		b.clearHash()
+		b.clearHash = nil
+	}
+	b.hash = nil
 	clearSlice(&b.input)
 	clearSlice(&b.output)
 	b.address.Clear()
@@ -135,7 +142,7 @@ func (s *stateF) Init(p *params, cur *cursor, pkSeed []byte) {
 	s.msg = c.Next(p.n)
 
 	if p.isSHA2 {
-		s.hash = sha256sum
+		s.initSHA2(sha256.New())
 	} else {
 		s.hash = sha3.ShakeSum256
 	}
@@ -177,9 +184,9 @@ func (s *stateH) Init(p *params, cur *cursor, pkSeed []byte) {
 
 	if p.isSHA2 {
 		if p.n == 16 {
-			s.hash = sha256sum
+			s.initSHA2(sha256.New())
 		} else {
-			s.hash = sha512sum
+			s.initSHA2(sha512.New())
 		}
 	} else {
 		s.hash = sha3.ShakeSum256
@@ -219,6 +226,7 @@ type stateT struct {
 		Reset()
 		Final([]byte)
 	}
+	clearHash     func()
 	input, output []byte
 	address
 }
@@ -232,11 +240,17 @@ func (s *stateT) Init(p *params, cur *cursor, pkSeed []byte) {
 	s.address.fromBytes(p, &c)
 
 	if p.isSHA2 {
+		var h hash.Hash
 		if p.n == 16 {
-			s.hash = &sha2rw{sha256.New()}
+			h = sha256.New()
 		} else {
-			s.hash = &sha2rw{sha512.New()}
+			h = sha512.New()
 		}
+		prefix := s.input[:h.BlockSize()]
+		cached := newSHA2Prefix(h, prefix)
+		s.hash = cached
+		s.clearHash = func() { cached.Clear(); clear(prefix) }
+		s.input = s.input[h.BlockSize():]
 	} else {
 		s.hash = &sha3rw{sha3.NewShake256()}
 	}
@@ -246,7 +260,13 @@ func (s *stateT) Clear() {
 	clearSlice(&s.input)
 	clearSlice(&s.output)
 	s.address.Clear()
-	s.hash.Reset()
+	if s.clearHash != nil {
+		s.clearHash()
+		s.clearHash = nil
+	} else if s.hash != nil {
+		s.hash.Reset()
+	}
+	s.hash = nil
 }
 
 func (s *stateT) Reset() {
@@ -289,10 +309,50 @@ func (s *stateT) padSize(p *params) uint32 {
 	}
 }
 
-type sha2rw struct{ hash.Hash }
+// SHA-2 inputs start with a complete block containing only PK.seed and zeros.
+// Save it once per operation-owned state, then hash the changing address and
+// message. The saved state contains no secret material and is never shared.
+type sha2Prefix struct {
+	hash.Hash
+	saved []byte
+	sum   [sha512.Size]byte
+}
 
-func (s *sha2rw) Final(out []byte)         { s.Sum(out[:0]) }
-func (s *sha2rw) SumIdempotent(out []byte) { s.Sum(out[:0]) }
+func newSHA2Prefix(h hash.Hash, prefix []byte) *sha2Prefix {
+	_, _ = h.Write(prefix)
+	saved, err := h.(encoding.BinaryMarshaler).MarshalBinary()
+	if err != nil {
+		panic(err)
+	}
+	return &sha2Prefix{Hash: h, saved: saved}
+}
+
+func (s *sha2Prefix) Reset() {
+	if err := s.Hash.(encoding.BinaryUnmarshaler).UnmarshalBinary(s.saved); err != nil {
+		panic(err)
+	}
+}
+
+func (s *sha2Prefix) Final(out []byte) { copy(out, s.Sum(s.sum[:0])) }
+
+func (s *sha2Prefix) Clear() {
+	// Restore the public-only state to discard buffered message bytes.
+	s.Reset()
+	clear(s.sum[:])
+	clear(s.saved)
+}
+
+func (b *baseHasher) initSHA2(h hash.Hash) {
+	prefix := b.input[:h.BlockSize()]
+	cached := newSHA2Prefix(h, prefix)
+	b.hash = func(out, in []byte) {
+		cached.Reset()
+		_, _ = cached.Write(in)
+		cached.Final(out)
+	}
+	b.clearHash = func() { cached.Clear(); clear(prefix) }
+	b.input = b.input[h.BlockSize():]
+}
 
 type sha3rw struct{ sha3.State }
 
