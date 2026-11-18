@@ -2,6 +2,7 @@ package conv
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -171,3 +172,24 @@ func UnmarshalBinary(v UnmarshalingValue, data []byte) (err error) {
 	}
 	return
 }
+
+func MarshalSlice(b *cryptobyte.Builder, v ...cryptobyte.MarshalingValue) error {
+	for i := range v {
+		if v[i] == nil {
+			return ErrMarshal
+		}
+		b.AddValue(v[i])
+	}
+	return nil
+}
+
+func UnmarshalSlice(s *cryptobyte.String, v ...UnmarshalingValue) bool {
+	for i := range v {
+		if v[i] == nil || !v[i].Unmarshal(s) {
+			return false
+		}
+	}
+	return true
+}
+
+var ErrMarshal = errors.New("cannot Marshal <nil> value")
