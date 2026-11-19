@@ -25,8 +25,16 @@ func (x xKEM) EncapsulationSeedSize() int { return x.size }
 
 func (x xKEM) sizeDH() int { return x.size }
 func (x xKEM) calcDH(dh []byte, sk kem.PrivateKey, pk kem.PublicKey) error {
-	PK := pk.(*xKEMPubKey)
-	SK := sk.(*xKEMPrivKey)
+	PK, ok := pk.(*xKEMPubKey)
+	if !ok || PK.scheme.id != x.id || !PK.validate() {
+		return ErrInvalidKEMPublicKey
+	}
+
+	SK, ok := sk.(*xKEMPrivKey)
+	if !ok || SK.scheme.id != x.id || !SK.validate() {
+		return ErrInvalidKEMPrivateKey
+	}
+
 	switch x.size {
 	case x25519.Size:
 		var ss, sKey, pKey x25519.Key

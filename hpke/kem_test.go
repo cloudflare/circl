@@ -95,3 +95,45 @@ func checkKeysScheme(t *testing.T, kemID hpke.KEM) {
 		test.CheckOk(gotPk.Scheme().Name() == scheme.Name(), "unmarshaled public key scheme must match", t)
 	})
 }
+
+func TestKemKeysWrongScheme(t *testing.T) {
+	dhKEMs := []hpke.KEM{
+		hpke.KEM_P256_HKDF_SHA256,
+		hpke.KEM_P384_HKDF_SHA384,
+		hpke.KEM_P521_HKDF_SHA512,
+		hpke.KEM_X25519_HKDF_SHA256,
+		hpke.KEM_X448_HKDF_SHA512,
+	}
+
+	for _, idA := range dhKEMs {
+		for _, idB := range dhKEMs {
+			if idA == idB {
+				continue
+			}
+			checkWrongSchemeKeys(t, idA, idB)
+		}
+	}
+}
+
+func checkWrongSchemeKeys(t *testing.T, idA, idB hpke.KEM) {
+	schemeA, pkA, skA := genKeyPair(t, idA)
+	schemeB, pkB, skB := genKeyPair(t, idB)
+	authA := schemeA.(kem.AuthScheme)
+
+	t.Run(schemeA.Name()+"/"+schemeB.Name(), func(t *testing.T) {
+		ct, _, err := schemeA.Encapsulate(pkA)
+		test.CheckNoErr(t, err, "encapsulate")
+
+		_, _, err = schemeA.Encapsulate(pkB)
+		test.CheckIsErr(t, err, "encapsulate to a foreign public key must fail")
+
+		_, err = schemeA.Decapsulate(skB, ct)
+		test.CheckIsErr(t, err, "decapsulate with a foreign private key must fail")
+
+		_, _, err = authA.AuthEncapsulate(pkA, skB)
+		test.CheckIsErr(t, err, "auth encapsulate with a foreign private key must fail")
+
+		_, err = authA.AuthDecapsulate(skA, ct, pkB)
+		test.CheckIsErr(t, err, "auth decapsulate with a foreign public key must fail")
+	})
+}
