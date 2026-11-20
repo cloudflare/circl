@@ -189,8 +189,10 @@ func VecLDeriveUniformLeGamma1(v *VecL, seed *[64]byte, nonce uint16) {
 			PolyDeriveUniformLeGamma1X4(
 				[4]*common.Poly{&v[i], &v[i+1], &v[i+2], &v[i+3]},
 				seed,
-				[4]uint16{nonce + uint16(i), nonce + uint16(i+1),
-					nonce + uint16(i+2), nonce + uint16(i+3)},
+				[4]uint16{
+					nonce + uint16(i), nonce + uint16(i+1),
+					nonce + uint16(i+2), nonce + uint16(i+3),
+				},
 			)
 		}
 		if L-i > 1 {
