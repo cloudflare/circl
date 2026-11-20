@@ -3,7 +3,9 @@ package fourq
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"fmt"
 	"math/big"
+	"sync"
 	"testing"
 
 	"github.com/cloudflare/circl/internal/conv"
@@ -155,4 +157,47 @@ func TestUnmarshalBorrowBug(t *testing.T) {
 	// purego/reference build accepts 29 keys: [1 2 8 10 13 15 17 22 23 25 26 28 30 33 35 38 39 41 42 46 47 48 49 52 53 54 56 58 62]
 	// default amd64 (BMI2) build accepts 0.
 	t.Logf("accepted %d of 64 candidate keys: %v", len(accepted), accepted)
+}
+
+func TestUnmarshalConcurrent(t *testing.T) {
+	// Unmarshal must not write to its input, so that several goroutines can
+	// decode the same encoding at the same time.
+	var P, want Point
+	var enc [Size]byte
+	for {
+		P.random()
+		P.Marshal(&enc)
+		if enc[Size-1]>>7 == 1 {
+			break
+		}
+	}
+	if !want.Unmarshal(&enc) {
+		t.Fatal("cannot decode point")
+	}
+	orig := enc
+
+	const numGoroutines, testTimes = 8, 1 << 10
+	var wg sync.WaitGroup
+	errs := make(chan error, numGoroutines)
+	for range numGoroutines {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			var Q Point
+			for range testTimes {
+				if !Q.Unmarshal(&enc) || Q != want {
+					errs <- fmt.Errorf("concurrent Unmarshal decoded a different point")
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Fatal(err)
+	}
+	if enc != orig {
+		test.ReportError(t, enc, orig)
+	}
 }

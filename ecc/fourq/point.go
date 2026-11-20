@@ -254,11 +254,10 @@ func (P *Point) Marshal(out *[Size]byte) {
 // Marshal always emits the canonical form.
 func (P *Point) Unmarshal(in *[Size]byte) bool {
 	var Q Point
-	s := in[Size-1] >> 7
-	in[Size-1] &= 0x7F
-	ok := Q.Y.fromBytes(in[:])
-	in[Size-1] |= s << 7
-	if !ok {
+	y := *in
+	s := y[Size-1] >> 7
+	y[Size-1] &= 0x7F
+	if !Q.Y.fromBytes(y[:]) {
 		return false
 	}
 
