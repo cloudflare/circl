@@ -152,3 +152,45 @@ func TestGamma1Size(t *testing.T) {
 		t.Fatal()
 	}
 }
+
+func BenchmarkSignReuseTail(b *testing.B) {
+	// Note that the expansion of the matrix A is done at Unpacking/Keygen
+	// instead of at the moment of signing (as in the reference
+	// implementation.)
+	var seed [32]byte
+	var msg [8]byte
+	var sig [SignatureSize]byte
+	_, sk := NewKeyFromSeed(&seed)
+	for i := 0; i < b.N; i++ {
+		binary.LittleEndian.PutUint64(msg[:], uint64(i))
+		SignToReuseTail(sk, func(w io.Writer) {
+			_, _ = w.Write(msg[:])
+		}, [32]byte{}, sig[:])
+	}
+}
+
+func TestSignReuseTailThenVerify(t *testing.T) {
+	var seed [32]byte
+	var msg [8]byte
+	var a, b [SignatureSize]byte
+	for i := uint64(0); i < 200; i++ {
+		binary.LittleEndian.PutUint64(seed[:], i)
+		binary.LittleEndian.PutUint64(msg[:], i)
+		pk, sk := NewKeyFromSeed(&seed)
+		m := func(w io.Writer) { _, _ = w.Write(msg[:]) }
+		var rnd [32]byte
+		rnd[0] = byte(i)
+		SignToReuseTail(sk, m, rnd, a[:])
+		if !Verify(pk, m, a[:]) {
+			t.Fatalf("signature %d does not verify", i)
+		}
+		SignToReuseTail(sk, m, rnd, b[:])
+		if a != b {
+			t.Fatalf("signature %d is not deterministic", i)
+		}
+		other := func(w io.Writer) { _, _ = w.Write([]byte("other")) }
+		if Verify(pk, other, a[:]) {
+			t.Fatalf("signature %d verifies for another message", i)
+		}
+	}
+}

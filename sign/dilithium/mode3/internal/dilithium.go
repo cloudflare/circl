@@ -348,10 +348,73 @@ func SignTo(sk *PrivateKey, msg func(io.Writer), rnd [32]byte, signature []byte)
 //
 //nolint:funlen
 func SignMuTo(sk *PrivateKey, mu *[64]byte, rnd [32]byte, signature []byte) {
+	signMuTo(sk, mu, rnd, signature, false)
+}
+
+// SignToReuseTail is SignTo with the nonce reuse of SignMuToReuseTail.
+func SignToReuseTail(sk *PrivateKey, msg func(io.Writer), rnd [32]byte,
+	signature []byte,
+) {
+	var mu [64]byte
+	computeMu(&sk.tr, msg, &mu)
+	signMuTo(sk, &mu, rnd, signature, true)
+}
+
+// SignMuToReuseTail is like SignMuTo, but on a failure of the
+// ‖w₀ - c·s₂‖ check it keeps y₁, …, y_{ℓ-1} and resamples only y₀
+// ("alt-r0", Algorithm 2 of ePrint 2020/1158).  On any other failure all
+// of y is resampled.  The signatures are valid ML-DSA signatures, but they
+// are not the outputs prescribed by FIPS 204 for the given rnd.
+//
+// Not perfectly zero-knowledge: the output law is only statistically close
+// to that of FIPS 204 signing, for all but a negligible fraction of
+// public matrices A.  See the documentation of the public wrappers.
+func SignMuToReuseTail(sk *PrivateKey, mu *[64]byte, rnd [32]byte,
+	signature []byte,
+) {
+	signMuTo(sk, mu, rnd, signature, true)
+}
+
+// headPool hands out freshly sampled polynomials (for y₀) in nonce order,
+// sampling four at a time when the 4-way Keccak is available.
+type headPool struct {
+	ps   [4]common.Poly
+	n    int
+	next int
+}
+
+func (hp *headPool) get(p *common.Poly, seed *[64]byte, nonce *uint16) {
+	if hp.next == hp.n {
+		if DeriveX4Available {
+			n := *nonce
+			PolyDeriveUniformLeGamma1X4(
+				[4]*common.Poly{&hp.ps[0], &hp.ps[1], &hp.ps[2], &hp.ps[3]},
+				seed,
+				[4]uint16{n, n + 1, n + 2, n + 3},
+			)
+			*nonce += 4
+			hp.n = 4
+		} else {
+			PolyDeriveUniformLeGamma1(&hp.ps[0], seed, *nonce)
+			*nonce++
+			hp.n = 1
+		}
+		hp.next = 0
+	}
+	*p = hp.ps[hp.next]
+	hp.next++
+}
+
+//nolint:funlen,gocyclo
+func signMuTo(sk *PrivateKey, mu *[64]byte, rnd [32]byte, signature []byte,
+	reuseTail bool,
+) {
 	var rhop [64]byte
 	var w1Packed [PolyW1Size * K]byte
 	var y, yh VecL
 	var w, w0, w1, w0mcs2, ct0, w0mcs2pct0 VecK
+	var wTail VecK // with reuseTail: ∑_{j≥1} A_{ij}·ŷ_j (NTT domain)
+	var heads headPool
 	var ch common.Poly
 	var yNonce uint16
 	var sig unpackedSignature
@@ -371,24 +434,54 @@ func SignMuTo(sk *PrivateKey, mu *[64]byte, rnd [32]byte, signature []byte) {
 
 	// Main rejection loop
 	attempt := 0
+	fresh := true // resample all of y (otherwise only y₀)
 	for {
 		attempt++
 		if attempt >= 576 {
 			// Depending on the mode, one try has a chance between 1/7 and 1/4
 			// of succeeding.  Thus it is safe to say that 576 iterations
 			// are enough as (6/7)⁵⁷⁶ < 2⁻¹²⁸.
+			//
+			// With reuseTail the attempts are not independent.  For
+			// ML-DSA-44/65/87, for all but a 2⁻¹²⁷/2⁻¹³⁹/2⁻¹⁵⁷ fraction of
+			// matrices A, the loop is still running after k attempts with
+			// probability at most (1 - μ/2)^k + 2⁻¹²⁵/2⁻¹³⁸/2⁻¹⁵⁵, where
+			// μ ≈ 0.44/0.32/0.39 is the probability that a uniform w passes
+			// the ‖w₀ - c·s₂‖ check.  For k = 576 that is below 2⁻¹²⁴.
 			panic("This should only happen 1 in  2^{128}: something is wrong.")
 		}
 
-		// y = ExpandMask(ρ', key)
-		VecLDeriveUniformLeGamma1(&y, &rhop, yNonce)
-		yNonce += uint16(L)
+		if fresh {
+			// y = ExpandMask(ρ', key)
+			VecLDeriveUniformLeGamma1(&y, &rhop, yNonce)
+			yNonce += uint16(L)
+			yh = y
+			yh.NTT()
+			if reuseTail {
+				var t common.Poly
+				for i := 0; i < K; i++ {
+					wTail[i] = common.Poly{}
+					for j := 1; j < L; j++ {
+						t.MulHat(&sk.A[i][j], &yh[j])
+						wTail[i].Add(&wTail[i], &t)
+					}
+				}
+			}
+		} else {
+			// Keep y₁, …, y_{ℓ-1}; fresh y₀.
+			heads.get(&y[0], &rhop, &yNonce)
+			yh[0] = y[0]
+			yh[0].NTT()
+		}
 
 		// Set w to A y
-		yh = y
-		yh.NTT()
 		for i := 0; i < K; i++ {
-			PolyDotHat(&w[i], &sk.A[i], &yh)
+			if reuseTail {
+				w[i].MulHat(&sk.A[i][0], &yh[0])
+				w[i].Add(&w[i], &wTail[i])
+			} else {
+				PolyDotHat(&w[i], &sk.A[i], &yh)
+			}
 			w[i].ReduceLe2Q()
 			w[i].InvNTT()
 		}
@@ -421,8 +514,10 @@ func SignMuTo(sk *PrivateKey, mu *[64]byte, rnd [32]byte, signature []byte) {
 		w0mcs2.Normalize()
 
 		if w0mcs2.Exceeds(Gamma2 - Beta) {
+			fresh = !reuseTail
 			continue
 		}
+		fresh = true
 
 		// z = y + c·s₁
 		for i := 0; i < L; i++ {

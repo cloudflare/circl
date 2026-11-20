@@ -121,6 +121,67 @@ func SignMuTo(sk *PrivateKey, mu *[64]byte, rnd *[32]byte, sig []byte) {
 	internal.SignMuTo((*internal.PrivateKey)(sk), mu, r, sig)
 }
 
+// SignReuseTailTo is like SignTo, but signs faster by reusing part of the
+// masking nonce y after a failed attempt: when the ‖w₀ − c·s₂‖ check fails,
+// only y₀ is resampled and y₁, …, y_{ℓ-1} are kept ("alt-r0", Algorithm 2
+// of Sprenkels–Westerbaan, ePrint 2020/1158).  Any other failure
+// resamples all of y.
+//
+// The signatures are valid ML-DSA signatures and verify with Verify, but
+// they are not the outputs FIPS 204 prescribes: deterministic signing with
+// this function gives different signatures than SignTo.
+//
+// Security: this is not perfectly zero-knowledge.  The joint distribution of
+// the signature and the number of attempts is only statistically close to
+// that of FIPS 204 signing (Trans hybrid, per signature): for all but a
+// 2⁻¹²⁷ / 2⁻¹³⁹ / 2⁻¹⁵⁷ fraction of public matrices A (ML-DSA-44/65/87),
+// within ℓ₁ distance k·2⁻¹²⁵ / k·2⁻¹³⁸ / k·2⁻¹⁵⁵ over the first k
+// attempts.  These bounds are machine-checked in Lean.
+//
+// Timing reveals the number of attempts (covered by the bound above) and,
+// per attempt, which of the two checks failed, as FIPS 204 signing in this
+// package does.  Unlike there, the sequence of failed checks is not
+// independent across attempts, and its distance to the FIPS 204 one is not
+// yet covered by the bound.
+//
+// Experimental.
+func SignReuseTailTo(sk *PrivateKey, msg, ctx []byte, randomized bool,
+	sig []byte,
+) error {
+	var rnd [32]byte
+
+	if randomized {
+		_, err := cryptoRand.Read(rnd[:])
+		if err != nil {
+			return err
+		}
+	}
+
+	if len(ctx) > 255 {
+		return sign.ErrContextTooLong
+	}
+
+	internal.SignToReuseTail(
+		(*internal.PrivateKey)(sk),
+		internal.MPrime(msg, ctx),
+		rnd,
+		sig,
+	)
+
+	return nil
+}
+
+// SignMuReuseTailTo is SignMuTo with the nonce reuse of SignReuseTailTo; see
+// there for the caveats.  Experimental.
+func SignMuReuseTailTo(sk *PrivateKey, mu *[64]byte, rnd *[32]byte, sig []byte) {
+	var r [32]byte
+	if rnd != nil {
+		r = *rnd
+	}
+
+	internal.SignMuToReuseTail((*internal.PrivateKey)(sk), mu, r, sig)
+}
+
 // Do not use. Implements ML-DSA.Sign_internal used for compatibility tests.
 func (sk *PrivateKey) unsafeSignInternal(msg []byte, rnd [32]byte) []byte {
 	var ret [SignatureSize]byte
