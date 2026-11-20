@@ -183,8 +183,76 @@ func PolyDeriveUniformLeqEta(p *common.Poly, seed *[64]byte, nonce uint16) {
 //
 // p will be normalized.
 func VecLDeriveUniformLeGamma1(v *VecL, seed *[64]byte, nonce uint16) {
-	for i := 0; i < L; i++ {
+	i := 0
+	if DeriveX4Available {
+		for ; i+4 <= L; i += 4 {
+			PolyDeriveUniformLeGamma1X4(
+				[4]*common.Poly{&v[i], &v[i+1], &v[i+2], &v[i+3]},
+				seed,
+				[4]uint16{
+					nonce + uint16(i), nonce + uint16(i+1),
+					nonce + uint16(i+2), nonce + uint16(i+3),
+				},
+			)
+		}
+		if L-i > 1 {
+			var ps [4]*common.Poly
+			var nonces [4]uint16
+			for j := 0; i+j < L; j++ {
+				ps[j] = &v[i+j]
+				nonces[j] = nonce + uint16(i+j)
+			}
+			PolyDeriveUniformLeGamma1X4(ps, seed, nonces)
+			i = L
+		}
+	}
+	for ; i < L; i++ {
 		PolyDeriveUniformLeGamma1(&v[i], seed, nonce+uint16(i))
+	}
+}
+
+// For each i, sample ps[i] uniformly with coefficients in (-γ₁,…,γ₁] using
+// the given seed and nonces[i], as PolyDeriveUniformLeGamma1 does.  ps[i]
+// may be nil and is ignored in that case.  ps[i] will be normalized.
+//
+// Can only be called when DeriveX4Available is true.
+func PolyDeriveUniformLeGamma1X4(ps [4]*common.Poly, seed *[64]byte,
+	nonces [4]uint16,
+) {
+	var perm keccakf1600.StateX4
+	state := perm.Initialize(false)
+
+	// Absorb the seed in the four states
+	for i := 0; i < 8; i++ {
+		v := binary.LittleEndian.Uint64(seed[8*i : 8*(i+1)])
+		for j := 0; j < 4; j++ {
+			state[i*4+j] = v
+		}
+	}
+
+	// Absorb the nonces, the SHAKE256 domain separator (0b1111), the
+	// start of the padding (0b...001) and the end of the padding 0b100...
+	// Recall that the rate of SHAKE256 is 136 --- i.e. 17 uint64s.
+	for j := 0; j < 4; j++ {
+		state[8*4+j] = uint64(nonces[j]) | (0x1f << 16)
+		state[16*4+j] = 0x80 << 56
+	}
+
+	const blocks = (PolyLeGamma1Size + 135) / 136
+	var buf [4][blocks * 136]byte
+	for b := 0; b < blocks; b++ {
+		perm.Permute()
+		for i := 0; i < 17; i++ {
+			for j := 0; j < 4; j++ {
+				binary.LittleEndian.PutUint64(buf[j][b*136+8*i:], state[4*i+j])
+			}
+		}
+	}
+
+	for j := 0; j < 4; j++ {
+		if ps[j] != nil {
+			PolyUnpackLeGamma1(ps[j], buf[j][:PolyLeGamma1Size])
+		}
 	}
 }
 

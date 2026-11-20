@@ -216,3 +216,29 @@ func BenchmarkPolyDeriveUniformLeGamma1(b *testing.B) {
 		PolyDeriveUniformLeGamma1(&p, &seed, uint16(i))
 	}
 }
+
+func TestDeriveUniformLeGamma1X4(t *testing.T) {
+	if !DeriveX4Available {
+		t.SkipNow()
+	}
+	var ps [4]common.Poly
+	var p common.Poly
+	var seed [64]byte
+	nonces := [4]uint16{12345, 54321, 13532, 37377}
+
+	for i := 0; i < len(seed); i++ {
+		seed[i] = byte(i)
+	}
+
+	PolyDeriveUniformLeGamma1X4([4]*common.Poly{&ps[0], nil, &ps[2], &ps[3]},
+		&seed, nonces)
+	for i := 0; i < 4; i++ {
+		if i == 1 {
+			continue
+		}
+		PolyDeriveUniformLeGamma1(&p, &seed, nonces[i])
+		if ps[i] != p {
+			t.Fatal()
+		}
+	}
+}
