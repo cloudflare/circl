@@ -81,8 +81,17 @@ func DeriveAttributeKeysCCA(rand io.Reader, sp *SecretParams, attrs *Attributes)
 }
 
 func EncryptCCA(rand io.Reader, public *PublicParams, policy *Policy, msg []byte) ([]byte, error) {
+	pBytes, err := policy.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	// Reject oversized policies before doing sharing/curve operations
+	if err = checkPolicySize(pBytes); err != nil {
+		return nil, err
+	}
+
 	seed := make([]byte, macKeySeedSize)
-	_, err := io.ReadFull(rand, seed)
+	_, err = io.ReadFull(rand, seed)
 	if err != nil {
 		return nil, err
 	}
@@ -121,8 +130,14 @@ func EncryptCCA(rand io.Reader, public *PublicParams, policy *Policy, msg []byte
 	if err != nil {
 		return nil, err
 	}
-	macData := appendLen32Prefixed(nil, C1)
-	macData = appendLen32Prefixed(macData, env)
+	macData, err := appendLen32Prefixed(nil, C1)
+	if err != nil {
+		return nil, err
+	}
+	macData, err = appendLen32Prefixed(macData, env)
+	if err != nil {
+		return nil, err
+	}
 
 	tag, err := blakeMac(macKey, macData)
 	if err != nil {
@@ -130,9 +145,18 @@ func EncryptCCA(rand io.Reader, public *PublicParams, policy *Policy, msg []byte
 	}
 
 	ret := append([]byte{}, []byte(CiphertextVersion)...)
-	ret = appendLenPrefixed(ret, id)
-	ret = appendLen32Prefixed(ret, macData)
-	ret = appendLenPrefixed(ret, tag)
+	ret, err = appendLenPrefixed(ret, id)
+	if err != nil {
+		return nil, err
+	}
+	ret, err = appendLen32Prefixed(ret, macData)
+	if err != nil {
+		return nil, err
+	}
+	ret, err = appendLenPrefixed(ret, tag)
+	if err != nil {
+		return nil, err
+	}
 
 	return ret, nil
 }

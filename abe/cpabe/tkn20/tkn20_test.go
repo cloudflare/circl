@@ -527,3 +527,52 @@ func TestPolicyExtractMutatedCiphertextStackOverflow(t *testing.T) {
 	//_ = extracted.String() // fatal error: stack overflow — kills the entire process
 	//t.Fatal("unreachable: String() should have crashed the process")
 }
+
+// Encrypt used to build a ciphertext too large, overflowing its storage and
+// then being unabel to be decrypted later
+//
+// ciphertextHeader.marshalBinary stores serialized policy length in a uint16
+// field, so any policy totalling over 65535 bytes wrapped around, and
+// decryption failed with a confusing 'too short' error. Encrypt should refuse
+// too large a policy up front.
+//
+// Note the issue is the overall length, not purely number of attributes or purely their lengths
+func TestEncryptWrapsAroundWithLongValues(t *testing.T) {
+	const label = "contributor_email_address"
+	const n = 700 // ~630 or so is necessary to trigger this
+
+	adjectives := []string{"billowy", "righteous", "abstracted", "statuesque", "furry", "responsible", "cluttered", "quietly", "calmly", "strange"}
+	descriptors := []string{"pupil", "newsletter", "puppy", "stormy", "stupendous", "sugar", "supportive", "rebirth", "pacific", "reform"}
+	nouns := []string{"reaction", "rabbit", "argument", "reading", "song", "heat", "books", "wash", "trip", "instrument"}
+
+	value := func(i int) string {
+		return fmt.Sprintf("%08d_%s_%s_%s", 10_000_000+i, adjectives[i%len(adjectives)], descriptors[(i/3)%len(descriptors)], nouns[(i/7)%len(nouns)])
+	}
+
+	clauses := make([]string, n)
+	for i := range n {
+		clauses[i] = fmt.Sprintf("%s:%s", label, value(i))
+	}
+	// OR is chosen for speed/simplicity; there is nothing particular about it that causes the
+	// issue
+	policyStr := strings.Join(clauses, " or ")
+
+	var policy Policy
+	if err := policy.FromString(policyStr); err != nil {
+		t.Fatalf("Failed to parse clause policy: %v", err)
+	}
+
+	pk, _, err := Setup(rand.Reader)
+	if err != nil {
+		t.Fatalf("Failed to complete setup: %v", err)
+	}
+
+	msg := []byte("CIRCL (Cloudflare Interoperable, Reusable Cryptographic Library) is a collection of cryptographic primitives written in Go.")
+	_, err = pk.Encrypt(rand.Reader, policy, msg)
+	if err == nil {
+		t.Fatal("Encrypt accepted a policy whose serialization exceeds 65535 bytes")
+	}
+	if !strings.Contains(err.Error(), "serialized policy too long") {
+		t.Fatalf("Encrypt failed for the wrong reason: %v", err)
+	}
+}
