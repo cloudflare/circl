@@ -390,6 +390,9 @@ func (vector testVector) verifyTestVector(t *testing.T) {
 	default:
 		t.Fatal("variant not supported")
 	}
+	if got := variant.String(); got != vector.Name {
+		test.ReportError(t, got, vector.Name)
+	}
 
 	signer := NewSigner(key)
 
