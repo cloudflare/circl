@@ -60,11 +60,11 @@ func (v Variant) String() string {
 	case SHA384PSSRandomized:
 		return "RSABSSA-SHA384-PSS-Randomized"
 	case SHA384PSSZeroRandomized:
-		return "RSABSSA-SHA384-PSSZero-Randomized"
+		return "RSABSSA-SHA384-PSSZERO-Randomized"
 	case SHA384PSSDeterministic:
 		return "RSABSSA-SHA384-PSS-Deterministic"
 	case SHA384PSSZeroDeterministic:
-		return "RSABSSA-SHA384-PSSZero-Deterministic"
+		return "RSABSSA-SHA384-PSSZERO-Deterministic"
 	default:
 		return "invalid RSABSSA variant"
 	}
