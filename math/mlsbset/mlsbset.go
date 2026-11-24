@@ -123,8 +123,15 @@ func (m Encoder) GetParams() Params { return m.p }
 // tableSize returns the size of each table.
 func (m Encoder) tableSize() uint { return 1 << (m.p.W - 1) }
 
-// Elts returns the total number of elements that must be precomputed.
-func (m Encoder) Elts() uint { return m.p.V * m.tableSize() }
+// Elts returns the total number of elements that must be precomputed,
+// including the extended element when needed.
+func (m Encoder) Elts() uint {
+	n := m.p.V * m.tableSize()
+	if n != 0 && m.IsExtended() {
+		n++
+	}
+	return n
+}
 
 // IsExtended returns true if the element x^(2^(wd)) must be calculated.
 func (m Encoder) IsExtended() bool { q := m.p.T / (m.p.V * m.p.W); return m.p.T == q*m.p.V*m.p.W }
