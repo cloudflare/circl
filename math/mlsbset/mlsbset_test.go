@@ -11,6 +11,19 @@ import (
 	"github.com/cloudflare/circl/math/mlsbset"
 )
 
+func TestElts(t *testing.T) {
+	for _, tc := range []struct{ bits, want uint }{
+		{23, 8}, // two tables of four elements
+		{24, 9}, // plus the extended element
+	} {
+		m, err := mlsbset.New(tc.bits, 2, 3)
+		test.CheckNoErr(t, err, "new encoder")
+		if got := m.Elts(); got != tc.want {
+			t.Errorf("T=%d: Elts() = %d, want %d", tc.bits, got, tc.want)
+		}
+	}
+}
+
 func TestExp(t *testing.T) {
 	T := uint(126)
 	for v := uint(1); v <= 5; v++ {
