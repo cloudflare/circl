@@ -28,7 +28,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package pss
+package internal
 
 import (
 	"hash"
@@ -48,9 +48,9 @@ func incCounter(c *[4]byte) {
 	c[0]++
 }
 
-// mgf1XOR XORs the bytes in out with a mask generated using the MGF1 function
+// MGF1XOR XORs the bytes in out with a mask generated using the MGF1 function
 // specified in PKCS #1 v2.1.
-func mgf1XOR(out []byte, hash hash.Hash, seed []byte) {
+func MGF1XOR(out []byte, hash hash.Hash, seed []byte) {
 	var counter [4]byte
 	var digest []byte
 

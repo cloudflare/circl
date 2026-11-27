@@ -1,4 +1,4 @@
-// Package rsa provides RSA threshold signature scheme.
+// Package rsa provides RSA threshold signatures and RSA-OAEP threshold decryption.
 //
 // This package implements the Protocol 1 of "Practical Threshold Signatures"
 // by Victor Shoup [1].
@@ -91,6 +91,8 @@ func validateParams(players, threshold uint) error {
 }
 
 // Deal takes in an existing RSA private key generated elsewhere. If cache is true, cached values are stored in KeyShare taking up more memory by reducing Sign time.
+// Use distinct key pairs for signing and OAEP decryption to preserve each
+// scheme's security checks.
 // See KeyShare documentation. Multi-prime RSA keys are unsupported.
 func Deal(randSource io.Reader, players, threshold uint, key *rsa.PrivateKey, cache bool) ([]KeyShare, error) {
 	err := validateParams(players, threshold)
