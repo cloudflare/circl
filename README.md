@@ -84,7 +84,7 @@ Alternatively, look at the [Cloudflare Go](https://github.com/cloudflare/go/tree
  - [Partially-blind](./blindsign/blindrsa/partiallyblindrsa/) RSA Signatures. ([draft-cfrg-partially-blind-rsa](https://datatracker.ietf.org/doc/draft-amjad-cfrg-partially-blind-rsa/))
  - [CPABE](./abe/cpabe): Ciphertext-Policy Attribute-Based Encryption. ([ia.cr/2019/966])
  - [OT](./ot/simot): Simplest Oblivious Transfer ([ia.cr/2015/267]).
- - [Threshold RSA](./tss/rsa) Signatures ([Shoup Eurocrypt 2000](https://www.iacr.org/archive/eurocrypt2000/1807/18070209-new.pdf)).
+ - [Threshold RSA](./tss/rsa) signatures and OAEP decryption ([Shoup Eurocrypt 2000](https://www.iacr.org/archive/eurocrypt2000/1807/18070209-new.pdf)).
  - [Prio3](./vdaf/prio3) Verifiable Distributed Aggregation Function ([draft-irtf-cfrg-vdaf](https://datatracker.ietf.org/doc/draft-irtf-cfrg-vdaf/)).
 
 ### Post-Quantum Cryptography

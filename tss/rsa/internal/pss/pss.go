@@ -42,6 +42,8 @@ import (
 	"errors"
 	"hash"
 	"io"
+
+	"github.com/cloudflare/circl/tss/rsa/internal"
 )
 
 // Per RFC 8017, Section 9.1
@@ -118,7 +120,7 @@ func emsaPSSEncode(mHash []byte, emBits int, salt []byte, hash hash.Hash) ([]byt
 	//
 	// 10. Let maskedDB = DB \xor dbMask.
 
-	mgf1XOR(db, hash, h)
+	internal.MGF1XOR(db, hash, h)
 
 	// 11. Set the leftmost 8 * emLen - emBits bits of the leftmost octet in
 	//     maskedDB to zero.

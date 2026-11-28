@@ -29,6 +29,7 @@ linters:
             - $all
           allow:
             - $gostd
+            - filippo.io/bigmod
             - golang.org/x
             - github.com/bwesterb/go-ristretto
             - github.com/cloudflare/circl
