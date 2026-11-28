@@ -9,6 +9,10 @@
 // originally passed to Deal and must not be attacker controlled. Substituting
 // another RSA modulus can disclose the secret key share.
 //
+// NewOAEPDecrypter validates and encodes the secret key share using
+// variable-time operations. Use it only in trusted key setup and reuse the
+// resulting decrypter for requests.
+//
 // # References
 //
 // [1] https://www.iacr.org/archive/eurocrypt2000/1807/18070209-new.pdf

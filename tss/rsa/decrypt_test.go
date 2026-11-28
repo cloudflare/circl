@@ -8,6 +8,7 @@ import (
 	"errors"
 	"math/big"
 	"strconv"
+	"sync"
 	"testing"
 )
 
@@ -142,6 +143,56 @@ func testThresholdDecryptOAEPUnorderedShares(t *testing.T, key *rsa.PrivateKey, 
 			t.Errorf("three of %d shares could not decrypt %d bytes: %v", players, size, combineErr)
 		}
 	}
+}
+
+func TestThresholdDecryptOAEPSafePrimeConcurrent(t *testing.T) {
+	key, keyErr := GenerateKey(rand.Reader, 2048)
+	if keyErr != nil {
+		t.Fatal(keyErr)
+	}
+	public := &key.PublicKey
+	const players, threshold = 3, 2
+	shares, dealErr := Deal(rand.Reader, players, threshold, key, false)
+	if dealErr != nil {
+		t.Fatal(dealErr)
+	}
+	decrypters := [threshold]*OAEPDecrypter{
+		restoreOAEPDecrypter(t, public, &shares[0]),
+		restoreOAEPDecrypter(t, public, &shares[2]),
+	}
+
+	label := []byte("concurrent decryption")
+	var ciphertexts [8][]byte
+	for i := range ciphertexts {
+		ciphertext, encryptErr := rsa.EncryptOAEP(sha256.New(), rand.Reader, public, []byte{byte(i)}, label)
+		if encryptErr != nil {
+			t.Fatal(encryptErr)
+		}
+		ciphertexts[i] = ciphertext
+	}
+
+	start := make(chan struct{})
+	var workers sync.WaitGroup
+	for i, ciphertext := range ciphertexts {
+		workers.Go(func() {
+			<-start
+			var parts [threshold]DecryptionShare
+			for j, decrypter := range decrypters {
+				part, shareErr := decrypter.DecryptShare(ciphertext)
+				if shareErr != nil {
+					t.Errorf("ciphertext %d, decryption share %d: %v", i, j, shareErr)
+					return
+				}
+				parts[j] = part
+			}
+			got, combineErr := CombineDecryptionSharesOAEP(public, players, threshold, parts[:], ciphertext, label)
+			if combineErr != nil || !bytes.Equal(got, []byte{byte(i)}) {
+				t.Errorf("ciphertext %d: got %x, error %v", i, got, combineErr)
+			}
+		})
+	}
+	close(start)
+	workers.Wait()
 }
 
 func restoreOAEPDecrypter(t *testing.T, public *rsa.PublicKey, share *KeyShare) *OAEPDecrypter {

@@ -32,8 +32,10 @@ type OAEPDecrypter struct {
 // long-term key share. Use a key pair dedicated to encryption.
 // The modulus must be at least 2048 bits and the public exponent must be
 // coprime to the factorial of the player count.
-// Set up the decrypter in a trusted environment. Setup is variable time, but
-// the subsequent exponentiation uses a fixed-width exponent.
+// Key-share validation and encoding during setup use variable-time math/big
+// operations on the secret share. Construct the decrypter in a trusted setup
+// path before handling requests, then reuse it. DecryptShare uses fixed-width
+// exponentiation for the secret share.
 func NewOAEPDecrypter(pub *rsa.PublicKey, share *KeyShare) (*OAEPDecrypter, error) {
 	if share == nil || share.si == nil || share.Index == 0 || share.Index > share.Players {
 		return nil, rsa.ErrDecryption
@@ -50,7 +52,9 @@ func NewOAEPDecrypter(pub *rsa.PublicKey, share *KeyShare) (*OAEPDecrypter, erro
 }
 
 // DecryptShare calculates a partial RSA-OAEP decryption of ciphertext. The
-// result must be sent only to the intended combiner over a protected channel.
+// ciphertext must be exactly the modulus size in bytes and represent a value
+// less than and coprime to the modulus. The result must be sent only to the
+// intended combiner over a protected channel.
 func (d *OAEPDecrypter) DecryptShare(ciphertext []byte) (DecryptionShare, error) {
 	if d == nil || d.modulus == nil {
 		return DecryptionShare{}, rsa.ErrDecryption
@@ -77,8 +81,9 @@ func (d *OAEPDecrypter) exponentiate(base *bigmod.Nat) []byte {
 // CombineDecryptionSharesOAEP recovers plaintext using SHA-256 for both OAEP
 // and MGF1. The public key, player count and threshold must be trusted and the
 // caller must authenticate each share's participant. The ciphertext and label
-// must be identical to those used during encryption. The final RSA result is
-// checked before decoding. Malformed ciphertexts and shares return rsa.ErrDecryption.
+// must be identical to those used during encryption. The ciphertext must meet
+// the same requirements as in DecryptShare. The final RSA result is checked
+// before decoding. Malformed ciphertexts and shares return rsa.ErrDecryption.
 func CombineDecryptionSharesOAEP(pub *rsa.PublicKey, players, threshold uint, shares []DecryptionShare, ciphertext, label []byte) ([]byte, error) {
 	if uint(len(shares)) < threshold || uint(len(shares)) > players {
 		return nil, rsa.ErrDecryption
